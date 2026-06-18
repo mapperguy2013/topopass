@@ -1,3 +1,5 @@
+import { demoMapClickQuestions } from "@/lib/mapClickQuestions";
+
 export type MultipleChoiceMockQuestion = {
   id: string;
   type: "multiple-choice";
@@ -11,13 +13,13 @@ export type MultipleChoiceMockQuestion = {
 export type MapClickMockQuestion = {
   id: string;
   type: "map-click";
-  title: string;
+  prompt: string;
   description: string;
   target: {
     lat: number;
     lng: number;
   };
-  passRadiusMetres: number;
+  allowedDistanceMeters: number;
   initialCenter: {
     lat: number;
     lng: number;
@@ -29,32 +31,30 @@ export type MockTestQuestion =
   | MultipleChoiceMockQuestion
   | MapClickMockQuestion;
 
+const mapClickMockQuestions: MapClickMockQuestion[] = demoMapClickQuestions.map(
+  (question) => ({
+    id: `mock-${question.id}`,
+    type: "map-click",
+    prompt: question.prompt,
+    description:
+      "Click or tap the map to answer this mock-test map-reading question.",
+    target: question.answer,
+    allowedDistanceMeters: question.toleranceMeters,
+    initialCenter: question.answer,
+    initialZoom: 15
+  })
+);
+
 export const mockTestQuestions: MockTestQuestion[] = [
   {
     id: "directions-basics",
     type: "multiple-choice",
     title: "Direction awareness",
     description:
-      "A short warm-up question before the map-click task in this temporary mock flow.",
+      "A short warm-up question before the map-click tasks in this temporary mock flow.",
     question: "Which direction is generally opposite north?",
     options: ["South", "East", "West", "North-east"],
     correctOption: "South"
   },
-  {
-    id: "kings-cross-map-click",
-    type: "map-click",
-    title: "Click on King\u2019s Cross Station.",
-    description:
-      "This mock-test question uses the same reusable MapClickQuestion component as the standalone demo.",
-    target: {
-      lat: 51.5308,
-      lng: -0.1238
-    },
-    passRadiusMetres: 120,
-    initialCenter: {
-      lat: 51.5308,
-      lng: -0.1238
-    },
-    initialZoom: 15
-  }
+  ...mapClickMockQuestions
 ];

@@ -1,4 +1,4 @@
-import { MapClickQuestion } from "@/src/components/questions/MapClickQuestion";
+import { DemoMapClickFlow } from "@/src/components/demo/DemoMapClickFlow";
 
 export default function DemoPage() {
   return (
@@ -8,21 +8,16 @@ export default function DemoPage() {
           <p className="text-sm font-semibold uppercase tracking-wide text-road">
             TopoPass map proof-of-concept
           </p>
+          <h1 className="mt-2 text-3xl font-bold text-ink">
+            Map-click demo test
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            Answer one real map-click question at a time. This standalone demo
+            tests map click capture, distance scoring, and mobile-friendly
+            Mapbox interaction.
+          </p>
         </div>
-        <MapClickQuestion
-          title={"Click on King\u2019s Cross Station."}
-          description="This standalone demo tests map click capture, distance scoring, and mobile-friendly Mapbox interaction. It is not connected to the mock test flow."
-          target={{
-            lat: 51.5308,
-            lng: -0.1238
-          }}
-          passRadiusMetres={120}
-          initialCenter={{
-            lat: 51.5308,
-            lng: -0.1238
-          }}
-          initialZoom={15}
-        />
+        <DemoMapClickFlow />
       </div>
     </main>
   );

@@ -14,6 +14,7 @@ import {
 type AnswerState = {
   answered: boolean;
   isCorrect: boolean;
+  summary: string;
 };
 
 function MultipleChoiceMockQuestion({
@@ -21,7 +22,7 @@ function MultipleChoiceMockQuestion({
   onAnswer
 }: {
   question: Extract<MockTestQuestion, { type: "multiple-choice" }>;
-  onAnswer: (isCorrect: boolean) => void;
+  onAnswer: (isCorrect: boolean, summary: string) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -29,7 +30,7 @@ function MultipleChoiceMockQuestion({
     const isCorrect = option === question.correctOption;
 
     setSelected(option);
-    onAnswer(isCorrect);
+    onAnswer(isCorrect, `Selected: ${option}`);
   }
 
   return (
@@ -72,9 +73,14 @@ function MultipleChoiceMockQuestion({
   );
 }
 
+function getQuestionLabel(question: MockTestQuestion) {
+  return question.type === "multiple-choice" ? question.title : question.prompt;
+}
+
 export function MockTestFlow() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
+  const [isFinished, setIsFinished] = useState(false);
   const currentQuestion = mockTestQuestions[currentQuestionIndex];
   const currentAnswer = answers[currentQuestion.id];
   const isLastQuestion = currentQuestionIndex === mockTestQuestions.length - 1;
@@ -86,12 +92,13 @@ export function MockTestFlow() {
   );
 
   const saveAnswer = useCallback(
-    (questionId: string, isCorrect: boolean) => {
+    (questionId: string, isCorrect: boolean, summary: string) => {
       setAnswers((previousAnswers) => ({
         ...previousAnswers,
         [questionId]: {
           answered: true,
-          isCorrect
+          isCorrect,
+          summary
         }
       }));
     },
@@ -100,7 +107,11 @@ export function MockTestFlow() {
 
   const handleMapAnswer = useCallback(
     (result: MapClickQuestionResult) => {
-      saveAnswer(currentQuestion.id, result.isCorrect);
+      saveAnswer(
+        currentQuestion.id,
+        result.isCorrect,
+        `Distance: ${Math.round(result.distance)} metres`
+      );
     },
     [currentQuestion.id, saveAnswer]
   );
@@ -111,9 +122,70 @@ export function MockTestFlow() {
     );
   }
 
+  function finishMockTest() {
+    setIsFinished(true);
+  }
+
   function restartMockTest() {
     setAnswers({});
     setCurrentQuestionIndex(0);
+    setIsFinished(false);
+  }
+
+  if (isFinished) {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-soft">
+        <p className="text-sm font-semibold uppercase tracking-wide text-road">
+          Mock test complete
+        </p>
+        <h2 className="mt-3 text-3xl font-bold text-ink">
+          Final score: {score}/{mockTestQuestions.length}
+        </h2>
+        <div className="mt-6 space-y-3">
+          {mockTestQuestions.map((question, index) => {
+            const answer = answers[question.id];
+
+            return (
+              <article
+                className="rounded-md border border-slate-200 bg-slate-50 p-4"
+                key={question.id}
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-500">
+                      Question {index + 1} -{" "}
+                      {question.type === "multiple-choice"
+                        ? "Multiple choice"
+                        : "Map click"}
+                    </p>
+                    <h3 className="mt-1 text-base font-semibold text-ink">
+                      {getQuestionLabel(question)}
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-600">
+                      {answer?.summary ?? "Not answered"}
+                    </p>
+                  </div>
+                  <p
+                    className={`text-sm font-bold ${
+                      answer?.isCorrect ? "text-success" : "text-red-700"
+                    }`}
+                  >
+                    {answer?.isCorrect ? "Correct" : "Try again"}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <button
+          className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-road px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto"
+          onClick={restartMockTest}
+          type="button"
+        >
+          Try again
+        </button>
+      </section>
+    );
   }
 
   return (
@@ -141,14 +213,17 @@ export function MockTestFlow() {
       {currentQuestion.type === "multiple-choice" ? (
         <MultipleChoiceMockQuestion
           question={currentQuestion}
-          onAnswer={(isCorrect) => saveAnswer(currentQuestion.id, isCorrect)}
+          onAnswer={(isCorrect, summary) =>
+            saveAnswer(currentQuestion.id, isCorrect, summary)
+          }
         />
       ) : (
         <MapClickQuestion
-          title={currentQuestion.title}
+          key={currentQuestion.id}
+          title={currentQuestion.prompt}
           description={currentQuestion.description}
           target={currentQuestion.target}
-          passRadiusMetres={currentQuestion.passRadiusMetres}
+          passRadiusMetres={currentQuestion.allowedDistanceMeters}
           initialCenter={currentQuestion.initialCenter}
           initialZoom={currentQuestion.initialZoom}
           onAnswer={handleMapAnswer}
@@ -165,10 +240,10 @@ export function MockTestFlow() {
           <button
             className="inline-flex items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             disabled={!currentAnswer?.answered}
-            onClick={restartMockTest}
+            onClick={finishMockTest}
             type="button"
           >
-            Finish and restart
+            Finish test
           </button>
         ) : (
           <button
