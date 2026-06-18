@@ -1,0 +1,1 @@
+-- Seed data will be added when the Supabase schema is defined.
