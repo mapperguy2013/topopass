@@ -5,6 +5,7 @@ import {
   demoMapClickQuestions,
   type MapClickQuestionData
 } from "@/lib/mapClickQuestions";
+import { EXAM_MAP_ZOOM_LIMITS } from "@/lib/topographicalAtlasStyle";
 import {
   MapClickQuestion,
   type MapClickQuestionResult
@@ -45,6 +46,15 @@ export function DemoMapClickFlow() {
     },
     [currentQuestion]
   );
+
+  const resetCurrentAnswer = useCallback(() => {
+    setCurrentAnswer(null);
+    setAnswers((previousAnswers) => {
+      const nextAnswers = { ...previousAnswers };
+      delete nextAnswers[currentQuestion.id];
+      return nextAnswers;
+    });
+  }, [currentQuestion.id]);
 
   function goToNextQuestion() {
     setCurrentQuestionIndex((index) =>
@@ -153,8 +163,9 @@ export function DemoMapClickFlow() {
         target={currentQuestion.answer}
         passRadiusMetres={currentQuestion.toleranceMeters}
         initialCenter={currentQuestion.answer}
-        initialZoom={15}
+        initialZoom={EXAM_MAP_ZOOM_LIMITS.defaultZoom}
         onAnswer={handleAnswer}
+        onAnswerReset={resetCurrentAnswer}
       />
 
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">

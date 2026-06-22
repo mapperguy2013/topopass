@@ -1,0 +1,15 @@
+{
+  "mapId": "kings-cross-euston-real-data",
+  "width": 1600,
+  "height": 1000,
+  "padding": 24,
+  "bounds": {
+    "south": 51.516,
+    "west": -0.15,
+    "north": 51.536,
+    "east": -0.1
+  },
+  "dataStatus": "real",
+  "source": "OpenStreetMap GeoJSON export: public/maps/kings-cross-euston/osm-raw.geojson",
+  "attribution": "(c) OpenStreetMap contributors, ODbL"
+}

@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "map:render:kings-cross-euston": "node scripts/maps/render-kings-cross-euston-map.mjs",
+    "map:graph:kings-cross-euston": "node scripts/maps/generate-kings-cross-euston-route-graph.mjs",
+    "map:build:kings-cross-euston": "npm run map:render:kings-cross-euston && npm run map:graph:kings-cross-euston"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

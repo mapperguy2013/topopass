@@ -1,4 +1,5 @@
 import { demoMapClickQuestions } from "@/lib/mapClickQuestions";
+import { EXAM_MAP_ZOOM_LIMITS } from "@/lib/topographicalAtlasStyle";
 
 export type MultipleChoiceMockQuestion = {
   id: string;
@@ -41,7 +42,7 @@ const mapClickMockQuestions: MapClickMockQuestion[] = demoMapClickQuestions.map(
     target: question.answer,
     allowedDistanceMeters: question.toleranceMeters,
     initialCenter: question.answer,
-    initialZoom: 15
+    initialZoom: EXAM_MAP_ZOOM_LIMITS.defaultZoom
   })
 );
 

@@ -116,6 +116,14 @@ export function MockTestFlow() {
     [currentQuestion.id, saveAnswer]
   );
 
+  const resetCurrentAnswer = useCallback(() => {
+    setAnswers((previousAnswers) => {
+      const nextAnswers = { ...previousAnswers };
+      delete nextAnswers[currentQuestion.id];
+      return nextAnswers;
+    });
+  }, [currentQuestion.id]);
+
   function goToNextQuestion() {
     setCurrentQuestionIndex((index) =>
       Math.min(index + 1, mockTestQuestions.length - 1)
@@ -227,6 +235,7 @@ export function MockTestFlow() {
           initialCenter={currentQuestion.initialCenter}
           initialZoom={currentQuestion.initialZoom}
           onAnswer={handleMapAnswer}
+          onAnswerReset={resetCurrentAnswer}
         />
       )}
 
