@@ -1,317 +1,175 @@
 # TopoPass
 
-TopoPass is a responsive web app designed to help private hire driver applicants practise for the TfL Private Hire Topographical Skills Assessment.
-
-The app focuses on interactive, exam-style practice using real map-based tasks. Learners can practise identifying locations, answering knowledge questions, drawing routes, and reviewing their performance.
-
-TopoPass is currently in an MVP build phase. The project has moved beyond the initial landing-page and mock-test prototype and now includes the foundations for scalable map-click questions, route-drawing questions, practice integration, and reusable question data.
-
----
-
-## Current Project Status
-
-TopoPass has completed the first 10 development stages of the MVP roadmap.
-
-The app currently includes:
-
-* Responsive Next.js web app structure
-* Landing page
-* Login/register flow foundation
-* Dashboard page
-* Practice page
-* Mock test page
-* Mapbox-based click-on-map questions
-* Multiple real map-click questions
-* Route-demo page
-* Real generated London map using OpenStreetMap/Mapbox/OSRM-style data
-* Route drawing on the map
-* Route scoring against an accepted route
-* Route question bank separated from UI logic
-* Practice integration for route questions
-* Learn section entry for route-planning/map-skills practice
-
-The app is still an MVP and some features are intentionally rough or incomplete. The current goal is to prove the learning and testing flow before building production-grade admin, analytics, payments, and full exam simulation.
-
----
-
-## What TopoPass Does
-
-TopoPass helps learners practise the types of skills needed for the TfL topographical assessment, including:
-
-* Reading a London-style map
-* Recognising roads, stations, and landmarks
-* Choosing suitable routes
-* Understanding direction and route logic
-* Practising location-based questions
-* Drawing routes on an interactive map
-* Receiving feedback on map and route answers
-
-The product vision is to move learners away from only reading static material and give them a realistic, interactive way to practise.
-
----
-
-## Completed Development Stages
-
-### Stage 1: Initial App Foundation
-
-Created the initial TopoPass web app foundation.
-
-Included:
-
-* Next.js app setup
-* TypeScript
-* Tailwind CSS
-* Basic routing structure
-* Initial pages
-* Early product structure
-
-Main purpose:
-
-Prove that the project could run locally and provide the base for future MVP features.
-
----
-
-### Stage 2: Basic Mapbox Demo Map
-
-Created `/demo`.
-
-Included:
-
-* Mapbox map loading
-* London map default view
-* A simple click-on-map question
-* User click/tap capture
-* Latitude and longitude capture
-* Basic distance scoring
-
-Example question:
-
-> Click on King’s Cross Station.
-
-Main purpose:
-
-Prove that the app could support interactive map-based questions on desktop and mobile.
-
----
-
-### Stage 3: Map Click Scoring Foundation
-
-Added the basic logic needed to score user map clicks.
-
-Included:
-
-* Capturing the clicked coordinate
-* Comparing it to the correct coordinate
-* Showing whether the click was close enough
-* Basic user feedback
-
-Main purpose:
-
-Prove that map-based answers could be judged automatically.
-
----
-
-### Stage 4: Mock Test Flow
-
-Created the early `/mock-test` flow.
-
-Included:
-
-* Mock-test page
-* Question flow foundation
-* Map-based question inside mock test
-* Basic test-style interaction
-* Build validation
-
-Main purpose:
-
-Prove that map questions could work inside a test-like environment, not only inside the demo page.
-
----
-
-### Stage 5: Multiple Real Map-Click Questions
-
-Expanded the app beyond one demo question.
-
-Included:
-
-* Multiple real map-click questions
-* Reusable question data
-* Different London locations
-* Support for showing more than one map-click task
-
-Main purpose:
-
-Prove that the system was not a one-off demo and could support a bank of location-based questions.
-
----
-
-### Stage 6: Improved Driver-Focused Map Styling
-
-Improved the map so it was more useful for private hire/topographical practice.
-
-Included:
-
-* More driver-focused map styling
-* Better road hierarchy
-* Better road visibility
-* Reduced unnecessary pedestrian-style clutter
-* Focus on stations and relevant map information
-
-Main purpose:
-
-Move the map closer to the type of visual experience learners need for the assessment.
-
-Known limitation:
-
-The current generated map is good enough for prototype testing, but it is not yet a perfect recreation of the official TfL or A-to-Z style map.
-
----
-
-### Stage 7: First Image/Generated Route Map Prototype
-
-Built the first route-focused map prototype.
-
-Included:
-
-* A generated map view
-* Real London road context
-* Start and destination route task
-* Early route drawing capability
-
-Main purpose:
-
-Prove that learners could be shown a map and asked to draw or choose a route.
-
----
-
-### Stage 8: Route Scoring Engine
-
-Added route scoring to `/route-demo`.
-
-Included:
-
-* User route drawing
-* Accepted route geometry
-* Comparison between drawn route and accepted route
-* Route accuracy feedback
-* Basic scoring result
-
-Main purpose:
-
-Prove that TopoPass could judge whether a learner’s drawn route roughly matches an accepted route.
-
-Important note:
-
-The goal of this stage was not to perfect route scoring. The goal was to prove that the scoring concept works.
-
----
-
-### Stage 9: Route Question Engine / Data Scaling
-
-Refactored route questions into a cleaner, scalable structure.
-
-Included:
-
-* Route question data separated from UI logic
-* Reusable route-question bank
-* Support for multiple route tasks
-* Cleaner structure for future expansion
-* Preparation for using route questions across:
-
-  * `/route-demo`
-  * `/practice`
-  * `/mock-test`
-
-Main purpose:
-
-Move from a small demo set of route questions to a scalable route-question system.
-
----
-
-### Stage 10: Connect Route Question Bank to Practice
-
-Connected route questions into the main practice flow.
-
-Included:
-
-* Practice mode can now direct learners into route-based tasks
-* Route question data reused from the question bank
-* Practice page can offer different question types
-* Learn section includes a professional entry point for route/map-skill practice
-
-Main purpose:
-
-Make route questions part of the real learning experience, not just an isolated demo.
-
----
-
-## Current Routes
-
-### `/`
-
-Landing page.
-
-Introduces TopoPass and explains the product.
-
-### `/register`
-
-User registration page.
-
-### `/login`
-
-User login page.
-
-### `/dashboard`
-
-User dashboard.
-
-Currently acts as a learner home area.
-
-### `/practice`
-
-Practice mode.
-
-Supports entry points for different types of practice, including route-based practice.
-
-### `/mock-test`
-
-Timed/mock-test style flow.
-
-Currently supports the foundations for map-based test questions.
-
-### `/demo`
-
-Mapbox click-on-map demo.
-
-Used to prove and test basic interactive map questions.
-
-### `/route-demo`
-
-Route drawing and route scoring prototype.
-
-Used to test route-question rendering, user drawing, accepted route comparison, and scoring.
-
-### `/learn`
-
-Learning/support area.
-
-Includes a section for route-planning and map-skill development.
-
----
+TopoPass is a responsive study web app for London private hire applicants
+preparing for the TfL Private Hire Topographical Skills Assessment. It helps
+learners practise map reading, location knowledge, point-to-point route
+planning, and mock-test decision making before assessment day.
+
+The current app includes knowledge questions, Mapbox location questions,
+route-drawing practice on a real OpenStreetMap-derived London map, route
+scoring, a timed mixed mock exam, result review, and prototype admin tools for
+managing question content.
+
+TopoPass is an independent study tool. It is not affiliated with, endorsed by,
+or sponsored by Transport for London, Uber, Bolt, FREENOW, or any private hire
+operator.
+
+## Current Status
+
+TopoPass has completed Stages 1-14 of the Phase 1 MVP.
+
+The app is still a local/static MVP prototype, not production-ready software.
+It demonstrates the core learner and content-management workflows without
+production accounts, database persistence, payments, or subscriptions.
+
+Phase 1 is suitable for:
+
+- Local product demonstrations
+- Question and scoring prototyping
+- Browser-based manual QA
+- Route-scoring calibration
+- Preparing reviewed question data for a later persistence layer
+
+It is not yet a production learning platform.
+
+## Completed Features
+
+- Landing page with private-hire applicant positioning
+- Learn section with a route-planning entry point
+- Practice flow with route-practice selection
+- Knowledge question bank with exact-answer scoring
+- Map-click question bank with Mapbox, distance scoring, and configurable
+  tolerances
+- Route-drawing questions using a generated SVG map and hidden route geometry
+- Route scoring with start, end, coverage, length, and deviation checks
+- Timed mixed mock test with randomized mixed question selection
+- Question navigator and unanswered-state tracking
+- Active attempt restoration using browser `localStorage`
+- Final score, pass/fail result, per-type breakdown, and answer review
+- Local/static question banks for all supported question types
+- Admin dashboard
+- Admin question managers for knowledge, map-click, and route questions
+- Create/edit question flows
+- Validation tools for question data
+- Preview tools for learner-facing question behaviour
+- Export tools for browser-local admin drafts
+- Deterministic tests for route scoring, mock-exam scoring/selection, and admin
+  validation
+
+## Stage History
+
+- Stage 1: Initial app foundation
+- Stage 2: Basic Mapbox demo map
+- Stage 3: Map-click scoring foundation
+- Stage 4: Mock test flow
+- Stage 5: Multiple real map-click questions
+- Stage 6: Improved driver-focused map styling
+- Stage 7: First route map prototype
+- Stage 8: Route scoring engine
+- Stage 9: Route question engine / data scaling
+- Stage 10: Connect route question bank to practice
+- Stage 11: Knowledge questions / question system expansion
+- Stage 12: Full mixed mock exam engine
+- Stage 12A: Route scoring hardening
+- Stage 13: Exam polish
+- Stage 14: Admin tools
 
 ## Tech Stack
 
-* Next.js
-* TypeScript
-* Tailwind CSS
-* Mapbox GL JS
-* Supabase
-* Supabase Auth
-* Supabase PostgreSQL
-* OSRM/OpenStreetMap-style route data for accepted route generation/prototyping
+- Next.js 15 App Router
+- React 19
+- TypeScript
+- Tailwind CSS
+- ESLint
+- Mapbox GL JS
+- OpenStreetMap-derived GeoJSON and generated SVG map data
+- Supabase JavaScript client scaffold only
+- Node.js built-in test runner
 
----
+## App Routes
+
+| Route | Current purpose |
+| --- | --- |
+| `/` | Public TopoPass homepage |
+| `/learn` | Learning guidance and route-planning entry point |
+| `/practice` | Practice-area selector |
+| `/practice/routes` | Working route-drawing practice flow |
+| `/mock-test` | Timed mixed mock exam |
+| `/route-demo` | Route-drawing development/demo flow with accepted-route tools |
+| `/demo` | Standalone multi-question Mapbox click demo |
+| `/login` | Phase 1 account-status page; authentication is not connected |
+| `/register` | Phase 1 account-status page; registration is not connected |
+| `/dashboard` | Local Phase 1 dashboard shell |
+| `/admin` | Admin overview and validation summary |
+| `/admin/questions` | Combined static question inventory |
+| `/admin/questions/knowledge` | Knowledge question draft manager |
+| `/admin/questions/map-click` | Map-click question draft manager and preview |
+| `/admin/questions/route` | Route question draft manager and preview |
+| `/admin/questions/new` | Question-type creation entry point |
+| `/admin/questions/[id]` | Question inspection and manager routing |
+| `/admin/questions/routes` | Compatibility route for the route question manager |
+| `/resources` | Official TfL links and planned study resources |
+| `/pricing` | Honest pre-launch pricing status |
+| `/results/[attemptId]` | Legacy result route; no persisted attempt loading yet |
+| `/review` | Legacy review route; live review is inside `/mock-test` |
+
+`/admin/questions/routes` remains supported for compatibility with the earlier
+route-admin path. New navigation uses `/admin/questions/route`.
+
+## Question Types
+
+### Knowledge
+
+Multiple-choice questions are stored in `lib/knowledgeQuestions.ts`. Mock-exam
+scoring uses exact answer matching.
+
+### Map Click
+
+Location questions are stored in `lib/mapClickQuestions.ts`. Mapbox captures a
+clicked coordinate and `lib/distance.ts` calculates the distance from the
+configured target. Each question defines its own tolerance in metres.
+
+### Route Drawing
+
+Route questions are stored in `src/data/routeQuestions.ts`. The learner draws
+over `public/maps/kings-cross-euston/map.svg`, which is generated from the real
+OSM GeoJSON source. Route scoring lives in `lib/routeScoring.ts`.
+
+## Mock Test Behaviour
+
+The mock exam currently:
+
+- Selects 3 knowledge, 3 map-click, and 2 route-drawing questions
+- Uses a 30-minute configurable timer
+- Uses a configurable 70% pass mark
+- Stores the active attempt in browser `localStorage`
+- Preserves answers while moving between questions
+- Warns about unanswered questions before submission
+- Automatically submits when time expires
+- Shows overall and per-question-type results
+- Provides an in-session review of every answer
+
+Configuration is in `lib/mockExamConfig.ts`.
+
+## Admin Tools
+
+The admin area validates and previews all three question types. It supports
+browser-local create, edit, activate/deactivate, preview, reset, and export
+workflows for knowledge, map-click, and route questions.
+
+Admin edits are prototype drafts saved to browser `localStorage`. They do not
+update source files, Supabase, or learner-facing question banks automatically.
+
+To make an admin draft permanent:
+
+1. Export the relevant JSON bank.
+2. Review and validate the exported records.
+3. Deliberately add the approved data to the appropriate TypeScript question
+   bank.
+4. Run lint, tests, and build.
+
+Active `/practice` and `/mock-test` content comes only from the committed source
+banks.
 
 ## Environment Variables
 
@@ -323,11 +181,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_MAPBOX_TOKEN=
 ```
 
-Do not commit real API keys or tokens.
-
----
-
-## Local Development
+`NEXT_PUBLIC_MAPBOX_TOKEN` is required for Mapbox pages. The Supabase client is
+scaffolded, but Phase 1 does not use Supabase for authentication or data
+persistence.
 
 ## Run Locally
 
@@ -340,338 +196,75 @@ Open `http://localhost:3000`.
 
 For a production-mode local check:
 
-Open the app in your browser:
-
-```text
-http://localhost:3000
+```powershell
+npm.cmd run build
+npm.cmd run start
 ```
 
-Build the project:
+## Test and Verify
 
-```bash
-npm run build
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
 ```
 
----
-
-## Supabase Plan
-
-TopoPass will use Supabase for:
-
-* User authentication
-* User profiles
-* Question storage
-* Practice attempts
-* Mock test attempts
-* User answers
-* Progress tracking
-* Mistake review
-
-Planned database tables:
-
-* `profiles`
-* `questions`
-* `route_questions`
-* `attempts`
-* `answers`
-* `progress`
-* `mistakes`
-
-Row Level Security should be enabled so users can only access their own attempts, answers, progress, and review history.
-
----
-
-## Mapbox Usage
-
-TopoPass uses Mapbox for interactive map practice.
-
-Current map functionality includes:
-
-* London default view
-* Zoom and pan
-* Click/tap answers
-* Latitude and longitude capture
-* User-selected marker
-* Distance-based scoring for location questions
-* Route drawing support
-* Route-demo scoring support
-
-The map is currently good enough for MVP testing but still needs production refinement.
-
----
-
-## Route Question System
-
-The route-question system is being designed to support many route questions without hardcoding each one directly into the UI.
-
-A route question should include:
-
-* Question ID
-* Start location
-* Destination location
-* Start coordinate
-* Destination coordinate
-* Accepted route geometry
-* Prompt text
-* Difficulty level
-* Optional explanation
-* Optional tags or category
-* Scoring tolerance
-
-This makes route data reusable across practice, route demo, and mock test flows.
-
----
-
-## Technical Debt
-
-The project has moved quickly from Stage 1 to Stage 10, so some technical debt is expected.
-
-Current technical debt includes:
-
-### 1. Route Scoring Needs Refinement
-
-The route scoring engine currently proves the concept, but it is not yet exam-grade.
-
-Needs improvement:
-
-* Better tolerance handling
-* Better off-route detection
-* Better partial credit
-* Better route similarity comparison
-* Clearer user feedback
-* Better handling of small drawing mistakes
-
----
-
-### 2. Map Styling Is Still Prototype-Level
-
-The map has improved, but it is not yet a perfect driver-focused test-preparation map.
-
-Needs improvement:
-
-* More consistent road hierarchy
-* Clearer main roads
-* Clearer side roads
-* Better station styling
-* Better one-way/no-entry visual hints
-* Less irrelevant clutter
-* More consistent zoom behaviour
-
----
-
-### 3. Question Data Should Move Toward Database Storage
-
-Some question data is currently local/static for speed of development.
-
-Needs improvement:
-
-* Store question banks in Supabase
-* Add database schema
-* Add seed data
-* Add validation rules
-* Add admin editing later
-* Keep UI separate from question content
-
----
-
-### 4. Practice and Mock Test Need Stronger Shared Logic
-
-Practice, mock test, map-click questions, and route questions should eventually share more reusable logic.
-
-Needs improvement:
-
-* Shared question renderer
-* Shared scoring interface
-* Shared answer-saving format
-* Shared attempt/session model
-* Shared results model
-
----
-
-### 5. Authentication Is Not Yet Fully Connected to Learning Data
-
-Supabase Auth is part of the tech stack, but the learning flow still needs deeper user-data integration.
-
-Needs improvement:
-
-* Save attempts per user
-* Save route answers
-* Save map-click answers
-* Save scores
-* Save mistakes
-* Show progress history on dashboard
-
----
-
-### 6. Admin Tools Are Not Built Yet
-
-Admin tooling is the next major stage.
-
-Needs improvement:
-
-* Create questions without editing code
-* Edit existing questions
-* Validate route question data
-* Preview questions
-* Check accepted route geometry
-* Enable/disable questions
-* Add difficulty and category labels
-
----
-
-### 7. Mobile UX Needs More Testing
-
-The app is intended to work on desktop and mobile browsers, but route drawing may need extra mobile refinement.
-
-Needs improvement:
-
-* Touch drawing comfort
-* Map zoom controls
-* Button spacing
-* Drawing reset/undo
-* Full-screen route practice mode
-* Small-screen instructions
-
----
-
-## Next Stage
-
-### Stage 11: Admin Tools to Create, Edit, and Validate Questions
-
-The next stage should focus on admin tools.
-
-Goal:
-
-Allow questions to be created, edited, previewed, and validated without touching code.
-
-Stage 11 should include:
-
-* Admin question list
-* Create route question form
-* Edit route question form
-* Create map-click question form
-* Question validation
-* Route preview
-* Accepted route geometry preview
-* Enable/disable question status
-* Difficulty/category fields
-* Basic admin-only access protection
-
-Important:
-
-Stage 11 should not refactor the whole app. It should build on the existing route question bank and question-rendering work from Stages 9 and 10.
-
----
-
-## Future Roadmap
-
-### Stage 12: Full Mock Exam System
-
-Create a full exam-style mock test that mixes:
-
-* Map-click questions
-* Route-drawing questions
-* Knowledge questions
-* Timed sections
-* Scoring
-* Results
-* Mistake review
-
----
-
-### Stage 13: Analytics and Progress Tracking
-
-Add learner progress features.
-
-Possible features:
-
-* Score history
-* Weakness tracking
-* Mistake categories
-* Best/worst question types
-* Route accuracy trends
-* Dashboard progress cards
-
----
-
-### Stage 14: Subscription and Payments
-
-Add paid access features.
-
-Possible features:
-
-* Free tier
-* Paid question bank
-* Stripe integration
-* Subscription status
-* Locked premium questions
-* Account billing page
-
----
-
-### Stage 15: PWA and Mobile Improvements
-
-Improve mobile access.
-
-Possible features:
-
-* Progressive Web App support
-* Better mobile map controls
-* Offline-friendly study pages
-* Installable app experience
-
----
-
-## Known Limitations
-
-Keep the MVP focused.
-
-Do not overbuild before the learning flow is proven.
-
-Current priorities:
-
-1. Make the question system scalable.
-2. Keep map and route practice usable.
-3. Avoid hardcoding too much into UI components.
-4. Separate question data from rendering logic.
-5. Build admin tools before adding hundreds of questions.
-6. Build real progress tracking after the question and attempt model is stable.
-
-Avoid for now:
-
-* Native iOS app
-* Native Android app
-* Advanced payments
-* Complex AI scoring
-* Overly detailed map styling
-* Full production analytics before the core flow is stable
-
----
+Map source regeneration is separate from normal app verification:
+
+```powershell
+npm.cmd run map:build:kings-cross-euston
+```
+
+Do not regenerate the map unless the OSM source or map-generation scripts have
+changed.
+
+## Local and Static Data Limitations
+
+- Question banks are TypeScript source files.
+- Admin drafts are local to one browser and must be exported manually.
+- Active mock-exam recovery uses browser `localStorage`.
+- Completed attempts, review history, and user progress are not persisted.
+- Login and registration are not connected.
+- Supabase-backed question storage is not implemented.
+- Supabase tables, Row Level Security, and admin permissions are not implemented.
+- Admin tools are prototype-level and are not production permission-protected.
+
+## Technical Debt and Known Limitations
+
+- Static/local question banks are the current source of truth.
+- Active mock-exam restoration is browser-local via `localStorage`.
+- There is no real user progress persistence yet.
+- There is no Supabase-backed question storage yet.
+- Admin tools are prototype-level and not production permission-protected yet.
+- Route scoring is prototype-level and needs calibration against more reviewed
+  routes and realistic learner attempts.
+- Mock-test content is representative/demo content, not official TfL material.
+- Mobile map UX needs more real-device testing.
+- Accessibility and map styling need further improvement.
+- Tests should be expanded as the app grows.
+- `/results/[attemptId]` and `/review` cannot load historical attempts yet.
+- There is no production analytics yet.
+- There is no payment or subscription logic yet.
+
+See:
+
+- `docs/PHASE_1_CLOSURE.md`
+- `docs/TECHNICAL_DEBT.md`
+- `docs/MANUAL_QA_CHECKLIST.md`
+
+## Phase 2 Direction
 
 The recommended Phase 2 starting point is a persistence and identity foundation:
 
-1. Define versioned database schemas for questions, attempts, answers, and
-   progress.
-2. Add Supabase authentication and Row Level Security.
-3. Move reviewed question banks behind a typed repository/data-access layer.
-4. Protect admin routes and add explicit publishing workflows.
-5. Persist completed mock exams and power `/results/[attemptId]`, `/review`, and
-   dashboard progress from real attempt data.
+1. Add Supabase persistence.
+2. Move reviewed question banks into database-backed question storage.
+3. Connect authentication to user attempts.
+4. Persist completed attempts, answers, and progress tracking.
+5. Protect admin routes and add explicit draft, review, publish, archive, and
+   rollback workflows.
+6. Power `/results/[attemptId]`, `/review`, and dashboard progress from real
+   attempt data.
 
-The long-term goal is to help learners practise in a more realistic way by combining:
-
-* Interactive maps
-* Route-planning practice
-* Location recognition
-* Mock tests
-* Mistake review
-* Progress tracking
-* Driver-focused London map skills
-
-The MVP is currently focused on proving the core learning loop:
-
-```text
-Practise question → interact with map → submit answer → receive feedback → improve
-```
-
-Once this loop is stable, the project can scale into a larger question bank, full mock exams, analytics, and paid learning plans.
+Subscriptions and payments should come later, after persistence, question
+publishing, protected admin workflows, learner identity, and attempt history are
+reliable.
