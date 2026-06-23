@@ -16,11 +16,13 @@ operator.
 
 ## Current Status
 
-TopoPass has completed Stages 1-14 of the Phase 1 MVP.
+TopoPass has completed Stages 1-14 of the Phase 1 MVP. Stage 15 has started
+Phase 2 by adding the Supabase schema and typed persistence foundation.
 
 The app is still a local/static MVP prototype, not production-ready software.
 It demonstrates the core learner and content-management workflows without
-production accounts, database persistence, payments, or subscriptions.
+production accounts, payments, or subscriptions. Existing learner routes still
+work with static fallback data when Supabase is not configured.
 
 Phase 1 is suitable for:
 
@@ -73,6 +75,7 @@ It is not yet a production learning platform.
 - Stage 12A: Route scoring hardening
 - Stage 13: Exam polish
 - Stage 14: Admin tools
+- Stage 15: Supabase data model and persistence foundation
 
 ## Tech Stack
 
@@ -84,6 +87,7 @@ It is not yet a production learning platform.
 - Mapbox GL JS
 - OpenStreetMap-derived GeoJSON and generated SVG map data
 - Supabase JavaScript client scaffold only
+- Supabase schema and repository foundation
 - Node.js built-in test runner
 
 ## App Routes
@@ -171,6 +175,61 @@ To make an admin draft permanent:
 Active `/practice` and `/mock-test` content comes only from the committed source
 banks.
 
+## Stage 15 Persistence Foundation
+
+Stage 15 introduces the database foundation for Phase 2 without forcing the app
+to depend on Supabase at runtime.
+
+The intended Supabase data model now covers:
+
+- `profiles`
+- `question_banks`
+- `questions`
+- `mock_test_attempts`
+- `mock_test_answers`
+- `practice_attempts`
+- `scoring_results`
+- `admin_question_drafts`
+
+The SQL migration is:
+
+```txt
+supabase/migrations/20260623150000_stage15_persistence_foundation.sql
+```
+
+The TypeScript database and repository layer is in:
+
+```txt
+lib/db/types.ts
+lib/db/questionRepository.ts
+lib/db/mockAttemptRepository.ts
+lib/db/practiceAttemptRepository.ts
+lib/db/progressRepository.ts
+lib/questions/types.ts
+```
+
+Current behaviour:
+
+- If `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are missing,
+  repositories return explicit static/local fallback results.
+- Static question banks remain the active source for current learner flows.
+- Supabase reads/writes are available through the repository helpers for later
+  integration stages.
+- Admin drafts remain browser-local unless later stages wire them to
+  `admin_question_drafts`.
+- Mock and practice attempts are still local in the UI until Stage 16 connects
+  authenticated users and persisted attempt writes.
+
+To apply the schema to a Supabase project, install and authenticate the Supabase
+CLI, link the project, then run:
+
+```powershell
+supabase db push
+```
+
+Or apply the SQL file manually in the Supabase SQL editor for a development
+project. Review RLS policies before production use.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and provide the values required locally:
@@ -182,8 +241,8 @@ NEXT_PUBLIC_MAPBOX_TOKEN=
 ```
 
 `NEXT_PUBLIC_MAPBOX_TOKEN` is required for Mapbox pages. The Supabase client is
-scaffolded, but Phase 1 does not use Supabase for authentication or data
-persistence.
+optional at runtime. When the Supabase URL or anon key is missing, the app keeps
+using static question banks and browser-local session storage.
 
 ## Run Locally
 
@@ -225,8 +284,10 @@ changed.
 - Active mock-exam recovery uses browser `localStorage`.
 - Completed attempts, review history, and user progress are not persisted.
 - Login and registration are not connected.
-- Supabase-backed question storage is not implemented.
-- Supabase tables, Row Level Security, and admin permissions are not implemented.
+- Supabase-backed question storage is planned by the Stage 15 schema but not yet
+  wired into learner routes.
+- Supabase tables and Row Level Security policies are defined, but production
+  permission hardening is still required.
 - Admin tools are prototype-level and are not production permission-protected.
 
 ## Technical Debt and Known Limitations
@@ -234,7 +295,8 @@ changed.
 - Static/local question banks are the current source of truth.
 - Active mock-exam restoration is browser-local via `localStorage`.
 - There is no real user progress persistence yet.
-- There is no Supabase-backed question storage yet.
+- Supabase-backed question storage exists as a schema/repository foundation but
+  is not the active app source yet.
 - Admin tools are prototype-level and not production permission-protected yet.
 - Route scoring is prototype-level and needs calibration against more reviewed
   routes and realistic learner attempts.
