@@ -9,29 +9,15 @@ export default function RegisterPage() {
         </p>
         <h1 className="mt-3 text-3xl font-bold text-ink">Create account</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Placeholder registration screen for private hire driver applicants.
+          Account registration is intentionally not connected in the Phase 1
+          local MVP. Supabase authentication is reserved for a later phase.
         </p>
-        <div className="mt-6 space-y-4">
-          <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Full name"
-            type="text"
-          />
-          <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Email address"
-            type="email"
-          />
-          <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Password"
-            type="password"
-          />
+        <div className="mt-6">
           <Link
             href="/dashboard"
             className="inline-flex w-full justify-center rounded-md bg-road px-4 py-2.5 text-sm font-semibold text-white"
           >
-            Register
+            Open local dashboard
           </Link>
         </div>
         <p className="mt-5 text-sm text-slate-600">

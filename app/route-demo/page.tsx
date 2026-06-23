@@ -8,8 +8,9 @@ export default function RouteDemoPage() {
       <div className="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-sm leading-6 text-slate-600">
           This standalone prototype uses real London road geometry rendered as
-          a fixed topographical training map. It remains separate from the live
-          mock-test question flow.
+          a fixed topographical training map. It uses the shared route question
+          bank and scoring engine while keeping developer controls in a
+          dedicated test page.
         </p>
         <p className="mt-2 text-xs text-slate-500">
           Map data: {kingsCrossEustonRouteSource.attribution}

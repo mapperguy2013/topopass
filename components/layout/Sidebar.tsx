@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 const links = [
+  { href: "/learn", label: "Learn" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/practice", label: "Practice" },
   { href: "/mock-test", label: "Mock Test" },
@@ -12,7 +13,7 @@ export function Sidebar() {
     <aside className="hidden w-56 shrink-0 lg:block">
       <div className="sticky top-6 rounded-lg border border-slate-200 bg-white p-3">
         <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Learn
+          Study
         </p>
         <div className="space-y-1">
           {links.map((link) => (

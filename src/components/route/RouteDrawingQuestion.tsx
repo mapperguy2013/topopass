@@ -10,6 +10,16 @@ type RouteDrawingQuestionProps = {
   question: RouteQuestion;
   mapImagePath: string;
   acceptedRoutePoints: RouteMapPoint[];
+  showDeveloperTools?: boolean;
+  initialAnswer?: RouteDrawingQuestionAnswer | null;
+  onAnswer?: (answer: RouteDrawingQuestionAnswer) => void;
+  onAnswerReset?: () => void;
+  showResult?: boolean;
+};
+
+export type RouteDrawingQuestionAnswer = {
+  routePoints: RouteMapPoint[];
+  result: RouteScoreResult;
 };
 
 type MapViewBox = {
@@ -34,17 +44,30 @@ function pointsToPath(points: RouteMapPoint[]) {
     .join(" ");
 }
 
+function formatMetres(value: number) {
+  return Number.isFinite(value) ? `${Math.round(value)} m` : "Not available";
+}
+
 export function RouteDrawingQuestion({
   graph,
   question,
   mapImagePath,
-  acceptedRoutePoints
+  acceptedRoutePoints,
+  showDeveloperTools = true,
+  initialAnswer,
+  onAnswer,
+  onAnswerReset,
+  showResult = true
 }: RouteDrawingQuestionProps) {
   const overlayRef = useRef<SVGSVGElement | null>(null);
   const drawingPointerId = useRef<number | null>(null);
   const panGesture = useRef<PanGesture | null>(null);
-  const [routePoints, setRoutePoints] = useState<RouteMapPoint[]>([]);
-  const [feedback, setFeedback] = useState<RouteScoreResult | null>(null);
+  const [routePoints, setRoutePoints] = useState<RouteMapPoint[]>(
+    initialAnswer?.routePoints ?? []
+  );
+  const [feedback, setFeedback] = useState<RouteScoreResult | null>(
+    initialAnswer?.result ?? null
+  );
   const [showAcceptedRoute, setShowAcceptedRoute] = useState(false);
   const [interactionMode, setInteractionMode] = useState<"draw" | "pan">(
     "draw"
@@ -98,6 +121,7 @@ export function RouteDrawingQuestion({
     drawingPointerId.current = event.pointerId;
     setRoutePoints([toMapPoint(event)]);
     setFeedback(null);
+    onAnswerReset?.();
   }
 
   function continueDrawing(event: ReactPointerEvent<SVGSVGElement>) {
@@ -169,6 +193,7 @@ export function RouteDrawingQuestion({
     panGesture.current = null;
     setRoutePoints([]);
     setFeedback(null);
+    onAnswerReset?.();
   }
 
   function changeZoom(multiplier: number) {
@@ -215,7 +240,12 @@ export function RouteDrawingQuestion({
       return;
     }
 
-    setFeedback(scoreDrawnRoute(routePoints, acceptedRoutePoints));
+    const result = scoreDrawnRoute(routePoints, acceptedRoutePoints, {
+      bounds: question.mapBounds
+    });
+
+    setFeedback(result);
+    onAnswer?.({ routePoints, result });
   }
 
   return (
@@ -336,7 +366,7 @@ export function RouteDrawingQuestion({
                   <path
                     d={pointsToPath(routePoints)}
                     fill="none"
-                    stroke={feedback?.passed ? "#18794e" : "#1769aa"}
+                    stroke={showResult && feedback?.passed ? "#18794e" : "#1769aa"}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="10"
@@ -418,25 +448,27 @@ export function RouteDrawingQuestion({
           </button>
         </div>
 
-        <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-slate-200 pt-4 text-sm text-slate-700">
-          <input
-            checked={showAcceptedRoute}
-            className="mt-1 size-4 accent-blue-700"
-            onChange={(event) => setShowAcceptedRoute(event.target.checked)}
-            type="checkbox"
-          />
-          <span>
-            <span className="block font-semibold">Developer overlay</span>
-            <span className="mt-0.5 block text-xs text-slate-500">
-              Show accepted route
+        {showDeveloperTools && (
+          <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-slate-200 pt-4 text-sm text-slate-700">
+            <input
+              checked={showAcceptedRoute}
+              className="mt-1 size-4 accent-blue-700"
+              onChange={(event) => setShowAcceptedRoute(event.target.checked)}
+              type="checkbox"
+            />
+            <span>
+              <span className="block font-semibold">Developer overlay</span>
+              <span className="mt-0.5 block text-xs text-slate-500">
+                Show accepted route
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        )}
 
         <div
           aria-live="polite"
           className={`mt-5 rounded-md border p-4 ${
-            feedback
+            feedback && showResult
               ? feedback.passed
                 ? "border-green-200 bg-green-50"
                 : "border-red-200 bg-red-50"
@@ -446,7 +478,7 @@ export function RouteDrawingQuestion({
           <p className="text-sm font-semibold text-slate-700">Result</p>
           <p
             className={`mt-2 text-xl font-bold ${
-              feedback
+              feedback && showResult
                 ? feedback.passed
                   ? "text-success"
                   : "text-red-700"
@@ -454,46 +486,92 @@ export function RouteDrawingQuestion({
             }`}
           >
             {feedback
-              ? feedback.passed
-                ? "Correct"
-                : "Incorrect"
+              ? showResult
+                ? feedback.passed
+                  ? "Correct"
+                  : "Incorrect"
+                : "Answer submitted"
               : "Draw a route to begin"}
           </p>
-          {feedback && (
+          {feedback && showResult && (
             <>
               <p className="mt-1 text-sm font-bold text-slate-800">
-                Score: {feedback.score}%
+                Score: {feedback.score}/{feedback.maxScore} ({feedback.percentage}%)
               </p>
-              <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 text-xs">
+              <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-4 text-xs sm:grid-cols-3">
                 <div>
                   <dt className="font-semibold text-slate-500">Start check</dt>
-                  <dd className="mt-1 font-mono text-slate-800">
-                    {feedback.startPassed ? "Pass" : "Fail"} -{" "}
-                    {feedback.distanceFromStart} units
+                  <dd className="mt-1 text-slate-800">
+                    <span className="font-semibold">
+                      {feedback.startPassed ? "Pass" : "Fail"}
+                    </span>{" "}
+                    - {formatMetres(feedback.startDistanceMeters)}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-500">End check</dt>
-                  <dd className="mt-1 font-mono text-slate-800">
-                    {feedback.endPassed ? "Pass" : "Fail"} -{" "}
-                    {feedback.distanceFromEnd} units
+                  <dd className="mt-1 text-slate-800">
+                    <span className="font-semibold">
+                      {feedback.endPassed ? "Pass" : "Fail"}
+                    </span>{" "}
+                    - {formatMetres(feedback.endDistanceMeters)}
                   </dd>
                 </div>
                 <div>
                   <dt className="font-semibold text-slate-500">Coverage</dt>
-                  <dd className="mt-1 font-mono text-slate-800">
-                    {feedback.routeCoveragePercent}%
+                  <dd className="mt-1 font-semibold text-slate-800">
+                    {feedback.coverageScore}%
                   </dd>
                 </div>
                 <div>
-                  <dt className="font-semibold text-slate-500">Off-route penalty</dt>
-                  <dd className="mt-1 font-mono text-slate-800">
-                    {feedback.offRoutePenalty} points
+                  <dt className="font-semibold text-slate-500">Route length</dt>
+                  <dd className="mt-1 text-slate-800">
+                    {formatMetres(feedback.drawnLengthMeters)} /{" "}
+                    {formatMetres(feedback.acceptedLengthMeters)}
+                    <span className="mt-0.5 block text-slate-500">
+                      {Math.round(feedback.lengthRatio * 100)}% of accepted
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500">Off route</dt>
+                  <dd className="mt-1 font-semibold text-slate-800">
+                    {feedback.offRoutePercent}%
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-semibold text-slate-500">Outside bounds</dt>
+                  <dd className="mt-1 font-semibold text-slate-800">
+                    {feedback.outsideBoundsPercent}%
                   </dd>
                 </div>
               </dl>
+              {feedback.penalties.length > 0 && (
+                <div className="mt-4 border-t border-red-200 pt-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-red-700">
+                    Penalties
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm leading-5 text-red-800">
+                    {feedback.penalties.map((penalty) => (
+                      <li key={penalty}>{penalty}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {feedback.warnings.length > 0 && (
+                <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-amber-900">
+                    Warnings
+                  </p>
+                  <ul className="mt-2 space-y-1 text-sm leading-5 text-amber-900">
+                    {feedback.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <ul className="mt-4 space-y-2 border-t border-slate-200 pt-3 text-sm leading-5 text-slate-700">
-                {feedback.feedbackMessages.map((message) => (
+                {feedback.feedback.map((message) => (
                   <li key={message}>{message}</li>
                 ))}
               </ul>

@@ -7,6 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "npm run test:route-scoring && npm run test:mock-exam && npm run test:mock-selection && npm run test:admin-questions",
+    "test:route-scoring": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/routeScoring.test.ts",
+    "test:mock-exam": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/mockExamEngine.test.ts",
+    "test:mock-selection": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/mockExamSelection.test.ts",
+    "test:admin-questions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test lib/admin/questionValidation.test.ts lib/admin/questionAdminHelpers.test.ts",
     "map:render:kings-cross-euston": "node scripts/maps/render-kings-cross-euston-map.mjs",
     "map:graph:kings-cross-euston": "node scripts/maps/generate-kings-cross-euston-route-graph.mjs",
     "map:build:kings-cross-euston": "npm run map:render:kings-cross-euston && npm run map:graph:kings-cross-euston"

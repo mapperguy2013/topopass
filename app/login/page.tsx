@@ -9,24 +9,15 @@ export default function LoginPage() {
         </p>
         <h1 className="mt-3 text-3xl font-bold text-ink">Log in</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Placeholder authentication screen for returning learners.
+          User accounts are not connected in the Phase 1 local MVP. You can
+          continue to the local dashboard without signing in.
         </p>
-        <div className="mt-6 space-y-4">
-          <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Email address"
-            type="email"
-          />
-          <input
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Password"
-            type="password"
-          />
+        <div className="mt-6">
           <Link
             href="/dashboard"
             className="inline-flex w-full justify-center rounded-md bg-road px-4 py-2.5 text-sm font-semibold text-white"
           >
-            Continue
+            Open local dashboard
           </Link>
         </div>
         <p className="mt-5 text-sm text-slate-600">

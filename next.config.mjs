@@ -5,7 +5,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  outputFileTracingRoot: __dirname
+  outputFileTracingRoot: __dirname,
+  experimental: {
+    webpackBuildWorker: false
+  }
 };
 
 export default nextConfig;

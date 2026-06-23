@@ -315,7 +315,7 @@ Includes a section for route-planning and map-skill development.
 
 ## Environment Variables
 
-Create a `.env.local` file in the project root.
+Copy `.env.example` to `.env.local` and provide the values required locally:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
@@ -329,17 +329,16 @@ Do not commit real API keys or tokens.
 
 ## Local Development
 
-Install dependencies:
+## Run Locally
 
-```bash
-npm install
+```powershell
+npm.cmd install
+npm.cmd run dev
 ```
 
-Run the development server:
+Open `http://localhost:3000`.
 
-```bash
-npm run dev
-```
+For a production-mode local check:
 
 Open the app in your browser:
 
@@ -623,7 +622,7 @@ Possible features:
 
 ---
 
-## Development Principles
+## Known Limitations
 
 Keep the MVP focused.
 
@@ -649,9 +648,15 @@ Avoid for now:
 
 ---
 
-## Product Vision
+The recommended Phase 2 starting point is a persistence and identity foundation:
 
-TopoPass aims to become an interactive practice platform for private hire applicants preparing for the TfL Topographical Skills Assessment.
+1. Define versioned database schemas for questions, attempts, answers, and
+   progress.
+2. Add Supabase authentication and Row Level Security.
+3. Move reviewed question banks behind a typed repository/data-access layer.
+4. Protect admin routes and add explicit publishing workflows.
+5. Persist completed mock exams and power `/results/[attemptId]`, `/review`, and
+   dashboard progress from real attempt data.
 
 The long-term goal is to help learners practise in a more realistic way by combining:
 

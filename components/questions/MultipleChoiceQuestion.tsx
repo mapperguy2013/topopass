@@ -34,7 +34,10 @@ export function MultipleChoiceQuestion({
         ))}
       </div>
       {selected && (
-        <QuestionFeedback status="neutral" message="Placeholder answer saved." />
+        <QuestionFeedback
+          status="neutral"
+          message="Answer selected for this local session."
+        />
       )}
     </div>
   );

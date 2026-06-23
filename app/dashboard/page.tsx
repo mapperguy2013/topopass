@@ -12,8 +12,9 @@ export default function DashboardPage() {
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-semibold text-ink">Today&apos;s focus</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Placeholder dashboard content for progress, recommendations, and
-          recent activity.
+          Progress and recommendations are not persisted in Phase 1. Use
+          Practice or Mock Test to work through the current local question
+          banks.
         </p>
       </section>
     </AppShell>

@@ -26,7 +26,7 @@ const features = [
   {
     title: "Mock test practice",
     description:
-      "Use timed placeholder test flows that will become full mock assessments later."
+      "Complete mixed knowledge, map-click, and route-drawing questions in one scored mock exam."
   },
   {
     title: "Mistake review",
