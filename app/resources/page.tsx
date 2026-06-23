@@ -5,7 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 type Resource = {
   title: string;
   description: string;
-  href: string;
+  href?: string;
   external?: boolean;
 };
 
@@ -45,20 +45,17 @@ const resourceCategories: {
       {
         title: "A-Z London street atlas",
         description:
-          "Many candidates use a London A-Z style street atlas to practise map reading and location finding.",
-        href: "#"
+          "Many candidates use a London A-Z style street atlas to practise map reading and location finding."
       },
       {
         title: "London boroughs and major areas",
         description:
-          "Study London boroughs, major roads, stations, hospitals, airports, and landmarks.",
-        href: "#"
+          "Study London boroughs, major roads, stations, hospitals, airports, and landmarks."
       },
       {
         title: "Road restrictions and common route issues",
         description:
-          "Learn about bridges, tunnels, restricted roads, and route planning considerations.",
-        href: "#"
+          "Learn about bridges, tunnels, restricted roads, and route planning considerations."
       }
     ]
   },
@@ -68,20 +65,17 @@ const resourceCategories: {
       {
         title: "Official TfL video guide",
         description:
-          "Add an official TfL video guide here once the exact link is confirmed.",
-        href: "#"
+          "An official video resource can be added after its current URL and relevance are verified."
       },
       {
         title: "Third-party route planning videos",
         description:
-          "Useful for seeing example route-planning questions and worked answers. Mark clearly as third-party content.",
-        href: "#"
+          "Third-party worked examples may be useful, but sources should be reviewed before being linked."
       },
       {
         title: "Assessment booking walkthroughs",
         description:
-          "Third-party walkthroughs may help candidates understand the booking process, but users should always confirm details on official TfL pages.",
-        href: "#"
+          "Booking guidance should always be checked against current official TfL information."
       }
     ]
   },
@@ -97,7 +91,7 @@ const resourceCategories: {
       {
         title: "Mock test",
         description:
-          "Try a placeholder mock assessment flow before full tests are built.",
+          "Complete a mixed mock exam with knowledge, map-click, and route-drawing questions.",
         href: "/mock-test"
       },
       {
@@ -123,12 +117,12 @@ function ResourceCard({ resource }: { resource: Resource }) {
         {resource.description}
       </p>
       <p className="mt-5 text-sm font-semibold text-road">
-        {resource.href === "#" ? "Link to be confirmed" : "Open resource"}
+        {resource.href ? "Open resource" : "Planned resource"}
       </p>
     </>
   );
 
-  if (resource.external) {
+  if (resource.external && resource.href) {
     return (
       <a
         className={className}
@@ -139,6 +133,10 @@ function ResourceCard({ resource }: { resource: Resource }) {
         {content}
       </a>
     );
+  }
+
+  if (!resource.href) {
+    return <article className={className}>{content}</article>;
   }
 
   return (

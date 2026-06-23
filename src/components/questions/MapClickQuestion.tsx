@@ -30,6 +30,13 @@ type ClickResult = {
 
 export type MapClickQuestionResult = ClickResult;
 
+type MapClickQuestionInteractionProps = {
+  initialAnswer?: MapClickQuestionResult | null;
+  onAnswer?: (result: MapClickQuestionResult) => void;
+  onAnswerReset?: () => void;
+  showResult?: boolean;
+};
+
 function createSelectedMarkerElement() {
   const marker = document.createElement("div");
   marker.className =
@@ -56,22 +63,25 @@ export function MapClickQuestion({
   passRadiusMetres,
   initialCenter,
   initialZoom = EXAM_MAP_ZOOM_LIMITS.defaultZoom,
+  initialAnswer,
   onAnswer,
-  onAnswerReset
-}: MapClickQuestionProps & {
-  onAnswer?: (result: MapClickQuestionResult) => void;
-  onAnswerReset?: () => void;
-}) {
+  onAnswerReset,
+  showResult = true
+}: MapClickQuestionProps & MapClickQuestionInteractionProps) {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const clickedMarker = useRef<mapboxgl.Marker | null>(null);
+  const restoredAnswer = useRef(initialAnswer);
+  const answerResetHandler = useRef(onAnswerReset);
+  restoredAnswer.current = initialAnswer;
+  answerResetHandler.current = onAnswerReset;
   const [selectedCoordinates, setSelectedCoordinates] =
-    useState<Coordinates | null>(null);
-  const [result, setResult] = useState<ClickResult | null>(null);
+    useState<Coordinates | null>(initialAnswer?.coordinates ?? null);
+  const [result, setResult] = useState<ClickResult | null>(initialAnswer ?? null);
   const [hasToken] = useState(Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN));
 
   useEffect(() => {
-    setSelectedCoordinates(null);
-    setResult(null);
+    setSelectedCoordinates(restoredAnswer.current?.coordinates ?? null);
+    setResult(restoredAnswer.current ?? null);
     clickedMarker.current?.remove();
     clickedMarker.current = null;
   }, [target.lat, target.lng, title]);
@@ -103,6 +113,16 @@ export function MapClickQuestion({
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     map.touchZoomRotate.disableRotation();
 
+    if (restoredAnswer.current) {
+      const coordinates = restoredAnswer.current.coordinates;
+      clickedMarker.current = new mapboxgl.Marker({
+        element: createSelectedMarkerElement(),
+        anchor: "center"
+      })
+        .setLngLat([coordinates.longitude, coordinates.latitude])
+        .addTo(map);
+    }
+
     map.on("click", (event) => {
       const clickedCoordinates = {
         latitude: event.lngLat.lat,
@@ -119,7 +139,7 @@ export function MapClickQuestion({
 
       setSelectedCoordinates(clickedCoordinates);
       setResult(null);
-      onAnswerReset?.();
+      answerResetHandler.current?.();
     });
 
     return () => {
@@ -127,7 +147,7 @@ export function MapClickQuestion({
       clickedMarker.current = null;
       map.remove();
     };
-  }, [initialCenter, initialZoom, onAnswerReset, target]);
+  }, [initialCenter, initialZoom, target]);
 
   function submitAnswer() {
     if (!selectedCoordinates) {
@@ -205,16 +225,22 @@ export function MapClickQuestion({
           <p className="text-sm font-semibold text-slate-700">Result</p>
           <p
             className={`mt-2 text-2xl font-bold ${
-              result
+              result && showResult
                 ? result.isCorrect
                   ? "text-success"
                   : "text-red-700"
                 : "text-slate-500"
             }`}
           >
-            {result ? (result.isCorrect ? "Correct" : "Try again") : "Waiting"}
+            {result
+              ? showResult
+                ? result.isCorrect
+                  ? "Correct"
+                  : "Try again"
+                : "Answer submitted"
+              : "Waiting"}
           </p>
-          {result && (
+          {result && showResult && (
             <p className="mt-2 text-sm text-slate-600">
               Distance from target: {Math.round(result.distance)} metres
             </p>

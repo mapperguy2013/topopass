@@ -1,4 +1,15 @@
-import { acceptedRoutePointsById } from "@/src/data/maps/kings-cross-euston/routeGraph";
+import { acceptedRoutePointsById } from "./maps/kings-cross-euston/routeGraph.ts";
+
+export type RouteQuestionStatus = "draft" | "active" | "archived";
+
+export type RouteQuestionDifficulty = "easy" | "medium" | "hard";
+
+export type RouteMapBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
 
 export type RouteQuestion = {
   id: string;
@@ -20,11 +31,35 @@ export type RouteQuestion = {
     coordinateSystem: "map";
     reviewed: boolean;
   };
-  mapArea?: string;
-  difficulty?: "easy" | "medium" | "hard";
+  mapArea: string;
+  mapBounds: RouteMapBounds;
+  difficulty: RouteQuestionDifficulty;
+  status: RouteQuestionStatus;
+  tags: string[];
+  explanation: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 const KINGS_CROSS_EUSTON_MAP = "kings-cross-euston";
+const KINGS_CROSS_EUSTON_BOUNDS: RouteMapBounds = {
+  minX: 0,
+  minY: 0,
+  maxX: 1600,
+  maxY: 1000
+};
+const INITIAL_CONTENT_DATE = "2026-06-23T00:00:00.000Z";
+
+const sharedQuestionMetadata = {
+  mapArea: KINGS_CROSS_EUSTON_MAP,
+  mapBounds: KINGS_CROSS_EUSTON_BOUNDS,
+  status: "active" as const,
+  tags: ["route-planning", "london"],
+  explanation:
+    "Compare your route with the accepted journey and review the start, destination, coverage, and off-route feedback.",
+  createdAt: INITIAL_CONTENT_DATE,
+  updatedAt: INITIAL_CONTENT_DATE
+};
 
 function storedMapRoute(routeId: string): RouteQuestion["acceptedRoute"] {
   const points = acceptedRoutePointsById[routeId];
@@ -52,7 +87,7 @@ export const routeQuestions: RouteQuestion[] = [
     from: { lat: 51.530609, lng: -0.1239491 },
     to: { lat: 51.5282865, lng: -0.1338745 },
     acceptedRoute: storedMapRoute("kings-cross-to-euston"),
-    mapArea: KINGS_CROSS_EUSTON_MAP,
+    ...sharedQuestionMetadata,
     difficulty: "easy"
   },
   {
@@ -65,7 +100,7 @@ export const routeQuestions: RouteQuestion[] = [
     from: { lat: 51.5230529, lng: -0.1242529 },
     to: { lat: 51.5247178, lng: -0.1385303 },
     acceptedRoute: storedMapRoute("russell-square-to-warren-street"),
-    mapArea: KINGS_CROSS_EUSTON_MAP,
+    ...sharedQuestionMetadata,
     difficulty: "medium"
   },
   {
@@ -78,7 +113,7 @@ export const routeQuestions: RouteQuestion[] = [
     from: { lat: 51.5205978, lng: -0.1343573 },
     to: { lat: 51.5324874, lng: -0.1060356 },
     acceptedRoute: storedMapRoute("goodge-street-to-angel"),
-    mapArea: KINGS_CROSS_EUSTON_MAP,
+    ...sharedQuestionMetadata,
     difficulty: "hard"
   },
   {
@@ -91,7 +126,7 @@ export const routeQuestions: RouteQuestion[] = [
     from: { lat: 51.5282865, lng: -0.1338745 },
     to: { lat: 51.5171149, lng: -0.1200657 },
     acceptedRoute: storedMapRoute("euston-to-holborn"),
-    mapArea: KINGS_CROSS_EUSTON_MAP,
+    ...sharedQuestionMetadata,
     difficulty: "hard"
   },
   {
@@ -104,13 +139,17 @@ export const routeQuestions: RouteQuestion[] = [
     from: { lat: 51.530609, lng: -0.1239491 },
     to: { lat: 51.5162, lng: -0.1419 },
     acceptedRoute: storedMapRoute("kings-cross-to-oxford-circus"),
-    mapArea: KINGS_CROSS_EUSTON_MAP,
+    ...sharedQuestionMetadata,
     difficulty: "hard"
   }
 ];
 
 export function getRouteQuestions() {
   return routeQuestions;
+}
+
+export function getActiveRouteQuestions() {
+  return routeQuestions.filter((question) => question.status === "active");
 }
 
 export function getRouteQuestionById(id: string) {

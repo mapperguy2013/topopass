@@ -1,114 +1,143 @@
 # TopoPass
 
-TopoPass is a responsive web app that helps private hire driver applicants practise for the **TfL Private Hire Topographical Skills Assessment**.
+TopoPass is a responsive study web app for London private hire applicants
+preparing for the TfL Private Hire Topographical Skills Assessment. It provides
+knowledge questions, Mapbox location questions, route-drawing practice on a
+real OpenStreetMap-derived London map, and a timed mixed mock exam.
 
-The app focuses on interactive map-based practice, mock tests, and progress tracking to help learners improve their map reading, direction awareness, route-choice judgement, and knowledge of London points of interest.
+TopoPass is an independent study tool. It is not affiliated with, endorsed by,
+or sponsored by Transport for London, Uber, Bolt, FREENOW, or any private hire
+operator.
 
-## Project Status
+## Phase 1 Status
 
-Early MVP planning/build stage.
+Stages 1-14 are complete as a local/static MVP. The current app demonstrates
+the complete learner and content-management workflows without production
+accounts, database persistence, payments, or subscriptions.
 
-The first version will focus on:
+Phase 1 is suitable for:
 
-* Responsive web app
-* Desktop and mobile browser support
-* Supabase authentication
-* Practice questions
-* Click-on-map questions using Mapbox
-* Timed mock tests
-* Score tracking
-* Mistake review
+- Local product demonstrations
+- Question and scoring prototyping
+- Browser-based manual QA
+- Route-scoring calibration
+- Preparing reviewed question data for a later persistence layer
 
-Route drawing will be added in a later version.
+It is not yet a production learning platform.
+
+## Completed Features
+
+- Professional public homepage, resources, pricing, and study navigation
+- Learn section with a route-planning entry point
+- Route practice using a shared route-question bank
+- Knowledge question bank with exact-answer scoring
+- Map-click question bank with Mapbox, distance scoring, and configurable
+  tolerances
+- Route-drawing questions using a generated SVG map and hidden route geometry
+- Reusable route scoring with start, end, coverage, length, and deviation checks
+- Timed mixed mock exams with randomized question selection
+- Question navigation, unanswered-state tracking, and browser-session recovery
+- Final score, pass/fail result, per-type breakdown, and answer review
+- Admin dashboard and managers for knowledge, map-click, and route questions
+- Question validation, browser-local drafts, previews, activation controls, and
+  JSON export
+- Deterministic tests for route scoring, mock-exam scoring/selection, and admin
+  validation
 
 ## Tech Stack
 
-* Next.js
-* TypeScript
-* Tailwind CSS
-* Supabase
-* Supabase Auth
-* Supabase PostgreSQL
-* Mapbox GL JS
+- Next.js 15 App Router
+- React 19
+- TypeScript
+- Tailwind CSS
+- ESLint
+- Mapbox GL JS
+- OpenStreetMap-derived GeoJSON and generated SVG map data
+- Supabase JavaScript client scaffold only
+- Node.js built-in test runner
 
-## Core Features
+## App Routes
 
-### MVP v1
+| Route | Current purpose |
+| --- | --- |
+| `/` | Public TopoPass homepage |
+| `/learn` | Learning guidance and route-planning entry point |
+| `/resources` | Official TfL links and planned study resources |
+| `/pricing` | Honest pre-launch pricing status |
+| `/practice` | Practice-area selector |
+| `/practice/routes` | Working route-drawing practice flow |
+| `/demo` | Standalone multi-question Mapbox click demo |
+| `/route-demo` | Route-drawing development/demo flow with accepted-route tools |
+| `/mock-test` | Timed mixed mock exam |
+| `/results/[attemptId]` | Legacy result route; no persisted attempt loading yet |
+| `/review` | Legacy review route; live review is inside `/mock-test` |
+| `/dashboard` | Local Phase 1 dashboard shell |
+| `/login` | Phase 1 account-status page; authentication is not connected |
+| `/register` | Phase 1 account-status page; registration is not connected |
+| `/admin` | Admin overview and validation summary |
+| `/admin/questions` | Combined static question inventory |
+| `/admin/questions/knowledge` | Knowledge question draft manager |
+| `/admin/questions/map-click` | Map-click question draft manager and preview |
+| `/admin/questions/route` | Route question draft manager and preview |
+| `/admin/questions/routes` | Compatibility route for the route manager |
+| `/admin/questions/new` | Question-type creation entry point |
+| `/admin/questions/[id]` | Question inspection and manager routing |
 
-* Landing page
-* Register and login
-* User dashboard
-* Practice mode
-* Multiple choice questions
-* Click-on-map questions
-* Mock test mode
-* Results page
-* Review mistakes page
+## Question Types
 
-### Future Features
+### Knowledge
 
-* Route drawing on the map
-* Route snapping
-* Route accuracy scoring
-* More advanced progress analytics
-* Admin dashboard for managing questions
-* Subscription payments
-* Progressive Web App support
-* Native mobile apps
+Multiple-choice questions are stored in `lib/knowledgeQuestions.ts`. Mock-exam
+scoring uses exact answer matching.
 
-## Planned Routes
+### Map Click
 
-```txt
-/
-```
+Location questions are stored in `lib/mapClickQuestions.ts`. Mapbox captures a
+clicked coordinate and `lib/distance.ts` calculates the distance from the
+configured target. Each question defines its own tolerance in metres.
 
-Landing page.
+### Route Drawing
 
-```txt
-/register
-```
+Route questions are stored in `src/data/routeQuestions.ts`. The learner draws
+over `public/maps/kings-cross-euston/map.svg`, which is generated from the real
+OSM GeoJSON source. Route scoring lives in `lib/routeScoring.ts`.
 
-User registration.
+## Mock Test Behaviour
 
-```txt
-/login
-```
+The mock exam currently:
 
-User login.
+- Selects 3 knowledge, 3 map-click, and 2 route-drawing questions
+- Uses a 30-minute configurable timer
+- Uses a configurable 70% pass mark
+- Stores the active attempt in browser `localStorage`
+- Preserves answers while moving between questions
+- Warns about unanswered questions before submission
+- Automatically submits when time expires
+- Shows overall and per-question-type results
+- Provides an in-session review of every answer
 
-```txt
-/dashboard
-```
+Configuration is in `lib/mockExamConfig.ts`.
 
-User dashboard.
+## Admin Tools
 
-```txt
-/practice
-```
+The admin area validates and previews all three question types. Admin edits are
+prototype drafts saved to browser `localStorage`. They do not update source
+files, Supabase, or learner-facing question banks automatically.
 
-Practice mode.
+To make an admin draft permanent:
 
-```txt
-/mock-test
-```
+1. Export the relevant JSON bank.
+2. Review and validate the exported records.
+3. Deliberately add the approved data to the appropriate TypeScript question
+   bank.
+4. Run lint, tests, and build.
 
-Timed mock test.
-
-```txt
-/results/[attemptId]
-```
-
-Attempt results and review.
-
-```txt
-/review
-```
-
-Review previous mistakes.
+Active `/practice` and `/mock-test` content comes only from the committed source
+banks.
 
 ## Environment Variables
 
-Create a `.env.local` file in the project root.
+Copy `.env.example` to `.env.local` and provide the values required locally:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
@@ -116,77 +145,82 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_MAPBOX_TOKEN=
 ```
 
-## Local Development
+`NEXT_PUBLIC_MAPBOX_TOKEN` is required for Mapbox pages. The Supabase client is
+scaffolded, but Phase 1 does not use Supabase for authentication or data
+persistence.
 
-Install dependencies:
+## Run Locally
 
-```bash
-npm install
+```powershell
+npm.cmd install
+npm.cmd run dev
 ```
 
-Run the development server:
+Open `http://localhost:3000`.
 
-```bash
-npm run dev
+For a production-mode local check:
+
+```powershell
+npm.cmd run build
+npm.cmd run start
 ```
 
-Open the app in your browser:
+## Test and Verify
 
-```txt
-http://localhost:3000
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
 ```
 
-## Supabase Setup
+Map source regeneration is separate from normal app verification:
 
-The app will use Supabase for:
+```powershell
+npm.cmd run map:build:kings-cross-euston
+```
 
-* User authentication
-* User profiles
-* Practice questions
-* Test attempts
-* User answers
-* Progress history
+Do not regenerate the map unless the OSM source or map-generation scripts have
+changed.
 
-Planned database tables:
+## Local and Static Data Limitations
 
-* `profiles`
-* `questions`
-* `attempts`
-* `answers`
+- Question banks are TypeScript source files.
+- Admin drafts are local to one browser and must be exported manually.
+- Active mock-exam recovery uses browser `localStorage`.
+- Completed attempts, review history, and user progress are not persisted.
+- Login and registration are not connected.
+- Supabase tables, Row Level Security, and admin permissions are not implemented.
 
-Row Level Security should be enabled so users can only access their own attempts and answers.
+## Known Limitations
 
-## Mapbox Setup
+- Route scoring is prototype-level and needs calibration against more reviewed
+  routes and realistic learner attempts.
+- Mock questions are representative training content, not official TfL content.
+- The Mapbox style and map accessibility need further review.
+- Route drawing needs broader mobile, pointer, and accessibility testing.
+- `/results/[attemptId]` and `/review` cannot load historical attempts yet.
+- Admin routes are not authenticated.
+- There is no production analytics, payment, or subscription logic.
+- Automated test coverage should expand as persistence and server behaviour are
+  introduced.
 
-TopoPass uses Mapbox for interactive London map practice.
+See:
 
-The MVP map should:
+- `docs/PHASE_1_CLOSURE.md`
+- `docs/TECHNICAL_DEBT.md`
+- `docs/MANUAL_QA_CHECKLIST.md`
 
-* Default to London
-* Support zoom and pan
-* Allow click/tap answers
-* Return selected latitude and longitude
-* Display the user’s selected marker
-* Compare selected location against the correct answer location
+## Phase 2 Direction
 
-## Development Principles
+The recommended Phase 2 starting point is a persistence and identity foundation:
 
-Keep the first version simple.
+1. Define versioned database schemas for questions, attempts, answers, and
+   progress.
+2. Add Supabase authentication and Row Level Security.
+3. Move reviewed question banks behind a typed repository/data-access layer.
+4. Protect admin routes and add explicit publishing workflows.
+5. Persist completed mock exams and power `/results/[attemptId]`, `/review`, and
+   dashboard progress from real attempt data.
 
-Do not build the following in MVP v1:
-
-* Route drawing
-* Native iOS app
-* Native Android app
-* Windows desktop app
-* Paid subscriptions
-* Admin dashboard
-* AI route scoring
-
-The goal of MVP v1 is to prove the learning flow works before building more advanced route-drawing features.
-
-## Product Vision
-
-TopoPass aims to become an interactive practice platform for private hire applicants preparing for the TfL Topographical Skills Assessment.
-
-Instead of only reading static study material, users will be able to practise with realistic test-style questions, receive instant feedback, track weaknesses, and build confidence before taking the assessment.
+Payments, subscriptions, and analytics should follow only after question
+publishing, learner identity, and attempt persistence are reliable.
