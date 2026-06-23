@@ -40,18 +40,55 @@ const stations = rawMap.features.filter(
     feature.properties?.railway === "station"
 );
 
-const startStation = stations.find(
-  (feature) => feature.properties?.name === "King's Cross St Pancras"
-);
-const endStation = stations.find(
-  (feature) => feature.properties?.name === "Euston"
-);
-
-if (!startStation || !endStation) {
-  throw new Error(
-    "Required OSM station points were not found in osm-raw.geojson."
-  );
+function stationLocation(name) {
+  const station = stations.find((feature) => feature.properties?.name === name);
+  if (!station) {
+    throw new Error(`Required OSM station point not found: ${name}.`);
+  }
+  return {
+    label: name,
+    coordinates: station.geometry.coordinates,
+    osmId: station.properties["@id"]
+  };
 }
+
+const routeDefinitions = [
+  {
+    id: "kings-cross-to-euston",
+    start: stationLocation("King's Cross St Pancras"),
+    end: stationLocation("Euston")
+  },
+  {
+    id: "russell-square-to-warren-street",
+    start: stationLocation("Russell Square"),
+    end: stationLocation("Warren Street")
+  },
+  {
+    id: "goodge-street-to-angel",
+    start: stationLocation("Goodge Street"),
+    end: stationLocation("Angel")
+  },
+  {
+    id: "euston-to-holborn",
+    start: stationLocation("Euston"),
+    // Prototype endpoint from OSM station coordinates used by the earlier export.
+    end: {
+      label: "Holborn",
+      coordinates: [-0.1200657, 51.5171149],
+      osmId: "prototype/holborn"
+    }
+  },
+  {
+    id: "kings-cross-to-oxford-circus",
+    start: stationLocation("King's Cross St Pancras"),
+    // Prototype visible-map endpoint north of Oxford Circus. Replace after review.
+    end: {
+      label: "Oxford Circus",
+      coordinates: [-0.1419, 51.5162],
+      osmId: "prototype/oxford-circus"
+    }
+  }
+];
 
 function coordinateKey(coordinate) {
   return `${coordinate[0].toFixed(7)},${coordinate[1].toFixed(7)}`;
@@ -172,26 +209,38 @@ function shortestPath(startKey, endKey) {
   return path.reverse();
 }
 
-const startSnap = nearestNetworkKey(startStation.geometry.coordinates);
-const endSnap = nearestNetworkKey(endStation.geometry.coordinates);
-const routeSteps = shortestPath(startSnap.key, endSnap.key);
-const routeKeys = [routeSteps[0].fromKey, ...routeSteps.map((step) => step.toKey)];
 const project = createMapProjection(config);
-const routeNodes = routeKeys.map((key, index) => {
-  const [x, y] = project(coordinatesByKey.get(key));
+const acceptedRoutes = routeDefinitions.map((definition) => {
+  const startSnap = nearestNetworkKey(definition.start.coordinates);
+  const endSnap = nearestNetworkKey(definition.end.coordinates);
+  const steps = shortestPath(startSnap.key, endSnap.key);
+  const keys = [steps[0].fromKey, ...steps.map((step) => step.toKey)];
+  const points = keys.map((key) => {
+    const [x, y] = project(coordinatesByKey.get(key));
+    return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) };
+  });
+
   return {
-    id: `route-node-${index}`,
-    x: Number(x.toFixed(2)),
-    y: Number(y.toFixed(2)),
-    label:
-      index === 0
-        ? "King's Cross St Pancras road access"
-        : index === routeKeys.length - 1
-          ? "Euston road access"
-          : routeSteps[Math.max(0, index - 1)].name
+    ...definition,
+    startSnap,
+    endSnap,
+    steps,
+    keys,
+    points
   };
 });
-const routeEdges = routeSteps.map((step, index) => ({
+const primaryRoute = acceptedRoutes[0];
+const routeNodes = primaryRoute.keys.map((key, index) => ({
+  id: `route-node-${index}`,
+  ...primaryRoute.points[index],
+  label:
+    index === 0
+      ? `${primaryRoute.start.label} road access`
+      : index === primaryRoute.keys.length - 1
+        ? `${primaryRoute.end.label} road access`
+        : primaryRoute.steps[Math.max(0, index - 1)].name
+}));
+const routeEdges = primaryRoute.steps.map((step, index) => ({
   id: `route-edge-${index}`,
   from: `route-node-${index}`,
   to: `route-node-${index + 1}`,
@@ -199,11 +248,18 @@ const routeEdges = routeSteps.map((step, index) => ({
   oneWay: step.oneWay
 }));
 const acceptedEdgeIds = routeEdges.map((edge) => edge.id);
+const acceptedRoutePointsById = Object.fromEntries(
+  acceptedRoutes.map((route) => [route.id, route.points])
+);
 
 const output = `// Generated from real OpenStreetMap road geometry by
 // scripts/maps/generate-kings-cross-euston-route-graph.mjs.
 // Do not hand-edit coordinates; regenerate from the attributed GeoJSON inputs.
-import type { DrawRouteQuestion, RouteGraph } from "@/src/data/maps/routeTypes";
+import type {
+  DrawRouteQuestion,
+  RouteGraph,
+  RouteMapPoint
+} from "@/src/data/maps/routeTypes";
 
 export const kingsCrossEustonRouteGraph: RouteGraph = ${JSON.stringify(
   {
@@ -213,6 +269,18 @@ export const kingsCrossEustonRouteGraph: RouteGraph = ${JSON.stringify(
     nodes: routeNodes,
     edges: routeEdges
   },
+  null,
+  2
+)};
+
+export const kingsCrossEustonAcceptedRoutePoints: RouteMapPoint[] = ${JSON.stringify(
+  primaryRoute.points,
+  null,
+  2
+)};
+
+export const acceptedRoutePointsById: Record<string, RouteMapPoint[]> = ${JSON.stringify(
+  acceptedRoutePointsById,
   null,
   2
 )};
@@ -235,11 +303,18 @@ export const kingsCrossEustonRouteSource = ${JSON.stringify(
   {
     source: config.source,
     attribution: config.attribution,
-    startStationOsmId: startStation.properties["@id"],
-    endStationOsmId: endStation.properties["@id"],
+    startStationOsmId: primaryRoute.start.osmId,
+    endStationOsmId: primaryRoute.end.osmId,
     sourceGeoJson: "public/maps/kings-cross-euston/osm-raw.geojson",
-    startSnapDistanceMetres: Number(startSnap.distance.toFixed(1)),
-    endSnapDistanceMetres: Number(endSnap.distance.toFixed(1))
+    startSnapDistanceMetres: Number(primaryRoute.startSnap.distance.toFixed(1)),
+    endSnapDistanceMetres: Number(primaryRoute.endSnap.distance.toFixed(1)),
+    prototypeRoutes: acceptedRoutes.map((route) => ({
+      id: route.id,
+      reviewed: false,
+      pointCount: route.points.length,
+      startSnapDistanceMetres: Number(route.startSnap.distance.toFixed(1)),
+      endSnapDistanceMetres: Number(route.endSnap.distance.toFixed(1))
+    }))
   },
   null,
   2
@@ -248,6 +323,6 @@ export const kingsCrossEustonRouteSource = ${JSON.stringify(
 
 await writeFile(path.join(dataDirectory, "routeGraph.ts"), output, "utf8");
 console.log(
-  `Generated ${routeEdges.length} graph edges from real OSM roads. ` +
-    `Station snap distances: ${startSnap.distance.toFixed(1)}m / ${endSnap.distance.toFixed(1)}m.`
+  `Generated ${acceptedRoutes.length} prototype routes from real OSM roads. ` +
+    `Primary route contains ${routeEdges.length} graph edges.`
 );

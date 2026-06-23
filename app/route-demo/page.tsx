@@ -1,10 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { RouteDrawingQuestion } from "@/src/components/route/RouteDrawingQuestion";
-import {
-  kingsCrossEustonRouteGraph,
-  kingsCrossEustonRouteQuestion,
-  kingsCrossEustonRouteSource
-} from "@/src/data/maps/kings-cross-euston/routeGraph";
+import { RouteDemoFlow } from "@/src/components/route/RouteDemoFlow";
+import { kingsCrossEustonRouteSource } from "@/src/data/maps/kings-cross-euston/routeGraph";
 
 export default function RouteDemoPage() {
   return (
@@ -47,11 +43,7 @@ export default function RouteDemoPage() {
           </li>
         </ul>
       </section>
-      <RouteDrawingQuestion
-        graph={kingsCrossEustonRouteGraph}
-        mapImagePath="/maps/kings-cross-euston/map.svg"
-        question={kingsCrossEustonRouteQuestion}
-      />
+      <RouteDemoFlow />
     </AppShell>
   );
 }
