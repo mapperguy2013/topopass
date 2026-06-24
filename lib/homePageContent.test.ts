@@ -18,11 +18,9 @@ const socialPreview = path.join(
 
 test("home page promotes learner CTAs and map practice routes", () => {
   assert.match(homeSource, /Start practising/);
-  assert.match(homeSource, /Explore SERU preparation/);
+  assert.match(homeSource, /Try SERU practice/);
   assert.match(homeSource, /View progress/);
-  assert.match(homeSource, /\/practice\/map-click/);
-  assert.match(homeSource, /\/practice\/routes/);
-  assert.match(homeSource, /\/practice\/knowledge/);
+  assert.match(homeSource, /\/practice/);
   assert.match(homeSource, /\/practice\/seru/);
 });
 
@@ -31,14 +29,20 @@ test("home page stays public and does not expose admin tooling", () => {
   assert.doesNotMatch(homeSource, /draft|archived|question_bank_items/i);
 });
 
-test("home page positions SERU as a separate product area", () => {
-  assert.match(homeSource, /SERU Preparation/);
-  assert.match(homeSource, /\/practice\/seru/);
-  assert.match(homeSource, /SERU questions do not get mixed into topographical mocks/);
-  assert.match(homeSource, /not affiliated\s+with or endorsed by Transport for London/);
+test("home page is outcome-focused and keeps SERU visible without internal headings", () => {
+  assert.match(homeSource, /TfL private hire and PCO preparation/);
   assert.match(
     homeSource,
-    /One account\. Two clear learning areas: Topographical Skills and\s+SERU Preparation/
+    /Pass your TfL private hire preparation with more confidence/
+  );
+  assert.match(homeSource, /What TopoPass helps you prepare for/);
+  assert.match(homeSource, /SERU-style preparation/);
+  assert.match(homeSource, /\/practice\/seru/);
+  assert.match(homeSource, /not affiliated\s+with or endorsed by Transport for London/);
+  assert.doesNotMatch(homeSource, /Two preparation areas/);
+  assert.doesNotMatch(
+    homeSource,
+    /Topographical skills now, SERU support as a separate category/
   );
 });
 

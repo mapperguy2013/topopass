@@ -13,154 +13,201 @@ export const metadata = buildPageMetadata({
 
 const productAreas = [
   {
-    title: "Topographical Skills Practice",
-    label: "Live now",
+    title: "Topographical practice",
     description:
-      "Build map-reading confidence with London routes, locations, direction sense, mistake review, and topographical mock preparation.",
+      "Build confidence with London map reading, routes, locations, and topographical-style mock preparation.",
     href: "/practice"
   },
   {
-    title: "SERU Preparation",
-    label: "Live starter practice",
+    title: "SERU-style preparation",
     description:
-      "Practise original SERU-style questions covering safety, equality, accessibility, customer service, passenger care, driver responsibilities, and regulatory awareness.",
+      "Practise questions on safety, equality, accessibility, customer care, licensing awareness, and professional responsibilities.",
     href: "/practice/seru"
   }
 ] as const;
 
-const progressFeatures = [
-  {
-    title: "Local progress first",
-    description:
-      "Practise signed out and keep browser-local progress for current learning sessions."
-  },
-  {
-    title: "Account progress when ready",
-    description:
-      "Sign in when you want new practice and mock exam completions saved to your learner account."
-  },
-  {
-    title: "Mistakes and review",
-    description:
-      "Use mistake review, full answer history, and topic summaries to choose the next focused session."
-  }
-] as const;
-
-const practiceRoutes = [
-  {
-    href: "/practice/map-click",
-    title: "Map-click locations",
-    description: "Find stations, hospitals, bridges, and landmarks on the map."
-  },
-  {
-    href: "/practice/routes",
-    title: "Route practice",
-    description: "Draw journeys between London points and review your route."
-  },
-  {
-    href: "/practice/knowledge",
-    title: "Topographical knowledge",
-    description: "Answer focused map-reading and route-planning questions."
-  },
-  {
-    href: "/practice/seru",
-    title: "SERU-style practice",
-    description: "Answer private hire knowledge questions in a separate SERU area."
-  },
-  {
-    href: "/mock-test",
-    title: "Topographical mock exams",
-    description: "Test knowledge, map-click, and route planning in one timed flow."
-  }
-] as const;
-
 const howItWorks = [
-  "Start with focused map, route, or knowledge practice.",
-  "Read explanations and review mistakes after each attempt.",
-  "Use progress insights to choose the next weak topic.",
-  "Move into timed topographical mock exams when ready."
+  {
+    title: "Practise",
+    description:
+      "Start with focused topographical and SERU-style practice sessions."
+  },
+  {
+    title: "Review",
+    description:
+      "Read explanations, revisit mistakes, and understand what to improve."
+  },
+  {
+    title: "Build confidence",
+    description:
+      "Track progress over time and move into mock exams when you feel ready."
+  }
 ] as const;
 
-const learnerReasons = [
-  "No login needed to start browser-local practice.",
-  "One account supports both topographical and SERU preparation areas.",
-  "Original learning content only, with no claim of endorsement from Transport for London.",
-  "Designed for short, repeatable study sessions on desktop and mobile."
+const benefitCards = [
+  {
+    title: "Focused map and route practice",
+    description:
+      "Practise London locations, direction sense, route drawing, and map-reading decisions."
+  },
+  {
+    title: "SERU-style learning support",
+    description:
+      "Build knowledge around safety, accessibility, customer care, licensing, and professional conduct."
+  },
+  {
+    title: "Mock exams and review",
+    description:
+      "Use topographical mock exams, explanations, and answer review to identify what needs work."
+  },
+  {
+    title: "Track progress over time",
+    description:
+      "See recent answers, accuracy, mistakes, and weak areas as your practice history grows."
+  },
+  {
+    title: "One account across both learning areas",
+    description:
+      "Use the same login for topographical practice and SERU-style preparation when you want account progress."
+  }
 ] as const;
 
 function HeroLearningVisual() {
   return (
     <div
       aria-label="Illustration of route practice, SERU preparation, and progress tracking"
-      className="relative overflow-hidden rounded-lg border border-slate-200 bg-white shadow-soft"
+      className="relative overflow-hidden rounded-[1.75rem] border border-blue-100 bg-white shadow-soft"
       role="img"
     >
-      <div className="relative min-h-[520px] bg-[#f7fbff] p-5 sm:p-7">
+      <div className="relative min-h-[560px] bg-[#f8fbff] p-5 sm:min-h-[610px] sm:p-8 lg:min-h-[690px] lg:p-10">
         <div className="relative z-10">
-          <p className="text-xl font-bold text-ink">Practice overview</p>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <h2 className="text-2xl font-bold text-ink">Practice overview</h2>
+          <p className="mt-2 text-base leading-7 text-slate-600">
             Build confidence with Topographical Skills and SERU Preparation
           </p>
         </div>
 
         <svg
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full"
-          viewBox="0 0 760 560"
+          className="absolute inset-x-0 top-16 h-[430px] w-full sm:h-[510px] lg:top-20 lg:h-[560px]"
+          viewBox="0 0 920 520"
         >
-          <rect width="760" height="560" fill="#f7fbff" />
+          <defs>
+            <linearGradient id="mapFade" x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stopColor="#f8fbff" stopOpacity="0.45" />
+              <stop offset="0.55" stopColor="#eef6ff" stopOpacity="0.82" />
+              <stop offset="1" stopColor="#f8fbff" stopOpacity="0.55" />
+            </linearGradient>
+            <filter id="pinShadow" x="-40%" y="-20%" width="180%" height="170%">
+              <feDropShadow
+                dx="0"
+                dy="7"
+                floodColor="#0f172a"
+                floodOpacity="0.16"
+                stdDeviation="4"
+              />
+            </filter>
+          </defs>
+          <rect width="920" height="520" fill="url(#mapFade)" />
           <path
-            d="M40 96 H720 M40 178 H720 M40 260 H720 M40 342 H720 M40 424 H720"
-            stroke="#e1e8f2"
-            strokeWidth="8"
+            d="M40 122 H880 M40 212 H880 M40 302 H880 M40 392 H880"
+            stroke="#dfe8f4"
+            strokeLinecap="round"
+            strokeWidth="12"
           />
           <path
-            d="M116 48 V492 M238 48 V492 M360 48 V492 M482 48 V492 M604 48 V492"
-            stroke="#e1e8f2"
-            strokeWidth="8"
+            d="M106 70 V476 M220 70 V476 M334 70 V476 M448 70 V476 M562 70 V476 M676 70 V476 M790 70 V476"
+            stroke="#dfe8f4"
+            strokeLinecap="round"
+            strokeWidth="12"
           />
           <path
-            d="M70 410 C150 408 182 356 246 350 C332 342 322 244 418 252 C492 258 482 178 570 166 C638 156 652 122 692 108"
+            d="M28 450 C98 412 130 352 210 344 C304 334 332 242 426 240 C520 238 526 168 626 154 C722 140 776 112 880 94"
+            fill="none"
+            stroke="#eff6ff"
+            strokeLinecap="round"
+            strokeWidth="42"
+          />
+          <path
+            d="M34 438 C112 412 138 354 220 344 C314 332 338 248 426 246 C526 244 526 174 632 160 C724 148 782 122 872 104"
             fill="none"
             stroke="#2f74f7"
             strokeLinecap="round"
-            strokeWidth="10"
+            strokeWidth="13"
           />
           <path
-            d="M70 410 C150 408 182 356 246 350 C332 342 322 244 418 252 C492 258 482 178 570 166 C638 156 652 122 692 108"
+            d="M34 438 C112 412 138 354 220 344 C314 332 338 248 426 246 C526 244 526 174 632 160 C724 148 782 122 872 104"
             fill="none"
             stroke="#1d4ed8"
             strokeLinecap="round"
-            strokeWidth="4"
+            strokeWidth="5"
           />
-          <circle cx="70" cy="410" fill="#2f74f7" r="16" />
-          <circle cx="70" cy="410" fill="#ffffff" r="8" />
-          <circle cx="246" cy="350" fill="#2f74f7" r="13" />
-          <circle cx="246" cy="350" fill="#ffffff" r="6" />
-          <circle cx="418" cy="252" fill="#2f74f7" r="13" />
-          <circle cx="418" cy="252" fill="#ffffff" r="6" />
           <path
-            d="M692 76 C678 76 666 88 666 102 C666 124 692 154 692 154 C692 154 718 124 718 102 C718 88 706 76 692 76Z"
-            fill="#f97316"
+            d="M80 380 L178 312 L270 330 L340 250 L460 266 L538 186 L650 204 L746 134"
+            fill="none"
+            stroke="#ffffff"
+            strokeLinecap="round"
+            strokeOpacity="0.9"
+            strokeWidth="8"
           />
-          <circle cx="692" cy="101" fill="#ffffff" r="9" />
+          <path
+            d="M40 190 C118 176 164 116 252 126 C326 136 364 74 440 82"
+            fill="none"
+            stroke="#dff5e7"
+            strokeLinecap="round"
+            strokeWidth="34"
+          />
+          <path
+            d="M494 350 C576 312 634 326 720 282"
+            fill="none"
+            stroke="#d7eef8"
+            strokeLinecap="round"
+            strokeWidth="34"
+          />
+          <circle cx="34" cy="438" fill="#2563eb" r="20" />
+          <circle cx="34" cy="438" fill="#ffffff" r="9" />
+          <circle cx="314" cy="332" fill="#2563eb" r="15" />
+          <circle cx="314" cy="332" fill="#ffffff" r="7" />
+          <circle cx="526" cy="244" fill="#2563eb" r="15" />
+          <circle cx="526" cy="244" fill="#ffffff" r="7" />
+          <g filter="url(#pinShadow)">
+            <path
+              d="M872 60 C856 60 842 74 842 90 C842 116 872 150 872 150 C872 150 902 116 902 90 C902 74 888 60 872 60Z"
+              fill="#f97316"
+            />
+            <circle cx="872" cy="89" fill="#ffffff" r="11" />
+          </g>
         </svg>
 
-        <div className="relative z-10 mt-10 grid gap-5 md:grid-cols-[0.9fr_1fr] md:items-center">
-          <div className="rounded-lg border border-blue-100 bg-white/95 p-5 shadow-sm">
+        <div className="relative z-10 mt-8 grid min-h-[360px] gap-5 md:grid-cols-[0.9fr_1fr] md:items-center lg:min-h-[430px]">
+          <div className="max-w-sm rounded-[1.25rem] border border-blue-100 bg-white/95 p-5 shadow-sm lg:p-6">
             <div className="flex items-start gap-4">
-              <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-blue-100 text-road">
-                <span className="text-2xl font-bold">M</span>
+              <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-road">
+                <svg
+                  aria-hidden="true"
+                  className="size-8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M4 6v14l5-3 6 3 5-3V3l-5 3-6-3-5 3z" />
+                  <path d="M9 3v14" />
+                  <path d="M15 6v14" />
+                </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-ink">
+                <h3 className="text-2xl font-bold leading-tight text-ink">
                   Topographical Skills
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <p className="mt-3 text-sm leading-6 text-slate-600">
                   Practise locations, draw routes, and sharpen map skills.
                 </p>
               </div>
             </div>
+
             <ul className="mt-6 space-y-3 border-t border-slate-200 pt-5 text-sm text-slate-700">
               {[
                 "Identify locations",
@@ -180,25 +227,42 @@ function HeroLearningVisual() {
             </ul>
           </div>
 
-          <div className="flex justify-end">
-            <div className="w-full max-w-sm rounded-lg border border-orange-100 bg-white/95 p-5 shadow-sm">
+          <div>
+            <div className="ml-auto max-w-sm rounded-[1.25rem] border border-orange-100 bg-white/95 p-5 shadow-sm lg:p-6">
               <div className="flex items-start gap-4">
-                <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-700">
-                  <span className="text-2xl font-bold">S</span>
+                <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                  <svg
+                    aria-hidden="true"
+                    className="size-8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M9 5h6" />
+                    <path d="M9 11h6" />
+                    <path d="M9 17h3" />
+                    <path d="M5 7l1.5 1.5L9 6" />
+                    <path d="M5 13l1.5 1.5L9 12" />
+                    <rect height="18" rx="2" width="14" x="5" y="3" />
+                  </svg>
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-ink">
+                  <h3 className="text-2xl font-bold leading-tight text-ink">
                     SERU Preparation
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-3 text-sm leading-6 text-slate-600">
                     Targeted practice for SERU-style questions and scenarios.
                   </p>
                 </div>
               </div>
+
               <ul className="mt-6 space-y-3 border-t border-slate-200 pt-5 text-sm text-slate-700">
                 {[
                   "SERU-style questions",
-                  "Timed practice later",
+                  "timed practice",
                   "Track and improve"
                 ].map((item) => (
                   <li className="flex items-center gap-3" key={item}>
@@ -216,16 +280,98 @@ function HeroLearningVisual() {
           </div>
         </div>
 
-        <div className="relative z-10 mt-8 grid gap-3 rounded-lg border border-slate-200 bg-white/95 p-4 shadow-sm sm:grid-cols-3">
+        <div className="relative z-10 mt-5 grid gap-0 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white/95 p-4 shadow-sm sm:grid-cols-3 lg:p-5">
           {[
-            ["74%", "Accuracy", "Keep practising"],
-            ["3", "Weak topics", "Focus areas to improve"],
-            ["12", "Recent answers", "Keep the momentum"]
-          ].map(([value, label, helper]) => (
-            <div className="rounded-md bg-slate-50 p-4" key={label}>
-              <p className="text-2xl font-bold text-ink">{value}</p>
-              <p className="mt-1 text-sm font-bold text-ink">{label}</p>
-              <p className="mt-1 text-xs text-slate-500">{helper}</p>
+            {
+              value: "74%",
+              label: "Accuracy",
+              helper: "Keep practising",
+              accent: "text-road",
+              background: "bg-blue-100",
+              icon: (
+                <svg
+                  aria-hidden="true"
+                  className="size-16"
+                  fill="none"
+                  viewBox="0 0 64 64"
+                >
+                  <circle
+                    cx="32"
+                    cy="32"
+                    r="25"
+                    stroke="#dbeafe"
+                    strokeWidth="8"
+                  />
+                  <path
+                    d="M32 7a25 25 0 1 1-20.5 39.3"
+                    stroke="#3b82f6"
+                    strokeLinecap="round"
+                    strokeWidth="8"
+                  />
+                </svg>
+              )
+            },
+            {
+              value: "3",
+              label: "Weak topics",
+              helper: "Focus areas to improve",
+              accent: "text-road",
+              background: "bg-blue-100",
+              icon: (
+                <svg
+                  aria-hidden="true"
+                  className="size-10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="4"
+                  viewBox="0 0 48 48"
+                >
+                  <path d="M12 34V24" />
+                  <path d="M24 34V14" />
+                  <path d="M36 34V20" />
+                </svg>
+              )
+            },
+            {
+              value: "12",
+              label: "Recent answers",
+              helper: "Keep the momentum",
+              accent: "text-emerald-600",
+              background: "bg-emerald-100",
+              icon: (
+                <svg
+                  aria-hidden="true"
+                  className="size-10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="3"
+                  viewBox="0 0 48 48"
+                >
+                  <circle cx="24" cy="24" r="15" />
+                  <path d="M24 14v11l8 5" />
+                </svg>
+              )
+            }
+          ].map((stat) => (
+            <div
+              className="flex items-center gap-4 border-slate-200 p-4 sm:border-r sm:last:border-r-0 lg:px-6"
+              key={stat.label}
+            >
+              <div
+                className={`flex size-20 shrink-0 items-center justify-center rounded-full ${stat.background} ${stat.accent}`}
+              >
+                {stat.icon}
+              </div>
+              <div>
+                <p className="text-2xl font-bold leading-none text-ink">
+                  {stat.value}
+                </p>
+                <p className="mt-2 text-sm font-bold text-ink">{stat.label}</p>
+                <p className="mt-1 text-xs text-slate-500">{stat.helper}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -240,26 +386,25 @@ export default function Home() {
       <Navbar />
 
       <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-16">
-          <div className="flex flex-col justify-center">
+        <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8 lg:py-16">
+          <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Private hire preparation, made clearer
+              TfL private hire and PCO preparation
             </p>
             <h1 className="mt-4 text-4xl font-bold leading-tight text-ink sm:text-5xl lg:text-6xl">
-              Build confidence for your TfL private hire journey
+              Pass your TfL private hire preparation with more confidence
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg">
-              TopoPass helps private-hire learners prepare with structured
-              topographical practice, SERU-style learning, mock exams, mistake
-              review, and progress tracking. Start practising straight away,
-              then sign in when you want to save your progress across devices.
+              TopoPass helps you prepare for topographical map questions,
+              SERU-style learning, mock exams, and progress review in one clear
+              place. Practise step by step, track weak areas, and build
+              confidence before test day.
             </p>
             <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              One account. Two clear learning areas: Topographical Skills and
-              SERU Preparation.
+              Prepare smarter for your TfL private hire journey.
             </p>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
               <TrackedLink
                 className="inline-flex min-h-12 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 eventName="home_cta_click"
@@ -274,7 +419,7 @@ export default function Home() {
                 eventProperties={{ cta: "seru-practice", location: "hero" }}
                 href="/practice/seru"
               >
-                Explore SERU preparation
+                Try SERU practice
               </TrackedLink>
               <TrackedLink
                 className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
@@ -292,7 +437,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex items-center">
+          <div className="mx-auto mt-10 max-w-6xl">
             <HeroLearningVisual />
           </div>
         </div>
@@ -302,15 +447,15 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Two preparation areas
+              Practice coverage
             </p>
             <h2 className="mt-2 text-3xl font-bold text-ink">
-              Topographical skills now, SERU support as a separate category
+              What TopoPass helps you prepare for
             </h2>
             <p className="mt-3 text-base leading-8 text-slate-700">
-              Topographical practice stays focused on maps, routes, and London
-              locations. SERU-style preparation is positioned separately so
-              SERU questions do not get mixed into topographical mocks.
+              Build the practical skills and knowledge areas that private hire
+              learners need to revise, then use review tools to focus your next
+              session.
             </p>
           </div>
 
@@ -323,9 +468,6 @@ export default function Home() {
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <h3 className="text-xl font-bold text-ink">{area.title}</h3>
-                  <span className="w-fit rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold uppercase text-road">
-                    {area.label}
-                  </span>
                 </div>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   {area.description}
@@ -340,14 +482,14 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              How TopoPass works
+              How it works
             </p>
             <h2 className="mt-2 text-3xl font-bold text-ink">
-              Practise, review, repeat
+              Practise, review, build confidence
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              The learning loop is intentionally simple: answer questions, read
-              feedback, review weak areas, and return to focused practice.
+              The learning loop is simple: start with focused questions, learn
+              from feedback, and keep practising the areas that need attention.
             </p>
           </div>
 
@@ -355,12 +497,17 @@ export default function Home() {
             {howItWorks.map((step, index) => (
               <li
                 className="rounded-lg border border-slate-200 bg-slate-50 p-5"
-                key={step}
+                key={step.title}
               >
                 <p className="flex size-10 items-center justify-center rounded-md bg-road text-sm font-bold text-white">
                   {index + 1}
                 </p>
-                <h3 className="mt-5 text-lg font-bold text-ink">{step}</h3>
+                <h3 className="mt-5 text-lg font-bold text-ink">
+                  {step.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {step.description}
+                </p>
               </li>
             ))}
           </ol>
@@ -372,65 +519,27 @@ export default function Home() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wide text-road">
-                Practice modes and mock exams
+                Why learners use TopoPass
               </p>
               <h2 className="mt-2 text-3xl font-bold text-ink">
-                Choose the next session by learning area
+                Focused practice without the clutter
               </h2>
             </div>
             <p className="max-w-xl text-sm leading-6 text-slate-600">
-              Topographical mock exams stay topographical-only. SERU-style
-              practice is available as a separate starter question set.
+              Practise quickly, review clearly, and keep track of what to work
+              on next.
             </p>
           </div>
 
           <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {practiceRoutes.map((route) => (
-              <TrackedLink
-                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-road/50 hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-                eventName="practice_start_click"
-                eventProperties={{ location: "home", practice: route.title }}
-                href={route.href}
-                key={route.href}
-              >
-                <h3 className="text-lg font-bold text-ink">{route.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {route.description}
-                </p>
-                <p className="mt-4 text-sm font-bold text-road">
-                  Open practice
-                </p>
-              </TrackedLink>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-slate-200 bg-white px-6 py-14 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Progress tracking
-            </p>
-            <h2 className="mt-2 text-3xl font-bold text-ink">
-              Review what you answered and what to practise next
-            </h2>
-            <p className="mt-3 text-base leading-8 text-slate-700">
-              Progress, mistakes, and review history keep topographical and
-              SERU preparation understandable without forcing learners to sign
-              in before trying the app.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {progressFeatures.map((feature) => (
+            {benefitCards.map((benefit) => (
               <article
-                className="rounded-lg border border-slate-200 bg-slate-50 p-5"
-                key={feature.title}
+                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+                key={benefit.title}
               >
-                <h3 className="text-lg font-bold text-ink">{feature.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  {feature.description}
+                <h3 className="text-lg font-bold text-ink">{benefit.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {benefit.description}
                 </p>
               </article>
             ))}
@@ -438,68 +547,18 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-slate-200 bg-white px-6 py-14 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 rounded-lg border border-blue-200 bg-blue-50 p-6 shadow-sm md:flex-row md:items-center md:justify-between">
-          <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Pricing preview
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-ink">
-              Free practice now. Plus plans will come later.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-700">
-              Payments are not live yet. The future account plan is intended to
-              include both Topographical and SERU preparation areas under the
-              same learner login.
-            </p>
-          </div>
-          <TrackedLink
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-            eventName="pricing_cta_click"
-            eventProperties={{ cta: "pricing-preview", location: "home" }}
-            href="/pricing"
-          >
-            View pricing preview
-          </TrackedLink>
-        </div>
-      </section>
-
-      <section className="border-b border-slate-200 bg-surface px-6 py-14 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-2">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Independent preparation
-            </p>
-            <h2 className="mt-2 text-3xl font-bold text-ink">
-              Built around repeatable private hire study
-            </h2>
-          </div>
-          <ul className="grid gap-3">
-            {learnerReasons.map((reason) => (
-              <li
-                className="rounded-md border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-700"
-                key={reason}
-              >
-                {reason}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
       <section className="bg-ink px-6 py-14 text-white lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="max-w-2xl">
             <p className="text-sm font-bold uppercase tracking-wide text-blue-200">
-              Start local-first
+              Start today
             </p>
             <h2 className="mt-3 text-3xl font-bold">
-              Practise now, sign in when you want account progress
+              Start preparing today
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-200">
-              Signed-out learners can complete practice and topographical mock
-              exams with browser-local progress. Signed-in learners can save new
-              progress to their account when Supabase is configured.
+              Practise topographical skills, improve SERU-style knowledge, and
+              build confidence for your TfL private hire journey.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -509,15 +568,15 @@ export default function Home() {
               eventProperties={{ cta: "start-practice", location: "footer" }}
               href="/practice"
             >
-              Start practice
+              Start practising
             </TrackedLink>
             <TrackedLink
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/40 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              eventName="signup_intent_click"
-              eventProperties={{ cta: "create-account", location: "footer" }}
-              href="/auth/sign-up"
+              eventName="home_cta_click"
+              eventProperties={{ cta: "seru-practice", location: "footer" }}
+              href="/practice/seru"
             >
-              Create account
+              Try SERU practice
             </TrackedLink>
           </div>
         </div>
