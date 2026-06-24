@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="/srv/topopass"
+DATA_DIR="/srv/topopass-data"
+LOG_FILE="/var/log/topopass-user-data.log"
+
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "Preparing ${project_name} ${environment} host"
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y \
+  ca-certificates \
+  curl \
+  gnupg \
+  lsb-release \
+  unzip \
+  jq \
+  awscli
+
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+chmod a+r /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+  > /etc/apt/sources.list.d/docker.list
+
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+systemctl enable docker
+systemctl start docker
+
+if id ubuntu >/dev/null 2>&1; then
+  usermod -aG docker ubuntu
+fi
+
+if id ec2-user >/dev/null 2>&1; then
+  usermod -aG docker ec2-user
+fi
+
+mkdir -p "$APP_DIR" "$DATA_DIR/postgres" "$DATA_DIR/storage" "$DATA_DIR/backups"
+
+DATA_DEVICE=""
+for candidate in $(lsblk -ndo NAME,TYPE,MOUNTPOINT | awk '$2 == "disk" && $3 == "" { print "/dev/" $1 }'); do
+  if [ "$candidate" != "$(findmnt -n -o SOURCE / | sed 's/[0-9]*$//')" ]; then
+    DATA_DEVICE="$candidate"
+    break
+  fi
+done
+
+if [ -n "$DATA_DEVICE" ]; then
+  if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
+    mkfs.ext4 -F "$DATA_DEVICE"
+  fi
+
+  DATA_UUID="$(blkid -s UUID -o value "$DATA_DEVICE")"
+
+  if ! grep -q "$DATA_UUID" /etc/fstab; then
+    echo "UUID=$DATA_UUID $DATA_DIR ext4 defaults,nofail 0 2" >> /etc/fstab
+  fi
+
+  mount -a
+  mkdir -p "$DATA_DIR/postgres" "$DATA_DIR/storage" "$DATA_DIR/backups"
+else
+  echo "No unmounted data disk found. Persistent data directories remain on root volume until the EBS attachment is visible."
+fi
+
+cat > "$APP_DIR/README-host.md" <<HOSTREADME
+# TopoPass Production Host
+
+This host is prepared by Terraform for the low-cost EC2 Docker deployment.
+
+Prepared directories:
+
+- /srv/topopass
+- /srv/topopass-data
+- /srv/topopass-data/postgres
+- /srv/topopass-data/storage
+- /srv/topopass-data/backups
+
+Runtime secrets are intentionally not written by Terraform.
+
+Create production env files manually on the host or later through SSM Parameter
+Store. Do not commit env files to Git and do not put app secrets in Terraform
+state.
+
+ECR registry hint:
+
+- ${ecr_registry}
+
+Production containers are not started automatically by user_data.
+HOSTREADME
+
+if ! command -v amazon-cloudwatch-agent-ctl >/dev/null 2>&1; then
+  CW_DEB="/tmp/amazon-cloudwatch-agent.deb"
+  curl -fsSL "https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb" -o "$CW_DEB"
+  dpkg -i "$CW_DEB" || apt-get install -f -y
+fi
+
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/topopass-user-data.log",
+            "log_group_name": "/topopass/production/user-data",
+            "log_stream_name": "{instance_id}",
+            "retention_in_days": 14
+          },
+          {
+            "file_path": "/var/log/syslog",
+            "log_group_name": "/topopass/production/syslog",
+            "log_stream_name": "{instance_id}",
+            "retention_in_days": 14
+          }
+        ]
+      }
+    }
+  },
+  "metrics": {
+    "metrics_collected": {
+      "disk": {
+        "measurement": ["used_percent"],
+        "resources": ["*"]
+      },
+      "mem": {
+        "measurement": ["mem_used_percent"]
+      }
+    }
+  }
+}
+CWCONFIG
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+  -a fetch-config \
+  -m ec2 \
+  -s \
+  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json || true
+
+echo "TopoPass host preparation complete"

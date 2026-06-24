@@ -1,0 +1,31 @@
+project_name = "topopass"
+environment  = "production"
+aws_region   = "eu-west-2"
+
+instance_type       = "t3.small"
+root_volume_size_gb = 30
+data_volume_size_gb = 50
+
+allowed_http_cidr_blocks = ["0.0.0.0/0"]
+
+# SSH is disabled by default. Prefer SSM Session Manager.
+ssh_cidr_blocks = []
+key_name        = null
+
+# Optional existing network. Leave null to create a small VPC and public subnet.
+vpc_id           = null
+public_subnet_id = null
+
+# Optional ECR registry hint used by host documentation only.
+ecr_registry = "123456789012.dkr.ecr.eu-west-2.amazonaws.com"
+
+# Optional Route 53 record.
+create_route53_record = false
+route53_zone_name     = "topopass.co.uk"
+domain_name           = "topopass.co.uk"
+
+backup_retention_days = 7
+
+common_tags = {
+  Owner = "topopass"
+}

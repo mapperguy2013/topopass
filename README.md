@@ -205,6 +205,24 @@ Step 42 ECR publishing status:
 | EC2 deployment logic | Not added |
 | ECS/Fargate/ALB/Terraform | Not added |
 
+Stage 43 Terraform EC2 infrastructure status:
+
+| Item | Status |
+| --- | --- |
+| `infra/terraform` root module | Added |
+| EC2 production host | Configured |
+| Docker and Docker Compose install through `user_data` | Configured |
+| Persistent EBS data volume | Configured |
+| Elastic IP | Configured |
+| HTTP/HTTPS security group | Configured |
+| SSH disabled by default | Configured |
+| SSM Session Manager IAM access | Configured |
+| ECR pull IAM permission | Configured |
+| CloudWatch agent/log support | Configured |
+| Optional Route 53 A record | Configured |
+| Daily EBS snapshots | Configured |
+| App secrets in Terraform | Excluded |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -214,12 +232,13 @@ Phase 4 checklist:
 - [x] Root Docker Compose app runner exists.
 - [x] Docker helper scripts exist.
 - [x] GitHub Actions ECR image publishing workflow exists.
+- [x] Terraform EC2 production target exists.
 - [x] Managed Supabase remains the planned backend for this stage.
 - [x] No real secrets are committed.
 - [ ] Create the private ECR repository in AWS.
 - [ ] Create the GitHub OIDC IAM role in AWS.
 - [ ] Add required GitHub Actions variables/secrets.
-- [ ] EC2 host provisioning.
+- [ ] Run Terraform plan/apply for EC2 host provisioning.
 - [ ] Caddy or Nginx reverse proxy.
 - [ ] Route 53 DNS.
 - [ ] CloudWatch log/metric wiring.
@@ -232,6 +251,7 @@ Phase 4 guardrails:
 - Do not bake secrets into Docker images.
 - Do not expose Supabase service-role keys to browser code.
 - Keep runtime env files only on EC2 or in GitHub Secrets where required.
+- Keep app secrets out of Terraform variables and Terraform state.
 - Keep signed-out local progress working.
 - Keep signed-in managed Supabase progress working.
 - Keep Topographical and SERU product areas separate.
@@ -276,6 +296,27 @@ Step 42 GitHub Actions/ECR setup:
 - Do not add AWS access keys to the repository.
 - Do not add deployment credentials, service-role keys, or `.env` files.
 - Step 42 only publishes the image to ECR. EC2 deployment remains a later stage.
+
+Stage 43 Terraform EC2 setup:
+
+- Terraform lives in `infra/terraform`.
+- Copy `infra/terraform/terraform.tfvars.example` to an untracked
+  `infra/terraform/terraform.tfvars`.
+- Run:
+
+```powershell
+terraform -chdir=infra/terraform init
+terraform -chdir=infra/terraform fmt -recursive
+terraform -chdir=infra/terraform validate
+terraform -chdir=infra/terraform plan
+```
+
+- Use SSM Session Manager for access by default.
+- SSH ingress is disabled unless `ssh_cidr_blocks` is set.
+- Runtime `.env.production` values are created manually on the EC2 host or
+  supplied later through SSM Parameter Store.
+- Do not put Supabase secrets, database passwords, JWT secrets, API keys, or app
+  env values in Terraform.
 
 ## Current Feature Set
 
@@ -1400,6 +1441,55 @@ git diff --cached --check
 Result for this Step 42 pass: lint, tests, production build, and cached diff
 checks passed locally. ECR push must be tested from GitHub after the required
 repository variables and OIDC role are configured.
+
+## Stage 43 Terraform EC2 Infrastructure QA Status
+
+Stage 43 provisions the EC2 production deployment target using Terraform. It
+creates the EC2 host, persistent EBS data volume, Elastic IP, optional DNS
+record, SSM access, ECR pull permissions, CloudWatch support, and snapshot
+backups. Secrets are intentionally excluded from Terraform.
+
+Infrastructure result:
+
+- `infra/terraform` contains the production EC2 root module.
+- Terraform can create a small VPC and public subnet by default, or use an
+  existing VPC/subnet when supplied.
+- The EC2 host uses Ubuntu 24.04 LTS.
+- `user_data` installs Docker, Docker Compose plugin, AWS CLI, and CloudWatch
+  agent support.
+- `user_data` prepares `/srv/topopass`, `/srv/topopass-data`,
+  `/srv/topopass-data/postgres`, `/srv/topopass-data/storage`, and
+  `/srv/topopass-data/backups`.
+- The persistent data EBS volume is mounted at `/srv/topopass-data` and added
+  to `/etc/fstab`.
+- SSH ingress is disabled by default; SSM Session Manager is preferred.
+- Daily EBS snapshots are configured through Data Lifecycle Manager.
+- Production containers are not started automatically.
+
+Security result:
+
+- No `.env.production`, Supabase secrets, database passwords, JWT secrets, API
+  keys, or application secrets were added.
+- `terraform.tfvars.example` contains placeholders only.
+- `.gitignore` excludes Terraform state and real `.tfvars` files.
+- Terraform state is intended to remain free of application secrets.
+
+Verification commands for this pass:
+
+```powershell
+terraform -chdir=infra/terraform fmt -recursive
+terraform -chdir=infra/terraform validate
+terraform -chdir=infra/terraform plan
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 43 pass: Terraform format, init, and validate passed.
+Terraform plan was attempted but could not complete because the local AWS
+credentials returned `InvalidClientTokenId`; rerun plan with valid AWS
+credentials before apply. App lint, tests, and production build passed.
 
 ## Beta Launch Checklist
 
