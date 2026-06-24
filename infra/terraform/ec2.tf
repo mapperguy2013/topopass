@@ -28,9 +28,10 @@ resource "aws_instance" "app" {
   associate_public_ip_address = true
 
   user_data = templatefile("${path.module}/user_data.sh.tftpl", {
-    project_name = var.project_name
-    environment  = var.environment
-    ecr_registry = var.ecr_registry
+    project_name                   = var.project_name
+    environment                    = var.environment
+    ecr_registry                   = var.ecr_registry
+    cloudwatch_agent_config_base64 = base64encode(file("${path.module}/../monitoring/cloudwatch-agent.json"))
   })
 
   root_block_device {

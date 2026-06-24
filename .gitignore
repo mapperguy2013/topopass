@@ -18,6 +18,15 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# backup outputs
+*.dump
+*.dump.gz
+*.sql.gz
+*.backup
+*.tar
+*.tar.gz
+infra/backups/output/
+
 # local env files
 .env
 .env*.local

@@ -1,0 +1,9 @@
+[Unit]
+Description=TopoPass Postgres logical backup
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+Environment=BACKUP_ENV_FILE=/opt/topopass/.env.production
+ExecStart=/srv/topopass/infra/backups/backup-postgres.sh

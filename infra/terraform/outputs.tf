@@ -58,6 +58,21 @@ output "data_volume_id" {
   value       = aws_ebs_volume.data.id
 }
 
+output "backup_bucket_name" {
+  description = "S3 bucket for logical Postgres and optional storage backups."
+  value       = aws_s3_bucket.backups.bucket
+}
+
+output "backup_s3_prefix" {
+  description = "S3 prefix scoped to the EC2 instance role backup permissions."
+  value       = local.backup_s3_prefix
+}
+
+output "alerts_topic_arn" {
+  description = "SNS topic ARN for production CloudWatch alarms."
+  value       = aws_sns_topic.alerts.arn
+}
+
 output "ssh_info" {
   description = "SSH status. SSH ingress is disabled unless ssh_cidr_blocks is set."
   value       = length(var.ssh_cidr_blocks) == 0 ? "SSH disabled. Use SSM Session Manager." : "SSH enabled only for configured ssh_cidr_blocks. Prefer SSM Session Manager."

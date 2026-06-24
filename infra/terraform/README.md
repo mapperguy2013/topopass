@@ -18,6 +18,8 @@ It creates:
 - optional Route 53 A records for the apex app domain, `www`, and the Supabase
   gateway subdomain
 - daily EBS snapshot policy
+- private S3 backup bucket for logical Postgres/storage backups
+- CloudWatch log groups, alarms, and SNS alert topic
 
 It does not deploy the application containers and it does not write production
 secrets.
@@ -51,7 +53,9 @@ Important defaults:
 - data volume: `50` GB
 - SSH ingress: disabled
 - Route 53 record: disabled
-- snapshot retention: `7` daily snapshots
+- snapshot retention: `14` daily snapshots by default
+- S3 logical backup retention: `14` days by default
+- CloudWatch log retention: `14` days by default
 
 Optional domain defaults:
 
@@ -78,6 +82,53 @@ terraform -chdir=infra/terraform plan
 terraform -chdir=infra/terraform apply
 ```
 
+## Monitoring And Alerts
+
+Terraform creates:
+
+- CloudWatch log groups for user-data, syslog, backups, Caddy, and deployment
+  logs.
+- CloudWatch alarms for EC2 status check failure, high CPU, high memory, and
+  high disk usage.
+- An SNS topic for alerts.
+- Optional email subscription when `alert_email` is set.
+
+The email subscription must be confirmed from the inbox before alerts are
+delivered.
+
+The CloudWatch agent config lives at `infra/monitoring/cloudwatch-agent.json`.
+`user_data` installs the agent and writes that config to the host.
+
+## S3 Logical Backups
+
+Terraform creates a private S3 backup bucket with:
+
+- public access blocked
+- AES256 server-side encryption
+- versioning enabled
+- lifecycle expiration for backup objects
+- EC2 role permissions scoped to the configured backup bucket and prefix
+
+Useful variables:
+
+- `backup_bucket_name`: optional explicit bucket name
+- `backup_s3_prefix`: default `topopass`
+- `backup_retention_days`: default `14`
+- `backup_transition_to_ia_days`: default `0`
+
+Set these host-side values in `/opt/topopass/.env.production` after apply:
+
+```bash
+BACKUP_S3_BUCKET=$(terraform -chdir=infra/terraform output -raw backup_bucket_name)
+BACKUP_S3_PREFIX=$(terraform -chdir=infra/terraform output -raw backup_s3_prefix)
+POSTGRES_CONTAINER_NAME=supabase-db
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=replace-on-host-only
+```
+
+Do not put database passwords in Terraform variables or state.
+
 ## Connect With SSM
 
 Use the `ssm_session_command` output:
@@ -98,6 +149,9 @@ disabled unless there is a clear operational need.
 - `/srv/topopass-data/postgres`
 - `/srv/topopass-data/storage`
 - `/srv/topopass-data/backups`
+- `/srv/topopass/logs/caddy`
+- `/srv/topopass/logs/deploy`
+- `/var/log/topopass/backups`
 
 The persistent EBS data volume is mounted at `/srv/topopass-data` and added to
 `/etc/fstab` so it survives reboots.
@@ -163,6 +217,26 @@ After DNS has propagated and Caddy has started:
 - Browser console should show no mixed-content errors.
 - Public scans should show only ports `80` and `443` open.
 - Caddy logs should show successful certificate issuance.
+
+## Enable Backup Timer
+
+After the repository is present on the host and the host-only env file exists:
+
+```bash
+sudo cp /srv/topopass/infra/backups/systemd/topopass-postgres-backup.service /etc/systemd/system/
+sudo cp /srv/topopass/infra/backups/systemd/topopass-postgres-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now topopass-postgres-backup.timer
+systemctl list-timers topopass-postgres-backup.timer
+```
+
+Run a manual dry run first:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh --dry-run
+```
+
+Restore instructions are in `infra/backups/restore-postgres.md`.
 
 ## Destroy Infrastructure
 

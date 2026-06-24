@@ -15,6 +15,7 @@ Current production direction:
 - Caddy terminates TLS and reverse proxies to internal containers.
 - Route 53 will point the production domain at the EC2 instance.
 - CloudWatch will collect host/app logs and basic metrics.
+- S3 stores logical Postgres backups and optional Supabase Storage archives.
 
 Topographical Skills and SERU-style preparation remain separate product areas.
 Signed-out local progress and signed-in Supabase progress must keep working.
@@ -42,6 +43,7 @@ flowchart LR
   end
 
   ec2 --> cloudwatch[CloudWatch logs and metrics]
+  ec2 --> s3[S3 backup bucket<br/>pg_dump and storage archives]
   ec2 --> ebs[EBS root/data volume]
   actions --> ec2
 ```
@@ -54,7 +56,8 @@ debugging, and operational complexity low:
 - It avoids ECS/Fargate load balancer and service overhead while traffic is
   small.
 - Docker Compose is easy to inspect and recover during beta.
-- Managed Supabase already handles database availability, backups, and RLS.
+- Logical Postgres backups and restore drills are now part of the deployment
+  plan before self-hosted Supabase goes live.
 - The app can still use ECR, Route 53, IAM, and CloudWatch from day one.
 - The deployment pattern can be migrated later without changing the product
   surface.
@@ -84,13 +87,12 @@ When traffic or reliability requirements increase:
 - **ECR:** private image registry for the TopoPass Next.js image.
 - **Route 53:** hosted zone and DNS records for the production domain.
 - **CloudWatch:** logs, host metrics, alarms, and optional dashboards.
+- **SNS:** optional email alerts for CloudWatch alarms.
 - **IAM:** least-privilege permissions for image pulls, deployment, logs, and
   host operations.
 - **EBS:** durable EC2 root volume and optional extra host data volume for
   Docker state/logs.
-- **S3 backups if needed:** optional storage for deployment artifacts, exported
-  app data, or additional backups. Managed Supabase remains responsible for
-  primary database backups at this stage.
+- **S3 backups:** logical Postgres dumps and optional storage archives.
 
 ## Production Docker Support
 
@@ -147,6 +149,9 @@ runs:
 - App env file is `/opt/topopass/env/app.env`.
 - App exposes only internal Docker network port `3000`.
 - App health check stays internal.
+- Caddy health check validates the active Caddyfile.
+- When the Supabase Postgres container is added, give it a local-only
+  `pg_isready` health check. Do not publish Postgres publicly.
 
 The self-hosted Supabase stack should join the same `topopass-prod` Docker
 network and expose Kong internally as `kong:8000`. Postgres, Studio, Kong, and
@@ -212,6 +217,8 @@ HTTPS verification:
 - No service-role key in Docker build arguments.
 - Do not print passwords, cookies, tokens, Supabase service keys, or raw learner
   data to logs.
+- Do not upload raw `.env` files to S3. If an operational secret backup is ever
+  required, encrypt it separately and document the restore path.
 - Public Supabase URL and anon key can be visible to browsers, but all private
   data must remain protected by Supabase RLS and server-side role checks.
 
@@ -236,6 +243,70 @@ Recommended network exposure:
 - App container: internal Docker network port 3000 only.
 - Supabase gateway: internal Docker network port 8000 only.
 - Postgres and Supabase Studio: no public host ports.
+- Backup logs: `/var/log/topopass/backups/*.log`.
+- Caddy logs: `/srv/topopass/logs/caddy/*.log`.
+
+## Monitoring
+
+Step 45 adds lean CloudWatch monitoring:
+
+- `app/api/health/route.ts` returns a minimal JSON status for app health.
+- Production Compose checks `http://127.0.0.1:3000/api/health`.
+- Caddy validates its Caddyfile as a lightweight container health check.
+- `infra/monitoring/cloudwatch-agent.json` collects disk, memory, CPU, swap,
+  backup logs, Caddy logs, deploy logs, syslog, and user-data logs where paths
+  exist.
+- Terraform creates CloudWatch log groups with explicit retention to control
+  cost.
+- Terraform creates CloudWatch alarms for EC2 status check failure, high CPU,
+  high memory, and high disk usage.
+- Terraform creates an SNS alert topic and optional email subscription through
+  `alert_email`.
+
+## Backups
+
+Step 45 adds logical backup scripts under `infra/backups`.
+
+Primary database backup:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh
+```
+
+Dry run:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh --dry-run
+```
+
+Verify latest backup:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/verify-latest-backup.sh
+```
+
+Optional storage backup:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-storage.sh
+```
+
+Database backups do not restore deleted Supabase Storage objects. Use the
+storage backup separately once Supabase Storage is mounted locally.
+
+Enable the daily Postgres backup timer manually:
+
+```bash
+sudo cp /srv/topopass/infra/backups/systemd/topopass-postgres-backup.service /etc/systemd/system/
+sudo cp /srv/topopass/infra/backups/systemd/topopass-postgres-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now topopass-postgres-backup.timer
+```
+
+Restore documentation lives at `infra/backups/restore-postgres.md`.
+
+EBS snapshots remain useful for host/volume recovery, but logical `pg_dump`
+backups are the main database restore path.
 
 ## GitHub Actions Plan
 
@@ -293,6 +364,11 @@ The workflow does not deploy to EC2. A later deployment workflow should:
 - [ ] Restrict SSH to owner IP or replace with SSM.
 - [ ] Configure Route 53 DNS.
 - [ ] Configure CloudWatch logs and alarms.
+- [ ] Confirm SNS email subscription if `alert_email` is set.
+- [ ] Run a manual Postgres backup dry run.
+- [ ] Run one real Postgres backup and verify it in S3.
+- [ ] Enable the systemd timer after the backup succeeds.
+- [ ] Run a restore drill before launch.
 - [ ] Confirm signed-out local progress works after deployment.
 - [ ] Confirm signed-in Supabase progress works after deployment.
 - [ ] Confirm Topographical and SERU areas remain separate.

@@ -44,7 +44,14 @@ if id ec2-user >/dev/null 2>&1; then
   usermod -aG docker ec2-user
 fi
 
-mkdir -p "$APP_DIR" "$DATA_DIR/postgres" "$DATA_DIR/storage" "$DATA_DIR/backups"
+mkdir -p \
+  "$APP_DIR" \
+  "$APP_DIR/logs/caddy" \
+  "$APP_DIR/logs/deploy" \
+  "$DATA_DIR/postgres" \
+  "$DATA_DIR/storage" \
+  "$DATA_DIR/backups" \
+  /var/log/topopass/backups
 
 DATA_DEVICE=""
 for candidate in $(lsblk -ndo NAME,TYPE,MOUNTPOINT | awk '$2 == "disk" && $3 == "" { print "/dev/" $1 }'); do
@@ -83,6 +90,9 @@ Prepared directories:
 - /srv/topopass-data/postgres
 - /srv/topopass-data/storage
 - /srv/topopass-data/backups
+- /srv/topopass/logs/caddy
+- /srv/topopass/logs/deploy
+- /var/log/topopass/backups
 
 Runtime secrets are intentionally not written by Terraform.
 
@@ -104,41 +114,7 @@ if ! command -v amazon-cloudwatch-agent-ctl >/dev/null 2>&1; then
 fi
 
 mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
-cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
-{
-  "logs": {
-    "logs_collected": {
-      "files": {
-        "collect_list": [
-          {
-            "file_path": "/var/log/topopass-user-data.log",
-            "log_group_name": "/topopass/production/user-data",
-            "log_stream_name": "{instance_id}",
-            "retention_in_days": 14
-          },
-          {
-            "file_path": "/var/log/syslog",
-            "log_group_name": "/topopass/production/syslog",
-            "log_stream_name": "{instance_id}",
-            "retention_in_days": 14
-          }
-        ]
-      }
-    }
-  },
-  "metrics": {
-    "metrics_collected": {
-      "disk": {
-        "measurement": ["used_percent"],
-        "resources": ["*"]
-      },
-      "mem": {
-        "measurement": ["mem_used_percent"]
-      }
-    }
-  }
-}
-CWCONFIG
+printf '%s' '${cloudwatch_agent_config_base64}' | base64 -d > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
   -a fetch-config \

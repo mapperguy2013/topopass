@@ -240,6 +240,26 @@ Step 44 domain/HTTPS reverse proxy status:
 | Route 53 apex/www/Supabase records | Configured in Terraform, disabled by default |
 | Real domain/secrets/certificates | Not added |
 
+Step 45 monitoring/backups status:
+
+| Item | Status |
+| --- | --- |
+| Public app health endpoint | Added at `/api/health` |
+| Production app healthcheck | Uses `/api/health` |
+| Caddy healthcheck | Added |
+| CloudWatch agent config | Added at `infra/monitoring/cloudwatch-agent.json` |
+| CloudWatch log retention | Configured in Terraform |
+| CloudWatch alarms | EC2 status, CPU, memory, disk |
+| SNS alert topic | Configured, optional email subscription |
+| S3 backup bucket | Configured with public block, encryption, versioning, lifecycle |
+| EC2 backup IAM policy | Scoped to backup bucket/prefix |
+| Postgres backup script | Added at `infra/backups/backup-postgres.sh` |
+| Optional storage backup script | Added |
+| Backup verification script | Added |
+| Systemd backup timer examples | Added |
+| Restore runbook | Added |
+| Real secrets/backups | Not added |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -253,6 +273,10 @@ Phase 4 checklist:
 - [x] No real secrets are committed.
 - [x] Caddy reverse proxy template exists.
 - [x] Route 53 apex, www, and Supabase gateway records are configurable.
+- [x] Health endpoint exists for app/container checks.
+- [x] S3 logical backup bucket is defined in Terraform.
+- [x] Backup scripts and restore runbook exist.
+- [x] CloudWatch log groups, alarms, and SNS alerting are defined.
 - [ ] Create the private ECR repository in AWS.
 - [ ] Create the GitHub OIDC IAM role in AWS.
 - [ ] Add required GitHub Actions variables/secrets.
@@ -262,7 +286,11 @@ Phase 4 checklist:
 - [ ] Add or attach the self-hosted Supabase stack to the `topopass-prod`
       Docker network.
 - [ ] Verify Route 53 DNS points to the EC2 Elastic IP.
-- [ ] CloudWatch log/metric wiring.
+- [ ] Confirm CloudWatch agent logs and metrics arrive after deployment.
+- [ ] Confirm SNS email subscription if `alert_email` is set.
+- [ ] Run and verify first Postgres backup.
+- [ ] Enable the Postgres backup systemd timer.
+- [ ] Complete a restore drill before launch.
 - [ ] Production smoke test on the deployed host.
 
 Phase 4 guardrails:
@@ -273,6 +301,8 @@ Phase 4 guardrails:
 - Do not expose Supabase service-role keys to browser code.
 - Keep runtime env files only on EC2 or in GitHub Secrets where required.
 - Keep app secrets out of Terraform variables and Terraform state.
+- Keep database passwords in host-only env files.
+- Do not upload raw `.env` files to S3.
 - Keep signed-out local progress working.
 - Keep signed-in Supabase progress working.
 - Keep Topographical and SERU product areas separate.
@@ -378,6 +408,42 @@ ADDITIONAL_REDIRECT_URLS=https://example.com,https://www.example.com
   - Browser console has no mixed-content errors.
   - Public ports `3000`, `5432`, `8000`, and Studio ports are not exposed.
   - Caddy logs show successful certificate issuance.
+
+Step 45 monitoring and backups:
+
+- App health endpoint: `/api/health`
+- CloudWatch agent config: `infra/monitoring/cloudwatch-agent.json`
+- Backup scripts: `infra/backups/`
+- Restore runbook: `infra/backups/restore-postgres.md`
+- Daily Postgres timer examples:
+  - `infra/backups/systemd/topopass-postgres-backup.service`
+  - `infra/backups/systemd/topopass-postgres-backup.timer`
+- Terraform provisions a private encrypted S3 backup bucket with lifecycle
+  retention and EC2 instance-role access scoped to the backup prefix.
+- Terraform provisions CloudWatch log groups, status/CPU/memory/disk alarms,
+  and an SNS alert topic.
+- Required host-only backup env values:
+
+```bash
+BACKUP_S3_BUCKET=your-topopass-backup-bucket
+BACKUP_S3_PREFIX=topopass
+POSTGRES_CONTAINER_NAME=supabase-db
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=replace-on-host-only
+BACKUP_WORK_DIR=/srv/topopass-data/backups/postgres
+BACKUP_LOG_DIR=/var/log/topopass/backups
+STORAGE_SOURCE_DIR=/srv/topopass-data/storage
+MAX_BACKUP_AGE_HOURS=36
+```
+
+- Manual backup checks:
+  - Run `backup-postgres.sh --dry-run`.
+  - Run one real `backup-postgres.sh`.
+  - Run `verify-latest-backup.sh`.
+  - Confirm the S3 object is non-empty.
+  - Enable the systemd timer only after a manual backup succeeds.
+  - Run a restore drill using `restore-postgres.md`.
 
 ## Current Feature Set
 
@@ -1610,6 +1676,77 @@ Manual production checks still required after AWS/DNS deployment:
 - Confirm public scans do not show app, Postgres, Kong, or Studio ports.
 - Confirm Caddy logs show successful certificate issuance.
 - Confirm auth/progress features use the HTTPS Supabase gateway URL.
+
+## Step 45 Monitoring And Backups QA Status
+
+Step 45 adds lean production monitoring and backup support for the EC2 Docker
+Compose deployment. It does not add a paid observability platform, commit real
+secrets, upload env files, or change learner/admin product behaviour.
+
+Health and Compose result:
+
+- `/api/health` returns minimal JSON with `status`, `service`, and `timestamp`.
+- The endpoint does not read or expose env vars, Supabase keys, database
+  connection strings, or secrets.
+- Production Compose checks the app through `/api/health`.
+- Caddy has a lightweight config validation healthcheck.
+- Caddy logs are written to a host-mounted log directory for CloudWatch pickup.
+- Postgres health should use `pg_isready` when the self-hosted Supabase
+  Postgres service is added; no public Postgres port is introduced here.
+
+Backup result:
+
+- `infra/backups/backup-postgres.sh` creates custom-format `pg_dump -Fc`
+  archives from the running Postgres container and uploads them to S3.
+- `infra/backups/backup-storage.sh` optionally archives mounted Supabase
+  Storage objects separately.
+- `infra/backups/verify-latest-backup.sh` checks that the latest S3 backup
+  exists, is non-empty, and is recent.
+- `infra/backups/systemd/` contains a daily 02:30 Postgres backup service and
+  timer example, not enabled automatically.
+- `infra/backups/restore-postgres.md` documents listing, downloading,
+  restoring, verifying, and drilling a restore.
+
+Terraform monitoring result:
+
+- S3 backup bucket includes public access block, server-side encryption,
+  versioning, lifecycle expiration, and EC2 role access scoped to the backup
+  prefix.
+- CloudWatch log groups have explicit retention.
+- CloudWatch alarms cover EC2 status checks, CPU, memory, and disk.
+- SNS alert topic is created with optional `alert_email` subscription.
+- DLM EBS snapshots remain configured, but logical Postgres backups are the
+  primary restore path.
+
+Security result:
+
+- No `.env`, real S3 bucket, database password, Supabase service-role key, AWS
+  credential, backup file, dump file, tar archive, or certificate was added.
+- Backup scripts do not echo `POSTGRES_PASSWORD`.
+- `.gitignore` excludes local backup artifacts such as `.dump`, `.sql.gz`,
+  `.tar`, and `.tar.gz` files.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+docker compose -f deploy/docker-compose.prod.yml config
+terraform -chdir=infra/terraform fmt -recursive
+terraform -chdir=infra/terraform validate
+git diff --cached --check
+```
+
+Manual production checks still required:
+
+- Confirm CloudWatch agent starts on the EC2 host.
+- Confirm log groups receive user-data, syslog, backup, Caddy, and deploy logs.
+- Confirm SNS email subscription if `alert_email` is set.
+- Run `backup-postgres.sh --dry-run`.
+- Run one real backup and verify it with `verify-latest-backup.sh`.
+- Enable the systemd timer after a successful manual backup.
+- Run a restore drill before launch.
 
 ## Beta Launch Checklist
 

@@ -101,9 +101,63 @@ variable "supabase_subdomain" {
 }
 
 variable "backup_retention_days" {
-  description = "Number of daily EBS snapshots to retain."
+  description = "Number of daily EBS snapshots and S3 backup objects to retain."
   type        = number
-  default     = 7
+  default     = 14
+}
+
+variable "backup_bucket_name" {
+  description = "Optional S3 bucket name for logical Postgres/storage backups. Leave empty for a generated name."
+  type        = string
+  default     = ""
+}
+
+variable "backup_s3_prefix" {
+  description = "S3 key prefix used by backup scripts and IAM scope."
+  type        = string
+  default     = "topopass"
+}
+
+variable "backup_transition_to_ia_days" {
+  description = "Optional number of days before S3 backups transition to Standard-IA. Set 0 to disable transition."
+  type        = number
+  default     = 0
+}
+
+variable "cloudwatch_log_retention_days" {
+  description = "Retention in days for TopoPass CloudWatch log groups."
+  type        = number
+  default     = 14
+}
+
+variable "alert_email" {
+  description = "Optional email address subscribed to production SNS alerts. Leave empty to create the topic without email subscription."
+  type        = string
+  default     = ""
+}
+
+variable "cpu_alarm_threshold_percent" {
+  description = "Average CPU percentage that triggers the high CPU alarm."
+  type        = number
+  default     = 80
+}
+
+variable "memory_alarm_threshold_percent" {
+  description = "Memory used percentage that triggers the high memory alarm."
+  type        = number
+  default     = 85
+}
+
+variable "disk_alarm_threshold_percent" {
+  description = "Disk used percentage that triggers the high disk alarm."
+  type        = number
+  default     = 85
+}
+
+variable "alarm_evaluation_periods" {
+  description = "Number of consecutive periods required before production alarms fire."
+  type        = number
+  default     = 2
 }
 
 variable "common_tags" {

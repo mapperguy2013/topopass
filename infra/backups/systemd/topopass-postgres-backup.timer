@@ -1,0 +1,10 @@
+[Unit]
+Description=Run TopoPass Postgres logical backup daily
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+Unit=topopass-postgres-backup.service
+
+[Install]
+WantedBy=timers.target
