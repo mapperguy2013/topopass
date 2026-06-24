@@ -94,6 +94,118 @@ When traffic or reliability requirements increase:
   Docker state/logs.
 - **S3 backups:** logical Postgres dumps and optional storage archives.
 
+## Brand-new AWS account setup before deployment
+
+Complete these account-level steps before running `terraform apply` or starting
+the GitHub Actions ECR publish workflow.
+
+Account security:
+
+- Enable MFA on the AWS root user.
+- Configure alternate account contacts.
+- Enable IAM access to billing if non-root users need billing visibility.
+- Create an IAM admin user or admin role for day-to-day setup.
+- Do not create or commit long-lived AWS access keys in this repository.
+
+Region and CLI:
+
+- Use `eu-west-2` as the default production region unless there is a specific
+  deployment reason to change it.
+- Configure AWS CLI credentials outside the repository.
+- Verify local access with `aws sts get-caller-identity`.
+- Verify the account ID before creating ECR, Route 53, or Terraform resources.
+
+Budget alerts:
+
+- Create or review account-level budget alerts before infrastructure is applied.
+- Terraform also defines a monthly budget, SNS budget alerts, and an optional
+  Lambda kill switch. AWS Budgets can notify late, so this is a safety net and
+  not a hard spending cap.
+- Keep `enable_budget_kill_switch = false` until SNS email confirmation and the
+  Lambda path are tested.
+
+GitHub OIDC role:
+
+- Add the GitHub OIDC provider in AWS if it does not already exist.
+- Create a role for `.github/workflows/docker-publish-ecr.yml`.
+- Restrict the trust policy to the TopoPass repository and intended branch or
+  workflow.
+- Grant only the ECR permissions needed to authenticate and push image tags.
+- Add these GitHub repository variables:
+  - `AWS_REGION`
+  - `AWS_ROLE_TO_ASSUME`
+  - `ECR_REPOSITORY`
+- Add optional build-time values only if needed:
+  - `NEXT_PUBLIC_SITE_URL`
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as a GitHub secret, never a service-role
+    key.
+
+ECR:
+
+- Create the private ECR repository before running the image publish workflow.
+- Confirm the repository name matches `ECR_REPOSITORY`.
+- Confirm EC2 has instance-role permission to pull from ECR.
+
+Secrets Manager and runtime secrets:
+
+- Steps 41-45 do not currently wire application runtime to AWS Secrets Manager.
+  Runtime env files are expected to be created manually on EC2.
+- If Secrets Manager is used before launch, keep values out of Terraform state
+  and sync them to host env files without printing them.
+- Recommended secret names, if adopted later:
+  - `topopass/production/app-env`
+  - `topopass/production/proxy-env`
+  - `topopass/production/supabase-env`
+  - `topopass/production/postgres-password`
+  - `topopass/production/jwt-secret`
+  - `topopass/production/backup-env`
+
+Terraform backend and state:
+
+- Decide the state backend before first apply.
+- For shared or safer production use, create an S3 state bucket with encryption,
+  versioning, public access block, and a DynamoDB lock table.
+- If local state is used for an early single-operator beta, keep it outside Git
+  and back it up securely.
+- Do not put Supabase secrets, database passwords, JWT secrets, API keys, admin
+  credentials, or `.env` content in Terraform variables, outputs, or state.
+
+Domain and Route 53:
+
+- Buy or transfer the domain.
+- Create the Route 53 hosted zone.
+- Point the registrar nameservers at Route 53.
+- Wait for nameserver propagation.
+- Set `domain_name`, and either `route53_zone_name` or `route53_zone_id`.
+- Keep `enable_route53_records = false` until the hosted zone is verified.
+
+EC2 access:
+
+- Prefer SSM Session Manager for host access.
+- Confirm the operator role can start an SSM session.
+- Create an EC2 key pair only if temporary SSH is required.
+- Keep `ssh_cidr_blocks = []` by default.
+- If SSH is enabled temporarily, restrict it to the owner IP only.
+
+Security group rules:
+
+- Public ingress should be ports `80` and `443` only.
+- SSH should remain disabled unless explicitly needed.
+- Postgres must not be public.
+- Supabase Studio must not be public.
+- The app port `3000` must stay internal behind Caddy in production Compose.
+- The Supabase gateway should be reached through Caddy over HTTPS, not by
+  publishing internal Docker ports directly.
+
+Backup plan:
+
+- Review the Terraform S3 backup bucket and DLM snapshot settings.
+- Confirm the backup retention window.
+- Run one Postgres backup dry run after deployment.
+- Run one real backup and verify it exists in S3.
+- Complete a restore test before launch.
+
 ## Production Docker Support
 
 This stage adds:
