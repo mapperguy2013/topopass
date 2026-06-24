@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
+import { buildPageMetadata } from "@/lib/seo";
+
+export const metadata = buildPageMetadata({
+  title: "Resources",
+  description:
+    "Find TopoPass resources for TfL topographical map practice, SERU-style preparation support, and private hire learning links.",
+  path: "/resources"
+});
 
 type Resource = {
   title: string;
@@ -56,6 +64,27 @@ const resourceCategories: {
         title: "Road restrictions and common route issues",
         description:
           "Learn about bridges, tunnels, restricted roads, and route planning considerations."
+      }
+    ]
+  },
+  {
+    title: "SERU preparation support",
+    resources: [
+      {
+        title: "SERU-style study themes",
+        description:
+          "Review safety, equality, accessibility, customer service, safeguarding, licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness.",
+        href: "/learn#seru-preparation"
+      },
+      {
+        title: "Separate from topographical mocks",
+        description:
+          "SERU-style private hire knowledge is planned as a separate TopoPass learning area, not mixed into topographical map mock exams."
+      },
+      {
+        title: "Original learning content",
+        description:
+          "TopoPass SERU support should use original public guidance-style learning content and must not copy official TfL questions."
       }
     ]
   },
@@ -156,11 +185,16 @@ export default function ResourcesPage() {
             Resource hub
           </p>
           <h1 className="mt-3 max-w-4xl text-4xl font-bold text-ink sm:text-5xl">
-            TfL Topographical Test Resources
+            TfL topographical and SERU-style preparation resources
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700">
             A curated set of useful links and study materials for private hire
-            applicants preparing for the TfL Topographical Skills Assessment.
+            applicants preparing for topographical map skills and SERU-style
+            private hire knowledge.
+          </p>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            TopoPass is an independent learning tool and is not affiliated with
+            or endorsed by Transport for London.
           </p>
         </div>
       </section>

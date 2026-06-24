@@ -1,7 +1,15 @@
-import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { QuestionCard } from "@/components/questions/QuestionCard";
+import { buildPageMetadata } from "@/lib/seo";
+import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 import { PracticeTopicSelectorShell } from "@/src/components/practice/PracticeTopicSelector";
+
+export const metadata = buildPageMetadata({
+  title: "Practice",
+  description:
+    "Practise TfL-style topographical knowledge, map-click location questions, and route drawing with local or account-backed progress.",
+  path: "/practice"
+});
 
 const practiceOptions = [
   {
@@ -29,6 +37,12 @@ const practiceOptions = [
     title: "Points of Interest",
     description:
       "Review important London stations, hospitals, landmarks, and public places.",
+    available: false
+  },
+  {
+    title: "SERU Preparation",
+    description:
+      "A separate SERU-style practice mode is planned for safety, equality, accessibility, customer service, and regulatory awareness.",
     available: false
   }
 ] as const;
@@ -72,13 +86,18 @@ export default function PracticePage() {
 
               if (option.available) {
                 return (
-                  <Link
+                  <TrackedLink
                     className="rounded-lg border border-road/40 bg-blue-50/40 p-4 transition hover:border-road hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                    eventName="practice_start_click"
+                    eventProperties={{
+                      location: "practice-index",
+                      practice: option.title
+                    }}
                     href={option.href}
                     key={option.title}
                   >
                     {content}
-                  </Link>
+                  </TrackedLink>
                 );
               }
 

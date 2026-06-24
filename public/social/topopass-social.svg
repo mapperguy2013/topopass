@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">TopoPass private hire learner practice</title>
+  <desc id="desc">A clean route-learning illustration for TopoPass.</desc>
+  <rect width="1200" height="630" fill="#f7f9fc"/>
+  <rect x="68" y="64" width="1064" height="502" rx="24" fill="#ffffff" stroke="#d8e1ee" stroke-width="4"/>
+  <path d="M120 162 H1090 M120 252 H1090 M120 342 H1090 M120 432 H1090" stroke="#d8e1ee" stroke-width="4"/>
+  <path d="M236 110 V520 M424 110 V520 M612 110 V520 M800 110 V520 M988 110 V520" stroke="#d8e1ee" stroke-width="4"/>
+  <path d="M172 456 C260 382 348 398 438 320 C528 242 632 246 724 292 C820 340 904 282 1018 178" fill="none" stroke="#1d4ed8" stroke-width="18" stroke-linecap="round"/>
+  <path d="M172 456 C260 382 348 398 438 320 C528 242 632 246 724 292 C820 340 904 282 1018 178" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-dasharray="16 20"/>
+  <circle cx="172" cy="456" r="25" fill="#0f172a"/>
+  <circle cx="1018" cy="178" r="25" fill="#f97316"/>
+  <rect x="162" y="116" width="392" height="96" rx="12" fill="#0f172a"/>
+  <text x="190" y="158" fill="#ffffff" font-family="Arial, sans-serif" font-size="26" font-weight="700">TopoPass</text>
+  <text x="190" y="190" fill="#dbeafe" font-family="Arial, sans-serif" font-size="20">Topographical + SERU-style practice</text>
+  <rect x="690" y="414" width="330" height="84" rx="12" fill="#eff6ff" stroke="#bfdbfe" stroke-width="3"/>
+  <text x="716" y="450" fill="#0f172a" font-family="Arial, sans-serif" font-size="22" font-weight="700">Track weak topics</text>
+  <text x="716" y="480" fill="#475569" font-family="Arial, sans-serif" font-size="18">Map skills, routes, and knowledge</text>
+</svg>

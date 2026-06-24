@@ -2,6 +2,7 @@ import {
   getMockExamQuestionTotal,
   type MockExamConfig
 } from "@/lib/mockExamConfig";
+import { trackEvent } from "@/lib/analytics/events";
 
 type MockExamIntroProps = {
   config: MockExamConfig;
@@ -10,6 +11,13 @@ type MockExamIntroProps = {
 
 export function MockExamIntro({ config, onStart }: MockExamIntroProps) {
   const totalQuestions = getMockExamQuestionTotal(config);
+  function handleStart() {
+    trackEvent("mock_exam_start_click", {
+      mode: "selected",
+      location: "mock-intro"
+    });
+    onStart();
+  }
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -89,7 +97,7 @@ export function MockExamIntro({ config, onStart }: MockExamIntroProps) {
         </p>
         <button
           className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-road px-6 py-3 text-base font-bold text-white hover:bg-blue-700 sm:w-auto"
-          onClick={onStart}
+          onClick={handleStart}
           type="button"
         >
           Start mock exam

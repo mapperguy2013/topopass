@@ -41,6 +41,12 @@ public home page, improves `/progress` and `/account` dashboards with topic
 strengths/weaknesses and recent activity, and makes mock exam results/review
 clearer with pass/fail guidance and topic breakdowns.
 
+Stage 39 is complete as a launch-readiness and conversion polish pass. It
+refreshes the public homepage with a cleaner learning-map visual, positions
+SERU-style practice as a separate future product area, improves the pricing
+placeholder, adds public-page SEO/social metadata, and introduces a no-op typed
+analytics event structure for future provider wiring.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -116,9 +122,13 @@ Phase 3 guardrails:
 
 - Landing page with private-hire applicant positioning
 - Modern public home page with learner CTAs, local-first/account progress copy,
-  and map-learning promotion
+  map-learning promotion, SERU preparation positioning, and a clean custom hero
+  visual
 - Expanded Learn section with structured learning paths
+- SERU preparation support copy as a separate planned learning area, not mixed
+  into topographical mock exams
 - Practice selector for knowledge, map-click, and route drawing
+- Disabled SERU practice placeholder for the future separate SERU mode
 - Topic-based practice selector with counts per topic and weak-topic guidance
 - Knowledge practice with local saved attempts
 - Map-click practice with selected marker feedback and distance scoring
@@ -158,6 +168,13 @@ Phase 3 guardrails:
   advance with Next instead of requiring a separate Submit step
 - Mock exam results show pass/fail feedback, score clarity, question-type and
   topic breakdowns, next-step guidance, and improved answer review metadata
+- Public-page SEO/Open Graph/Twitter metadata for Home, Learn, Practice, Mock
+  Test, Progress, Resources, and Pricing
+- Static social preview asset under `public/social/topopass-social.svg`
+- Typed no-op analytics event helper for public CTA, practice-start,
+  mock-start, pricing, and sign-up intent events
+- Pricing preview page with Free, Plus, and SERU support placeholders; no
+  payment provider is connected
 - OpenStreetMap-derived local route map
 - Cleanroom generated driver-training atlas review asset, not yet integrated
 - Supabase package/helper/schema foundation for Phase 3
@@ -183,8 +200,8 @@ Phase 3 guardrails:
 | Route | Current purpose |
 | --- | --- |
 | `/` | Public TopoPass homepage |
-| `/learn` | Expanded learning hub and study path |
-| `/practice` | Practice-area selector |
+| `/learn` | Expanded learning hub, study path, and SERU preparation support notes |
+| `/practice` | Practice-area selector with future SERU placeholder kept separate |
 | `/practice/knowledge` | Knowledge question practice |
 | `/practice/map-click` | Map-click location practice |
 | `/practice/routes` | Route-drawing practice |
@@ -209,8 +226,8 @@ Phase 3 guardrails:
 | `/admin/questions/[id]` | Question inspection and manager routing |
 | `/admin/questions/import-export` | Admin-only question_bank_items JSON import/export |
 | `/admin/questions/routes` | Compatibility route for route question manager |
-| `/resources` | Useful official and study resource links |
-| `/pricing` | Honest pre-launch pricing status |
+| `/resources` | Useful official, map-study, SERU-style support, and study resource links |
+| `/pricing` | Honest pre-launch pricing preview; payments are not implemented |
 | `/results/[attemptId]` | Legacy result route; database loading is not active yet |
 | `/review` | Full answer review history with filters for subject, type, result, source, date, and sort order |
 
@@ -490,12 +507,14 @@ Copy `.env.example` to `.env.local` and provide values as needed:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 NEXT_PUBLIC_MAPBOX_TOKEN=
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 `NEXT_PUBLIC_MAPBOX_TOKEN` is required for current Mapbox map-click pages.
 Supabase public URL and anon key are optional until Phase 3 stages wire database
 behaviour into learner flows. They are required to use account pages and
-account-backed progress saving. Do not commit real secrets.
+account-backed progress saving. `NEXT_PUBLIC_SITE_URL` is optional and is used
+to resolve canonical/social preview metadata. Do not commit real secrets.
 
 ## Map Assets
 
@@ -715,6 +734,67 @@ git diff --cached --check
 ```
 
 Result for this Stage 38 pass: lint, tests, and production build passed.
+
+## Stage 39 Launch Readiness And Conversion QA Status
+
+Stage 39 improves public launch readiness without adding payments, schema
+migrations, a SERU exam engine, or a third-party analytics provider.
+
+Public UX result:
+
+- The home page now has a clearer conversion hero for TfL private hire learners,
+  with CTAs for free practice, topographical mock exams, and account creation.
+- The previous map screenshot-style hero has been replaced by a lightweight
+  custom learning-map visual built in React/SVG/CSS.
+- Home sections now cover topographical map skills, SERU preparation support,
+  mock exams, progress tracking, how TopoPass works, why learners use it,
+  pricing preview, and a final CTA.
+- Public copy confirms TopoPass is independent and not affiliated with or
+  endorsed by Transport for London.
+
+SERU positioning result:
+
+- SERU is presented as a separate product area/category for future
+  SERU-style practice.
+- SERU copy covers safety, equality, accessibility, customer service,
+  safeguarding, licensing rules, driver responsibilities, complaints, lost
+  property, and regulatory awareness.
+- Current topographical mock exams remain topographical-only; SERU questions are
+  not mixed into the existing mock exam engine.
+- Recommended future Stage 40 is a separate SERU question bank, SERU practice
+  mode, SERU mock exam, and exam-family-separated progress sections.
+
+Pricing and launch result:
+
+- `/pricing` now shows Free, Plus, and SERU support placeholder tiers.
+- Paid plans are marked as coming later, and payment processing is not live.
+- Pricing copy states that one account is planned to eventually include both
+  Topographical and SERU preparation support.
+- No Stripe or other payment provider was added.
+
+SEO, social, and analytics result:
+
+- Home, Learn, Practice, Mock Test, Progress, Resources, and Pricing now export
+  page-specific metadata using the shared metadata helper.
+- A lightweight social preview SVG exists at
+  `public/social/topopass-social.svg`.
+- `lib/analytics/events.ts` defines typed event names and property sanitisation
+  for CTA, practice-start, mock-start, pricing, and sign-up intent events.
+- Analytics is a safe no-op unless a provider is deliberately connected later.
+- Analytics sanitisation removes sensitive property keys such as email,
+  password, token, session, user, answer, cookie, payload, and raw payload
+  fields.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 39 pass: lint, tests, and production build passed.
 
 ## Phase 3 Manual QA Checklist
 
@@ -962,6 +1042,61 @@ Result for this Stage 38 pass: lint, tests, and production build passed.
   correctness, topic, difficulty, score, and explanation.
 - Confirm old/incomplete review metadata shows a fallback instead of crashing.
 
+## Stage 39 Manual QA Checklist
+
+### Homepage and conversion
+
+- Open `/` on desktop and mobile width.
+- Confirm the hero copy mentions map practice, SERU-style learning, mocks, and
+  progress.
+- Confirm the custom learning-map visual renders cleanly and replaces the old
+  screenshot/map-preview hero.
+- Use Start free practice, Take a mock exam, Create account, and View pricing
+  preview CTAs.
+- Confirm no admin-only publishing, import/export, draft, archived, or database
+  table details appear on the public home page.
+- Confirm the independent/non-affiliation disclaimer is visible.
+
+### SERU positioning
+
+- Open `/learn#seru-preparation`.
+- Confirm SERU is described as a separate preparation support area.
+- Confirm SERU topics include safety, equality, accessibility, customer
+  service, safeguarding, licensing rules, driver responsibilities, complaints,
+  lost property, and regulatory awareness.
+- Confirm current topographical mock exams do not include a SERU mode.
+- Confirm `/practice` only shows SERU as a coming-soon placeholder, not as an
+  active topographical question set.
+
+### Pricing preview
+
+- Open `/pricing` on desktop and mobile width.
+- Confirm Free, Plus, and SERU support placeholder tiers stack cleanly.
+- Confirm payment is clearly marked as not live.
+- Confirm one account is described as planned for both Topographical and SERU
+  preparation.
+- Confirm no payment form, checkout, Stripe redirect, or subscription logic is
+  present.
+
+### SEO, social, and analytics
+
+- Inspect Home, Learn, Practice, Mock Test, Progress, Resources, and Pricing
+  metadata in the browser or built output.
+- Confirm `public/social/topopass-social.svg` is reachable.
+- Click home/pricing/practice/mock CTAs and confirm no console errors.
+- Confirm analytics remains no-op unless a provider is deliberately attached.
+- Confirm analytics does not send emails, learner answers, tokens, raw payloads,
+  cookies, passwords, or Supabase user objects.
+
+### Regression checks
+
+- Start signed-out practice and confirm local progress still saves.
+- Complete a signed-out topographical mock exam and confirm review still works.
+- Sign in, complete a practice answer, and confirm account-backed progress still
+  works with Supabase configured.
+- Visit `/admin` signed out and as a learner to confirm admin protection remains
+  unchanged.
+
 ## Current Limitations
 
 - Learner accounts are optional; signed-in completions save to Supabase, but
@@ -978,6 +1113,9 @@ Result for this Stage 38 pass: lint, tests, and production build passed.
 - A full multi-step editorial approval workflow is not implemented yet; current
   production review is admin-managed draft, publish, and archive.
 - Payment and subscription logic is not implemented.
+- SERU practice and SERU mock exams are not implemented yet; Stage 39 only
+  prepares product positioning and safe placeholders.
+- Analytics is structured and typed, but no third-party provider is connected.
 - External production observability services are not implemented; logging is
   currently local/server-console only.
 - Route scoring still needs calibration against more reviewed real-world

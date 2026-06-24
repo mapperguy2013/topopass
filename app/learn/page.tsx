@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/layout/AppShell";
+import { buildPageMetadata } from "@/lib/seo";
 import {
   gettingStartedTips,
   learningPathSteps,
@@ -9,12 +10,20 @@ import {
   type LearnSkillType
 } from "@/lib/learnContent";
 
+export const metadata = buildPageMetadata({
+  title: "Learn Topographical Skills And SERU Support",
+  description:
+    "Learn London map skills, route planning, topographical knowledge, mistake review, and SERU-style private hire preparation support.",
+  path: "/learn"
+});
+
 const badgeStyles: Record<LearnSkillType, string> = {
   Knowledge: "border-emerald-200 bg-emerald-50 text-emerald-900",
   "Map Skills": "border-blue-200 bg-blue-50 text-blue-950",
   "Route Planning": "border-amber-200 bg-amber-50 text-amber-950",
   "Mock Exam": "border-purple-200 bg-purple-50 text-purple-950",
-  Review: "border-rose-200 bg-rose-50 text-rose-950"
+  Review: "border-rose-200 bg-rose-50 text-rose-950",
+  SERU: "border-orange-200 bg-orange-50 text-orange-950"
 };
 
 function SkillBadge({ type }: { type: LearnSkillType }) {
@@ -59,12 +68,14 @@ export default function LearnPage() {
             Learning hub
           </p>
           <h2 className="mt-2 max-w-4xl text-2xl font-bold text-ink sm:text-3xl">
-            Build London private hire route and map confidence step by step
+            Build London private hire map confidence and SERU-style knowledge
+            step by step
           </h2>
           <p className="mt-4 max-w-4xl text-base leading-7 text-slate-700">
             Use this section to connect the app&apos;s learning tools: Learn
             explains the skill, Practice builds accuracy, Mock Exam tests mixed
-            performance, and Progress shows what to retry next.
+            topographical performance, and Progress shows what to retry next.
+            SERU preparation support is presented as a separate learning area.
           </p>
 
           <div className="mt-6 grid gap-3 md:grid-cols-2">

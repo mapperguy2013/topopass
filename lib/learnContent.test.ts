@@ -67,6 +67,7 @@ test("learn sections cover the required guidance areas", () => {
       "route-planning-map-skills",
       "map-click-skills",
       "knowledge-skills",
+      "seru-preparation",
       "mock-exam-preparation",
       "mistake-review"
     ]

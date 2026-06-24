@@ -3,7 +3,8 @@ export type LearnSkillType =
   | "Map Skills"
   | "Route Planning"
   | "Mock Exam"
-  | "Review";
+  | "Review"
+  | "SERU";
 
 export type LessonCard = {
   id: string;
@@ -38,7 +39,8 @@ export const learnSkillTypes: LearnSkillType[] = [
   "Map Skills",
   "Route Planning",
   "Mock Exam",
-  "Review"
+  "Review",
+  "SERU"
 ];
 
 export const validLearnHrefs = [
@@ -49,7 +51,8 @@ export const validLearnHrefs = [
   "/practice/routes",
   "/mock-test",
   "/progress",
-  "/progress/mistakes"
+  "/progress/mistakes",
+  "/learn#seru-preparation"
 ] as const;
 
 export const gettingStartedTips = [
@@ -172,6 +175,15 @@ export const lessonCards: LessonCard[] = [
     skillType: "Review",
     href: "/progress",
     actionLabel: "View progress"
+  },
+  {
+    id: "seru-preparation-support",
+    title: "SERU preparation support",
+    description:
+      "Understand the SERU-style themes TopoPass will support separately from topographical mock exams, including safety, equality, accessibility, and driver responsibilities.",
+    skillType: "SERU",
+    href: "/learn#seru-preparation",
+    actionLabel: "Read SERU notes"
   }
 ];
 
@@ -215,6 +227,14 @@ export const mistakeReviewTips = [
   "Mark reviewed mistakes only when you understand what to do differently next time."
 ] as const;
 
+export const seruPreparationTips = [
+  "Treat SERU-style practice as a separate learning area from topographical map and route exams.",
+  "Build confidence with safety, equality, accessibility, customer service, and safeguarding themes.",
+  "Review licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness as practical decisions.",
+  "Use original learning content and public guidance-style knowledge rather than copied official questions.",
+  "When SERU practice is added, keep progress separated from map skills while using the same learner account."
+] as const;
+
 export const learnSections: LearnSection[] = [
   {
     id: "route-planning-map-skills",
@@ -248,6 +268,17 @@ export const learnSections: LearnSection[] = [
     href: "/practice/knowledge",
     actionLabel: "Start knowledge practice",
     guidance: [...knowledgeTips]
+  },
+  {
+    id: "seru-preparation",
+    eyebrow: "Separate knowledge area",
+    title: "SERU Preparation Support",
+    description:
+      "SERU-style preparation is a separate product area for private hire knowledge confidence. It is planned to cover safety, equality, accessibility, customer service, safeguarding, licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness without mixing those questions into topographical mock exams.",
+    skillType: "SERU",
+    href: "/learn#seru-preparation",
+    actionLabel: "Read SERU guidance",
+    guidance: [...seruPreparationTips]
   },
   {
     id: "mock-exam-preparation",

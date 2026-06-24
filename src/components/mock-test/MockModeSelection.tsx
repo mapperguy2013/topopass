@@ -1,4 +1,5 @@
 import { DEFAULT_MOCK_EXAM_CONFIG, getMockExamQuestionTotal } from "@/lib/mockExamConfig";
+import { trackEvent } from "@/lib/analytics/events";
 import {
   MOCK_EXAM_MODES,
   type MockExamModeId
@@ -11,6 +12,13 @@ type MockModeSelectionProps = {
 
 export function MockModeSelection({ message, onStart }: MockModeSelectionProps) {
   const totalQuestions = getMockExamQuestionTotal(DEFAULT_MOCK_EXAM_CONFIG);
+  function handleStart(mode: MockExamModeId) {
+    trackEvent("mock_exam_start_click", {
+      mode,
+      location: "mock-mode-selection"
+    });
+    onStart(mode);
+  }
 
   return (
     <section className="space-y-6">
@@ -89,7 +97,7 @@ export function MockModeSelection({ message, onStart }: MockModeSelectionProps) 
             </ul>
             <button
               className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-bold text-white hover:bg-blue-700 sm:w-auto"
-              onClick={() => onStart(mode.id)}
+              onClick={() => handleStart(mode.id)}
               type="button"
             >
               Start {mode.label}
