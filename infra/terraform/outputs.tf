@@ -19,8 +19,33 @@ output "public_dns" {
 }
 
 output "route53_record_fqdn" {
-  description = "Route 53 record FQDN if created."
+  description = "Apex Route 53 record FQDN if created."
   value       = try(aws_route53_record.app[0].fqdn, null)
+}
+
+output "app_url" {
+  description = "Canonical app URL."
+  value       = local.domain_name == "" ? null : "https://${local.domain_name}"
+}
+
+output "www_url" {
+  description = "WWW URL that should redirect to the canonical app URL."
+  value       = local.domain_name == "" ? null : "https://www.${local.domain_name}"
+}
+
+output "supabase_url" {
+  description = "Public Supabase gateway URL."
+  value       = local.supabase_domain_name == "" ? null : "https://${local.supabase_domain_name}"
+}
+
+output "route53_www_record_fqdn" {
+  description = "WWW Route 53 record FQDN if created."
+  value       = try(aws_route53_record.www[0].fqdn, null)
+}
+
+output "route53_supabase_record_fqdn" {
+  description = "Supabase Route 53 record FQDN if created."
+  value       = try(aws_route53_record.supabase[0].fqdn, null)
 }
 
 output "ssm_session_command" {

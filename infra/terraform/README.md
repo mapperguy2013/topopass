@@ -15,7 +15,8 @@ It creates:
 - IAM role for SSM Session Manager
 - IAM permission to pull from ECR
 - CloudWatch agent/log support
-- optional Route 53 A record
+- optional Route 53 A records for the apex app domain, `www`, and the Supabase
+  gateway subdomain
 - daily EBS snapshot policy
 
 It does not deploy the application containers and it does not write production
@@ -51,6 +52,19 @@ Important defaults:
 - SSH ingress: disabled
 - Route 53 record: disabled
 - snapshot retention: `7` daily snapshots
+
+Optional domain defaults:
+
+- `domain_name = "example.com"`
+- `supabase_subdomain = "supabase"`
+- `enable_route53_records = false`
+
+When `enable_route53_records = true`, Terraform creates A records pointing to
+the Elastic IP for:
+
+- `example.com`
+- `www.example.com`
+- `supabase.example.com`
 
 ## Terraform Commands
 
@@ -96,9 +110,20 @@ example:
 ```bash
 sudo mkdir -p /srv/topopass/env
 sudo nano /srv/topopass/env/app.env
+sudo nano /srv/topopass/env/proxy.env
 ```
 
 Do not put these values in Terraform state. Do not commit them to Git.
+
+`proxy.env` should contain placeholder-derived production values only on the
+host:
+
+```bash
+APP_DOMAIN=example.com
+WWW_DOMAIN=www.example.com
+SUPABASE_DOMAIN=supabase.example.com
+ACME_EMAIL=admin@example.com
+```
 
 ## Deploy With Docker Compose Later
 
@@ -106,18 +131,38 @@ After the host exists and the app image has been pushed to ECR:
 
 1. Connect with SSM.
 2. Authenticate Docker to ECR.
-3. Copy or create a production `docker-compose.yml` under `/srv/topopass`.
+3. Copy or pull the repository under `/srv/topopass`.
 4. Create env files manually on the host.
 5. Run:
 
 ```bash
 cd /srv/topopass
-docker compose pull
-docker compose up -d
-docker compose logs -f
+export TOPOPASS_APP_ENV_FILE=/opt/topopass/env/app.env
+export TOPOPASS_PROXY_ENV_FILE=/opt/topopass/env/proxy.env
+docker compose -f deploy/docker-compose.prod.yml config
+docker compose -f deploy/docker-compose.prod.yml pull
+docker compose -f deploy/docker-compose.prod.yml up -d
+docker compose -f deploy/docker-compose.prod.yml logs -f caddy
 ```
 
 Production containers are not started automatically by Terraform.
+
+The production Compose template publishes only Caddy on ports `80` and `443`.
+The Next.js app stays internal on `app:3000`, and the Supabase gateway is
+expected to be internal on `kong:8000` when the self-hosted Supabase stack is
+added. Do not publish Postgres, Kong, Studio, or app ports directly.
+
+## HTTPS Checks
+
+After DNS has propagated and Caddy has started:
+
+- `http://example.com` should redirect to `https://example.com`.
+- `https://example.com` should load the Next.js app.
+- `https://www.example.com` should redirect to `https://example.com`.
+- `https://supabase.example.com` should reach the Supabase gateway.
+- Browser console should show no mixed-content errors.
+- Public scans should show only ports `80` and `443` open.
+- Caddy logs should show successful certificate issuance.
 
 ## Destroy Infrastructure
 

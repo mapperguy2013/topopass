@@ -75,7 +75,8 @@ and beta-ready information/legal pages.
 
 Phase 4 has started with low-cost AWS deployment preparation. The current
 deployment target is a Dockerised Next.js app on one EC2 instance, pushed via
-future GitHub Actions/ECR and connected to the existing managed Supabase setup.
+GitHub Actions/ECR, exposed through Caddy, and prepared for app plus Supabase
+gateway HTTPS domains.
 No AWS resources are deployed yet.
 
 The app should continue to work without Supabase credentials for current local
@@ -159,11 +160,12 @@ Current target architecture:
 - AWS ECR stores the TopoPass Next.js app image.
 - One EC2 instance runs Docker Compose.
 - The app container runs on internal port `3000`.
-- Caddy or Nginx will later expose only ports `80` and `443`.
+- Caddy exposes only ports `80` and `443`.
 - Route 53 will point the production domain to the EC2 host.
 - CloudWatch will collect logs and basic host/app metrics.
-- Existing managed Supabase remains the backend for auth, progress, admin
-  roles, and question publishing.
+- Self-hosted Supabase gateway routing is prepared through the same reverse
+  proxy. The app logic and signed-out/signed-in progress behaviour are
+  unchanged by the deployment scaffolding.
 
 Stage 40 deployment-prep status:
 
@@ -223,6 +225,21 @@ Stage 43 Terraform EC2 infrastructure status:
 | Daily EBS snapshots | Configured |
 | App secrets in Terraform | Excluded |
 
+Step 44 domain/HTTPS reverse proxy status:
+
+| Item | Status |
+| --- | --- |
+| Caddy production reverse proxy | Added |
+| Caddyfile | Added at `infra/caddy/Caddyfile` |
+| App domain HTTPS route | Configured through `APP_DOMAIN` |
+| WWW redirect | Configured through `WWW_DOMAIN` |
+| Supabase gateway HTTPS route | Configured through `SUPABASE_DOMAIN` |
+| Production Compose public ports | Caddy only on `80` and `443` |
+| App direct public port | Removed from production template |
+| Supabase Studio public exposure | Not added |
+| Route 53 apex/www/Supabase records | Configured in Terraform, disabled by default |
+| Real domain/secrets/certificates | Not added |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -233,14 +250,18 @@ Phase 4 checklist:
 - [x] Docker helper scripts exist.
 - [x] GitHub Actions ECR image publishing workflow exists.
 - [x] Terraform EC2 production target exists.
-- [x] Managed Supabase remains the planned backend for this stage.
 - [x] No real secrets are committed.
+- [x] Caddy reverse proxy template exists.
+- [x] Route 53 apex, www, and Supabase gateway records are configurable.
 - [ ] Create the private ECR repository in AWS.
 - [ ] Create the GitHub OIDC IAM role in AWS.
 - [ ] Add required GitHub Actions variables/secrets.
 - [ ] Run Terraform plan/apply for EC2 host provisioning.
-- [ ] Caddy or Nginx reverse proxy.
-- [ ] Route 53 DNS.
+- [ ] Create production runtime env files on EC2.
+- [ ] Start the production Caddy/App Compose stack on EC2.
+- [ ] Add or attach the self-hosted Supabase stack to the `topopass-prod`
+      Docker network.
+- [ ] Verify Route 53 DNS points to the EC2 Elastic IP.
 - [ ] CloudWatch log/metric wiring.
 - [ ] Production smoke test on the deployed host.
 
@@ -253,7 +274,7 @@ Phase 4 guardrails:
 - Keep runtime env files only on EC2 or in GitHub Secrets where required.
 - Keep app secrets out of Terraform variables and Terraform state.
 - Keep signed-out local progress working.
-- Keep signed-in managed Supabase progress working.
+- Keep signed-in Supabase progress working.
 - Keep Topographical and SERU product areas separate.
 
 Local Docker commands:
@@ -272,10 +293,16 @@ EC2-oriented Docker notes:
 - Create the runtime env file on the server, for example `.env.docker` for the
   root compose file or `/opt/topopass/env/app.env` for the production deploy
   template.
-- Fill the managed Supabase public URL and anon key with real production
-  values on the server only.
-- Run `docker compose up -d --build`.
-- Check logs with `docker compose logs -f topopass-app`.
+- Create `/opt/topopass/env/proxy.env` with `APP_DOMAIN`, `WWW_DOMAIN`,
+  `SUPABASE_DOMAIN`, and `ACME_EMAIL`.
+- Fill Supabase public URL values with the production HTTPS Supabase gateway
+  domain on the server only.
+- Set `TOPOPASS_APP_ENV_FILE=/opt/topopass/env/app.env` and
+  `TOPOPASS_PROXY_ENV_FILE=/opt/topopass/env/proxy.env` on the host.
+- Run `docker compose -f deploy/docker-compose.prod.yml config`.
+- Run `docker compose -f deploy/docker-compose.prod.yml up -d --build`.
+- Check Caddy logs with
+  `docker compose -f deploy/docker-compose.prod.yml logs -f caddy`.
 - Do not commit runtime env files, real secrets, `.next`, `node_modules`, build
   outputs, or Docker local artifacts.
 
@@ -290,7 +317,7 @@ Step 42 GitHub Actions/ECR setup:
   - `ECR_REPOSITORY`
   - optional `NEXT_PUBLIC_SITE_URL`
   - optional `NEXT_PUBLIC_SUPABASE_URL`
-- Add this GitHub repository secret only if the managed Supabase anon key should
+- Add this GitHub repository secret only if the Supabase anon key should
   be supplied during the image build:
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - Do not add AWS access keys to the repository.
@@ -318,6 +345,40 @@ terraform -chdir=infra/terraform plan
 - Do not put Supabase secrets, database passwords, JWT secrets, API keys, or app
   env values in Terraform.
 
+Step 44 domain/HTTPS setup:
+
+- Production Caddy configuration lives in `infra/caddy/Caddyfile`.
+- Production Compose lives in `deploy/docker-compose.prod.yml`.
+- Caddy is the only production service publishing ports `80` and `443`.
+- The app is available only inside the Docker network as `app:3000`.
+- The Supabase gateway is expected inside the Docker network as `kong:8000`
+  when the self-hosted Supabase stack is attached.
+- Supabase Studio, Postgres, app port `3000`, Kong port `8000`, and local
+  Supabase dev ports must not be opened publicly.
+- Configure domain values in untracked runtime env files on the EC2 host:
+
+```bash
+APP_DOMAIN=example.com
+WWW_DOMAIN=www.example.com
+SUPABASE_DOMAIN=supabase.example.com
+ACME_EMAIL=admin@example.com
+NEXT_PUBLIC_SITE_URL=https://example.com
+NEXT_PUBLIC_SUPABASE_URL=https://supabase.example.com
+SUPABASE_PUBLIC_URL=https://supabase.example.com
+API_EXTERNAL_URL=https://supabase.example.com
+SITE_URL=https://example.com
+ADDITIONAL_REDIRECT_URLS=https://example.com,https://www.example.com
+```
+
+- HTTPS manual checks:
+  - `http://example.com` redirects to `https://example.com`.
+  - `https://example.com` loads the Next.js app.
+  - `https://www.example.com` redirects to `https://example.com`.
+  - `https://supabase.example.com` reaches the Supabase gateway.
+  - Browser console has no mixed-content errors.
+  - Public ports `3000`, `5432`, `8000`, and Studio ports are not exposed.
+  - Caddy logs show successful certificate issuance.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
@@ -326,8 +387,8 @@ terraform -chdir=infra/terraform plan
   hero visual
 - High-resolution homepage practice-overview SVG asset under
   `public/images/home-practice-overview-hero.svg`
-- Production Docker support for the Next.js app, with managed Supabase retained
-  as the backend for this deployment phase
+- Production Docker support for the Next.js app, with domain/HTTPS routing
+  prepared for the app and future self-hosted Supabase gateway
 - Root Docker Compose workflow for app-only local/EC2 runs
 - Public Topographical Course and SERU Course information pages for logged-out
   visitors
@@ -1280,9 +1341,10 @@ passed.
 
 ## Phase 4 Stage 40 Low-Cost AWS DevOps Prep QA Status
 
-Phase 4 begins with deployment preparation only. This pass prepares the app for
-a single EC2 Docker deployment while keeping managed Supabase as the backend for
-auth, progress, admin roles, publishing, import/export, and newsletter signup.
+Phase 4 begins with deployment preparation only. This pass prepared the app for
+a single EC2 Docker deployment while preserving the existing Supabase-backed
+auth, progress, admin roles, publishing, import/export, and newsletter signup
+logic.
 
 Deployment prep result:
 
@@ -1294,8 +1356,8 @@ Deployment prep result:
 - `deploy/docker-compose.prod.yml` runs the app service on
   `127.0.0.1:3000` with a restart policy and EC2 runtime env file reference.
 - `docs/aws-ec2-devops-deployment.md` documents GitHub Actions, Docker, ECR,
-  EC2, Docker Compose, managed Supabase, Route 53, Caddy/Nginx, CloudWatch,
-  IAM, EBS, and optional S3 backup considerations.
+  EC2, Docker Compose, Supabase routing, Route 53, Caddy, CloudWatch, IAM, EBS,
+  and optional S3 backup considerations.
 - `next.config.mjs` now enables standalone output for container runtime.
 
 Safety result:
@@ -1339,7 +1401,7 @@ Dockerisation result:
 - `docker-compose.yml` builds and runs the app service as `topopass-app`,
   loads `.env.docker`, maps host port `3000` to the container by default, uses
   `restart: unless-stopped`, and includes a healthcheck.
-- `.env.docker.example` documents placeholder managed Supabase and runtime
+- `.env.docker.example` documents placeholder Supabase and runtime
   values only.
 - `package.json` includes `docker:build`, `docker:up`, `docker:down`, and
   `docker:logs` helper scripts.
@@ -1365,10 +1427,11 @@ EC2 run outline:
 
 1. Copy or pull the repository onto the EC2 host.
 2. Create the runtime env file on the server only.
-3. Fill managed Supabase public URL and anon key on the server.
+3. Fill production Supabase public URL and anon key on the server.
 4. Run `docker compose up -d --build`.
 5. Check logs with `docker compose logs -f topopass-app`.
-6. Put Caddy or Nginx in front of the app in a later stage.
+6. For production domain routing, use `deploy/docker-compose.prod.yml` with
+   the Step 44 Caddy configuration.
 
 Verification commands for this pass:
 
@@ -1417,7 +1480,7 @@ Required GitHub/AWS configuration:
 - `NEXT_PUBLIC_SITE_URL`: optional GitHub repository variable.
 - `NEXT_PUBLIC_SUPABASE_URL`: optional GitHub repository variable.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: optional GitHub repository secret if the
-  image build needs the managed Supabase anon key at build time.
+  image build needs the Supabase anon key at build time.
 
 Verification checklist:
 
@@ -1490,6 +1553,63 @@ Result for this Stage 43 pass: Terraform format, init, and validate passed.
 Terraform plan was attempted but could not complete because the local AWS
 credentials returned `InvalidClientTokenId`; rerun plan with valid AWS
 credentials before apply. App lint, tests, and production build passed.
+
+## Step 44 Domain HTTPS Reverse Proxy QA Status
+
+Step 44 adds production domain routing, HTTPS termination, and reverse proxy
+support with Caddy. It does not deploy AWS resources, commit real domains,
+commit secrets, expose Supabase Studio, or change application features.
+
+Infrastructure result:
+
+- Terraform can create Route 53 A records for the apex app domain, `www`, and
+  the Supabase gateway subdomain when `enable_route53_records = true`.
+- `route53_zone_id` can be supplied directly, or Terraform can look up the
+  hosted zone by `route53_zone_name` or `domain_name`.
+- Outputs include `app_url`, `www_url`, and `supabase_url`.
+- Security group rules still expose only HTTP/HTTPS publicly by default.
+- SSH remains disabled unless `ssh_cidr_blocks` is set.
+
+Docker/Caddy result:
+
+- `infra/caddy/Caddyfile` configures automatic HTTPS, app proxying, `www`
+  redirect, security headers, and Supabase gateway proxying.
+- `deploy/docker-compose.prod.yml` now includes Caddy with persistent
+  `caddy_data` and `caddy_config` volumes.
+- Caddy is the only production service publishing ports `80` and `443`.
+- The Next.js app is internal as `app:3000`.
+- The Supabase gateway route expects an internal `kong:8000` service.
+- Supabase Studio and Postgres are not exposed publicly.
+
+Environment result:
+
+- `.env.production.example` now documents `APP_DOMAIN`, `WWW_DOMAIN`,
+  `SUPABASE_DOMAIN`, `ACME_EMAIL`, `NEXT_PUBLIC_SITE_URL`,
+  `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`,
+  `SITE_URL`, and `ADDITIONAL_REDIRECT_URLS`.
+- All values are placeholders. No real domain, certificate, password, database
+  secret, JWT secret, Supabase service-role key, or private key was added.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+docker compose -f deploy/docker-compose.prod.yml config
+git diff --check
+```
+
+Manual production checks still required after AWS/DNS deployment:
+
+- Confirm Route 53 records point to the EC2 Elastic IP.
+- Confirm `http://example.com` redirects to `https://example.com`.
+- Confirm `https://example.com` loads the Next.js app.
+- Confirm `https://www.example.com` redirects to `https://example.com`.
+- Confirm `https://supabase.example.com` reaches the Supabase gateway.
+- Confirm public scans do not show app, Postgres, Kong, or Studio ports.
+- Confirm Caddy logs show successful certificate issuance.
+- Confirm auth/progress features use the HTTPS Supabase gateway URL.
 
 ## Beta Launch Checklist
 

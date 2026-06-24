@@ -8,10 +8,11 @@ or change learner/admin behaviour.
 Current production direction:
 
 - Next.js app runs in a Docker container.
-- Supabase remains managed Supabase for now.
+- Supabase will be routed through a self-hosted Supabase gateway on the same
+  Docker network when those containers are added.
 - GitHub Actions will later build the Docker image and push it to AWS ECR.
 - One EC2 instance will pull and run the app through Docker Compose.
-- Caddy or Nginx will later terminate TLS and reverse proxy to the app.
+- Caddy terminates TLS and reverse proxies to internal containers.
 - Route 53 will point the production domain at the EC2 instance.
 - CloudWatch will collect host/app logs and basic metrics.
 
@@ -30,14 +31,16 @@ flowchart LR
   route53 --> ec2[EC2 instance]
 
   subgraph host[Single EC2 Docker host]
-    proxy[Caddy or Nginx<br/>future reverse proxy<br/>80/443 public]
+    proxy[Caddy<br/>80/443 public]
     compose[Docker Compose]
-    app[Next.js app container<br/>127.0.0.1:3000]
+    app[Next.js app container<br/>app:3000 internal]
+    kong[Supabase Kong gateway<br/>kong:8000 internal]
     proxy --> app
+    proxy --> kong
     compose --> app
+    compose --> kong
   end
 
-  app --> supabase[Managed Supabase<br/>Auth, Postgres, RLS]
   ec2 --> cloudwatch[CloudWatch logs and metrics]
   ec2 --> ebs[EBS root/data volume]
   actions --> ec2
@@ -68,8 +71,8 @@ When traffic or reliability requirements increase:
   deployments.
 - Keep ECR as the image registry.
 - Keep Route 53 as the public DNS layer.
-- Keep managed Supabase unless there is a specific reason to move database
-  infrastructure.
+- Keep the same Supabase-facing application contract unless there is a specific
+  reason to move database infrastructure later.
 - Add CloudFront/WAF if caching, DDoS protection, or edge controls become
   necessary.
 - Replace SSH deployment with SSM or fully managed GitHub Actions deployment
@@ -113,8 +116,8 @@ For production, GitHub Actions can later supply public build arguments:
 
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_SITE_URL=https://topopass.co.uk \
-  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://example.com \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://supabase.example.com \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key \
   -t "$ECR_IMAGE" .
 ```
@@ -136,16 +139,66 @@ runs:
 
 `deploy/docker-compose.prod.yml` is the stricter production-oriented template:
 
-- image supplied by `TOPOPASS_IMAGE`
-- restart policy: `unless-stopped`
-- env file: `/opt/topopass/env/app.env`
-- app bound to `127.0.0.1:3000:3000`
-- health check against the local app
+- Caddy is the only service publishing host ports `80` and `443`.
+- Caddy loads `infra/caddy/Caddyfile`.
+- Caddy keeps persistent `caddy_data` and `caddy_config` volumes.
+- App image is supplied by `TOPOPASS_IMAGE`.
+- App restart policy is `unless-stopped`.
+- App env file is `/opt/topopass/env/app.env`.
+- App exposes only internal Docker network port `3000`.
+- App health check stays internal.
 
-For EC2, prefer the production-oriented template once Caddy or Nginx is added.
-The app should not be published directly to the public internet after the
-reverse proxy exists. A later Caddy or Nginx container should expose only ports
-80 and 443 and proxy traffic to `127.0.0.1:3000`.
+The self-hosted Supabase stack should join the same `topopass-prod` Docker
+network and expose Kong internally as `kong:8000`. Postgres, Studio, Kong, and
+the app must not publish direct public host ports.
+
+## Domain, HTTPS, And Caddy
+
+`infra/caddy/Caddyfile` defines three public hostnames through runtime
+environment variables:
+
+- `APP_DOMAIN=example.com`
+- `WWW_DOMAIN=www.example.com`
+- `SUPABASE_DOMAIN=supabase.example.com`
+- `ACME_EMAIL=admin@example.com`
+
+Caddy handles automatic HTTPS, redirects `www` to the apex app domain, proxies
+the app domain to `app:3000`, and proxies the Supabase domain to `kong:8000`.
+Supabase Studio is not exposed publicly by default. If Studio access is needed,
+use SSM/SSH tunnelling or add a separately protected option later.
+
+Production env values should be created on the EC2 host only:
+
+```bash
+sudo mkdir -p /opt/topopass/env
+sudo nano /opt/topopass/env/app.env
+sudo nano /opt/topopass/env/proxy.env
+```
+
+Use the placeholders in `.env.production.example` as the shape, but never
+commit the real files.
+
+Production Compose checks:
+
+```bash
+export TOPOPASS_APP_ENV_FILE=/opt/topopass/env/app.env
+export TOPOPASS_PROXY_ENV_FILE=/opt/topopass/env/proxy.env
+docker compose -f deploy/docker-compose.prod.yml config
+docker compose -f deploy/docker-compose.prod.yml up -d --build
+docker compose -f deploy/docker-compose.prod.yml logs -f caddy
+```
+
+HTTPS verification:
+
+- `http://example.com` redirects to `https://example.com`.
+- `https://example.com` loads the Next.js app.
+- `https://www.example.com` redirects to `https://example.com`.
+- `https://supabase.example.com` reaches the Supabase gateway.
+- Browser console has no mixed-content errors.
+- Public ports `3000`, `5432`, `8000`, Supabase Studio ports, and local
+  Supabase dev ports are not exposed.
+- Caddy logs show successful certificate issuance.
+- Next.js auth and progress features use `https://supabase.example.com`.
 
 ## Secret Rules
 
@@ -177,11 +230,12 @@ Recommended host layout:
 
 Recommended network exposure:
 
-- Public: 80 and 443 only after reverse proxy is added.
+- Public: 80 and 443 only through Caddy.
 - Temporary beta SSH: restricted to the owner IP only.
 - Preferred later access: AWS Systems Manager Session Manager.
-- App container: bound to localhost on port 3000.
-- Supabase: managed external service, not self-hosted on EC2.
+- App container: internal Docker network port 3000 only.
+- Supabase gateway: internal Docker network port 8000 only.
+- Postgres and Supabase Studio: no public host ports.
 
 ## GitHub Actions Plan
 
@@ -229,12 +283,12 @@ The workflow does not deploy to EC2. A later deployment workflow should:
 - [ ] Copy `.env.docker.example` to an untracked `.env.docker` for local
       Compose tests.
 - [ ] Create production runtime env file directly on EC2.
-- [ ] Confirm managed Supabase project has correct auth redirect URLs.
+- [ ] Confirm production Supabase auth redirect URLs use the HTTPS app domain.
 - [ ] Confirm Supabase RLS still protects learner data.
 - [ ] Push image to ECR from CI.
 - [ ] Pull image from EC2.
 - [ ] Run Docker Compose on EC2.
-- [ ] Add Caddy or Nginx reverse proxy.
+- [ ] Start Caddy reverse proxy.
 - [ ] Open only ports 80 and 443 publicly.
 - [ ] Restrict SSH to owner IP or replace with SSM.
 - [ ] Configure Route 53 DNS.
@@ -247,8 +301,6 @@ The workflow does not deploy to EC2. A later deployment workflow should:
 
 - Actual AWS deployment.
 - GitHub Actions deployment workflow implementation.
-- Caddy or Nginx configuration.
-- Terraform.
 - Self-hosted Supabase.
 - Payment provider setup.
 - Product feature or UI changes.

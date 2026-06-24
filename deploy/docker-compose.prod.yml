@@ -1,16 +1,34 @@
 services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: topopass-caddy
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    env_file:
+      - ${TOPOPASS_PROXY_ENV_FILE:-../.env.production.example}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ../infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
   app:
     image: ${TOPOPASS_IMAGE:-topopass-web:latest}
     container_name: topopass-web
     restart: unless-stopped
     env_file:
-      - /opt/topopass/env/app.env
+      - ${TOPOPASS_APP_ENV_FILE:-../.env.production.example}
     environment:
       NODE_ENV: production
       PORT: "3000"
       HOSTNAME: 0.0.0.0
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "3000"
     healthcheck:
       test:
         [
@@ -27,3 +45,9 @@ services:
 networks:
   default:
     name: topopass-prod
+
+volumes:
+  caddy_data:
+    name: topopass-caddy-data
+  caddy_config:
+    name: topopass-caddy-config

@@ -7,6 +7,7 @@ root_volume_size_gb = 30
 data_volume_size_gb = 50
 
 allowed_http_cidr_blocks = ["0.0.0.0/0"]
+allowed_http_ipv6_cidr_blocks = []
 
 # SSH is disabled by default. Prefer SSM Session Manager.
 ssh_cidr_blocks = []
@@ -19,10 +20,13 @@ public_subnet_id = null
 # Optional ECR registry hint used by host documentation only.
 ecr_registry = "123456789012.dkr.ecr.eu-west-2.amazonaws.com"
 
-# Optional Route 53 record.
-create_route53_record = false
-route53_zone_name     = "topopass.co.uk"
-domain_name           = "topopass.co.uk"
+# Optional Route 53 records for example.com, www.example.com, and
+# supabase.example.com. Keep disabled until the hosted zone is ready.
+enable_route53_records = false
+route53_zone_name      = "example.com"
+route53_zone_id        = ""
+domain_name            = "example.com"
+supabase_subdomain     = "supabase"
 
 backup_retention_days = 7
 

@@ -1,0 +1,29 @@
+{
+    email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "DENY"
+    }
+
+    reverse_proxy app:3000
+}
+
+{$WWW_DOMAIN} {
+    redir https://{$APP_DOMAIN}{uri} permanent
+}
+
+{$SUPABASE_DOMAIN} {
+    encode zstd gzip
+
+    reverse_proxy kong:8000 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+        header_up X-Real-IP {remote_host}
+    }
+}

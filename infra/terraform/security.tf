@@ -11,12 +11,36 @@ resource "aws_security_group" "app" {
     cidr_blocks = var.allowed_http_cidr_blocks
   }
 
+  dynamic "ingress" {
+    for_each = length(var.allowed_http_ipv6_cidr_blocks) > 0 ? [1] : []
+
+    content {
+      description      = "HTTP IPv6"
+      from_port        = 80
+      to_port          = 80
+      protocol         = "tcp"
+      ipv6_cidr_blocks = var.allowed_http_ipv6_cidr_blocks
+    }
+  }
+
   ingress {
     description = "HTTPS"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = var.allowed_http_cidr_blocks
+  }
+
+  dynamic "ingress" {
+    for_each = length(var.allowed_http_ipv6_cidr_blocks) > 0 ? [1] : []
+
+    content {
+      description      = "HTTPS IPv6"
+      from_port        = 443
+      to_port          = 443
+      protocol         = "tcp"
+      ipv6_cidr_blocks = var.allowed_http_ipv6_cidr_blocks
+    }
   }
 
   dynamic "ingress" {
@@ -37,6 +61,14 @@ resource "aws_security_group" "app" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description      = "Outbound IPv6 access when IPv6 is available"
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    ipv6_cidr_blocks = ["::/0"]
   }
 
   tags = {
