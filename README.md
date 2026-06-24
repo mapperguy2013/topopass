@@ -73,6 +73,11 @@ processing intentionally inactive. The additional Stage 40 footer pass adds a
 full public footer, Supabase-backed newsletter signup, placeholder social icons,
 and beta-ready information/legal pages.
 
+Phase 4 has started with low-cost AWS deployment preparation. The current
+deployment target is a Dockerised Next.js app on one EC2 instance, pushed via
+future GitHub Actions/ECR and connected to the existing managed Supabase setup.
+No AWS resources are deployed yet.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -122,7 +127,7 @@ Phase 2 turned the prototype into a stronger local Learning MVP:
 ## Completed Phase 3: Backend Foundation And Production Readiness
 
 Phase 3 completed the real product infrastructure needed before Phase 4.
-Phase 4 has not started yet.
+Phase 4 has now started as deployment preparation only.
 
 | Stage | Focus | Status |
 | --- | --- | --- |
@@ -144,6 +149,64 @@ Phase 3 guardrails:
 - Do not add external monitoring services until there is a deliberate product
   decision to do so.
 
+## Phase 4: Low-Cost AWS DevOps Deployment
+
+Phase 4 starts with deployment preparation, not a live deployment.
+
+Current target architecture:
+
+- GitHub Actions builds, tests, and later publishes Docker images.
+- AWS ECR stores the TopoPass Next.js app image.
+- One EC2 instance runs Docker Compose.
+- The app container runs on internal port `3000`.
+- Caddy or Nginx will later expose only ports `80` and `443`.
+- Route 53 will point the production domain to the EC2 host.
+- CloudWatch will collect logs and basic host/app metrics.
+- Existing managed Supabase remains the backend for auth, progress, admin
+  roles, and question publishing.
+
+Stage 40 deployment-prep status:
+
+| Item | Status |
+| --- | --- |
+| Production `Dockerfile` | Added |
+| `.dockerignore` | Added |
+| Next.js standalone build output | Enabled |
+| Production env template | Added at `.env.production.example` |
+| Docker Compose app template | Added at `deploy/docker-compose.prod.yml` |
+| AWS EC2 deployment guide | Added at `docs/aws-ec2-devops-deployment.md` |
+| Managed Supabase retained | Yes |
+| Self-hosted Supabase | Not added |
+| Real production secrets | Not added |
+| AWS deployment | Not run |
+
+Phase 4 checklist:
+
+- [x] Docker build support exists.
+- [x] Production env template exists with placeholders only.
+- [x] AWS EC2 architecture is documented.
+- [x] Docker Compose app-only production template exists.
+- [x] Managed Supabase remains the planned backend for this stage.
+- [x] No real secrets are committed.
+- [ ] GitHub Actions build/push workflow.
+- [ ] ECR repository and IAM deploy role.
+- [ ] EC2 host provisioning.
+- [ ] Caddy or Nginx reverse proxy.
+- [ ] Route 53 DNS.
+- [ ] CloudWatch log/metric wiring.
+- [ ] Production smoke test on the deployed host.
+
+Phase 4 guardrails:
+
+- Do not commit `.env`, `.env.local`, `.env.production`, or production
+  credentials.
+- Do not bake secrets into Docker images.
+- Do not expose Supabase service-role keys to browser code.
+- Keep runtime env files only on EC2 or in GitHub Secrets where required.
+- Keep signed-out local progress working.
+- Keep signed-in managed Supabase progress working.
+- Keep Topographical and SERU product areas separate.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
@@ -152,6 +215,8 @@ Phase 3 guardrails:
   hero visual
 - High-resolution homepage practice-overview SVG asset under
   `public/images/home-practice-overview-hero.svg`
+- Production Docker support for the Next.js app, with managed Supabase retained
+  as the backend for this deployment phase
 - Public Topographical Course and SERU Course information pages for logged-out
   visitors
 - Signed-out Course dropdown linking to `/topographical`, `/seru`, and
@@ -1101,6 +1166,48 @@ git diff --cached --check
 Result for this additional Stage 40 pass: lint, tests, and production build
 passed.
 
+## Phase 4 Stage 40 Low-Cost AWS DevOps Prep QA Status
+
+Phase 4 begins with deployment preparation only. This pass prepares the app for
+a single EC2 Docker deployment while keeping managed Supabase as the backend for
+auth, progress, admin roles, publishing, import/export, and newsletter signup.
+
+Deployment prep result:
+
+- `Dockerfile` builds a production Next.js standalone image.
+- `.dockerignore` keeps local env files, build outputs, `node_modules`, and
+  local workspace artifacts out of Docker build context.
+- `.env.production.example` documents placeholder production runtime variables
+  only.
+- `deploy/docker-compose.prod.yml` runs the app service on
+  `127.0.0.1:3000` with a restart policy and EC2 runtime env file reference.
+- `docs/aws-ec2-devops-deployment.md` documents GitHub Actions, Docker, ECR,
+  EC2, Docker Compose, managed Supabase, Route 53, Caddy/Nginx, CloudWatch,
+  IAM, EBS, and optional S3 backup considerations.
+- `next.config.mjs` now enables standalone output for container runtime.
+
+Safety result:
+
+- No real production secrets were added.
+- No `.env` or `.env.production` file was added.
+- No self-hosted Supabase containers were added.
+- No Terraform, AWS state, or production credentials were added.
+- No app features, UI, signed-out progress, signed-in Supabase progress, or
+  Topographical/SERU separation were changed.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+docker build --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 --build-arg NEXT_PUBLIC_SUPABASE_URL= --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY= -t topopass-web:stage40 .
+git diff --cached --check
+```
+
+Result for this Phase 4 Stage 40 deployment-prep pass: lint, tests,
+production build, and Docker image build passed.
+
 ## Beta Launch Checklist
 
 ### Environment and Supabase
@@ -1617,6 +1724,10 @@ passed.
 - Analytics is structured and typed, but no third-party provider is connected.
 - External production observability services are not implemented; logging is
   currently local/server-console only.
+- AWS deployment is not live yet; Phase 4 currently provides Docker,
+  Docker Compose, env template, and EC2 deployment documentation only.
+- Caddy/Nginx reverse proxy, ECR publishing, GitHub Actions deploy workflow,
+  Route 53, and CloudWatch production wiring remain future Phase 4 tasks.
 - Route scoring still needs calibration against more reviewed real-world
   learner attempts.
 - The generated driver-training atlas asset is a review artifact and is not the
@@ -1629,5 +1740,6 @@ passed.
 - `docs/os-qgis-atlas-poc.md`
 - `docs/cleanroom-driver-training-atlas-generation.md`
 - `docs/production-question-content.md`
+- `docs/aws-ec2-devops-deployment.md`
 - `docs/TECHNICAL_DEBT.md`
 - `docs/MANUAL_QA_CHECKLIST.md`
