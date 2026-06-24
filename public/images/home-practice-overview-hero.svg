@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">Practice overview dashboard</title>
+  <desc id="desc">A clean practice overview dashboard showing topographical skills, SERU preparation, a route on a soft map background, and progress statistics.</desc>
+  <defs>
+    <filter id="cardShadow" x="-8%" y="-10%" width="116%" height="126%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#1d4ed8" flood-opacity="0.10"/>
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.06"/>
+    </filter>
+    <filter id="pinShadow" x="-45%" y="-22%" width="190%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.16"/>
+    </filter>
+    <filter id="routeShadow" x="-8%" y="-20%" width="116%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#2563eb" flood-opacity="0.22"/>
+    </filter>
+    <linearGradient id="frame" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#f8fbff"/>
+      <stop offset="1" stop-color="#eef6ff"/>
+    </linearGradient>
+    <linearGradient id="mapFade" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.78"/>
+      <stop offset="0.52" stop-color="#eef6ff" stop-opacity="0.84"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.70"/>
+    </linearGradient>
+    <linearGradient id="blueRoute" x1="220" y1="732" x2="1328" y2="206" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset="0.55" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="accuracyArc" x1="169" y1="881" x2="299" y2="881" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6aa1ff"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="1100" fill="#ffffff"/>
+  <rect x="80" y="57" width="1440" height="986" rx="34" fill="url(#frame)" stroke="#dbe7f7" stroke-width="2"/>
+
+  <text x="134" y="132" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="800">Practice overview</text>
+  <text x="134" y="174" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="400">Build confidence with Topographical Skills and SERU Preparation</text>
+
+  <g opacity="0.92">
+    <rect x="80" y="204" width="1440" height="622" fill="url(#mapFade)"/>
+    <path d="M94 282 H1490 M92 368 H1495 M90 458 H1490 M86 548 H1492 M82 642 H1490 M80 734 H1512" stroke="#e3ebf5" stroke-width="15" stroke-linecap="round"/>
+    <path d="M188 176 V818 M309 176 V818 M431 176 V818 M553 176 V818 M675 176 V818 M797 176 V818 M919 176 V818 M1041 176 V818 M1163 176 V818 M1285 176 V818 M1407 176 V818" stroke="#e3ebf5" stroke-width="15" stroke-linecap="round"/>
+    <path d="M91 762 C168 700 252 726 336 673 C421 620 482 661 582 604 C679 548 718 582 820 527 C925 471 1014 491 1184 432 C1300 392 1365 344 1498 314" fill="none" stroke="#ffffff" stroke-opacity="0.90" stroke-width="18" stroke-linecap="round"/>
+    <path d="M166 231 C246 291 331 249 414 304 C493 356 574 294 653 354 C739 420 853 332 937 388 C1041 456 1135 384 1254 422" fill="none" stroke="#ffffff" stroke-opacity="0.76" stroke-width="15" stroke-linecap="round"/>
+    <path d="M96 550 C193 514 255 448 364 466 C465 482 493 410 589 422 C699 437 742 340 844 366 C950 394 1019 300 1144 326 C1242 346 1318 262 1490 268" fill="none" stroke="#ffffff" stroke-opacity="0.74" stroke-width="13" stroke-linecap="round"/>
+    <path d="M134 479 C243 450 294 345 413 370 C510 390 560 274 671 292" fill="none" stroke="#def4e7" stroke-width="42" stroke-linecap="round"/>
+    <path d="M657 403 C753 364 818 384 927 341" fill="none" stroke="#dff5e8" stroke-width="58" stroke-linecap="round"/>
+    <path d="M701 707 C806 650 910 682 1036 617" fill="none" stroke="#d9eef9" stroke-width="45" stroke-linecap="round"/>
+    <path d="M116 726 C182 681 249 674 321 627 C398 577 456 605 535 563 C621 518 680 538 759 487 C849 429 932 436 1010 381 C1096 319 1177 331 1263 286 C1336 247 1404 224 1491 204" fill="none" stroke="#eff6ff" stroke-width="53" stroke-linecap="round"/>
+    <path d="M217 740 C313 738 365 680 450 668 C559 652 561 556 670 555 C775 554 793 459 903 438 C1013 417 1056 331 1174 309 C1272 291 1325 255 1392 234" fill="none" stroke="url(#blueRoute)" stroke-width="17" stroke-linecap="round" filter="url(#routeShadow)"/>
+    <path d="M217 740 C313 738 365 680 450 668 C559 652 561 556 670 555 C775 554 793 459 903 438 C1013 417 1056 331 1174 309 C1272 291 1325 255 1392 234" fill="none" stroke="#1d4ed8" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <g filter="url(#pinShadow)">
+    <path d="M252 672c-28 0-51 22-51 50 0 43 51 97 51 97s51-54 51-97c0-28-23-50-51-50z" fill="#2563eb"/>
+    <circle cx="252" cy="719" r="19" fill="#ffffff"/>
+    <circle cx="252" cy="802" r="12" fill="#2563eb" opacity="0.88"/>
+    <circle cx="252" cy="802" r="18" fill="none" stroke="#bfdbfe" stroke-width="8"/>
+  </g>
+  <g filter="url(#pinShadow)">
+    <circle cx="701" cy="600" r="21" fill="#2563eb"/>
+    <circle cx="701" cy="600" r="30" fill="none" stroke="#bfdbfe" stroke-width="8"/>
+    <circle cx="701" cy="600" r="10" fill="#ffffff"/>
+  </g>
+  <g filter="url(#pinShadow)">
+    <circle cx="965" cy="390" r="21" fill="#2563eb"/>
+    <circle cx="965" cy="390" r="30" fill="none" stroke="#bfdbfe" stroke-width="8"/>
+    <circle cx="965" cy="390" r="10" fill="#ffffff"/>
+  </g>
+  <g filter="url(#pinShadow)">
+    <path d="M1356 178c-28 0-51 23-51 51 0 44 51 98 51 98s51-54 51-98c0-28-23-51-51-51z" fill="#f97316"/>
+    <circle cx="1356" cy="227" r="18" fill="#ffffff"/>
+    <circle cx="1356" cy="311" r="13" fill="#f97316" opacity="0.70"/>
+    <circle cx="1356" cy="311" r="20" fill="none" stroke="#fed7aa" stroke-width="8"/>
+  </g>
+
+  <g filter="url(#cardShadow)">
+    <rect x="134" y="224" width="420" height="413" rx="20" fill="#ffffff" fill-opacity="0.96" stroke="#dce8f8" stroke-width="2"/>
+    <circle cx="211" cy="300" r="48" fill="#dbeafe"/>
+    <path d="M191 281v43l21-13 25 13 21-13v-43l-21 13-25-13-21 13z" fill="none" stroke="#2563eb" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M212 268v43M237 281v43" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+    <text x="286" y="291" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Topographical</text>
+    <text x="286" y="328" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="32" font-weight="800">Skills</text>
+    <text x="286" y="370" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="23">Practice locations, draw</text>
+    <text x="286" y="403" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="23">routes, and sharpen</text>
+    <text x="286" y="436" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="23">map skills.</text>
+    <line x1="164" y1="470" x2="524" y2="470" stroke="#dce6f2" stroke-width="2"/>
+    <g fill="none" stroke="#2563eb" stroke-width="3">
+      <circle cx="185" cy="512" r="12"/><path d="M179 512l5 5 9-11" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="185" cy="560" r="12"/><path d="M179 560l5 5 9-11" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="185" cy="608" r="12"/><path d="M179 608l5 5 9-11" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="218" y="519" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="23">Identify locations</text>
+    <text x="218" y="567" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="23">Draw and review routes</text>
+    <text x="218" y="615" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="23">Build map confidence</text>
+  </g>
+
+  <g filter="url(#cardShadow)">
+    <rect x="1086" y="408" width="370" height="376" rx="20" fill="#ffffff" fill-opacity="0.96" stroke="#dce8f8" stroke-width="2"/>
+    <circle cx="1155" cy="479" r="48" fill="#ffedd5"/>
+    <path d="M1137 459h37v48h-37zM1146 450h19M1148 472h16M1148 488h16" fill="none" stroke="#f97316" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M1132 477l6 6 10-13M1132 494l6 6 10-13" fill="none" stroke="#f97316" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1224" y="469" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800">SERU</text>
+    <text x="1224" y="506" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800">Preparation</text>
+    <text x="1224" y="550" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">Targeted practice for</text>
+    <text x="1224" y="581" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">SERU-style questions</text>
+    <text x="1224" y="612" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">and scenarios.</text>
+    <line x1="1114" y1="640" x2="1426" y2="640" stroke="#dce6f2" stroke-width="2"/>
+    <g fill="none" stroke="#f97316" stroke-width="3">
+      <circle cx="1134" cy="675" r="11"/><path d="M1129 675l4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="1134" cy="721" r="11"/><path d="M1129 721l4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="1134" cy="767" r="11"/><path d="M1129 767l4 4 8-9" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="1163" y="682" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">SERU-style questions</text>
+    <text x="1163" y="728" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">timed practice</text>
+    <text x="1163" y="774" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">Track and improve</text>
+  </g>
+
+  <g filter="url(#cardShadow)">
+    <rect x="130" y="826" width="1320" height="182" rx="20" fill="#ffffff" fill-opacity="0.97" stroke="#dce8f8" stroke-width="2"/>
+    <line x1="552" y1="854" x2="552" y2="978" stroke="#d9e4f2" stroke-width="2"/>
+    <line x1="978" y1="854" x2="978" y2="978" stroke="#d9e4f2" stroke-width="2"/>
+
+    <circle cx="239" cy="918" r="54" fill="none" stroke="#dbeafe" stroke-width="12"/>
+    <path d="M239 864a54 54 0 1 1-48 78" fill="none" stroke="url(#accuracyArc)" stroke-width="12" stroke-linecap="round"/>
+    <text x="205" y="930" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="800">74%</text>
+    <text x="322" y="905" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Accuracy</text>
+    <text x="322" y="943" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="21">Keep practising!</text>
+
+    <circle cx="632" cy="918" r="44" fill="#dbeafe"/>
+    <path d="M611 942V924M632 942V904M653 942V914" stroke="#2563eb" stroke-width="7" stroke-linecap="round"/>
+    <text x="710" y="902" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="35" font-weight="800">3</text>
+    <text x="710" y="934" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="800">Weak topics</text>
+    <text x="710" y="966" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="20">Focus areas to improve</text>
+
+    <circle cx="1064" cy="918" r="44" fill="#dcfce7"/>
+    <circle cx="1064" cy="918" r="17" fill="none" stroke="#22a541" stroke-width="4"/>
+    <path d="M1064 906v13l11 7" fill="none" stroke="#22a541" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1143" y="902" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="35" font-weight="800">12</text>
+    <text x="1143" y="934" fill="#13223a" font-family="Inter, Arial, sans-serif" font-size="21" font-weight="800">Recent answers</text>
+    <text x="1143" y="966" fill="#526680" font-family="Inter, Arial, sans-serif" font-size="20">Keep the momentum</text>
+  </g>
+</svg>

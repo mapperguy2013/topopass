@@ -52,6 +52,12 @@ SERU-style starter practice area, original SERU question bank content,
 SERU-aware review/progress summaries, and homepage separation polish while
 keeping topographical mock exams free of SERU questions.
 
+Stage 39.6 is complete as a practice journey, demo clarification, and
+navigation polish pass. It turns `/practice` into a clearer learner hub,
+moves topographical topic selection to `/practice/topographical`, improves the
+SERU-style practice page, clarifies that `/demo` is only a short public preview,
+and separates public navigation from signed-in learner navigation.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -129,11 +135,15 @@ Phase 3 guardrails:
 - Modern public home page with learner CTAs, local-first/account progress copy,
   clear Topographical/SERU separation, and a clean custom practice-overview
   hero visual
+- High-resolution homepage practice-overview SVG asset under
+  `public/images/home-practice-overview-hero.svg`
 - Expanded Learn section with structured learning paths
 - SERU preparation support as a separate learning area, not mixed into
   topographical mock exams
-- Practice selector for knowledge, map-click, route drawing, and SERU-style
-  starter practice
+- Practice hub that explains Topographical and SERU-style practice before
+  sending learners into separate focused areas
+- Dedicated `/practice/topographical` route for topographical topic selection
+  and route/map/location practice entry points
 - Topic-based practice selector with counts per topic and weak-topic guidance
 - Knowledge practice with local saved attempts
 - SERU-style practice route with original multiple-choice starter questions,
@@ -210,7 +220,8 @@ Phase 3 guardrails:
 | --- | --- |
 | `/` | Public TopoPass homepage |
 | `/learn` | Expanded learning hub, study path, and SERU preparation support notes |
-| `/practice` | Practice-area selector with Topographical and SERU options kept separate |
+| `/practice` | Practice hub for choosing Topographical or SERU-style practice |
+| `/practice/topographical` | Topographical practice hub with topic selector and question-type entry points |
 | `/practice/knowledge` | Knowledge question practice |
 | `/practice/map-click` | Map-click location practice |
 | `/practice/routes` | Route-drawing practice |
@@ -223,7 +234,7 @@ Phase 3 guardrails:
 | `/auth/callback` | Supabase email confirmation/session exchange callback |
 | `/account` | Protected learner account/profile page |
 | `/route-demo` | Route-drawing development/demo flow |
-| `/demo` | Standalone Mapbox click demo |
+| `/demo` | Short public preview; full learning happens in `/practice` |
 | `/login` | Legacy placeholder route; active auth is under `/auth/log-in` |
 | `/register` | Legacy placeholder route; active sign-up is under `/auth/sign-up` |
 | `/dashboard` | Local dashboard shell |
@@ -856,6 +867,48 @@ git diff --cached --check
 
 Result for this Stage 39.5 pass: lint, tests, and production build passed.
 
+## Stage 39.6 Practice Journey And Navigation QA Status
+
+Stage 39.6 clarifies the learner journey without adding payments, schema
+migrations, or new exam-family mixing.
+
+Practice result:
+
+- `/practice` is now a learner hub that explains practice before asking
+  learners to choose Topographical or SERU-style practice.
+- `/practice/topographical` is the dedicated topographical practice area with
+  purpose copy, topographical action buttons, topic cards, question-type entry
+  points, and less stressful weak-topic guidance.
+- `/practice/seru` has matching intro copy, a clean SERU-style illustration,
+  topic cards, a start button, mistake-review link, and a clear "SERU mock
+  coming soon" state.
+- Topographical and SERU-style practice remain separate. SERU-style questions
+  are still not included in topographical mock exams.
+
+Demo and navigation result:
+
+- `/demo` is clarified as a short public preview, not the full learning mode.
+- Demo currently remains a small map-click preview rather than a full 3-5
+  question guided sample. A fuller Demo flow is intentionally left for a later
+  pass.
+- Signed-out navigation now focuses on Topographical, SERU, Demo, Resources,
+  Pricing, Sign in, and Start practising.
+- Signed-in learner navigation focuses on Dashboard, Practice, Mock Test,
+  Review, Progress, Account, and Sign out.
+- The large homepage practice-overview image is now a project asset at
+  `public/images/home-practice-overview-hero.svg`.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 39.6 pass: lint, tests, and production build passed.
+
 ## Phase 3 Manual QA Checklist
 
 ### Public learner flow
@@ -1186,10 +1239,58 @@ Result for this Stage 39.5 pass: lint, tests, and production build passed.
   inventory with SERU topics.
 - Confirm non-admin learners still cannot access admin question tools.
 
+## Stage 39.6 Manual QA Checklist
+
+### Practice journey
+
+- Open `/practice` on desktop and mobile width.
+- Confirm the page explains that Practice is the real learning area.
+- Use Start topographical practice and confirm it opens `/practice/topographical`.
+- Use Start SERU practice and confirm it opens `/practice/seru`.
+- Confirm Topographical and SERU-style practice are described as separate.
+- Confirm Review mistakes, Try mock exam, and Try the short demo links work.
+
+### Topographical practice
+
+- Open `/practice/topographical`.
+- Confirm the intro explains London map, route, direction sense, and journey
+  planning confidence.
+- Confirm the topic selector appears below the intro.
+- Complete knowledge, map-click, and route practice from topographical topic
+  links.
+- Confirm weak-topic guidance is helpful without overwhelming the page.
+- Open `/mock-test` and confirm topographical mock exams still exclude SERU
+  questions.
+
+### SERU-style practice
+
+- Open `/practice/seru`.
+- Confirm the page uses "SERU-style practice" or "SERU preparation" wording.
+- Confirm it does not claim official TfL affiliation or official questions.
+- Use Start SERU practice and confirm it jumps to the SERU practice flow.
+- Filter by a SERU topic and answer a question.
+- Confirm explanations still appear and progress still saves locally while
+  signed out.
+
+### Demo and navigation
+
+- Open `/demo`.
+- Confirm it is described as a short public preview, not the full practice
+  area.
+- Use Start full practice and Create account to save progress CTAs.
+- While signed out, confirm main nav shows Topographical, SERU, Demo,
+  Resources, Pricing, Sign in, and Start practising.
+- While signed in, confirm main nav shows Dashboard, Practice, Mock Test,
+  Review, Progress, Account, and Sign out.
+- Confirm the sidebar groups Study, Practice, Review, and Account links.
+
 ## Current Limitations
 
 - Learner accounts are optional; signed-in completions save to Supabase, but
   local-to-account migration is not implemented yet.
+- Demo is currently a short map-click preview and CTA page, not a full
+  multi-question guided sample with separate Topographical and SERU mini-result
+  flow.
 - Legacy `/login` and `/register` remain placeholder routes; active auth lives
   under `/auth/*`.
 - The progress dashboard uses browser-local progress for signed-out learners

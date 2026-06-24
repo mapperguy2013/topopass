@@ -2,18 +2,27 @@ import Link from "next/link";
 import { signOutAction } from "@/app/auth/actions";
 import { getCurrentAuthState } from "@/lib/auth/session";
 
-const navItems = [
-  { href: "/learn", label: "Learn" },
-  { href: "/practice", label: "Practice" },
-  { href: "/mock-test", label: "Mock Test" },
-  { href: "/progress", label: "Progress" },
+const publicNavItems = [
+  { href: "/practice/topographical", label: "Topographical" },
+  { href: "/practice/seru", label: "SERU" },
+  { href: "/demo", label: "Demo" },
   { href: "/resources", label: "Resources" },
   { href: "/pricing", label: "Pricing" }
+];
+
+const learnerNavItems = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/practice", label: "Practice" },
+  { href: "/mock-test", label: "Mock Test" },
+  { href: "/review", label: "Review" },
+  { href: "/progress", label: "Progress" },
+  { href: "/account", label: "Account" }
 ];
 
 export async function Navbar() {
   const { user, profile } = await getCurrentAuthState();
   const accountLabel = profile?.display_name || user?.email || "Account";
+  const navItems = user ? learnerNavItems : publicNavItems;
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
@@ -63,13 +72,13 @@ export async function Navbar() {
                 className="inline-flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 href="/auth/log-in"
               >
-                Log in
+                Sign in
               </Link>
               <Link
                 className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-                href="/auth/sign-up"
+                href="/practice"
               >
-                Sign up
+                Start practising
               </Link>
             </>
           )}

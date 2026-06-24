@@ -34,7 +34,9 @@ test("navbar exposes signed-out and signed-in account actions", () => {
   const navbar = readProjectFile("components/layout/Navbar.tsx");
 
   assert.match(navbar, /href="\/auth\/log-in"/);
-  assert.match(navbar, /href="\/auth\/sign-up"/);
+  assert.match(navbar, /Start practising/);
+  assert.match(navbar, /publicNavItems/);
+  assert.match(navbar, /learnerNavItems/);
   assert.match(navbar, /href="\/account"/);
   assert.match(navbar, /signOutAction/);
   assert.match(navbar, /getCurrentAuthState/);
@@ -45,9 +47,11 @@ test("signed-out learner pages remain public and do not require auth guards", ()
     "app/page.tsx",
     "app/learn/page.tsx",
     "app/practice/page.tsx",
+    "app/practice/topographical/page.tsx",
     "app/practice/knowledge/page.tsx",
     "app/practice/map-click/page.tsx",
     "app/practice/routes/page.tsx",
+    "app/practice/seru/page.tsx",
     "app/mock-test/page.tsx",
     "app/progress/page.tsx",
     "app/progress/mistakes/page.tsx"

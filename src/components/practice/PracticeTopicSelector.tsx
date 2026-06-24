@@ -120,9 +120,9 @@ export function PracticeTopicSelector({
       </div>
 
       {weakTopics.length > 0 && (
-        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
-          <p className="text-sm font-bold text-amber-950">Suggested focus</p>
-          <p className="mt-1 text-sm leading-6 text-amber-900">
+        <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3">
+          <p className="text-sm font-bold text-ink">Suggested focus</p>
+          <p className="mt-1 text-sm leading-6 text-slate-700">
             Start with{" "}
             <span className="font-semibold">{weakTopics[0].topic}</span>. It has{" "}
             {weakCounts[weakTopics[0].topic]} saved incorrect answer
@@ -134,11 +134,7 @@ export function PracticeTopicSelector({
       <div className="mt-5 grid gap-4 xl:grid-cols-2">
         {orderedTopics.map((topic) => (
           <article
-            className={`rounded-lg border p-4 ${
-              weakCounts[topic.topic]
-                ? "border-amber-300 bg-amber-50/60"
-                : "border-slate-200 bg-white"
-            }`}
+            className="rounded-lg border border-slate-200 bg-white p-4"
             key={topic.topic}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -153,8 +149,8 @@ export function PracticeTopicSelector({
                 </p>
               </div>
               {weakCounts[topic.topic] ? (
-                <span className="w-fit rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900">
-                  Weak topic
+                <span className="w-fit rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold uppercase text-road">
+                  Focus area
                 </span>
               ) : null}
             </div>
