@@ -409,6 +409,40 @@ export async function readAdminQuestionItems(
   };
 }
 
+export async function readAdminQuestionById(
+  questionId: string,
+  options: QuestionRepositoryOptions = {}
+) {
+  const client = asPersistenceClient(
+    Object.prototype.hasOwnProperty.call(options, "client")
+      ? options.client
+      : getSupabaseClient()
+  );
+
+  if (!client) {
+    return {
+      source: "static" as const,
+      question: null as AdminQuestion | null,
+      row: null as QuestionRow | null,
+      error: "Supabase is not configured."
+    };
+  }
+
+  const { data, error } = await client
+    .from("question_bank_items")
+    .select("*")
+    .eq("id", questionId)
+    .single<QuestionRow>();
+  const row = data && !error ? (data as QuestionRow) : null;
+
+  return {
+    source: "supabase" as const,
+    question: row ? dbRowToStaticQuestion(row) : null,
+    row,
+    error: error?.message
+  };
+}
+
 export async function exportQuestionBankItemsForAdmin(
   statusFilter: QuestionExportStatusFilter = "all",
   options: QuestionRepositoryOptions = {}

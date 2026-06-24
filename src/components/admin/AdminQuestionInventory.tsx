@@ -6,6 +6,7 @@ import {
 } from "@/lib/admin/questionAdminHelpers";
 import { validateAllQuestionBanks } from "@/lib/admin/questionValidation";
 import {
+  batchSetQuestionStatusAction,
   publishQuestionAction,
   saveQuestionDraftAction,
   setQuestionStatusAction
@@ -42,6 +43,7 @@ type InventoryRow = {
   publishedAt: string | null;
   validationLabel: string;
   validationClass: string;
+  reviewLabel: string;
   canInspect: boolean;
 };
 
@@ -112,7 +114,13 @@ function databaseOnlyRows(
       publishedAt: item.published_at,
       validationLabel: "Imported",
       validationClass: "bg-blue-100 text-blue-800",
-      canInspect: false
+      reviewLabel:
+        item.status === "draft"
+          ? "Needs admin review"
+          : item.status === "published"
+            ? "Live for learners"
+            : "Hidden from learners",
+      canInspect: true
     }));
 }
 
@@ -158,6 +166,12 @@ export async function AdminQuestionInventory({
         validationClass: valid
           ? "bg-green-100 text-green-800"
           : "bg-red-100 text-red-800",
+        reviewLabel:
+          status === "draft" || status === "not-saved"
+            ? "Needs admin review"
+            : status === "published"
+              ? "Live for learners"
+              : "Hidden from learners",
         canInspect: true
       };
     }
@@ -347,10 +361,51 @@ export async function AdminQuestionInventory({
         </div>
       </div>
 
+      <form
+        action={batchSetQuestionStatusAction}
+        className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between"
+        id="batch-question-status-form"
+      >
+        <div>
+          <p className="text-sm font-bold text-ink">Batch review actions</p>
+          <p className="mt-1 text-sm text-slate-600">
+            Select questions below, then publish, archive, or return them to
+            draft. These actions are protected by the server-side admin check.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-green-300 bg-white px-3 py-2 text-xs font-bold text-green-800 hover:border-green-500"
+            name="status"
+            type="submit"
+            value="published"
+          >
+            Publish selected
+          </button>
+          <button
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:border-slate-500"
+            name="status"
+            type="submit"
+            value="archived"
+          >
+            Archive selected
+          </button>
+          <button
+            className="inline-flex min-h-10 items-center justify-center rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 hover:border-amber-500"
+            name="status"
+            type="submit"
+            value="draft"
+          >
+            Move to draft
+          </button>
+        </div>
+      </form>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1180px] text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
+              <th className="px-4 py-3">Select</th>
               <th className="px-4 py-3">ID / prompt</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Topic</th>
@@ -364,6 +419,16 @@ export async function AdminQuestionInventory({
           <tbody className="divide-y divide-slate-200">
             {filteredRows.map((row) => (
               <tr key={`${row.source}-${row.id}`}>
+                <td className="px-4 py-4 align-top">
+                  <input
+                    aria-label={`Select ${row.id} for batch status change`}
+                    className="size-5 rounded border-slate-300 text-road focus:ring-road"
+                    form="batch-question-status-form"
+                    name="questionId"
+                    type="checkbox"
+                    value={row.id}
+                  />
+                </td>
                 <td className="px-4 py-4">
                   <p className="font-mono text-xs text-slate-500">{row.id}</p>
                   <p className="mt-1 max-w-md font-semibold text-ink">
@@ -393,11 +458,14 @@ export async function AdminQuestionInventory({
                   <span className={`rounded px-2 py-1 text-xs font-bold ${row.validationClass}`}>
                     {row.validationLabel}
                   </span>
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    {row.reviewLabel}
+                  </p>
                 </td>
                 <td className="px-4 py-4">
                   <div className="flex flex-wrap gap-2">
                     {row.canInspect && (
-                      <Link className="inline-flex min-h-10 items-center rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:border-road hover:text-road" href={`/admin/questions/${encodeURIComponent(row.id)}`}>Inspect</Link>
+                      <Link className="inline-flex min-h-10 items-center rounded-md border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:border-road hover:text-road" href={`/admin/questions/${encodeURIComponent(row.id)}`}>Review / preview</Link>
                     )}
                     <form action={saveQuestionDraftAction}>
                       <input name="questionId" type="hidden" value={row.id} />

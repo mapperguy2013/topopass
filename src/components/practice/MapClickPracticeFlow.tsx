@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LOCAL_LEARNER_ID } from "@/lib/db/localPersistence";
 import { orderQuestionsByRetryQueue } from "@/lib/db/mistakeRetryQueue";
 import { savePracticeAttempt } from "@/lib/db/practiceAttemptRepository";
 import { demoMapClickQuestions } from "@/lib/mapClickQuestions";
+import {
+  filterByPracticeFilter,
+  normalizePracticeQuestionFilter,
+  upsertPracticeSessionResult,
+  type PracticeSessionResult
+} from "@/lib/practice/practiceSession";
 import { createMapClickReviewData } from "@/lib/reviewData";
+import {
+  PracticeEmptyState,
+  PracticeSessionIntro,
+  PracticeSessionSummaryPanel
+} from "@/src/components/practice/PracticeSessionPanels";
 import {
   MapClickQuestion,
   type MapClickQuestionResult
@@ -17,10 +28,30 @@ const basePracticeQuestions = demoMapClickQuestions.filter(
   (question) => question.isActive
 );
 
-export function MapClickPracticeFlow() {
-  const [practiceQuestions, setPracticeQuestions] = useState(basePracticeQuestions);
+type MapClickPracticeFlowProps = {
+  initialTopic?: string;
+  initialDifficulty?: string;
+};
+
+export function MapClickPracticeFlow({
+  initialTopic,
+  initialDifficulty
+}: MapClickPracticeFlowProps) {
+  const filter = useMemo(
+    () => normalizePracticeQuestionFilter(initialTopic, initialDifficulty),
+    [initialDifficulty, initialTopic]
+  );
+  const filteredBaseQuestions = useMemo(
+    () => filterByPracticeFilter(basePracticeQuestions, filter),
+    [filter]
+  );
+  const [practiceQuestions, setPracticeQuestions] =
+    useState(filteredBaseQuestions);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [attemptNumber, setAttemptNumber] = useState(0);
+  const [sessionResults, setSessionResults] = useState<PracticeSessionResult[]>(
+    []
+  );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">(
     "idle"
   );
@@ -30,16 +61,16 @@ export function MapClickPracticeFlow() {
 
   useEffect(() => {
     setPracticeQuestions(
-      orderQuestionsByRetryQueue(basePracticeQuestions, "map-click")
+      orderQuestionsByRetryQueue(filteredBaseQuestions, "map-click")
     );
-  }, []);
+    setCurrentQuestionIndex(0);
+    setAttemptNumber(0);
+    setSaveStatus("idle");
+    setSubmittedResult(null);
+  }, [filteredBaseQuestions]);
 
   if (!currentQuestion) {
-    return (
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-        No active map-click questions are available.
-      </section>
-    );
+    return <PracticeEmptyState filter={filter} questionTypeLabel="map-click" />;
   }
 
   const isFirstQuestion = currentQuestionIndex === 0;
@@ -61,6 +92,23 @@ export function MapClickPracticeFlow() {
   async function saveMapClickAttempt(answer: MapClickQuestionResult) {
     setSaveStatus("saving");
     setSubmittedResult(answer);
+    const roundedDistance = Math.round(answer.distance);
+    setSessionResults((current) =>
+      upsertPracticeSessionResult(current, {
+        questionId: currentQuestion.id,
+        prompt: currentQuestion.prompt,
+        questionType: "map-click",
+        topic: currentQuestion.category,
+        difficulty: currentQuestion.difficulty,
+        passed: answer.isCorrect,
+        percentage: answer.isCorrect ? 100 : 0,
+        learnerAnswer: `${roundedDistance}m from target`,
+        correctAnswer: currentQuestion.targetName,
+        feedback: answer.isCorrect
+          ? "Your click landed inside the accepted target area."
+          : `Use ${currentQuestion.targetName} as the anchor and aim within ${currentQuestion.toleranceMeters}m.`
+      })
+    );
     const reviewData = createMapClickReviewData({
       questionId: currentQuestion.id,
       prompt: currentQuestion.prompt,
@@ -101,16 +149,24 @@ export function MapClickPracticeFlow() {
 
   return (
     <div className="space-y-5">
+      <PracticeSessionIntro
+        baseHref="/practice/map-click"
+        filter={filter}
+        questionCount={practiceQuestions.length}
+        questionType="map-click"
+        title="Map-click location practice"
+      />
+
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-sm font-semibold text-road">
           Question {currentQuestionIndex + 1} of {practiceQuestions.length}
         </p>
         <h2 className="mt-1 text-xl font-bold text-ink">
-          Map location practice
+          {currentQuestion.prompt}
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Click the requested London location on the map, then submit your
-          answer to check the distance.
+          Click or tap the requested location. You can adjust the marker before
+          submitting your answer.
         </p>
       </section>
 
@@ -133,9 +189,12 @@ export function MapClickPracticeFlow() {
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-bold text-slate-800">Answer feedback</p>
           <p className="mt-2 text-sm text-slate-700">
-            {submittedResult.isCorrect ? "Correct." : "Try again."} You clicked{" "}
-            {Math.round(submittedResult.distance)} metres from the target. The
-            accepted radius is {currentQuestion.toleranceMeters} metres.
+            {submittedResult.isCorrect
+              ? "Correct. Your click was inside the accepted area."
+              : "Not quite. Check the target area and try again if needed."}{" "}
+            You clicked {Math.round(submittedResult.distance)} metres from the
+            target. The accepted radius is {currentQuestion.toleranceMeters}{" "}
+            metres.
           </p>
           <p className="mt-2 text-sm text-slate-700">
             Expected target:{" "}
@@ -198,6 +257,8 @@ export function MapClickPracticeFlow() {
           Next question
         </button>
       </nav>
+
+      <PracticeSessionSummaryPanel results={sessionResults} />
     </div>
   );
 }

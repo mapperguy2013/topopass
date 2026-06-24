@@ -125,3 +125,58 @@ export async function setQuestionStatusAction(formData: FormData) {
 
   revalidatePath("/admin/questions");
 }
+
+export async function batchSetQuestionStatusAction(formData: FormData) {
+  const questionIds = Array.from(
+    new Set(
+      formData
+        .getAll("questionId")
+        .map((value) => String(value).trim())
+        .filter(Boolean)
+    )
+  );
+  if (questionIds.length === 0) return;
+
+  const { access, client } = await adminClient();
+  if (access.status !== "admin") return;
+
+  const status = normalizeQuestionStatus(formData.get("status"));
+  let failedCount = 0;
+
+  for (const questionId of questionIds) {
+    const question = getQuestionById(questionId);
+    const result = question
+      ? await upsertQuestionForAdmin(question, {
+          adminUserId: access.user.id,
+          client,
+          status
+        })
+      : await setQuestionStatusForAdmin(questionId, status, {
+          adminUserId: access.user.id,
+          client
+        });
+
+    if (!result.persisted) failedCount += 1;
+  }
+
+  if (failedCount > 0) {
+    logger.warn("Batch question status update partially failed", {
+      feature: "question-publishing",
+      action: "batch-set-status",
+      route: "/admin/questions",
+      status,
+      requestedCount: questionIds.length,
+      failedCount
+    });
+  } else {
+    logger.info("Batch question status update completed", {
+      feature: "question-publishing",
+      action: "batch-set-status",
+      route: "/admin/questions",
+      status,
+      requestedCount: questionIds.length
+    });
+  }
+
+  revalidatePath("/admin/questions");
+}

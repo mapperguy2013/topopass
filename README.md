@@ -31,6 +31,11 @@ draft-first production question seed, standardises the question topic structure,
 keeps learner reads published-only, and improves admin inventory organisation
 with topic, status, and difficulty filters.
 
+Stage 37 is complete as a post-Phase-3 learner/admin polish pass. It adds
+topic-based practice entry points, focused practice-session summaries, clearer
+answer feedback and wrong-answer review, admin batch publish/archive actions,
+and admin-only learner previews for question review.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -107,10 +112,13 @@ Phase 3 guardrails:
 - Landing page with private-hire applicant positioning
 - Expanded Learn section with structured learning paths
 - Practice selector for knowledge, map-click, and route drawing
+- Topic-based practice selector with counts per topic and weak-topic guidance
 - Knowledge practice with local saved attempts
 - Map-click practice with selected marker feedback and distance scoring
 - Route-drawing practice with continuous line drawing, pan/zoom, undo, clear,
   reset, and route scoring
+- Focused practice filters for topic and difficulty
+- End-of-session practice summaries with wrong-answer review prompts
 - Mixed mock exam modes and timed exam simulation
 - Progress dashboard with signed-out local analytics and signed-in
   account-scoped Supabase reads when configured
@@ -123,6 +131,8 @@ Phase 3 guardrails:
 - Basic account progress summary from Supabase records
 - Protected prototype admin question managers and validators
 - Protected admin publishing controls for Supabase `question_bank_items`
+- Admin batch publish/archive/draft review actions for selected questions
+- Admin-only learner preview for source-bank and imported question records
 - Admin-only JSON import/export tools for `question_bank_items`
 - Expanded draft-first production starter seed content and manual question-bank
   seed command
@@ -291,7 +301,9 @@ review and publish content deliberately.
 
 The admin question inventory now shows source-bank and Supabase-only
 `question_bank_items` records together, with counts and filters for publishing
-status, topic/category, and difficulty.
+status, topic/category, and difficulty. Stage 37 adds batch status controls for
+selected questions and a review/preview detail page that shows how a question
+will read to learners without publishing it.
 
 To make a browser-local admin draft permanent today:
 
@@ -603,6 +615,50 @@ git diff --cached --check
 
 Result for this Stage 36 pass: all commands passed.
 
+## Stage 37 Learner And Admin Review Polish QA Status
+
+Stage 37 improves learner usefulness and admin review workflow without adding a
+new schema migration or changing signed-out local progress behaviour.
+
+Learner result:
+
+- `/practice` now includes topic-based entry points with available question
+  counts for knowledge, map-click, and route sessions.
+- Saved local/account-synced answer history is used on-device to highlight weak
+  topics where previous mistakes exist.
+- Knowledge, map-click, and route practice pages accept `topic` and
+  `difficulty` filters.
+- Practice sessions show clearer intros, empty states, answer feedback, and
+  end-of-session summaries.
+- Current-session wrong answers are shown with learner answer, accepted answer,
+  and focused feedback.
+- Explanation panels now separate the reason, accepted area, route guidance, and
+  learning tip for easier reading on mobile.
+
+Admin result:
+
+- `/admin/questions` supports selecting multiple rows and batch moving selected
+  records to `published`, `archived`, or `draft`.
+- Batch actions reuse the server-side admin check and write only through the
+  `question_bank_items` repository path.
+- `/admin/questions/[id]` now includes an admin-only learner preview for
+  knowledge, map-click, and route questions.
+- Database-only imported questions can be opened for review/preview from the
+  inventory.
+- Import validation UI gives clearer record/field-level guidance without
+  logging raw payloads.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 37 pass: all commands passed.
+
 ## Phase 3 Manual QA Checklist
 
 ### Public learner flow
@@ -780,6 +836,41 @@ Result for this Stage 36 pass: all commands passed.
 - Archive the sample and confirm it is hidden from learner-safe reads again.
 - Confirm signed-out local practice and mock exam flows still work.
 - Confirm signed-in progress saving still works after publishing changes.
+
+## Stage 37 Manual QA Checklist
+
+### Learner practice polish
+
+- Open `/practice` on desktop and mobile width.
+- Confirm topic cards show counts for knowledge, map-click, and route sessions.
+- Complete a few answers incorrectly, return to `/practice`, and confirm weak
+  topics are highlighted from saved history.
+- Start a topic-filtered knowledge session and confirm the intro shows the
+  selected topic/difficulty.
+- Change difficulty from the session intro and confirm the question set updates.
+- Submit a knowledge answer and confirm correct answer plus explanation/tip are
+  easy to read.
+- Start a topic-filtered map-click session, submit a click, and confirm distance
+  feedback plus accepted-area guidance appears.
+- Start a topic-filtered route session, draw a route, and confirm route feedback
+  plus explanation appears.
+- Confirm each practice session summary shows score, topic breakdown, and wrong
+  answers from the current session.
+- Confirm empty topic/style combinations show a helpful empty state.
+
+### Admin review polish
+
+- Sign in as an admin and open `/admin/questions`.
+- Select multiple draft or not-saved rows and use Publish selected.
+- Select multiple rows and use Archive selected.
+- Move selected rows back to draft.
+- Confirm non-admin learners cannot access `/admin/questions` or batch actions.
+- Open a source-bank row with Review / preview and inspect the learner preview.
+- Open an imported Supabase-only row with Review / preview and inspect the
+  learner preview.
+- Preview invalid import JSON and confirm errors identify record number and
+  field without exposing raw payloads in logs.
+- Confirm learner-safe reads still return only `status = 'published'`.
 
 ## Current Limitations
 

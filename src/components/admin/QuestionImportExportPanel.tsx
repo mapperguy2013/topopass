@@ -215,6 +215,12 @@ export function QuestionImportExportPanel() {
           {previewState.errors.length > 0 && (
             <div className="mt-5">
               <h3 className="font-bold text-red-800">Validation errors</h3>
+              <p className="mt-1 text-sm leading-6 text-red-900">
+                Fix the listed field in the source JSON, preview again, then
+                commit only when every record is valid. Errors are grouped by
+                record number and field so admins can review drafts without
+                exposing raw payloads in logs.
+              </p>
               <ul className="mt-2 max-h-64 space-y-2 overflow-auto rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
                 {previewState.errors.map((error, index) => (
                   <li key={`${error.index}-${error.field}-${index}`}>

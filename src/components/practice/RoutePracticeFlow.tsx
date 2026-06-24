@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LOCAL_LEARNER_ID } from "@/lib/db/localPersistence";
 import { orderQuestionsByRetryQueue } from "@/lib/db/mistakeRetryQueue";
 import { savePracticeAttempt } from "@/lib/db/practiceAttemptRepository";
@@ -10,7 +10,19 @@ import {
   getAtlasPageById,
   type RouteMapBase
 } from "@/lib/map/atlasPages";
+import {
+  filterByPracticeFilter,
+  normalizePracticeQuestionFilter,
+  routeQuestionTopic,
+  upsertPracticeSessionResult,
+  type PracticeSessionResult
+} from "@/lib/practice/practiceSession";
 import { createRouteReviewData } from "@/lib/reviewData";
+import {
+  PracticeEmptyState,
+  PracticeSessionIntro,
+  PracticeSessionSummaryPanel
+} from "@/src/components/practice/PracticeSessionPanels";
 import { QuestionExplanation } from "@/src/components/questions/QuestionExplanation";
 import { RouteDrawingQuestion } from "@/src/components/route/RouteDrawingQuestion";
 import type { RouteDrawingQuestionAnswer } from "@/src/components/route/RouteDrawingQuestion";
@@ -27,10 +39,30 @@ const fallbackRouteMapBase: RouteMapBase = {
   mapAttribution: "(c) OpenStreetMap contributors, ODbL"
 };
 
-export function RoutePracticeFlow() {
-  const [practiceQuestions, setPracticeQuestions] = useState(basePracticeQuestions);
+type RoutePracticeFlowProps = {
+  initialTopic?: string;
+  initialDifficulty?: string;
+};
+
+export function RoutePracticeFlow({
+  initialTopic,
+  initialDifficulty
+}: RoutePracticeFlowProps) {
+  const filter = useMemo(
+    () => normalizePracticeQuestionFilter(initialTopic, initialDifficulty),
+    [initialDifficulty, initialTopic]
+  );
+  const filteredBaseQuestions = useMemo(
+    () => filterByPracticeFilter(basePracticeQuestions, filter),
+    [filter]
+  );
+  const [practiceQuestions, setPracticeQuestions] =
+    useState(filteredBaseQuestions);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [attemptNumber, setAttemptNumber] = useState(0);
+  const [sessionResults, setSessionResults] = useState<PracticeSessionResult[]>(
+    []
+  );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">(
     "idle"
   );
@@ -39,15 +71,15 @@ export function RoutePracticeFlow() {
   const currentQuestion = practiceQuestions[currentQuestionIndex];
 
   useEffect(() => {
-    setPracticeQuestions(orderQuestionsByRetryQueue(basePracticeQuestions, "route"));
-  }, []);
+    setPracticeQuestions(orderQuestionsByRetryQueue(filteredBaseQuestions, "route"));
+    setCurrentQuestionIndex(0);
+    setAttemptNumber(0);
+    setSaveStatus("idle");
+    setSubmittedAnswer(null);
+  }, [filteredBaseQuestions]);
 
   if (!currentQuestion) {
-    return (
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-        No active route questions are available in the route question bank.
-      </section>
-    );
+    return <PracticeEmptyState filter={filter} questionTypeLabel="route" />;
   }
 
   const acceptedRoutePoints = currentQuestion.acceptedRoute?.geometry.map(
@@ -82,6 +114,24 @@ export function RoutePracticeFlow() {
   async function saveRouteAttempt(answer: RouteDrawingQuestionAnswer) {
     setSaveStatus("saving");
     setSubmittedAnswer(answer);
+    setSessionResults((current) =>
+      upsertPracticeSessionResult(current, {
+        questionId: currentQuestion.id,
+        prompt: currentQuestion.title,
+        questionType: "route-drawing",
+        topic: routeQuestionTopic(currentQuestion),
+        difficulty: currentQuestion.difficulty,
+        passed: answer.result.passed,
+        percentage: answer.result.percentage,
+        learnerAnswer: `${answer.routePoints.length} drawn route points`,
+        correctAnswer: `${currentQuestion.fromLabel} to ${currentQuestion.toLabel}`,
+        feedback:
+          answer.result.feedback[0] ??
+          (answer.result.passed
+            ? "Your route covered the accepted journey well."
+            : "Compare your line with the accepted route and retry the weak section.")
+      })
+    );
     const reviewData = createRouteReviewData({
       question: currentQuestion,
       userRoutePoints: answer.routePoints,
@@ -113,6 +163,14 @@ export function RoutePracticeFlow() {
 
   return (
     <div className="space-y-5">
+      <PracticeSessionIntro
+        baseHref="/practice/routes"
+        filter={filter}
+        questionCount={practiceQuestions.length}
+        questionType="route-drawing"
+        title="Route planning practice"
+      />
+
       <section className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -172,6 +230,13 @@ export function RoutePracticeFlow() {
             Score: {submittedAnswer.result.score}/{submittedAnswer.result.maxScore} (
             {submittedAnswer.result.percentage}%).
           </p>
+          {submittedAnswer.result.feedback.length > 0 && (
+            <ul className="mt-3 space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              {submittedAnswer.result.feedback.slice(0, 3).map((message) => (
+                <li key={message}>{message}</li>
+              ))}
+            </ul>
+          )}
           <div className="mt-4">
             <QuestionExplanation
               explanation={currentQuestion.explanation}
@@ -232,6 +297,8 @@ export function RoutePracticeFlow() {
           Next route
         </button>
       </nav>
+
+      <PracticeSessionSummaryPanel results={sessionResults} />
     </div>
   );
 }

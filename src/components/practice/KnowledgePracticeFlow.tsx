@@ -1,22 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LOCAL_LEARNER_ID } from "@/lib/db/localPersistence";
 import { orderQuestionsByRetryQueue } from "@/lib/db/mistakeRetryQueue";
 import { savePracticeAttempt } from "@/lib/db/practiceAttemptRepository";
 import { knowledgeQuestionBank } from "@/lib/knowledgeQuestions";
+import {
+  filterByPracticeFilter,
+  normalizePracticeQuestionFilter,
+  upsertPracticeSessionResult,
+  type PracticeSessionResult
+} from "@/lib/practice/practiceSession";
+import {
+  PracticeEmptyState,
+  PracticeSessionIntro,
+  PracticeSessionSummaryPanel
+} from "@/src/components/practice/PracticeSessionPanels";
 import { QuestionExplanation } from "@/src/components/questions/QuestionExplanation";
 
 const basePracticeQuestions = knowledgeQuestionBank.filter(
   (question) => question.isActive
 );
 
-export function KnowledgePracticeFlow() {
-  const [practiceQuestions, setPracticeQuestions] = useState(basePracticeQuestions);
+type KnowledgePracticeFlowProps = {
+  initialTopic?: string;
+  initialDifficulty?: string;
+};
+
+export function KnowledgePracticeFlow({
+  initialTopic,
+  initialDifficulty
+}: KnowledgePracticeFlowProps) {
+  const filter = useMemo(
+    () => normalizePracticeQuestionFilter(initialTopic, initialDifficulty),
+    [initialDifficulty, initialTopic]
+  );
+  const filteredBaseQuestions = useMemo(
+    () => filterByPracticeFilter(basePracticeQuestions, filter),
+    [filter]
+  );
+  const [practiceQuestions, setPracticeQuestions] =
+    useState(filteredBaseQuestions);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [sessionResults, setSessionResults] = useState<PracticeSessionResult[]>(
+    []
+  );
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "failed">(
     "idle"
   );
@@ -24,16 +55,16 @@ export function KnowledgePracticeFlow() {
 
   useEffect(() => {
     setPracticeQuestions(
-      orderQuestionsByRetryQueue(basePracticeQuestions, "knowledge")
+      orderQuestionsByRetryQueue(filteredBaseQuestions, "knowledge")
     );
-  }, []);
+    setCurrentQuestionIndex(0);
+    setSelectedAnswer(null);
+    setHasSubmitted(false);
+    setSaveStatus("idle");
+  }, [filteredBaseQuestions]);
 
   if (!currentQuestion) {
-    return (
-      <section className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-        No active knowledge questions are available.
-      </section>
-    );
+    return <PracticeEmptyState filter={filter} questionTypeLabel="knowledge" />;
   }
 
   const isFirstQuestion = currentQuestionIndex === 0;
@@ -63,6 +94,24 @@ export function KnowledgePracticeFlow() {
     setHasSubmitted(true);
     setSaveStatus("saving");
     const score = isCorrect ? 1 : 0;
+    setSessionResults((current) =>
+      upsertPracticeSessionResult(current, {
+        questionId: currentQuestion.id,
+        prompt: currentQuestion.prompt,
+        questionType: "knowledge",
+        topic: currentQuestion.category,
+        difficulty: currentQuestion.difficulty,
+        passed: isCorrect,
+        percentage: score * 100,
+        learnerAnswer: selectedAnswer,
+        correctAnswer: currentQuestion.correctAnswer,
+        feedback: isCorrect
+          ? "This answer matches the accepted response."
+          : (currentQuestion.incorrectExplanations?.[selectedAnswer] ??
+            currentQuestion.explanation ??
+            null)
+      })
+    );
     const result = await savePracticeAttempt({
       userId: LOCAL_LEARNER_ID,
       practiceMode: "knowledge",
@@ -84,6 +133,14 @@ export function KnowledgePracticeFlow() {
 
   return (
     <div className="space-y-5">
+      <PracticeSessionIntro
+        baseHref="/practice/knowledge"
+        filter={filter}
+        questionCount={practiceQuestions.length}
+        questionType="knowledge"
+        title="Knowledge practice"
+      />
+
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-semibold text-road">
           Question {currentQuestionIndex + 1} of {practiceQuestions.length}
@@ -164,6 +221,13 @@ export function KnowledgePracticeFlow() {
                 {currentQuestion.correctAnswer}
               </span>
             </p>
+            {!isCorrect &&
+              selectedAnswer &&
+              currentQuestion.incorrectExplanations?.[selectedAnswer] && (
+                <p className="mt-3 rounded-md border border-red-200 bg-white/80 p-3 text-sm text-red-900">
+                  {currentQuestion.incorrectExplanations[selectedAnswer]}
+                </p>
+              )}
             <div className="mt-4">
               <QuestionExplanation
                 explanation={currentQuestion.explanation}
@@ -207,6 +271,8 @@ export function KnowledgePracticeFlow() {
           Next question
         </button>
       </nav>
+
+      <PracticeSessionSummaryPanel results={sessionResults} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   exportQuestionBankItemsForAdmin,
   importQuestionBankItemsForAdmin,
   PUBLISHED_QUESTION_STATUS,
+  readAdminQuestionById,
   readAdminQuestionItems,
   readPublishedQuestions,
   readQuestions,
@@ -66,6 +67,22 @@ class RecordingQuestionQuery {
   order(column: string) {
     this.calls.push({ table: this.table, operation: "order", column });
     return this;
+  }
+
+  single() {
+    const data = this.error
+      ? null
+      : this.rows.filter((row) =>
+          this.filters.every(
+            ({ column, value }) =>
+              row &&
+              typeof row === "object" &&
+              !Array.isArray(row) &&
+              (row as Record<string, unknown>)[column] === value
+          )
+        )[0] ?? null;
+
+    return Promise.resolve({ data, error: this.error });
   }
 
   upsert(values: unknown) {
@@ -299,6 +316,56 @@ test("admin question inventory can read all publishing statuses", async () => {
   );
   assert.equal(result.items[0].category, question.category);
   assert.equal(result.items[0].difficulty, question.difficulty);
+});
+
+test("admin question detail can read a single imported question_bank_items row", async () => {
+  const question = getAllQuestions().find((entry) => entry.type === "knowledge");
+  assert.ok(question);
+
+  const client = new RecordingQuestionClient([
+    rowFromQuestion(question, "draft")
+  ]);
+  const result = await readAdminQuestionById(question.id, { client });
+
+  assert.equal(result.source, "supabase");
+  assert.equal(result.question?.id, question.id);
+  assert.equal(result.question?.type, "knowledge");
+  assert.ok(
+    client.calls.some(
+      (call) =>
+        call.table === "question_bank_items" &&
+        call.operation === "eq" &&
+        call.column === "id" &&
+        call.value === question.id
+    )
+  );
+});
+
+test("admin batch actions and preview stay protected and target question_bank_items", () => {
+  const actionsSource = readFileSync(
+    path.join(projectRoot, "app/admin/questions/actions.ts"),
+    "utf8"
+  );
+  const inventorySource = readFileSync(
+    path.join(projectRoot, "src/components/admin/AdminQuestionInventory.tsx"),
+    "utf8"
+  );
+  const detailSource = readFileSync(
+    path.join(projectRoot, "app/admin/questions/[id]/page.tsx"),
+    "utf8"
+  );
+
+  assert.match(actionsSource, /batchSetQuestionStatusAction/);
+  assert.match(actionsSource, /requireAdmin\("\/admin\/questions"\)/);
+  assert.match(actionsSource, /getAll\("questionId"\)/);
+  assert.match(actionsSource, /upsertQuestionForAdmin/);
+  assert.match(actionsSource, /setQuestionStatusForAdmin/);
+  assert.match(inventorySource, /batch-question-status-form/);
+  assert.match(inventorySource, /Publish selected/);
+  assert.match(inventorySource, /Archive selected/);
+  assert.match(detailSource, /LearnerPreview/);
+  assert.match(detailSource, /readAdminQuestionById/);
+  assert.match(detailSource, /Preview is admin-only and does not publish/);
 });
 
 test("admin export reads question_bank_items with optional status filter", async () => {
