@@ -30,23 +30,81 @@ if (rawMap.type !== "FeatureCollection" || rawMap.features.length === 0) {
   throw new Error("Real map data not loaded yet: osm-raw.geojson is invalid or empty.");
 }
 
+function collectCoordinates(value, output = []) {
+  if (!Array.isArray(value)) return output;
+  if (
+    value.length >= 2 &&
+    typeof value[0] === "number" &&
+    typeof value[1] === "number"
+  ) {
+    output.push([value[0], value[1]]);
+    return output;
+  }
+  value.forEach((child) => collectCoordinates(child, output));
+  return output;
+}
+
+function featureBounds(feature) {
+  const coordinates = collectCoordinates(feature.geometry?.coordinates);
+  if (coordinates.length === 0) return null;
+
+  return coordinates.reduce(
+    (bounds, [lng, lat]) => ({
+      west: Math.min(bounds.west, lng),
+      south: Math.min(bounds.south, lat),
+      east: Math.max(bounds.east, lng),
+      north: Math.max(bounds.north, lat)
+    }),
+    {
+      west: Number.POSITIVE_INFINITY,
+      south: Number.POSITIVE_INFINITY,
+      east: Number.NEGATIVE_INFINITY,
+      north: Number.NEGATIVE_INFINITY
+    }
+  );
+}
+
+function expandBounds(bounds, bufferDegrees) {
+  return {
+    west: bounds.west - bufferDegrees,
+    south: bounds.south - bufferDegrees,
+    east: bounds.east + bufferDegrees,
+    north: bounds.north + bufferDegrees
+  };
+}
+
+function boundsIntersect(a, b) {
+  return !(
+    a.east < b.west ||
+    a.west > b.east ||
+    a.north < b.south ||
+    a.south > b.north
+  );
+}
+
+const renderBounds = expandBounds(config.bounds, config.renderBufferDegrees ?? 0.006);
+const renderedFeatures = rawMap.features.filter((feature) => {
+  const bounds = featureBounds(feature);
+  return bounds ? boundsIntersect(bounds, renderBounds) : false;
+});
+
 const datasets = {
   roads: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         feature.geometry?.type === "LineString" &&
         Boolean(feature.properties?.highway)
     )
   },
   stations: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         feature.geometry?.type === "Point" &&
         feature.properties?.railway === "station"
     )
   },
   parks: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         /Polygon/.test(feature.geometry?.type ?? "") &&
         (feature.properties?.leisure === "park" ||
@@ -57,21 +115,21 @@ const datasets = {
     )
   },
   water: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         feature.properties?.natural === "water" ||
         ["canal", "river", "stream"].includes(feature.properties?.waterway)
     )
   },
   buildings: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         /Polygon/.test(feature.geometry?.type ?? "") &&
         Boolean(feature.properties?.building)
     )
   },
   railLines: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         feature.geometry?.type === "LineString" &&
         ["rail", "subway", "light_rail", "narrow_gauge"].includes(
@@ -80,7 +138,7 @@ const datasets = {
     )
   },
   stationAreas: {
-    features: rawMap.features.filter(
+    features: renderedFeatures.filter(
       (feature) =>
         /Polygon/.test(feature.geometry?.type ?? "") &&
         (feature.properties?.railway === "station" ||
@@ -89,7 +147,7 @@ const datasets = {
     )
   },
   landmarks: {
-    features: rawMap.features.filter((feature) => {
+    features: renderedFeatures.filter((feature) => {
       const properties = feature.properties ?? {};
       if (!properties.name || properties.shop || properties.cuisine) return false;
       return (
@@ -156,39 +214,75 @@ function polygonPath(feature) {
 
 function roadClass(highway) {
   if (/^(motorway|trunk|primary)/.test(highway ?? "")) return "major";
-  if (/^(secondary|tertiary)/.test(highway ?? "")) return "main";
+  if (/^secondary/.test(highway ?? "")) return "secondary";
+  if (/^tertiary/.test(highway ?? "")) return "tertiary";
   if (/^(residential|unclassified|living_street)/.test(highway ?? "")) {
     return "local";
   }
+  if (/^(service|track)/.test(highway ?? "")) return "service";
   return "minor";
 }
 
 const roadStyles = {
   major: {
-    casing: 17,
-    fill: 12,
-    casingColour: "#706a5d",
-    fillColour: "#efca68"
+    casing: 18,
+    fill: 13,
+    casingColour: "#5d594f",
+    fillColour: "#efc15c"
   },
-  main: {
-    casing: 10,
-    fill: 7,
-    casingColour: "#807d73",
-    fillColour: "#fff8e6"
+  secondary: {
+    casing: 12,
+    fill: 8.5,
+    casingColour: "#736e62",
+    fillColour: "#f5d986"
+  },
+  tertiary: {
+    casing: 9,
+    fill: 6,
+    casingColour: "#817b6f",
+    fillColour: "#fff0bd"
   },
   local: {
-    casing: 6,
-    fill: 3.6,
-    casingColour: "#96938a",
+    casing: 6.8,
+    fill: 4.2,
+    casingColour: "#8f8b82",
     fillColour: "#fffef9"
   },
+  service: {
+    casing: 4,
+    fill: 2.2,
+    casingColour: "#aaa59a",
+    fillColour: "#f1eee6"
+  },
   minor: {
-    casing: 3.4,
-    fill: 1.8,
-    casingColour: "#aaa69d",
-    fillColour: "#fffef9"
+    casing: 3.2,
+    fill: 1.7,
+    casingColour: "#b3aea4",
+    fillColour: "#fbfaf5"
   }
 };
+
+function dataAttribute(name, value) {
+  if (value === undefined || value === null || value === "") return "";
+  return ` data-${name}="${escapeXml(value)}"`;
+}
+
+function roadDataAttributes(feature, accessClass) {
+  const properties = feature.properties ?? {};
+  return [
+    dataAttribute("name", properties.name),
+    dataAttribute("highway", properties.highway),
+    dataAttribute("access-class", accessClass),
+    dataAttribute("oneway", properties.oneway),
+    dataAttribute("access", properties.access),
+    dataAttribute("vehicle", properties.vehicle),
+    dataAttribute("motor-vehicle", properties.motor_vehicle),
+    dataAttribute("motorcar", properties.motorcar),
+    dataAttribute("service", properties.service),
+    dataAttribute("junction", properties.junction),
+    dataAttribute("barrier", properties.barrier)
+  ].join("");
+}
 
 function renderAreaDataset(dataset, className) {
   return dataset.features
@@ -209,28 +303,36 @@ function renderWaterLines() {
 }
 
 function renderRoads() {
-  const orderedClasses = ["minor", "local", "main", "major"];
+  const orderedClasses = ["minor", "service", "local", "tertiary", "secondary", "major"];
 
   const normalRoads = orderedClasses
     .map((className) => {
       const style = roadStyles[className];
       const paths = datasets.roads.features
-        .filter(
-          (feature) =>
-            roadClass(feature.properties?.highway) === className &&
-            [
+        .flatMap((feature) => {
+          const accessClass = classifyRoadAccess(feature.properties);
+          if (
+            roadClass(feature.properties?.highway) !== className ||
+            ![
               roadAccessClasses.driveBothWays,
               roadAccessClasses.driveOneWayForward,
               roadAccessClasses.driveOneWayReverse
-            ].includes(classifyRoadAccess(feature.properties))
-        )
-        .flatMap((feature) => geometryLines(feature.geometry))
-        .map((coordinates) => linePath(coordinates));
+            ].includes(accessClass)
+          ) {
+            return [];
+          }
+
+          const attributes = roadDataAttributes(feature, accessClass);
+          return geometryLines(feature.geometry).map((coordinates) => ({
+            pathData: linePath(coordinates),
+            attributes
+          }));
+        });
 
       return `
         <g class="roads-${className}">
-          ${paths.map((pathData) => `<path d="${pathData}" fill="none" stroke="${style.casingColour}" stroke-width="${style.casing}" stroke-linecap="round" stroke-linejoin="round"/>`).join("\n")}
-          ${paths.map((pathData) => `<path d="${pathData}" fill="none" stroke="${style.fillColour}" stroke-width="${style.fill}" stroke-linecap="round" stroke-linejoin="round"/>`).join("\n")}
+          ${paths.map(({ pathData, attributes }) => `<path${attributes} d="${pathData}" fill="none" stroke="${style.casingColour}" stroke-width="${style.casing}" stroke-linecap="round" stroke-linejoin="round"/>`).join("\n")}
+          ${paths.map(({ pathData, attributes }) => `<path${attributes} d="${pathData}" fill="none" stroke="${style.fillColour}" stroke-width="${style.fill}" stroke-linecap="round" stroke-linejoin="round"/>`).join("\n")}
         </g>
       `;
     })
@@ -259,10 +361,14 @@ function renderRoads() {
         .filter(
           (feature) => classifyRoadAccess(feature.properties) === accessClass
         )
-        .flatMap((feature) => geometryLines(feature.geometry))
-        .map((coordinates) => linePath(coordinates));
+        .flatMap((feature) =>
+          geometryLines(feature.geometry).map((coordinates) => ({
+            pathData: linePath(coordinates),
+            attributes: roadDataAttributes(feature, accessClass)
+          }))
+        );
       return `<g class="${className}" data-access="${accessClass}">${paths
-        .map((pathData) => `<path d="${pathData}"/>`)
+        .map(({ pathData, attributes }) => `<path${attributes} d="${pathData}"/>`)
         .join("\n")}</g>`;
     })
     .join("\n");
@@ -323,6 +429,32 @@ function renderOneWayArrows() {
     .join("\n");
 }
 
+function renderRestrictionBars() {
+  return datasets.roads.features
+    .flatMap((feature) => {
+      if (
+        classifyRoadAccess(feature.properties) !==
+        roadAccessClasses.noMotorVehicle
+      ) {
+        return [];
+      }
+
+      const points = feature.geometry.coordinates.map(project);
+      const totalLength = points
+        .slice(1)
+        .reduce((sum, point, index) => sum + distance(points[index], point), 0);
+      if (totalLength < 26) return [];
+
+      return [pointAlongLine(points, totalLength / 2)]
+        .filter(Boolean)
+        .map(({ point, angle }) => {
+          const [x, y] = point;
+          return `<g class="restricted-bar" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(angle + 90).toFixed(1)})"><path d="M-7 0H7"/></g>`;
+        });
+    })
+    .join("\n");
+}
+
 function distance(a, b) {
   return Math.hypot(a[0] - b[0], a[1] - b[1]);
 }
@@ -360,9 +492,14 @@ function labelCandidate(feature) {
     }
   }
 
-  const minimumLength = { major: 26, main: 23, local: 18, minor: 28 }[
-    className
-  ];
+  const minimumLength = {
+    major: 22,
+    secondary: 20,
+    tertiary: 18,
+    local: 14,
+    service: 16,
+    minor: 18
+  }[className];
   if (!longestSegment || longestSegment.length < minimumLength) return null;
   const midpoint = [
     (longestSegment.start[0] + longestSegment.end[0]) / 2,
@@ -391,28 +528,39 @@ function renderRoadLabels() {
     .map(labelCandidate)
     .filter(Boolean)
     .sort((a, b) => {
-      const rank = { major: 3, main: 2, local: 1, minor: 0 };
+      const rank = {
+        major: 5,
+        secondary: 4,
+        tertiary: 3,
+        local: 2,
+        service: 1,
+        minor: 0
+      };
       return rank[b.className] - rank[a.className] || b.length - a.length;
     });
   const placed = [];
   const usedNames = new Set();
 
   for (const candidate of candidates) {
-    if (candidate.className === "minor" || usedNames.has(candidate.name)) {
+    if (usedNames.has(candidate.name)) {
       continue;
     }
     const collisionDistance =
       candidate.className === "local"
-        ? 46
-        : candidate.className === "main"
-          ? 54
-          : 64;
+        ? 34
+        : candidate.className === "service" || candidate.className === "minor"
+          ? 30
+          : candidate.className === "tertiary"
+            ? 42
+            : candidate.className === "secondary"
+              ? 50
+              : 58;
     if (placed.some((label) => distance(label.midpoint, candidate.midpoint) < collisionDistance)) {
       continue;
     }
     usedNames.add(candidate.name);
     placed.push(candidate);
-    if (placed.length >= 145) break;
+    if (placed.length >= 420) break;
   }
 
   return placed
@@ -582,15 +730,18 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${
     .water-line { fill: none; stroke: #9fc8d3; stroke-width: 6; stroke-linecap: round; }
     .rail-surface { fill: none; stroke: #6e6b65; stroke-width: 1.15; stroke-linecap: round; opacity: .72; }
     .rail-subway { fill: none; stroke: #918d86; stroke-width: .8; stroke-dasharray: 5 4; opacity: .5; }
-    .road-pedestrian path { fill: none; stroke: #c1bdb4; stroke-width: .75; stroke-dasharray: 2 3; opacity: .5; }
-    .road-private path { fill: none; stroke: #8f8c85; stroke-width: 1.5; stroke-dasharray: 6 4; opacity: .75; }
-    .road-no-motor path { fill: none; stroke: #925b58; stroke-width: 2.2; stroke-dasharray: 4 2; }
-    .road-unknown path { fill: none; stroke: #c6c2b8; stroke-width: .8; stroke-dasharray: 2 4; }
+    .road-pedestrian path { fill: none; stroke: #c1bdb4; stroke-width: .75; stroke-dasharray: 2 3; opacity: .42; }
+    .road-private path { fill: none; stroke: #8f8c85; stroke-width: 1.3; stroke-dasharray: 6 4; opacity: .62; }
+    .road-no-motor path { fill: none; stroke: #8f3d3a; stroke-width: 2.2; stroke-dasharray: 4 2; }
+    .road-unknown path { fill: none; stroke: #d4d0c6; stroke-width: .7; stroke-dasharray: 2 4; opacity: .45; }
     .one-way-arrow path { fill: none; stroke: #1f1e1b; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-    .road-label { fill: #363530; font-family: Arial, Helvetica, sans-serif; font-size: 9.2px; font-weight: 500; letter-spacing: .3px; paint-order: stroke; stroke: #f6f1e4; stroke-width: 2.5px; stroke-linejoin: round; }
-    .road-label-major { fill: #201f1c; font-size: 12px; font-weight: 700; }
-    .road-label-main { fill: #2b2a26; font-size: 10.5px; font-weight: 600; }
-    .road-label-local { font-size: 8.7px; }
+    .restricted-bar path { fill: none; stroke: #8f1f1b; stroke-width: 3; stroke-linecap: round; }
+    .road-label { fill: #34322d; font-family: Arial, Helvetica, sans-serif; font-size: 7.4px; font-weight: 500; letter-spacing: .18px; paint-order: stroke; stroke: #f6f1e4; stroke-width: 2px; stroke-linejoin: round; }
+    .road-label-major { fill: #1f1d19; font-size: 12px; font-weight: 700; letter-spacing: .25px; }
+    .road-label-secondary { fill: #24221e; font-size: 10.5px; font-weight: 700; }
+    .road-label-tertiary { fill: #2c2a25; font-size: 9.4px; font-weight: 600; }
+    .road-label-local { font-size: 7.8px; }
+    .road-label-service, .road-label-minor { fill: #4c4941; font-size: 6.9px; font-weight: 500; }
     .area-label { fill: #587052; font-family: Georgia, serif; font-size: 10px; font-style: italic; letter-spacing: .8px; paint-order: stroke; stroke: #e4ecd9; stroke-width: 2px; }
     .water-label { fill: #527b86; font-family: Georgia, serif; font-size: 10px; font-style: italic; letter-spacing: .8px; paint-order: stroke; stroke: #d5e7eb; stroke-width: 2px; }
     .landmark-label { fill: #594254; font-family: Georgia, serif; font-size: 9px; font-weight: 700; letter-spacing: .4px; paint-order: stroke; stroke: #f6f1e4; stroke-width: 3px; stroke-linejoin: round; }
@@ -608,6 +759,7 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${
   <g id="rail-lines">${renderRailLines()}</g>
   <g id="roads">${renderRoads()}</g>
   <g id="one-way-arrows">${renderOneWayArrows()}</g>
+  <g id="restriction-bars">${renderRestrictionBars()}</g>
   <g id="road-labels">${renderRoadLabels()}</g>
   <g id="park-labels">${renderAreaLabels(datasets.parks, "area-label", { minimumArea: 1200, maximumLabels: 24 })}</g>
   <g id="water-labels">${renderAreaLabels(datasets.water, "water-label", { minimumArea: 250, maximumLabels: 10 })}</g>
@@ -620,7 +772,8 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${
 await mkdir(outputDirectory, { recursive: true });
 await writeFile(path.join(outputDirectory, "map.svg"), svg, "utf8");
 console.log(
-  `Rendered ${datasets.roads.features.length} real roads, ` +
+  `Rendered ${datasets.roads.features.length} real roads from ` +
+    `${renderedFeatures.length}/${rawMap.features.length} source features, ` +
     `${datasets.buildings.features.length} buildings and ` +
     `${datasets.stations.features.length} rail stations from osm-raw.geojson.`
 );

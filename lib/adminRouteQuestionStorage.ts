@@ -30,6 +30,8 @@ export function createRouteQuestionDraft(): RouteQuestion {
     status: "draft",
     tags: ["route-planning", "london"],
     explanation: "",
+    tip: "",
+    idealRouteDescription: "",
     createdAt: now,
     updatedAt: now
   };

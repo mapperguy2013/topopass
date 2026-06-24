@@ -12,7 +12,9 @@ export type MapClickQuestionData = {
   sourceNote: string;
   targetName: string;
   isActive: boolean;
-  explanation: string;
+  explanation?: string;
+  tip?: string;
+  acceptedAreaDescription?: string;
 };
 
 export const demoMapClickQuestions: MapClickQuestionData[] = [
@@ -30,7 +32,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "Existing TopoPass station target",
     targetName: "King's Cross Station",
     isActive: true,
-    explanation: "The accepted point is centred on King's Cross St Pancras station."
+    explanation: "The accepted point is centred on King's Cross St Pancras station.",
+    tip: "Use the rail tracks and Euston Road as anchors when locating King's Cross.",
+    acceptedAreaDescription: "Within the main King's Cross St Pancras station area."
   },
   {
     id: "london-bridge-station",
@@ -46,7 +50,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "Existing TopoPass station target",
     targetName: "London Bridge Station",
     isActive: true,
-    explanation: "The accepted point is centred on London Bridge station."
+    explanation: "The accepted point is centred on London Bridge station.",
+    tip: "Look just south of the Thames near Borough High Street and Tooley Street.",
+    acceptedAreaDescription: "Within the London Bridge station entrance and concourse area."
   },
   {
     id: "oxford-circus-station",
@@ -62,7 +68,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "Existing TopoPass station target",
     targetName: "Oxford Circus Station",
     isActive: true,
-    explanation: "The accepted point is centred on Oxford Circus station."
+    explanation: "The accepted point is centred on Oxford Circus station.",
+    tip: "Find the junction where Oxford Street and Regent Street meet.",
+    acceptedAreaDescription: "Within the Oxford Circus station junction area."
   },
   {
     id: "euston-station",
@@ -75,7 +83,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "OSM station coordinate used by the route bank",
     targetName: "Euston Station",
     isActive: true,
-    explanation: "The accepted point is centred on Euston station."
+    explanation: "The accepted point is centred on Euston station.",
+    tip: "Euston sits north of Euston Road and west of King's Cross.",
+    acceptedAreaDescription: "Within the main Euston station footprint."
   },
   {
     id: "russell-square-station",
@@ -88,7 +98,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "OSM station coordinate used by the route bank",
     targetName: "Russell Square Station",
     isActive: true,
-    explanation: "The accepted point is centred on Russell Square station."
+    explanation: "The accepted point is centred on Russell Square station.",
+    tip: "Use Russell Square garden as the local landmark and look nearby on Bernard Street.",
+    acceptedAreaDescription: "Within the Russell Square station entrance area."
   },
   {
     id: "warren-street-station",
@@ -101,7 +113,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "OSM station coordinate used by the route bank",
     targetName: "Warren Street Station",
     isActive: true,
-    explanation: "The accepted point is centred on Warren Street station."
+    explanation: "The accepted point is centred on Warren Street station.",
+    tip: "Locate the junction of Tottenham Court Road and Euston Road.",
+    acceptedAreaDescription: "Within the Warren Street station junction area."
   },
   {
     id: "goodge-street-station",
@@ -114,7 +128,9 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "OSM station coordinate used by the route bank",
     targetName: "Goodge Street Station",
     isActive: true,
-    explanation: "The accepted point is centred on Goodge Street station."
+    explanation: "The accepted point is centred on Goodge Street station.",
+    tip: "Follow Tottenham Court Road south from Warren Street to find Goodge Street.",
+    acceptedAreaDescription: "Within the Goodge Street station entrance area."
   },
   {
     id: "angel-station",
@@ -127,6 +143,431 @@ export const demoMapClickQuestions: MapClickQuestionData[] = [
     sourceNote: "OSM station coordinate used by the route bank",
     targetName: "Angel Station",
     isActive: true,
-    explanation: "The accepted point is centred on Angel station."
+    explanation: "The accepted point is centred on Angel station.",
+    tip: "Angel is north-east of King's Cross around Islington High Street.",
+    acceptedAreaDescription: "Within the Angel station entrance area."
   }
 ];
+
+demoMapClickQuestions.push(
+  {
+    id: "map-click-paddington-station",
+    type: "map-click",
+    prompt: "Click on Paddington Station.",
+    answer: { lat: 51.5154, lng: -0.1755 },
+    toleranceMeters: 130,
+    difficulty: "medium",
+    category: "Rail stations",
+    sourceNote: "London station target",
+    targetName: "Paddington Station",
+    isActive: true,
+    explanation: "The accepted point is centred on Paddington station.",
+    tip: "Look west of Marylebone and north of Hyde Park, around Praed Street.",
+    acceptedAreaDescription: "Within the main Paddington station footprint."
+  },
+  {
+    id: "map-click-victoria-station",
+    type: "map-click",
+    prompt: "Click on Victoria Station.",
+    answer: { lat: 51.4952, lng: -0.1441 },
+    toleranceMeters: 130,
+    difficulty: "medium",
+    category: "Rail stations",
+    sourceNote: "London station target",
+    targetName: "Victoria Station",
+    isActive: true,
+    explanation: "The accepted point is centred on Victoria station.",
+    tip: "Use Buckingham Palace Road and Victoria Street as nearby anchors.",
+    acceptedAreaDescription: "Within the Victoria station concourse and entrance area."
+  },
+  {
+    id: "map-click-waterloo-station",
+    type: "map-click",
+    prompt: "Click on Waterloo Station.",
+    answer: { lat: 51.5033, lng: -0.1147 },
+    toleranceMeters: 140,
+    difficulty: "medium",
+    category: "Rail stations",
+    sourceNote: "London station target",
+    targetName: "Waterloo Station",
+    isActive: true,
+    explanation: "The accepted point is centred on Waterloo station on the south side of the Thames.",
+    tip: "Find the South Bank, then look south of Waterloo Bridge.",
+    acceptedAreaDescription: "Within the main Waterloo station footprint."
+  },
+  {
+    id: "map-click-liverpool-street-station",
+    type: "map-click",
+    prompt: "Click on Liverpool Street Station.",
+    answer: { lat: 51.5178, lng: -0.0823 },
+    toleranceMeters: 130,
+    difficulty: "medium",
+    category: "Rail stations",
+    sourceNote: "London station target",
+    targetName: "Liverpool Street Station",
+    isActive: true,
+    explanation: "The accepted point is centred on Liverpool Street station in the City.",
+    tip: "Look around Bishopsgate, east of Moorgate.",
+    acceptedAreaDescription: "Within the Liverpool Street station entrance and concourse area."
+  },
+  {
+    id: "map-click-marylebone-station",
+    type: "map-click",
+    prompt: "Click on Marylebone Station.",
+    answer: { lat: 51.5225, lng: -0.1631 },
+    toleranceMeters: 130,
+    difficulty: "medium",
+    category: "Rail stations",
+    sourceNote: "London station target",
+    targetName: "Marylebone Station",
+    isActive: true,
+    explanation: "The accepted point is centred on Marylebone station.",
+    tip: "Find Baker Street and look slightly west toward Melcombe Place.",
+    acceptedAreaDescription: "Within the Marylebone station footprint."
+  },
+  {
+    id: "map-click-charing-cross-station",
+    type: "map-click",
+    prompt: "Click on Charing Cross Station.",
+    answer: { lat: 51.508, lng: -0.1247 },
+    toleranceMeters: 120,
+    difficulty: "medium",
+    category: "Rail stations",
+    sourceNote: "London station target",
+    targetName: "Charing Cross Station",
+    isActive: true,
+    explanation: "The accepted point is centred on Charing Cross station near Trafalgar Square.",
+    tip: "Use the Strand, Trafalgar Square, and the north bank of the Thames.",
+    acceptedAreaDescription: "Within the Charing Cross station area."
+  },
+  {
+    id: "map-click-st-thomas-hospital",
+    type: "map-click",
+    prompt: "Click on St Thomas' Hospital.",
+    answer: { lat: 51.4984, lng: -0.118 },
+    toleranceMeters: 160,
+    difficulty: "medium",
+    category: "Hospitals",
+    sourceNote: "London hospital target",
+    targetName: "St Thomas' Hospital",
+    isActive: true,
+    explanation: "St Thomas' Hospital is on the south bank of the Thames by Westminster Bridge.",
+    tip: "Find Parliament and Westminster Bridge, then look across the river.",
+    acceptedAreaDescription: "Within the St Thomas' Hospital campus."
+  },
+  {
+    id: "map-click-great-ormond-street-hospital",
+    type: "map-click",
+    prompt: "Click on Great Ormond Street Hospital.",
+    answer: { lat: 51.5222, lng: -0.1208 },
+    toleranceMeters: 140,
+    difficulty: "hard",
+    category: "Hospitals",
+    sourceNote: "London hospital target",
+    targetName: "Great Ormond Street Hospital",
+    isActive: true,
+    explanation: "Great Ormond Street Hospital is in Bloomsbury, north of Holborn.",
+    tip: "Use Russell Square, Queen Square, and Great Ormond Street as anchors.",
+    acceptedAreaDescription: "Within the Great Ormond Street Hospital area."
+  },
+  {
+    id: "map-click-uclh",
+    type: "map-click",
+    prompt: "Click on University College Hospital.",
+    answer: { lat: 51.5254, lng: -0.1364 },
+    toleranceMeters: 140,
+    difficulty: "hard",
+    category: "Hospitals",
+    sourceNote: "London hospital target",
+    targetName: "University College Hospital",
+    isActive: true,
+    explanation: "University College Hospital is near Euston Road and Tottenham Court Road.",
+    tip: "Locate Warren Street and Euston Road, then look just south-west.",
+    acceptedAreaDescription: "Within the University College Hospital site."
+  },
+  {
+    id: "map-click-royal-london-hospital",
+    type: "map-click",
+    prompt: "Click on The Royal London Hospital.",
+    answer: { lat: 51.519, lng: -0.0594 },
+    toleranceMeters: 160,
+    difficulty: "hard",
+    category: "Hospitals",
+    sourceNote: "London hospital target",
+    targetName: "The Royal London Hospital",
+    isActive: true,
+    explanation: "The Royal London Hospital is in Whitechapel in east London.",
+    tip: "Use Whitechapel Road as the main road anchor.",
+    acceptedAreaDescription: "Within the Royal London Hospital campus."
+  },
+  {
+    id: "map-click-tower-bridge",
+    type: "map-click",
+    prompt: "Click on Tower Bridge.",
+    answer: { lat: 51.5055, lng: -0.0754 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Bridges",
+    sourceNote: "London bridge target",
+    targetName: "Tower Bridge",
+    isActive: true,
+    explanation: "Tower Bridge crosses the Thames east of London Bridge.",
+    tip: "Find the Tower of London area on the north bank and the bridge immediately south.",
+    acceptedAreaDescription: "On or immediately beside Tower Bridge."
+  },
+  {
+    id: "map-click-westminster-bridge",
+    type: "map-click",
+    prompt: "Click on Westminster Bridge.",
+    answer: { lat: 51.5008, lng: -0.1217 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Bridges",
+    sourceNote: "London bridge target",
+    targetName: "Westminster Bridge",
+    isActive: true,
+    explanation: "Westminster Bridge crosses the Thames by Parliament and St Thomas' Hospital.",
+    tip: "Use the Houses of Parliament and the London Eye as nearby landmarks.",
+    acceptedAreaDescription: "On or immediately beside Westminster Bridge."
+  },
+  {
+    id: "map-click-waterloo-bridge",
+    type: "map-click",
+    prompt: "Click on Waterloo Bridge.",
+    answer: { lat: 51.5081, lng: -0.1161 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Bridges",
+    sourceNote: "London bridge target",
+    targetName: "Waterloo Bridge",
+    isActive: true,
+    explanation: "Waterloo Bridge links the Strand/Aldwych area with the South Bank.",
+    tip: "Find Somerset House and the South Bank, then locate the crossing between them.",
+    acceptedAreaDescription: "On or immediately beside Waterloo Bridge."
+  },
+  {
+    id: "map-click-blackfriars-bridge",
+    type: "map-click",
+    prompt: "Click on Blackfriars Bridge.",
+    answer: { lat: 51.5097, lng: -0.1043 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Bridges",
+    sourceNote: "London bridge target",
+    targetName: "Blackfriars Bridge",
+    isActive: true,
+    explanation: "Blackfriars Bridge crosses the Thames west of Southwark Bridge.",
+    tip: "Use Blackfriars station and the north bank road network as anchors.",
+    acceptedAreaDescription: "On or immediately beside Blackfriars Bridge."
+  },
+  {
+    id: "map-click-british-museum",
+    type: "map-click",
+    prompt: "Click on the British Museum.",
+    answer: { lat: 51.5194, lng: -0.127 },
+    toleranceMeters: 160,
+    difficulty: "medium",
+    category: "Museums and galleries",
+    sourceNote: "London museum target",
+    targetName: "British Museum",
+    isActive: true,
+    explanation: "The British Museum is in Bloomsbury near Great Russell Street.",
+    tip: "Look between Tottenham Court Road, Holborn, and Russell Square.",
+    acceptedAreaDescription: "Within the British Museum site."
+  },
+  {
+    id: "map-click-natural-history-museum",
+    type: "map-click",
+    prompt: "Click on the Natural History Museum.",
+    answer: { lat: 51.4967, lng: -0.1764 },
+    toleranceMeters: 160,
+    difficulty: "medium",
+    category: "Museums and galleries",
+    sourceNote: "London museum target",
+    targetName: "Natural History Museum",
+    isActive: true,
+    explanation: "The Natural History Museum is in South Kensington.",
+    tip: "Find South Kensington and Exhibition Road.",
+    acceptedAreaDescription: "Within the Natural History Museum site."
+  },
+  {
+    id: "map-click-tate-modern",
+    type: "map-click",
+    prompt: "Click on Tate Modern.",
+    answer: { lat: 51.5076, lng: -0.0994 },
+    toleranceMeters: 160,
+    difficulty: "medium",
+    category: "Museums and galleries",
+    sourceNote: "London gallery target",
+    targetName: "Tate Modern",
+    isActive: true,
+    explanation: "Tate Modern is on Bankside on the south side of the Thames.",
+    tip: "Use the Millennium Bridge and St Paul's Cathedral as orientation points.",
+    acceptedAreaDescription: "Within the Tate Modern building area."
+  },
+  {
+    id: "map-click-national-gallery",
+    type: "map-click",
+    prompt: "Click on the National Gallery.",
+    answer: { lat: 51.5089, lng: -0.1283 },
+    toleranceMeters: 130,
+    difficulty: "easy",
+    category: "Museums and galleries",
+    sourceNote: "London gallery target",
+    targetName: "National Gallery",
+    isActive: true,
+    explanation: "The National Gallery faces Trafalgar Square.",
+    tip: "Find Trafalgar Square first, then use the north side of the square.",
+    acceptedAreaDescription: "Within the National Gallery building area."
+  },
+  {
+    id: "map-click-hyde-park-corner",
+    type: "map-click",
+    prompt: "Click on Hyde Park Corner.",
+    answer: { lat: 51.5028, lng: -0.1527 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Parks and squares",
+    sourceNote: "London junction target",
+    targetName: "Hyde Park Corner",
+    isActive: true,
+    explanation: "Hyde Park Corner is at the south-east corner of Hyde Park.",
+    tip: "Use Park Lane, Piccadilly, and Constitution Hill as road anchors.",
+    acceptedAreaDescription: "Within the Hyde Park Corner junction area."
+  },
+  {
+    id: "map-click-regents-park",
+    type: "map-click",
+    prompt: "Click on Regent's Park.",
+    answer: { lat: 51.5313, lng: -0.1569 },
+    toleranceMeters: 220,
+    difficulty: "medium",
+    category: "Parks and squares",
+    sourceNote: "London park target",
+    targetName: "Regent's Park",
+    isActive: true,
+    explanation: "Regent's Park is north of Marylebone Road and west of Great Portland Street.",
+    tip: "Locate the Marylebone/Euston Road corridor, then look north.",
+    acceptedAreaDescription: "Within the Regent's Park open-space area."
+  },
+  {
+    id: "map-click-borough-market",
+    type: "map-click",
+    prompt: "Click on Borough Market.",
+    answer: { lat: 51.5055, lng: -0.091 },
+    toleranceMeters: 140,
+    difficulty: "medium",
+    category: "Markets",
+    sourceNote: "London market target",
+    targetName: "Borough Market",
+    isActive: true,
+    explanation: "Borough Market is beside London Bridge station in Southwark.",
+    tip: "Find London Bridge station, then look west of Borough High Street.",
+    acceptedAreaDescription: "Within the Borough Market street area."
+  },
+  {
+    id: "map-click-covent-garden",
+    type: "map-click",
+    prompt: "Click on Covent Garden.",
+    answer: { lat: 51.5117, lng: -0.124 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Markets",
+    sourceNote: "London district target",
+    targetName: "Covent Garden",
+    isActive: true,
+    explanation: "Covent Garden is a central market and theatre district north of the Strand.",
+    tip: "Use the Strand, Long Acre, and nearby theatre streets.",
+    acceptedAreaDescription: "Within the Covent Garden market and piazza area."
+  },
+  {
+    id: "map-click-trafalgar-square",
+    type: "map-click",
+    prompt: "Click on Trafalgar Square.",
+    answer: { lat: 51.508, lng: -0.1281 },
+    toleranceMeters: 130,
+    difficulty: "easy",
+    category: "Parks and squares",
+    sourceNote: "London square target",
+    targetName: "Trafalgar Square",
+    isActive: true,
+    explanation: "Trafalgar Square sits between Charing Cross, Whitehall, and the Strand.",
+    tip: "Use the National Gallery and Charing Cross as anchors.",
+    acceptedAreaDescription: "Within Trafalgar Square."
+  },
+  {
+    id: "map-click-royal-albert-hall",
+    type: "map-click",
+    prompt: "Click on Royal Albert Hall.",
+    answer: { lat: 51.5009, lng: -0.1774 },
+    toleranceMeters: 150,
+    difficulty: "medium",
+    category: "Entertainment venues",
+    sourceNote: "London venue target",
+    targetName: "Royal Albert Hall",
+    isActive: true,
+    explanation: "Royal Albert Hall is in South Kensington near Kensington Gore.",
+    tip: "Use Hyde Park, Kensington Gardens, and Exhibition Road to orient the area.",
+    acceptedAreaDescription: "Within the Royal Albert Hall site."
+  },
+  {
+    id: "map-click-royal-opera-house",
+    type: "map-click",
+    prompt: "Click on the Royal Opera House.",
+    answer: { lat: 51.5129, lng: -0.1222 },
+    toleranceMeters: 130,
+    difficulty: "hard",
+    category: "Entertainment venues",
+    sourceNote: "London venue target",
+    targetName: "Royal Opera House",
+    isActive: true,
+    explanation: "The Royal Opera House is in Covent Garden.",
+    tip: "Find Covent Garden and look around Bow Street.",
+    acceptedAreaDescription: "Within the Royal Opera House building area."
+  },
+  {
+    id: "map-click-the-o2",
+    type: "map-click",
+    prompt: "Click on The O2.",
+    answer: { lat: 51.503, lng: 0.0032 },
+    toleranceMeters: 220,
+    difficulty: "hard",
+    category: "Entertainment venues",
+    sourceNote: "London venue target",
+    targetName: "The O2",
+    isActive: true,
+    explanation: "The O2 is on the Greenwich Peninsula.",
+    tip: "Look east/south-east of central London on the large bend of the Thames.",
+    acceptedAreaDescription: "Within The O2 arena site."
+  },
+  {
+    id: "map-click-heathrow-terminal-5",
+    type: "map-click",
+    prompt: "Click on Heathrow Terminal 5.",
+    answer: { lat: 51.47, lng: -0.4543 },
+    toleranceMeters: 300,
+    difficulty: "hard",
+    category: "Airports",
+    sourceNote: "London airport target",
+    targetName: "Heathrow Terminal 5",
+    isActive: true,
+    explanation: "Heathrow Terminal 5 is at the western side of Heathrow Airport.",
+    tip: "Use Heathrow as the west London airport anchor.",
+    acceptedAreaDescription: "Within the Heathrow Terminal 5 complex."
+  },
+  {
+    id: "map-click-london-city-airport",
+    type: "map-click",
+    prompt: "Click on London City Airport.",
+    answer: { lat: 51.5053, lng: 0.0553 },
+    toleranceMeters: 280,
+    difficulty: "hard",
+    category: "Airports",
+    sourceNote: "London airport target",
+    targetName: "London City Airport",
+    isActive: true,
+    explanation: "London City Airport is in the Royal Docks area of east London.",
+    tip: "Look east of Canary Wharf and the Isle of Dogs.",
+    acceptedAreaDescription: "Within the London City Airport runway and terminal area."
+  }
+);

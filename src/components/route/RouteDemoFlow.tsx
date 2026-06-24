@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import {
+  atlasPageToRouteMapBase,
+  getAtlasPageById,
+  type RouteMapBase
+} from "@/lib/map/atlasPages";
 import { RouteDrawingQuestion } from "@/src/components/route/RouteDrawingQuestion";
 import { kingsCrossEustonRouteGraph } from "@/src/data/maps/kings-cross-euston/routeGraph";
 import {
@@ -9,6 +14,12 @@ import {
   routeQuestions,
   type RouteQuestion
 } from "@/src/data/routeQuestions";
+
+const fallbackRouteMapBase: RouteMapBase = {
+  graph: kingsCrossEustonRouteGraph,
+  imagePath: "/maps/kings-cross-euston/map.svg",
+  mapAttribution: "(c) OpenStreetMap contributors, ODbL"
+};
 
 export function RouteDemoFlow() {
   const [selectedQuestionId, setSelectedQuestionId] = useState(
@@ -20,6 +31,10 @@ export function RouteDemoFlow() {
   const acceptedRoute = selectedQuestion.acceptedRoute?.geometry.map(
     ([x, y]) => ({ x, y })
   );
+  const atlasPage = getAtlasPageById(selectedQuestion.mapPageId);
+  const routeMapBase = atlasPage
+    ? atlasPageToRouteMapBase(atlasPage)
+    : fallbackRouteMapBase;
 
   if (!acceptedRoute) {
     throw new Error(
@@ -63,10 +78,12 @@ export function RouteDemoFlow() {
 
       <RouteDrawingQuestion
         acceptedRoutePoints={acceptedRoute}
-        graph={kingsCrossEustonRouteGraph}
+        graph={routeMapBase.graph}
         key={selectedQuestion.id}
-        mapImagePath="/maps/kings-cross-euston/map.svg"
+        mapAttribution={routeMapBase.mapAttribution}
+        mapImagePath={routeMapBase.imagePath}
         question={selectedQuestion}
+        routeScoringConfig={routeMapBase.scoringConfig}
       />
     </div>
   );

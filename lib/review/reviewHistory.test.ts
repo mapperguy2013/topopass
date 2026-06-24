@@ -1,0 +1,221 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
+import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
+import { demoMapClickQuestions } from "../mapClickQuestions.ts";
+import type {
+  NormalizedMockAttempt,
+  NormalizedPracticeAttempt
+} from "../db/progressMigration.ts";
+import {
+  buildReviewHistory,
+  defaultReviewHistoryFilters,
+  filterReviewHistory
+} from "./reviewHistory.ts";
+
+const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
+const projectRoot = path.resolve(currentDirectory, "../..");
+const knowledgeQuestion = knowledgeQuestionBank[0];
+const mapQuestion = demoMapClickQuestions[0];
+
+function practiceAttempt(
+  overrides: Partial<NormalizedPracticeAttempt>
+): NormalizedPracticeAttempt {
+  return {
+    id: "practice-1",
+    source: "practice",
+    questionId: knowledgeQuestion.id,
+    questionType: "knowledge",
+    score: 1,
+    maxScore: 1,
+    percentage: 100,
+    passed: true,
+    answer: { selectedAnswer: knowledgeQuestion.correctAnswer },
+    result: { correctAnswer: knowledgeQuestion.correctAnswer },
+    reviewData: null,
+    createdAt: "2026-06-24T10:00:00.000Z",
+    ...overrides
+  };
+}
+
+const mockAttempt: NormalizedMockAttempt = {
+  id: "mock-1",
+  source: "mock-test",
+  questionIds: [`mock-${mapQuestion.id}`],
+  score: 0,
+  maxScore: 100,
+  percentage: 0,
+  passed: false,
+  submittedAt: "2026-06-22T10:00:00.000Z",
+  createdAt: "2026-06-22T10:00:00.000Z",
+  durationSeconds: 120,
+  mode: "practice",
+  answers: {
+    [`mock-${mapQuestion.id}`]: {
+      type: "map-click",
+      coordinates: { latitude: 51.5, longitude: -0.12 }
+    }
+  },
+  rawResult: null,
+  questionResults: [
+    {
+      questionId: `mock-${mapQuestion.id}`,
+      type: "map-click",
+      score: 0,
+      maxScore: 100,
+      percentage: 0,
+      passed: false,
+      userAnswerSummary: "Clicked location",
+      acceptedAnswerSummary: "Accepted target",
+      details: {
+        type: "map-click",
+        clickedCoordinates: { latitude: 51.5, longitude: -0.12 },
+        target: mapQuestion.answer,
+        distanceMeters: 500,
+        toleranceMeters: mapQuestion.toleranceMeters
+      },
+      reviewData: null
+    }
+  ]
+};
+
+test("review route renders real review UI instead of the old placeholder", () => {
+  const pageSource = readFileSync(
+    path.join(projectRoot, "app/review/page.tsx"),
+    "utf8"
+  );
+  const placeholderSource = readFileSync(
+    path.join(projectRoot, "components/results/QuestionReview.tsx"),
+    "utf8"
+  );
+
+  assert.match(pageSource, /ReviewHistory/);
+  assert.match(pageSource, /buildReviewHistory/);
+  assert.doesNotMatch(pageSource, /Saved review history is not persisted in Phase 1/);
+  assert.doesNotMatch(placeholderSource, /Saved review history is not persisted in Phase 1/);
+});
+
+test("review history includes correct and incorrect answers", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [practiceAttempt({})],
+    mockAttempts: [mockAttempt]
+  });
+
+  assert.equal(history.length, 2);
+  assert.ok(history.some((item) => item.passed));
+  assert.ok(history.some((item) => !item.passed));
+});
+
+test("review filters by subject", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [practiceAttempt({})],
+    mockAttempts: [mockAttempt]
+  });
+  const subject = history.find((item) => item.category)?.category;
+  assert.ok(subject);
+
+  const filtered = filterReviewHistory(history, {
+    ...defaultReviewHistoryFilters,
+    subject
+  });
+
+  assert.ok(filtered.length > 0);
+  assert.ok(filtered.every((item) => item.category === subject));
+});
+
+test("review filters by correct and incorrect result", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [practiceAttempt({})],
+    mockAttempts: [mockAttempt]
+  });
+
+  assert.deepEqual(
+    filterReviewHistory(history, {
+      ...defaultReviewHistoryFilters,
+      result: "correct"
+    }).map((item) => item.passed),
+    [true]
+  );
+  assert.deepEqual(
+    filterReviewHistory(history, {
+      ...defaultReviewHistoryFilters,
+      result: "incorrect"
+    }).map((item) => item.passed),
+    [false]
+  );
+});
+
+test("review filters by date range", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [
+      practiceAttempt({
+        id: "recent",
+        createdAt: "2026-06-24T10:00:00.000Z"
+      }),
+      practiceAttempt({
+        id: "old",
+        createdAt: "2026-05-01T10:00:00.000Z"
+      })
+    ],
+    mockAttempts: []
+  });
+  const filtered = filterReviewHistory(
+    history,
+    {
+      ...defaultReviewHistoryFilters,
+      dateRange: "last-7-days"
+    },
+    new Date("2026-06-24T12:00:00.000Z")
+  );
+
+  assert.deepEqual(
+    filtered.map((item) => item.answeredAt),
+    ["2026-06-24T10:00:00.000Z"]
+  );
+});
+
+test("review filters by question type and source", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [practiceAttempt({})],
+    mockAttempts: [mockAttempt]
+  });
+
+  assert.deepEqual(
+    filterReviewHistory(history, {
+      ...defaultReviewHistoryFilters,
+      questionType: "knowledge"
+    }).map((item) => item.questionType),
+    ["knowledge"]
+  );
+  assert.deepEqual(
+    filterReviewHistory(history, {
+      ...defaultReviewHistoryFilters,
+      source: "mock"
+    }).map((item) => item.source),
+    ["mock"]
+  );
+});
+
+test("review sorts newest and oldest", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [practiceAttempt({})],
+    mockAttempts: [mockAttempt]
+  });
+
+  assert.deepEqual(
+    filterReviewHistory(history, {
+      ...defaultReviewHistoryFilters,
+      sort: "newest"
+    }).map((item) => item.answeredAt),
+    ["2026-06-24T10:00:00.000Z", "2026-06-22T10:00:00.000Z"]
+  );
+  assert.deepEqual(
+    filterReviewHistory(history, {
+      ...defaultReviewHistoryFilters,
+      sort: "oldest"
+    }).map((item) => item.answeredAt),
+    ["2026-06-22T10:00:00.000Z", "2026-06-24T10:00:00.000Z"]
+  );
+});

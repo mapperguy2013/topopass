@@ -33,8 +33,6 @@ const recognisedDrivableHighways = new Set([
   "service",
   "track"
 ]);
-const allowedValues = new Set(["yes", "designated", "permissive"]);
-
 function hasValue(properties, values) {
   return [
     properties.access,
@@ -44,14 +42,21 @@ function hasValue(properties, values) {
   ].some((value) => values.has(String(value).toLowerCase()));
 }
 
+function hasExplicitMotorAllowed(properties) {
+  return ["yes", "designated", "permissive"].some(
+    (value) =>
+      String(properties.motor_vehicle ?? "").toLowerCase() === value ||
+      String(properties.motorcar ?? "").toLowerCase() === value
+  );
+}
+
 export function classifyRoadAccess(properties = {}) {
   const highway = String(properties.highway ?? "").toLowerCase();
-  const explicitMotorAccess = hasValue(properties, allowedValues);
 
   if (pedestrianHighways.has(highway)) {
     return roadAccessClasses.pedestrianOnly;
   }
-  if (highway === "pedestrian" && !explicitMotorAccess) {
+  if (highway === "pedestrian" && !hasExplicitMotorAllowed(properties)) {
     return roadAccessClasses.pedestrianOnly;
   }
   if (hasValue(properties, new Set(["no"]))) {

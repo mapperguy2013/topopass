@@ -37,6 +37,10 @@ function hasText(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function hasWhitespaceOnlyText(value: unknown) {
+  return typeof value === "string" && value.length > 0 && value.trim().length === 0;
+}
+
 function validLatitude(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value >= -90 && value <= 90;
 }
@@ -74,7 +78,8 @@ export function validateKnowledgeQuestion(
     issues.push(issue("error", "correctAnswer", "Select a correct answer from the available options."));
   }
   if (!hasText(question.category)) issues.push(issue("warning", "category", "Category is missing."));
-  if (!hasText(question.explanation)) issues.push(issue("warning", "explanation", "Explanation is missing."));
+  if (hasWhitespaceOnlyText(question.explanation)) issues.push(issue("warning", "explanation", "Explanation cannot be only whitespace."));
+  if (hasWhitespaceOnlyText(question.tip)) issues.push(issue("warning", "tip", "Learning tip cannot be only whitespace."));
   return result(issues);
 }
 
@@ -102,7 +107,9 @@ export function validateMapClickQuestion(
   ) {
     issues.push(issue("warning", "answer", "Target is outside the supported London bounds."));
   }
-  if (!hasText(question.explanation)) issues.push(issue("warning", "explanation", "Explanation is missing."));
+  if (hasWhitespaceOnlyText(question.explanation)) issues.push(issue("warning", "explanation", "Explanation cannot be only whitespace."));
+  if (hasWhitespaceOnlyText(question.tip)) issues.push(issue("warning", "tip", "Learning tip cannot be only whitespace."));
+  if (hasWhitespaceOnlyText(question.acceptedAreaDescription)) issues.push(issue("warning", "acceptedAreaDescription", "Accepted area description cannot be only whitespace."));
   return result(issues);
 }
 
@@ -167,6 +174,9 @@ export function validateRouteQuestion(
       issues.push(issue("warning", "acceptedRoute", "Accepted route leaves the configured map bounds."));
     }
   }
+  if (hasWhitespaceOnlyText(question.explanation)) issues.push(issue("warning", "explanation", "Explanation cannot be only whitespace."));
+  if (hasWhitespaceOnlyText(question.tip)) issues.push(issue("warning", "tip", "Learning tip cannot be only whitespace."));
+  if (hasWhitespaceOnlyText(question.idealRouteDescription)) issues.push(issue("warning", "idealRouteDescription", "Ideal route description cannot be only whitespace."));
   return result(issues);
 }
 

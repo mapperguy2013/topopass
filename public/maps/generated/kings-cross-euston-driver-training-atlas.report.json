@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-06-24T02:28:46.627Z",
+  "sourceData": "public/maps/kings-cross-euston/osm-raw.geojson",
+  "extraData": [],
+  "outputs": {
+    "svg": "public/maps/generated/kings-cross-euston-driver-training-atlas.svg",
+    "png": "public/maps/generated/kings-cross-euston-driver-training-atlas.png"
+  },
+  "renderer": {
+    "svg": "scripts/maps/render-driver-training-atlas.mjs",
+    "png": "Headless Chromium export via C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "counts": {
+    "sourceFeatures": 20390,
+    "renderedFeatures": 20390,
+    "roads": 11947,
+    "buildings": 7702,
+    "stations": 14,
+    "oneWayRoads": 1304,
+    "noMotorVehicleRoads": 102
+  },
+  "styleNotes": {
+    "cleanroom": "Original TopoPass driver-training atlas treatment; example references used for high-level reading goals only.",
+    "majorRoads": "OSM A-road refs and trunk/primary roads render with thick dark casing, orange fill, large road labels, and route shields.",
+    "bRoads": "OSM B-road refs and secondary roads render with strong yellow fill and route shields.",
+    "minorRoads": "Residential, unclassified, service, and minor roads remain thin but named where source labels and collision rules allow.",
+    "oneWay": "One-way roads use long light-pink directional arrows following OSM oneway and roundabout direction logic.",
+    "noEntry": "Explicit access/vehicle/motor_vehicle/motorcar=no roads use thick red overlays and no-entry bar markers."
+  }
+}

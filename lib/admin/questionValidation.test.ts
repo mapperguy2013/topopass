@@ -72,3 +72,20 @@ test("current static question banks validate without hard errors", () => {
   const validation = validateAllQuestionBanks();
   assert.equal(validation.valid, true);
 });
+
+test("explanations and tips are optional but whitespace-only values warn", () => {
+  const withoutExplanation = validateKnowledgeQuestion({
+    ...knowledgeQuestionBank[0],
+    explanation: undefined,
+    tip: undefined
+  });
+  const whitespaceTip = validateKnowledgeQuestion({
+    ...knowledgeQuestionBank[0],
+    tip: "   "
+  });
+
+  assert.equal(withoutExplanation.valid, true);
+  assert.equal(withoutExplanation.issues.some((entry) => entry.field === "explanation"), false);
+  assert.equal(whitespaceTip.valid, true);
+  assert.ok(whitespaceTip.issues.some((entry) => entry.field === "tip"));
+});

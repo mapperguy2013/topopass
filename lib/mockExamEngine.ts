@@ -1,6 +1,7 @@
 import { distanceInMetres } from "./distance.ts";
 import { scoreDrawnRoute, type RouteScoreResult } from "./routeScoring.ts";
 import type { Coordinates } from "./distance.ts";
+import type { MapClickReviewData, RouteReviewData } from "./reviewData.ts";
 import type {
   MockExamQuestion,
   MockQuestionType
@@ -15,11 +16,13 @@ export type KnowledgeMockAnswer = {
 export type MapClickMockAnswer = {
   type: "map-click";
   coordinates: Coordinates;
+  reviewData?: MapClickReviewData;
 };
 
 export type RouteDrawingMockAnswer = {
   type: "route-drawing";
   routePoints: RouteMapPoint[];
+  reviewData?: RouteReviewData;
 };
 
 export type MockExamAnswer =
@@ -33,6 +36,8 @@ export type KnowledgeScoreDetails = {
   type: "knowledge";
   selectedAnswer: string | null;
   correctAnswer: string;
+  explanation?: string;
+  tip?: string;
 };
 
 export type MapClickScoreDetails = {
@@ -41,12 +46,20 @@ export type MapClickScoreDetails = {
   target: { lat: number; lng: number };
   distanceMeters: number;
   toleranceMeters: number;
+  reviewData?: MapClickReviewData;
+  explanation?: string;
+  tip?: string;
+  acceptedAreaDescription?: string;
 };
 
 export type RouteDrawingScoreDetails = {
   type: "route-drawing";
   routePointCount: number;
   routeScore: RouteScoreResult | null;
+  reviewData?: RouteReviewData;
+  explanation?: string;
+  tip?: string;
+  idealRouteDescription?: string;
 };
 
 export type MockQuestionScoreResult = {
@@ -132,10 +145,12 @@ export function scoreMockExamQuestion(
     const acceptedSummary = question.correctAnswer;
     if (!answer || answer.type !== "knowledge") {
       return unansweredResult(question, acceptedSummary, {
-        type: "knowledge",
-        selectedAnswer: null,
-        correctAnswer: question.correctAnswer
-      });
+          type: "knowledge",
+          selectedAnswer: null,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          tip: question.tip
+        });
     }
 
     const passed = answer.selectedAnswer === question.correctAnswer;
@@ -152,7 +167,9 @@ export function scoreMockExamQuestion(
       details: {
         type: "knowledge",
         selectedAnswer: answer.selectedAnswer,
-        correctAnswer: question.correctAnswer
+        correctAnswer: question.correctAnswer,
+        explanation: question.explanation,
+        tip: question.tip
       }
     };
   }
@@ -163,10 +180,13 @@ export function scoreMockExamQuestion(
       return unansweredResult(question, acceptedSummary, {
         type: "map-click",
         clickedCoordinates: null,
-        target: question.target,
-        distanceMeters: Number.POSITIVE_INFINITY,
-        toleranceMeters: question.toleranceMeters
-      });
+          target: question.target,
+          distanceMeters: Number.POSITIVE_INFINITY,
+          toleranceMeters: question.toleranceMeters,
+          explanation: question.explanation,
+          tip: question.tip,
+          acceptedAreaDescription: question.acceptedAreaDescription
+        });
     }
 
     const distanceMeters = distanceInMetres(answer.coordinates, {
@@ -189,7 +209,11 @@ export function scoreMockExamQuestion(
         clickedCoordinates: answer.coordinates,
         target: question.target,
         distanceMeters: Math.round(distanceMeters * 10) / 10,
-        toleranceMeters: question.toleranceMeters
+        toleranceMeters: question.toleranceMeters,
+        reviewData: answer.reviewData,
+        explanation: question.explanation,
+        tip: question.tip,
+        acceptedAreaDescription: question.acceptedAreaDescription
       }
     };
   }
@@ -201,7 +225,10 @@ export function scoreMockExamQuestion(
     return unansweredResult(question, acceptedSummary, {
       type: "route-drawing",
       routePointCount: 0,
-      routeScore: null
+      routeScore: null,
+      explanation: question.routeQuestion.explanation,
+      tip: question.routeQuestion.tip,
+      idealRouteDescription: question.routeQuestion.idealRouteDescription
     });
   }
 
@@ -225,7 +252,11 @@ export function scoreMockExamQuestion(
     details: {
       type: "route-drawing",
       routePointCount: answer.routePoints.length,
-      routeScore
+      routeScore,
+      reviewData: answer.reviewData,
+      explanation: question.routeQuestion.explanation,
+      tip: question.routeQuestion.tip,
+      idealRouteDescription: question.routeQuestion.idealRouteDescription
     }
   };
 }

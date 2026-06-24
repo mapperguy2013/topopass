@@ -1,8 +1,11 @@
 import type { MockExamResult } from "@/lib/mockExamEngine";
+import type { MockExamModeMetadata } from "@/lib/mockExamModes";
 
 type MockExamResultsProps = {
   result: MockExamResult;
+  mode: MockExamModeMetadata;
   submissionNotice?: string;
+  persistenceStatus?: "idle" | "saving" | "saved" | "failed";
   onReview: () => void;
   onRestart: () => void;
 };
@@ -14,7 +17,9 @@ const typeLabels = {
 } as const;
 
 export function MockExamResults({
+  mode,
   result,
+  persistenceStatus = "idle",
   submissionNotice,
   onReview,
   onRestart
@@ -29,11 +34,23 @@ export function MockExamResults({
         }`}
       >
         <p className="text-sm font-bold uppercase tracking-wide text-slate-600">
-          Mock exam complete
+          {mode.label} complete
+        </p>
+        <p className="mt-2 text-sm font-semibold text-slate-700">
+          {mode.resultSummary}
         </p>
         {submissionNotice && (
           <p className="mt-2 text-sm font-semibold text-slate-700">
             {submissionNotice}
+          </p>
+        )}
+        {persistenceStatus !== "idle" && (
+          <p className="mt-2 text-sm font-semibold text-slate-700">
+            {persistenceStatus === "saving" && "Saving result..."}
+            {persistenceStatus === "saved" &&
+              "Result saved to your progress history."}
+            {persistenceStatus === "failed" &&
+              "Result could not be saved in this browser."}
           </p>
         )}
         <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -97,14 +114,14 @@ export function MockExamResults({
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
           onClick={onReview}
           type="button"
         >
           Review answers
         </button>
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
           onClick={onRestart}
           type="button"
         >

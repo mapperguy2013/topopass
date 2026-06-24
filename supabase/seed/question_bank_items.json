@@ -1,0 +1,149 @@
+{
+  "format": "topopass-question-bank-items",
+  "version": 1,
+  "exportedAt": "2026-06-24T00:00:00.000Z",
+  "statusFilter": "all",
+  "question_bank_items": [
+    {
+      "id": "seed-knowledge-cardinal-route-check",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Map reading",
+      "prompt": "On a standard street atlas, which direction is normally at the top of the map page?",
+      "explanation": "Most printed and digital maps are drawn with north at the top unless a rotation marker says otherwise.",
+      "tip": "Check the north arrow or page orientation before planning a route.",
+      "tags": ["Map reading", "Orientation"],
+      "payload": {
+        "options": ["North", "South", "East", "West"],
+        "correctAnswer": "North",
+        "incorrectExplanations": {
+          "South": "South is normally at the bottom of a north-up map.",
+          "East": "East is normally to the right on a north-up map.",
+          "West": "West is normally to the left on a north-up map."
+        }
+      },
+      "version": 1,
+      "source": "production-seed"
+    },
+    {
+      "id": "seed-knowledge-one-way-awareness",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Route planning",
+      "prompt": "Why should a driver check one-way streets before finalising a route?",
+      "explanation": "A route that looks direct on the page may be impossible or unsafe if it goes against a one-way restriction.",
+      "tip": "Use one-way arrows and access restrictions to confirm the route is driveable.",
+      "tags": ["Route planning", "Road restrictions"],
+      "payload": {
+        "options": [
+          "To avoid planning a route against the permitted traffic direction",
+          "To estimate the age of the road surface",
+          "To identify all bus stops on the route",
+          "To avoid using any A roads"
+        ],
+        "correctAnswer": "To avoid planning a route against the permitted traffic direction",
+        "incorrectExplanations": {
+          "To estimate the age of the road surface": "Road surface age is not the purpose of one-way signs.",
+          "To identify all bus stops on the route": "Bus stops may matter for observation, but one-way checks are about permitted direction.",
+          "To avoid using any A roads": "A roads may be appropriate; one-way checks are not a ban on main roads."
+        }
+      },
+      "version": 1,
+      "source": "production-seed"
+    },
+    {
+      "id": "seed-map-click-kings-cross-station",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Location knowledge",
+      "prompt": "Click King's Cross St Pancras station area.",
+      "explanation": "King's Cross St Pancras is a major north London transport interchange on Euston Road.",
+      "tip": "Use Euston Road and the nearby rail termini as anchors.",
+      "tags": ["Location knowledge", "Stations"],
+      "payload": {
+        "targetName": "King's Cross St Pancras",
+        "answer": {
+          "lat": 51.5308,
+          "lng": -0.1238
+        },
+        "toleranceMeters": 180,
+        "acceptedAreaDescription": "The station complex and immediate entrances around King's Cross and St Pancras."
+      },
+      "version": 1,
+      "source": "production-seed"
+    },
+    {
+      "id": "seed-map-click-euston-station",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Location knowledge",
+      "prompt": "Click Euston station.",
+      "explanation": "Euston station sits on Euston Road west of King's Cross and St Pancras.",
+      "tip": "Follow Euston Road west from King's Cross to locate Euston station.",
+      "tags": ["Location knowledge", "Stations"],
+      "payload": {
+        "targetName": "Euston station",
+        "answer": {
+          "lat": 51.5282,
+          "lng": -0.1337
+        },
+        "toleranceMeters": 180,
+        "acceptedAreaDescription": "The Euston station concourse and immediate frontage on Euston Road."
+      },
+      "version": 1,
+      "source": "production-seed"
+    },
+    {
+      "id": "seed-route-kings-cross-to-euston",
+      "question_type": "route-drawing",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Route planning",
+      "prompt": "Plan a direct route from King's Cross St Pancras to Euston station.",
+      "explanation": "The straightforward route uses Euston Road westbound, while still requiring attention to junctions, bus lanes, and access restrictions.",
+      "tip": "Start by identifying the main westbound road corridor before checking local turns.",
+      "tags": ["Route planning", "Central London", "Stations"],
+      "payload": {
+        "title": "King's Cross St Pancras to Euston station",
+        "fromLabel": "King's Cross St Pancras",
+        "toLabel": "Euston station",
+        "from": {
+          "lat": 51.5308,
+          "lng": -0.1238
+        },
+        "to": {
+          "lat": 51.5282,
+          "lng": -0.1337
+        },
+        "acceptedRoute": {
+          "geometry": [
+            [880, 390],
+            [760, 410],
+            [610, 430],
+            [470, 450],
+            [330, 470]
+          ],
+          "source": "manual",
+          "coordinateSystem": "map",
+          "reviewed": true
+        },
+        "mapArea": "kings-cross-euston",
+        "mapBounds": {
+          "minX": 0,
+          "minY": 0,
+          "maxX": 1200,
+          "maxY": 800
+        },
+        "idealRouteDescription": "Use the Euston Road corridor westbound from King's Cross St Pancras toward Euston station, checking access restrictions and junction positioning before the final approach.",
+        "createdAt": "2026-06-24T00:00:00.000Z",
+        "updatedAt": "2026-06-24T00:00:00.000Z"
+      },
+      "version": 1,
+      "source": "production-seed"
+    }
+  ]
+}

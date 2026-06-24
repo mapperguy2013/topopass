@@ -1,7 +1,24 @@
 "use client";
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { scoreDrawnRoute, type RouteScoreResult } from "@/lib/routeScoring";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent
+} from "react";
+import {
+  appendRoutePoint,
+  canSubmitRoute,
+  clearRoutePoints,
+  routeDrawingStatusMessage,
+  undoLastRoutePoint
+} from "@/lib/routeDrawingControls";
+import {
+  scoreDrawnRoute,
+  type RouteScoreResult,
+  type RouteScoringConfig
+} from "@/lib/routeScoring";
+import { AtlasPageBaseImage } from "@/src/components/map/AtlasPageMap";
 import type { RouteGraph, RouteMapPoint } from "@/src/data/maps/routeTypes";
 import type { RouteQuestion } from "@/src/data/routeQuestions";
 
@@ -9,12 +26,15 @@ type RouteDrawingQuestionProps = {
   graph: RouteGraph;
   question: RouteQuestion;
   mapImagePath: string;
+  mapAttribution?: string;
   acceptedRoutePoints: RouteMapPoint[];
+  routeScoringConfig?: Partial<RouteScoringConfig>;
   showDeveloperTools?: boolean;
   initialAnswer?: RouteDrawingQuestionAnswer | null;
   onAnswer?: (answer: RouteDrawingQuestionAnswer) => void;
   onAnswerReset?: () => void;
   showResult?: boolean;
+  submitMode?: "manual" | "auto";
 };
 
 export type RouteDrawingQuestionAnswer = {
@@ -52,16 +72,23 @@ export function RouteDrawingQuestion({
   graph,
   question,
   mapImagePath,
+  mapAttribution,
   acceptedRoutePoints,
+  routeScoringConfig,
   showDeveloperTools = true,
   initialAnswer,
   onAnswer,
   onAnswerReset,
-  showResult = true
+  showResult = true,
+  submitMode = "manual"
 }: RouteDrawingQuestionProps) {
   const overlayRef = useRef<SVGSVGElement | null>(null);
   const drawingPointerId = useRef<number | null>(null);
   const panGesture = useRef<PanGesture | null>(null);
+  const answerHandler = useRef(onAnswer);
+  const acceptedRoutePointsRef = useRef(acceptedRoutePoints);
+  const routeScoringConfigRef = useRef(routeScoringConfig);
+  const questionRef = useRef(question);
   const [routePoints, setRoutePoints] = useState<RouteMapPoint[]>(
     initialAnswer?.routePoints ?? []
   );
@@ -78,8 +105,33 @@ export function RouteDrawingQuestion({
     width: graph.mapWidth,
     height: graph.mapHeight
   });
-  const hasDrawnRoute = routePoints.length > 1;
+  const hasDrawnRoute = canSubmitRoute(routePoints);
   const zoomLevel = graph.mapWidth / viewBox.width;
+  const routeHelpId = `${question.id}-route-map-help`;
+  const routeStatusId = `${question.id}-route-status`;
+  const interactionModeLabel =
+    interactionMode === "draw" ? "Draw route" : "Move map";
+  const routeStatusMessage = routeDrawingStatusMessage(routePoints);
+  answerHandler.current = onAnswer;
+  acceptedRoutePointsRef.current = acceptedRoutePoints;
+  routeScoringConfigRef.current = routeScoringConfig;
+  questionRef.current = question;
+
+  useEffect(() => {
+    if (submitMode !== "auto" || !canSubmitRoute(routePoints)) return;
+
+    const result = scoreDrawnRoute(
+      routePoints,
+      acceptedRoutePointsRef.current,
+      {
+        bounds: questionRef.current.mapBounds,
+        config: routeScoringConfigRef.current
+      }
+    );
+
+    setFeedback(result);
+    answerHandler.current?.({ routePoints, result });
+  }, [routePoints, submitMode]);
 
   function toMapPoint(event: ReactPointerEvent<SVGSVGElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -160,16 +212,7 @@ export function RouteDrawingQuestion({
     const nextPoint = toMapPoint(event);
 
     setRoutePoints((points) => {
-      const previousPoint = points[points.length - 1];
-
-      if (
-        previousPoint &&
-        Math.hypot(nextPoint.x - previousPoint.x, nextPoint.y - previousPoint.y) < 4
-      ) {
-        return points;
-      }
-
-      return [...points, nextPoint];
+      return appendRoutePoint(points, nextPoint);
     });
   }
 
@@ -191,7 +234,13 @@ export function RouteDrawingQuestion({
   function clearRoute() {
     drawingPointerId.current = null;
     panGesture.current = null;
-    setRoutePoints([]);
+    setRoutePoints(clearRoutePoints());
+    setFeedback(null);
+    onAnswerReset?.();
+  }
+
+  function undoLastPoint() {
+    setRoutePoints((points) => undoLastRoutePoint(points));
     setFeedback(null);
     onAnswerReset?.();
   }
@@ -241,7 +290,8 @@ export function RouteDrawingQuestion({
     }
 
     const result = scoreDrawnRoute(routePoints, acceptedRoutePoints, {
-      bounds: question.mapBounds
+      bounds: question.mapBounds,
+      config: routeScoringConfig
     });
 
     setFeedback(result);
@@ -249,11 +299,11 @@ export function RouteDrawingQuestion({
   }
 
   return (
-    <section className="space-y-5">
+    <section className="space-y-4">
       <div className="rounded-lg border border-slate-300 bg-white p-3 shadow-soft sm:p-5">
-        <div className="mb-4 border-b border-slate-200 pb-4">
+        <div className="mb-3 border-b border-slate-200 pb-3">
           <p className="text-sm font-semibold uppercase tracking-wide text-road">
-            Route drawing question
+            Route drawing question - printed street-atlas training map
           </p>
           <h2 className="mt-2 text-xl font-bold text-ink sm:text-2xl">
             {question.title}
@@ -261,9 +311,16 @@ export function RouteDrawingQuestion({
           <p className="mt-2 text-sm leading-6 text-slate-600">
             {question.prompt}
           </p>
+          <p
+            className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950"
+            id={routeHelpId}
+          >
+            Draw the route from the start point to the destination. Use Move map
+            to pan, then switch back to Draw route before tracing.
+          </p>
         </div>
 
-        <div className="rounded-md border border-slate-400 bg-[#f6f1df] p-1.5 shadow-inner sm:p-2">
+        <div className="rounded-md border border-slate-500 bg-[#f6f1df] p-1.5 shadow-inner sm:p-2">
           <div
             className="relative w-full select-none overflow-hidden rounded-sm bg-[#f6f1df]"
             aria-label={`Route drawing map for ${question.title}`}
@@ -272,7 +329,7 @@ export function RouteDrawingQuestion({
             <div className="absolute left-2 top-2 z-10 flex overflow-hidden rounded border border-slate-400 bg-white shadow-sm">
               <button
                 aria-label="Zoom out"
-                className="flex size-10 items-center justify-center border-r border-slate-300 text-xl font-semibold text-slate-700 hover:bg-slate-100 disabled:text-slate-300"
+                className="flex size-11 items-center justify-center border-r border-slate-300 text-xl font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:text-slate-300"
                 disabled={zoomLevel <= 1}
                 onClick={() => changeZoom(1.5)}
                 title="Zoom out"
@@ -282,7 +339,7 @@ export function RouteDrawingQuestion({
               </button>
               <button
                 aria-label="Zoom in"
-                className="flex size-10 items-center justify-center border-r border-slate-300 text-xl font-semibold text-slate-700 hover:bg-slate-100 disabled:text-slate-300"
+                className="flex size-11 items-center justify-center border-r border-slate-300 text-xl font-semibold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:text-slate-300"
                 disabled={zoomLevel >= MAX_ZOOM}
                 onClick={() => changeZoom(2 / 3)}
                 title="Zoom in"
@@ -291,7 +348,7 @@ export function RouteDrawingQuestion({
                 +
               </button>
               <button
-                className="flex h-10 min-w-12 items-center justify-center px-2 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                className="flex min-h-11 min-w-14 items-center justify-center px-2 text-xs font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 onClick={resetView}
                 title="Fit the full map"
                 type="button"
@@ -300,22 +357,30 @@ export function RouteDrawingQuestion({
               </button>
             </div>
             <div className="absolute right-2 top-2 z-10 flex overflow-hidden rounded border border-slate-400 bg-white p-0.5 shadow-sm">
-              {(["draw", "pan"] as const).map((mode) => (
-                <button
-                  className={`h-9 min-w-12 px-2 text-xs font-bold capitalize transition ${
-                    interactionMode === mode
-                      ? "bg-ink text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-100"
-                  }`}
-                  key={mode}
-                  onClick={() => setInteractionMode(mode)}
-                  type="button"
-                >
-                  {mode}
-                </button>
-              ))}
+              {(["draw", "pan"] as const).map((mode) => {
+                const label = mode === "draw" ? "Draw route" : "Move map";
+
+                return (
+                  <button
+                    aria-pressed={interactionMode === mode}
+                    className={`min-h-11 min-w-[5.75rem] px-2 text-xs font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
+                      interactionMode === mode
+                        ? "bg-ink text-white"
+                        : "bg-white text-slate-600 hover:bg-slate-100"
+                    }`}
+                    key={mode}
+                    onClick={() => setInteractionMode(mode)}
+                    title={label}
+                    type="button"
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
             <svg
+              aria-describedby={`${routeHelpId} ${routeStatusId}`}
+              aria-label={`Route drawing map for ${question.title}. Current mode: ${interactionModeLabel}.`}
               className={`absolute inset-0 size-full touch-none ${
                 interactionMode === "pan"
                   ? "cursor-grab active:cursor-grabbing"
@@ -329,13 +394,11 @@ export function RouteDrawingQuestion({
               role="application"
               viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`}
             >
-              <image
-                height={graph.mapHeight}
-                href={mapImagePath}
-                preserveAspectRatio="none"
-                width={graph.mapWidth}
-                x="0"
-                y="0"
+              <AtlasPageBaseImage
+                imagePath={mapImagePath}
+                pixelHeight={graph.mapHeight}
+                pixelWidth={graph.mapWidth}
+                title={question.mapPageId ? question.title : undefined}
               />
               {showAcceptedRoute && (
                 <path
@@ -356,54 +419,66 @@ export function RouteDrawingQuestion({
                   <path
                     d={pointsToPath(routePoints)}
                     fill="none"
-                    opacity="0.25"
-                    stroke="#ffffff"
+                    opacity="0.72"
+                    pointerEvents="none"
+                    stroke="#fff7df"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="20"
+                    strokeWidth="16"
                     vectorEffect="non-scaling-stroke"
                   />
                   <path
                     d={pointsToPath(routePoints)}
                     fill="none"
-                    stroke={showResult && feedback?.passed ? "#18794e" : "#1769aa"}
+                    pointerEvents="none"
+                    stroke={showResult && feedback?.passed ? "#18794e" : "#8a2432"}
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="10"
+                    strokeWidth="7"
                     vectorEffect="non-scaling-stroke"
                   />
                 </>
               )}
               <g pointerEvents="none">
-                <circle
-                  cx={acceptedRoutePoints[0].x}
-                  cy={acceptedRoutePoints[0].y}
-                  fill="#166534"
-                  r={10 / zoomLevel}
-                  stroke="white"
-                  strokeWidth={3 / zoomLevel}
+                <rect
+                  fill="#155f3b"
+                  height={24 / zoomLevel}
+                  rx={3 / zoomLevel}
+                  stroke="#ffffff"
+                  strokeWidth={2 / zoomLevel}
+                  width={72 / zoomLevel}
+                  x={acceptedRoutePoints[0].x - 36 / zoomLevel}
+                  y={acceptedRoutePoints[0].y - 12 / zoomLevel}
                 />
                 <text
                   fill="white"
-                  fontSize={10 / zoomLevel}
+                  fontSize={8.5 / zoomLevel}
                   fontWeight="700"
                   textAnchor="middle"
                   x={acceptedRoutePoints[0].x}
-                  y={acceptedRoutePoints[0].y + 3.5 / zoomLevel}
+                  y={acceptedRoutePoints[0].y + 3 / zoomLevel}
                 >
-                  S
+                  A START
                 </text>
-                <circle
-                  cx={acceptedRoutePoints[acceptedRoutePoints.length - 1].x}
-                  cy={acceptedRoutePoints[acceptedRoutePoints.length - 1].y}
+                <rect
                   fill="#7f1d1d"
-                  r={10 / zoomLevel}
-                  stroke="white"
-                  strokeWidth={3 / zoomLevel}
+                  height={24 / zoomLevel}
+                  rx={3 / zoomLevel}
+                  stroke="#ffffff"
+                  strokeWidth={2 / zoomLevel}
+                  width={62 / zoomLevel}
+                  x={
+                    acceptedRoutePoints[acceptedRoutePoints.length - 1].x -
+                    31 / zoomLevel
+                  }
+                  y={
+                    acceptedRoutePoints[acceptedRoutePoints.length - 1].y -
+                    12 / zoomLevel
+                  }
                 />
                 <text
                   fill="white"
-                  fontSize={10 / zoomLevel}
+                  fontSize={8.5 / zoomLevel}
                   fontWeight="700"
                   textAnchor="middle"
                   x={acceptedRoutePoints[acceptedRoutePoints.length - 1].x}
@@ -412,10 +487,20 @@ export function RouteDrawingQuestion({
                     3.5 / zoomLevel
                   }
                 >
-                  E
+                  B END
                 </text>
               </g>
             </svg>
+            <p className="pointer-events-none absolute bottom-8 left-1 max-w-[70%] rounded-sm bg-white/90 px-2 py-1 text-[10px] font-semibold leading-tight text-slate-700 shadow-sm sm:text-xs">
+              {interactionMode === "draw"
+                ? "Draw route: drag to trace one continuous line."
+                : "Move map: drag to pan without drawing."}
+            </p>
+            {mapAttribution && (
+              <p className="pointer-events-none absolute bottom-1 right-1 max-w-[80%] rounded-sm bg-white/85 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-slate-600 shadow-sm">
+                {mapAttribution}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -426,12 +511,32 @@ export function RouteDrawingQuestion({
         </p>
         <p className="mt-3 text-sm leading-6 text-slate-600">
           Use a mouse, pen, or finger to trace one continuous route. Starting a
-          new line replaces the current attempt.
+          new line replaces the current attempt. Switch to Move map when you
+          need to pan.
+        </p>
+        <p
+          aria-live="polite"
+          className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700"
+          id={routeStatusId}
+        >
+          Current mode: {interactionModeLabel}. {routeStatusMessage}
         </p>
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <div
+          className={`mt-5 grid gap-3 ${
+            submitMode === "auto" ? "sm:grid-cols-3" : "sm:grid-cols-4"
+          }`}
+        >
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road disabled:cursor-not-allowed disabled:text-slate-400"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:text-slate-400"
+            disabled={routePoints.length === 0}
+            onClick={undoLastPoint}
+            type="button"
+          >
+            Undo last point
+          </button>
+          <button
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:text-slate-400"
             disabled={routePoints.length === 0}
             onClick={clearRoute}
             type="button"
@@ -439,13 +544,57 @@ export function RouteDrawingQuestion({
             Clear Route
           </button>
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!hasDrawnRoute}
-            onClick={submitRoute}
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            onClick={resetView}
             type="button"
           >
-            Submit Route
+            Reset View
           </button>
+          {submitMode === "manual" && (
+            <button
+              aria-describedby={routeStatusId}
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:bg-slate-300"
+              disabled={!hasDrawnRoute}
+              onClick={submitRoute}
+              type="button"
+            >
+              Finish / Submit
+            </button>
+          )}
+        </div>
+        <p className="mt-3 text-xs font-semibold text-slate-500">
+          {submitMode === "auto"
+            ? hasDrawnRoute
+              ? "Route saved. You can still undo or clear before pressing Next question."
+              : "Draw at least two route points before pressing Next question."
+            : hasDrawnRoute
+              ? "Ready to submit. You can still undo or clear before finishing."
+              : "Submit is enabled after the route has at least two captured points."}
+        </p>
+
+        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-4 text-sm text-slate-700">
+          <span className="inline-flex items-center gap-2">
+            <span className="rounded-sm bg-[#155f3b] px-2 py-1 text-[10px] font-bold text-white">
+              A
+            </span>
+            Start point
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="rounded-sm bg-[#7f1d1d] px-2 py-1 text-[10px] font-bold text-white">
+              B
+            </span>
+            Destination
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-1.5 w-8 rounded-full bg-[#8a2432]" />
+            Your route
+          </span>
+          {showDeveloperTools && (
+            <span className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-8 rounded-full border-t-2 border-dashed border-green-700" />
+              Accepted route overlay
+            </span>
+          )}
         </div>
 
         {showDeveloperTools && (

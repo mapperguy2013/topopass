@@ -144,8 +144,26 @@ export function validateRouteQuestion(
     }
   }
 
-  if (!hasText(question.explanation)) {
-    warnings.push("Explanation or feedback text has not been added.");
+  if (
+    typeof question.explanation === "string" &&
+    question.explanation.length > 0 &&
+    !hasText(question.explanation)
+  ) {
+    warnings.push("Explanation or feedback text cannot be only whitespace.");
+  }
+  if (
+    typeof question.tip === "string" &&
+    question.tip.length > 0 &&
+    !hasText(question.tip)
+  ) {
+    warnings.push("Learning tip cannot be only whitespace.");
+  }
+  if (
+    typeof question.idealRouteDescription === "string" &&
+    question.idealRouteDescription.length > 0 &&
+    !hasText(question.idealRouteDescription)
+  ) {
+    warnings.push("Ideal route description cannot be only whitespace.");
   }
   if (!question.tags?.length) {
     warnings.push("No tags or categories have been added.");

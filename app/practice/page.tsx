@@ -4,23 +4,25 @@ import { QuestionCard } from "@/components/questions/QuestionCard";
 
 const practiceOptions = [
   {
+    title: "Knowledge Questions",
+    description:
+      "Answer focused map-reading and route-planning knowledge questions.",
+    href: "/practice/knowledge",
+    available: true
+  },
+  {
+    title: "Map-Click Locations",
+    description:
+      "Practise finding stations and important London locations on the map.",
+    href: "/practice/map-click",
+    available: true
+  },
+  {
     title: "Route Planning",
     description:
       "Draw point-to-point routes between London locations and check your route against the accepted journey.",
     href: "/practice/routes",
     available: true
-  },
-  {
-    title: "Map Reading",
-    description:
-      "Build confidence finding streets, stations, landmarks, and map features.",
-    available: false
-  },
-  {
-    title: "Directions",
-    description:
-      "Practise interpreting written directions and choosing the correct sequence of roads.",
-    available: false
   },
   {
     title: "Points of Interest",
@@ -35,7 +37,7 @@ export default function PracticePage() {
     <AppShell title="Practice">
       <QuestionCard
         title="What do you want to practise?"
-        description="Choose a focused study area. Route Planning is available now, with more practice modes being prepared."
+        description="Choose a focused study area. Completed practice attempts are saved locally in this browser for your progress page."
       >
         <div className="grid gap-3 sm:grid-cols-2">
           {practiceOptions.map((option) => {
@@ -58,7 +60,7 @@ export default function PracticePage() {
                 </p>
                 {option.available && (
                   <p className="mt-4 text-sm font-semibold text-road">
-                    Open route practice &rarr;
+                    Open practice &rarr;
                   </p>
                 )}
               </>

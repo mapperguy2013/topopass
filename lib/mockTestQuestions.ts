@@ -17,6 +17,8 @@ type MockQuestionBase = {
   difficulty?: RouteQuestionDifficulty;
   category?: string;
   sourceNote?: string;
+  explanation?: string;
+  tip?: string;
   maxScore: number;
 };
 
@@ -32,6 +34,7 @@ export type MapClickMockQuestion = MockQuestionBase & {
   toleranceMeters: number;
   initialCenter: { lat: number; lng: number };
   initialZoom: number;
+  acceptedAreaDescription?: string;
 };
 
 export type RouteDrawingMockQuestion = MockQuestionBase & {
@@ -58,10 +61,13 @@ export const mapClickMockQuestionBank: MapClickMockQuestion[] =
     difficulty: question.difficulty,
     category: question.category,
     sourceNote: question.sourceNote,
+    explanation: question.explanation,
+    tip: question.tip,
     target: question.answer,
     toleranceMeters: question.toleranceMeters,
     initialCenter: question.answer,
     initialZoom: EXAM_MAP_ZOOM_LIMITS.defaultZoom,
+    acceptedAreaDescription: question.acceptedAreaDescription,
     maxScore: 100
   }));
 
@@ -73,6 +79,8 @@ export const routeDrawingMockQuestionBank: RouteDrawingMockQuestion[] =
     difficulty: routeQuestion.difficulty,
     category: "Route planning",
     sourceNote: `Active route bank question: ${routeQuestion.id}`,
+    explanation: routeQuestion.explanation,
+    tip: routeQuestion.tip,
     routeQuestion,
     maxScore: 100
   }));

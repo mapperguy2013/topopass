@@ -1,13 +1,17 @@
 import type { MockExamAnswers } from "./mockExamEngine.ts";
+import type { MockExamModeId } from "./mockExamModes.ts";
 
 export const ACTIVE_MOCK_EXAM_STORAGE_KEY = "topopass.mock-exam.active.v1";
 
 export type StoredMockExamAttempt = {
   version: 1;
+  attemptId?: string;
   questionIds: string[];
   currentQuestionIndex: number;
   answers: MockExamAnswers;
+  startedAt?: number;
   expiresAt: number;
+  mode?: MockExamModeId;
 };
 
 export function loadActiveMockExam(): StoredMockExamAttempt | null {

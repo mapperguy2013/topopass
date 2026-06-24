@@ -25,7 +25,8 @@ export type QuestionMetadata = {
   difficulty: QuestionDifficulty;
   category: string;
   status: QuestionStatus;
-  explanation: string;
+  explanation?: string;
+  tip?: string;
   sourceNote?: string;
   tags: string[];
 };
@@ -33,12 +34,14 @@ export type QuestionMetadata = {
 export type KnowledgeQuestionPayload = {
   options: string[];
   correctAnswer: string;
+  incorrectExplanations?: Record<string, string>;
 };
 
 export type MapClickQuestionPayload = {
   targetName: string;
   answer: QuestionCoordinates;
   toleranceMeters: number;
+  acceptedAreaDescription?: string;
 };
 
 export type RouteDrawingQuestionPayload = {
@@ -55,6 +58,7 @@ export type RouteDrawingQuestionPayload = {
   };
   mapArea: string;
   mapBounds: QuestionMapBounds;
+  idealRouteDescription?: string;
 };
 
 export type PersistedQuestion =

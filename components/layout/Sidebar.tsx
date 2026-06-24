@@ -5,6 +5,7 @@ const links = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/practice", label: "Practice" },
   { href: "/mock-test", label: "Mock Test" },
+  { href: "/progress", label: "Progress" },
   { href: "/review", label: "Review" }
 ];
 
@@ -18,7 +19,7 @@ export function Sidebar() {
         <div className="space-y-1">
           {links.map((link) => (
             <Link
-              className="block rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-road"
+              className="flex min-h-10 items-center rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
               href={link.href}
               key={link.href}
             >

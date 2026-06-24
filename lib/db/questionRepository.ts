@@ -6,8 +6,15 @@ import type {
   QuestionDifficulty,
   QuestionStatus,
   TableInsert,
-  TableRow
+  TableRow,
+  TableUpdate
 } from "./types.ts";
+import type {
+  QuestionExportRecord,
+  QuestionExportStatusFilter,
+  QuestionImportMode,
+  QuestionImportRecord
+} from "./questionImportExport.ts";
 import { asPersistenceClient } from "./queryClient.ts";
 import { getSupabaseClient } from "../supabaseClient.ts";
 import type { KnowledgeQuestionData } from "../knowledgeQuestions.ts";
@@ -25,15 +32,43 @@ export type QuestionRepositoryOptions = {
   client?: unknown | null;
 };
 
-type QuestionRow = TableRow<"questions">;
-type QuestionInsert = TableInsert<"questions">;
+type QuestionRow = TableRow<"question_bank_items">;
+type QuestionInsert = TableInsert<"question_bank_items">;
+type QuestionUpdate = TableUpdate<"question_bank_items">;
+
+export const PUBLISHED_QUESTION_STATUS = "published" satisfies QuestionStatus;
+const QUESTION_STATUSES = ["draft", "published", "archived"] as const;
+
+export type QuestionBankItemSummary = Pick<
+  QuestionRow,
+  | "id"
+  | "question_type"
+  | "status"
+  | "prompt"
+  | "updated_at"
+  | "published_at"
+>;
+
+export type QuestionExportResult = {
+  source: QuestionRepositorySource;
+  items: QuestionExportRecord[];
+  error?: string;
+};
+
+export type QuestionImportResult = {
+  source: QuestionRepositorySource;
+  persisted: boolean;
+  importedCount: number;
+  error?: string;
+  reason?: string;
+};
 
 function questionStatus(question: AdminQuestion): QuestionStatus {
-  return question.type === "route"
-    ? question.status
-    : question.isActive
-      ? "active"
-      : "draft";
+  if (question.type === "route") {
+    return question.status === "active" ? "published" : question.status;
+  }
+
+  return question.isActive ? "published" : "draft";
 }
 
 function questionDifficulty(question: AdminQuestion): QuestionDifficulty {
@@ -52,23 +87,31 @@ function questionTags(question: AdminQuestion) {
 
 export function staticQuestionToDbInsert(
   question: AdminQuestion,
-  bankId: string | null = null
+  _bankId: string | null = null,
+  statusOverride?: QuestionStatus
 ): QuestionInsert {
+  void _bankId;
+  const status = statusOverride ?? questionStatus(question);
+  const publishedAt =
+    status === PUBLISHED_QUESTION_STATUS ? new Date().toISOString() : null;
+
   if (question.type === "knowledge") {
     return {
       id: question.id,
-      bank_id: bankId,
       question_type: "knowledge",
-      status: questionStatus(question),
+      status,
       difficulty: questionDifficulty(question),
       category: questionCategory(question),
       prompt: question.prompt,
       explanation: question.explanation,
+      tip: question.tip,
       tags: questionTags(question),
-      source_note: question.sourceNote,
+      source: question.sourceNote ?? "static",
+      published_at: publishedAt,
       payload: {
         options: question.options,
-        correctAnswer: question.correctAnswer
+        correctAnswer: question.correctAnswer,
+        incorrectExplanations: question.incorrectExplanations
       }
     };
   }
@@ -76,34 +119,37 @@ export function staticQuestionToDbInsert(
   if (question.type === "map-click") {
     return {
       id: question.id,
-      bank_id: bankId,
       question_type: "map-click",
-      status: questionStatus(question),
+      status,
       difficulty: questionDifficulty(question),
       category: questionCategory(question),
       prompt: question.prompt,
       explanation: question.explanation,
+      tip: question.tip,
       tags: questionTags(question),
-      source_note: question.sourceNote,
+      source: question.sourceNote ?? "static",
+      published_at: publishedAt,
       payload: {
         targetName: question.targetName,
         answer: question.answer,
-        toleranceMeters: question.toleranceMeters
+        toleranceMeters: question.toleranceMeters,
+        acceptedAreaDescription: question.acceptedAreaDescription
       }
     };
   }
 
   return {
     id: question.id,
-    bank_id: bankId,
     question_type: "route-drawing",
-    status: question.status,
+    status,
     difficulty: question.difficulty,
     category: question.tags[0] ?? "Route planning",
     prompt: question.prompt,
     explanation: question.explanation,
+    tip: question.tip,
     tags: question.tags,
-    source_note: "Route question bank",
+    source: "Route question bank",
+    published_at: publishedAt,
     payload: {
       title: question.title,
       fromLabel: question.fromLabel,
@@ -113,6 +159,7 @@ export function staticQuestionToDbInsert(
       acceptedRoute: question.acceptedRoute,
       mapArea: question.mapArea,
       mapBounds: question.mapBounds,
+      idealRouteDescription: question.idealRouteDescription,
       createdAt: question.createdAt,
       updatedAt: question.updatedAt
     }
@@ -199,20 +246,28 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
     prompt: row.prompt,
     difficulty: row.difficulty ?? "medium",
     explanation: row.explanation ?? "",
-    sourceNote: row.source_note ?? "Supabase question row"
+    sourceNote: row.source ?? "Supabase question row"
   } as const;
 
   if (row.question_type === "knowledge") {
     const options = stringArray((payload as { options?: unknown }).options);
     const correctAnswer = (payload as { correctAnswer?: unknown }).correctAnswer;
+    const incorrectExplanations = (payload as { incorrectExplanations?: unknown }).incorrectExplanations;
     if (options.length < 2 || typeof correctAnswer !== "string") return null;
     return {
       ...common,
       type: "knowledge",
       options,
       correctAnswer,
+      tip: row.tip ?? undefined,
+      incorrectExplanations:
+        incorrectExplanations &&
+        typeof incorrectExplanations === "object" &&
+        !Array.isArray(incorrectExplanations)
+          ? (incorrectExplanations as Record<string, string>)
+          : undefined,
       category: row.category ?? "Knowledge",
-      isActive: row.status === "active"
+      isActive: row.status === PUBLISHED_QUESTION_STATUS
     } satisfies KnowledgeQuestionData;
   }
 
@@ -220,6 +275,7 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
     const answer = coordinates((payload as { answer?: unknown }).answer);
     const targetName = (payload as { targetName?: unknown }).targetName;
     const toleranceMeters = (payload as { toleranceMeters?: unknown }).toleranceMeters;
+    const acceptedAreaDescription = (payload as { acceptedAreaDescription?: unknown }).acceptedAreaDescription;
     if (!answer || typeof targetName !== "string" || typeof toleranceMeters !== "number") {
       return null;
     }
@@ -229,8 +285,13 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
       answer,
       toleranceMeters,
       targetName,
+      tip: row.tip ?? undefined,
+      acceptedAreaDescription:
+        typeof acceptedAreaDescription === "string"
+          ? acceptedAreaDescription
+          : undefined,
       category: row.category ?? "Location knowledge",
-      isActive: row.status === "active"
+      isActive: row.status === PUBLISHED_QUESTION_STATUS
     } satisfies MapClickQuestionData;
   }
 
@@ -241,6 +302,7 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
   const fromLabel = (payload as { fromLabel?: unknown }).fromLabel;
   const toLabel = (payload as { toLabel?: unknown }).toLabel;
   const mapArea = (payload as { mapArea?: unknown }).mapArea;
+  const idealRouteDescription = (payload as { idealRouteDescription?: unknown }).idealRouteDescription;
   if (
     !from ||
     !to ||
@@ -265,9 +327,14 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
     mapArea,
     mapBounds: bounds,
     difficulty: row.difficulty ?? "medium",
-    status: row.status,
+    status: row.status === PUBLISHED_QUESTION_STATUS ? "active" : row.status,
     tags: row.tags,
     explanation: row.explanation ?? "",
+    tip: row.tip ?? undefined,
+    idealRouteDescription:
+      typeof idealRouteDescription === "string"
+        ? idealRouteDescription
+        : undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     type: "route"
@@ -275,6 +342,12 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
 }
 
 export async function readQuestions(
+  options: QuestionRepositoryOptions = {}
+): Promise<QuestionRepositoryResult> {
+  return readPublishedQuestions(options);
+}
+
+export async function readPublishedQuestions(
   options: QuestionRepositoryOptions = {}
 ): Promise<QuestionRepositoryResult> {
   const client = asPersistenceClient(
@@ -288,9 +361,9 @@ export async function readQuestions(
   }
 
   const { data, error } = await client
-    .from("questions")
+    .from("question_bank_items")
     .select("*")
-    .eq("status", "active")
+    .eq("status", PUBLISHED_QUESTION_STATUS)
     .order("created_at", { ascending: true });
 
   if (error || !data) {
@@ -302,14 +375,92 @@ export async function readQuestions(
     .map((row) => dbRowToStaticQuestion(row))
     .filter((question): question is AdminQuestion => Boolean(question));
 
-  return questions.length > 0
-    ? { source: "supabase", questions }
-    : { source: "static", questions: getAllQuestions() };
+  return { source: "supabase", questions };
+}
+
+export async function readAdminQuestionItems(
+  options: QuestionRepositoryOptions = {}
+) {
+  const client = asPersistenceClient(
+    Object.prototype.hasOwnProperty.call(options, "client")
+      ? options.client
+      : getSupabaseClient()
+  );
+
+  if (!client) {
+    return {
+      source: "static" as const,
+      items: [] as QuestionBankItemSummary[],
+      error: "Supabase is not configured."
+    };
+  }
+
+  const { data, error } = await client
+    .from("question_bank_items")
+    .select("id, question_type, status, prompt, updated_at, published_at")
+    .order("updated_at", { ascending: false });
+
+  return {
+    source: "supabase" as const,
+    items: error || !Array.isArray(data) ? [] : (data as QuestionBankItemSummary[]),
+    error: error?.message
+  };
+}
+
+export async function exportQuestionBankItemsForAdmin(
+  statusFilter: QuestionExportStatusFilter = "all",
+  options: QuestionRepositoryOptions = {}
+): Promise<QuestionExportResult> {
+  const client = asPersistenceClient(
+    Object.prototype.hasOwnProperty.call(options, "client")
+      ? options.client
+      : getSupabaseClient()
+  );
+
+  if (!client) {
+    return {
+      source: "static",
+      items: [],
+      error: "Supabase is not configured."
+    };
+  }
+
+  let query = client.from("question_bank_items").select("*");
+  if (statusFilter !== "all") {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data, error } = await query.order("id", { ascending: true });
+
+  return {
+    source: "supabase",
+    items: error || !Array.isArray(data) ? [] : (data as QuestionExportRecord[]),
+    error: error?.message
+  };
+}
+
+export function normalizeQuestionStatus(value: unknown): QuestionStatus {
+  return QUESTION_STATUSES.includes(value as QuestionStatus)
+    ? (value as QuestionStatus)
+    : "draft";
 }
 
 export async function upsertQuestion(
   question: AdminQuestion,
   options: QuestionRepositoryOptions = {}
+) {
+  return upsertQuestionForAdmin(question, {
+    ...options,
+    status: questionStatus(question)
+  });
+}
+
+export async function upsertQuestionForAdmin(
+  question: AdminQuestion,
+  options: QuestionRepositoryOptions & {
+    status?: QuestionStatus;
+    adminUserId?: string | null;
+  } = {}
 ) {
   const client = asPersistenceClient(options.client ?? getSupabaseClient());
   if (!client) {
@@ -320,9 +471,104 @@ export async function upsertQuestion(
     };
   }
 
+  const insert = staticQuestionToDbInsert(
+    question,
+    null,
+    options.status ?? questionStatus(question)
+  );
+  const payload: QuestionInsert = {
+    ...insert,
+    created_by: options.adminUserId ?? insert.created_by ?? null,
+    updated_by: options.adminUserId ?? null
+  };
   const { error } = await client
-    .from("questions")
-    .upsert(staticQuestionToDbInsert(question), { onConflict: "id" });
+    .from("question_bank_items")
+    .upsert(payload, { onConflict: "id" });
+
+  return {
+    source: "supabase" as const,
+    persisted: !error,
+    error: error?.message
+  };
+}
+
+export async function importQuestionBankItemsForAdmin(
+  records: QuestionImportRecord[],
+  options: QuestionRepositoryOptions & {
+    mode?: QuestionImportMode;
+    adminUserId?: string | null;
+  } = {}
+): Promise<QuestionImportResult> {
+  const client = asPersistenceClient(options.client ?? getSupabaseClient());
+  if (!client) {
+    return {
+      source: "static",
+      persisted: false,
+      importedCount: 0,
+      reason: "Supabase is not configured; question import was not saved."
+    };
+  }
+
+  if (records.length === 0) {
+    return {
+      source: "supabase",
+      persisted: false,
+      importedCount: 0,
+      reason: "No valid question records were provided for import."
+    };
+  }
+
+  const importedAt = new Date().toISOString();
+  const payload = records.map((record) => ({
+    ...record,
+    created_by: options.adminUserId ?? record.created_by ?? null,
+    updated_by: options.adminUserId ?? null,
+    published_at:
+      record.status === PUBLISHED_QUESTION_STATUS
+        ? record.published_at ?? importedAt
+        : null
+  }));
+  const query =
+    options.mode === "upsert"
+      ? client.from("question_bank_items").upsert(payload, { onConflict: "id" })
+      : client.from("question_bank_items").insert(payload);
+  const { error } = await query;
+
+  return {
+    source: "supabase",
+    persisted: !error,
+    importedCount: error ? 0 : records.length,
+    error: error?.message
+  };
+}
+
+export async function setQuestionStatusForAdmin(
+  questionId: string,
+  status: QuestionStatus,
+  options: QuestionRepositoryOptions & {
+    adminUserId?: string | null;
+  } = {}
+) {
+  const client = asPersistenceClient(options.client ?? getSupabaseClient());
+  if (!client) {
+    return {
+      source: "static" as const,
+      persisted: false,
+      reason: "Supabase is not configured; status was not changed."
+    };
+  }
+
+  const nextStatus = normalizeQuestionStatus(status);
+  const update: QuestionUpdate = {
+    status: nextStatus,
+    updated_by: options.adminUserId ?? null,
+    published_at:
+      nextStatus === PUBLISHED_QUESTION_STATUS ? new Date().toISOString() : null
+  };
+  const { error } = await client
+    .from("question_bank_items")
+    .update(update)
+    .eq("id", questionId);
 
   return {
     source: "supabase" as const,

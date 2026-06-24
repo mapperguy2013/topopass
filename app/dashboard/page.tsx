@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { StatsCard } from "@/components/dashboard/StatsCard";
+import Link from "next/link";
 
 export default function DashboardPage() {
   return (
@@ -12,10 +13,15 @@ export default function DashboardPage() {
       <section className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-semibold text-ink">Today&apos;s focus</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Progress and recommendations are not persisted in Phase 1. Use
-          Practice or Mock Test to work through the current local question
-          banks.
+          Completed practice attempts and mock exams now save to local browser
+          progress. Use Practice or Mock Test to create new records.
         </p>
+        <Link
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          href="/progress"
+        >
+          View progress
+        </Link>
       </section>
     </AppShell>
   );

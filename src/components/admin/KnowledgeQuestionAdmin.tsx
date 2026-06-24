@@ -9,7 +9,7 @@ const STORAGE_KEY = "topopass.admin.knowledge-questions.v1";
 const inputClass = "mt-1 min-h-11 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-road focus:ring-2 focus:ring-blue-100";
 
 function createDraft(): KnowledgeQuestionData {
-  return { id: `knowledge-${Date.now()}`, type: "knowledge", prompt: "", options: ["", ""], correctAnswer: "", difficulty: "medium", category: "", sourceNote: "Admin browser draft", isActive: false, explanation: "" };
+  return { id: `knowledge-${Date.now()}`, type: "knowledge", prompt: "", options: ["", ""], correctAnswer: "", difficulty: "medium", category: "", sourceNote: "Admin browser draft", isActive: false, explanation: "", tip: "" };
 }
 
 export function KnowledgeQuestionAdmin() {
@@ -45,7 +45,7 @@ export function KnowledgeQuestionAdmin() {
 
   function save() {
     if (!draft) return;
-    const cleaned = { ...draft, id: draft.id.trim(), prompt: draft.prompt.trim(), options: draft.options.map((option) => option.trim()), category: draft.category.trim(), explanation: draft.explanation.trim() };
+    const cleaned = { ...draft, id: draft.id.trim(), prompt: draft.prompt.trim(), options: draft.options.map((option) => option.trim()), category: draft.category.trim(), explanation: draft.explanation?.trim(), tip: draft.tip?.trim() };
     commit(editingIndex === "new" ? [...questions, cleaned] : questions.map((question, index) => index === editingIndex ? cleaned : question));
     setEditingIndex(null);
     setDraft(null);
@@ -79,12 +79,13 @@ export function KnowledgeQuestionAdmin() {
             <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm font-semibold">Category<input className={inputClass} onChange={(event) => setDraft({ ...draft, category: event.target.value })} value={draft.category} /></label><label className="text-sm font-semibold">Difficulty<select className={inputClass} onChange={(event) => setDraft({ ...draft, difficulty: event.target.value as KnowledgeQuestionData["difficulty"] })} value={draft.difficulty}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label></div>
             <fieldset><legend className="text-sm font-bold">Answer options</legend><div className="mt-2 space-y-2">{draft.options.map((option, index) => <div className="flex gap-2" key={index}><input className={inputClass} onChange={(event) => setDraft({ ...draft, options: draft.options.map((entry, itemIndex) => itemIndex === index ? event.target.value : entry) })} value={option} /><button className="mt-1 px-2 text-sm font-bold text-red-700" disabled={draft.options.length <= 2} onClick={() => setDraft({ ...draft, options: draft.options.filter((_, itemIndex) => itemIndex !== index), correctAnswer: draft.correctAnswer === option ? "" : draft.correctAnswer })} type="button">Remove</button></div>)}</div><button className="mt-2 text-sm font-bold text-road" onClick={() => setDraft({ ...draft, options: [...draft.options, ""] })} type="button">Add option</button></fieldset>
             <label className="block text-sm font-semibold">Correct answer<select className={inputClass} onChange={(event) => setDraft({ ...draft, correctAnswer: event.target.value })} value={draft.correctAnswer}><option value="">Select answer</option>{draft.options.filter(Boolean).map((option, index) => <option key={`${option}-${index}`} value={option}>{option}</option>)}</select></label>
-            <label className="block text-sm font-semibold">Explanation<textarea className={`${inputClass} min-h-24`} onChange={(event) => setDraft({ ...draft, explanation: event.target.value })} value={draft.explanation} /></label>
+            <label className="block text-sm font-semibold">Explanation<textarea className={`${inputClass} min-h-24`} onChange={(event) => setDraft({ ...draft, explanation: event.target.value })} value={draft.explanation ?? ""} /></label>
+            <label className="block text-sm font-semibold">Learning tip<textarea className={`${inputClass} min-h-24`} onChange={(event) => setDraft({ ...draft, tip: event.target.value })} value={draft.tip ?? ""} /></label>
             <label className="flex items-center gap-2 text-sm font-semibold"><input checked={draft.isActive} onChange={(event) => setDraft({ ...draft, isActive: event.target.checked })} type="checkbox" /> Active</label>
             {draftValidation.issues.length > 0 && <ul className="space-y-1 rounded-md bg-slate-50 p-3 text-sm">{draftValidation.issues.map((entry, index) => <li className={entry.severity === "error" ? "text-red-700" : "text-amber-800"} key={`${entry.field}-${index}`}>{entry.field}: {entry.message}</li>)}</ul>}
             <div className="flex gap-3"><button className="rounded-md bg-road px-4 py-2 text-sm font-semibold text-white" onClick={save} type="button">Save browser draft</button><button className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold" onClick={() => { setDraft(null); setEditingIndex(null); }} type="button">Cancel</button></div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase text-road">Learner preview</p><h2 className="mt-3 text-xl font-bold">{draft.prompt || "Question text"}</h2><div className="mt-4 grid gap-2">{draft.options.map((option, index) => <div className="rounded-md border border-slate-200 px-4 py-3 text-sm" key={index}>{option || `Option ${index + 1}`}</div>)}</div><div className="mt-5 border-t border-slate-200 pt-4 text-sm"><p><strong>Correct:</strong> {draft.correctAnswer || "Not selected"}</p><p className="mt-2 text-slate-600">{draft.explanation || "No explanation."}</p></div></div>
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase text-road">Learner preview</p><h2 className="mt-3 text-xl font-bold">{draft.prompt || "Question text"}</h2><div className="mt-4 grid gap-2">{draft.options.map((option, index) => <div className="rounded-md border border-slate-200 px-4 py-3 text-sm" key={index}>{option || `Option ${index + 1}`}</div>)}</div><div className="mt-5 border-t border-slate-200 pt-4 text-sm"><p><strong>Correct:</strong> {draft.correctAnswer || "Not selected"}</p><p className="mt-2 text-slate-600">{draft.explanation || "No explanation."}</p><p className="mt-2 text-slate-600"><strong>Tip:</strong> {draft.tip || "No learning tip."}</p></div></div>
         </section>
       )}
     </div>

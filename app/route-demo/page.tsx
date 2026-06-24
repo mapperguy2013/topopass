@@ -25,8 +25,12 @@ export default function RouteDemoPage() {
         </p>
         <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-3 text-xs font-medium text-slate-700">
           <li className="flex items-center gap-2">
-            <span className="relative block h-2 w-9 bg-slate-500 before:absolute before:inset-x-0 before:top-0.5 before:h-1 before:bg-amber-200" />
-            Normal road
+            <span className="relative block h-3 w-10 rounded bg-slate-600 before:absolute before:inset-x-0 before:top-1 before:h-1 before:bg-[#efc15c]" />
+            Major driver road
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="relative block h-2 w-10 rounded bg-slate-400 before:absolute before:inset-x-0 before:top-0.5 before:h-1 before:bg-white" />
+            Local named road
           </li>
           <li className="flex items-center gap-2">
             <span className="flex h-3 w-9 items-center justify-center border-y border-slate-500 bg-white text-[11px] leading-none text-slate-900">
@@ -36,11 +40,11 @@ export default function RouteDemoPage() {
           </li>
           <li className="flex items-center gap-2">
             <span className="block w-9 border-t-2 border-dashed border-red-700" />
-            Restricted / no motor vehicle
+            Tagged no motor vehicle
           </li>
           <li className="flex items-center gap-2">
             <span className="block w-9 border-t border-dashed border-slate-500" />
-            Pedestrian / private / service
+            Pedestrian / private / unknown
           </li>
         </ul>
       </section>

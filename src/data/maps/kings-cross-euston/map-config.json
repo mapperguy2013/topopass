@@ -3,6 +3,7 @@
   "width": 1600,
   "height": 1000,
   "padding": 24,
+  "renderBufferDegrees": 0.006,
   "bounds": {
     "south": 51.516,
     "west": -0.15,

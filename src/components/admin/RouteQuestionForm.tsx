@@ -86,6 +86,9 @@ export function RouteQuestionForm({
       toLabel: draft.toLabel.trim(),
       mapArea: draft.mapArea.trim(),
       tags: draft.tags.map((tag) => tag.trim()).filter(Boolean),
+      explanation: draft.explanation?.trim(),
+      tip: draft.tip?.trim(),
+      idealRouteDescription: draft.idealRouteDescription?.trim(),
       updatedAt: new Date().toISOString()
     });
   }
@@ -443,7 +446,33 @@ export function RouteQuestionForm({
                 explanation: event.target.value
               }))
             }
-            value={draft.explanation}
+            value={draft.explanation ?? ""}
+          />
+        </label>
+        <label className={labelClassName}>
+          Ideal route description
+          <textarea
+            className={`${inputClassName} min-h-24 resize-y`}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                idealRouteDescription: event.target.value
+              }))
+            }
+            value={draft.idealRouteDescription ?? ""}
+          />
+        </label>
+        <label className={labelClassName}>
+          Learning tip
+          <textarea
+            className={`${inputClassName} min-h-24 resize-y`}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                tip: event.target.value
+              }))
+            }
+            value={draft.tip ?? ""}
           />
         </label>
       </fieldset>

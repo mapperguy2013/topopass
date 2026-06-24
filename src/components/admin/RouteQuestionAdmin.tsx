@@ -210,14 +210,14 @@ export function RouteQuestionAdmin() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <button
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
               onClick={exportJson}
               type="button"
             >
               Export JSON
             </button>
             <button
-              className="inline-flex min-h-10 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
               onClick={() => {
                 setEditor({ mode: "create" });
                 setPreviewIndex(null);

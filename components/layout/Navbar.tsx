@@ -1,27 +1,36 @@
 import Link from "next/link";
+import { signOutAction } from "@/app/auth/actions";
+import { getCurrentAuthState } from "@/lib/auth/session";
 
 const navItems = [
   { href: "/learn", label: "Learn" },
   { href: "/practice", label: "Practice" },
   { href: "/mock-test", label: "Mock Test" },
+  { href: "/progress", label: "Progress" },
   { href: "/resources", label: "Resources" },
   { href: "/pricing", label: "Pricing" }
 ];
 
-export function Navbar() {
+export async function Navbar() {
+  const { user, profile } = await getCurrentAuthState();
+  const accountLabel = profile?.display_name || user?.email || "Account";
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-      <nav className="mx-auto flex min-h-[72px] max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <Link className="flex items-center gap-3 text-xl font-bold text-ink" href="/">
+      <nav className="mx-auto flex min-h-[72px] max-w-[1500px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <Link
+          className="inline-flex min-h-11 items-center gap-3 rounded-md text-xl font-bold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+          href="/"
+        >
           <span className="flex size-9 items-center justify-center rounded-md bg-ink text-sm font-bold text-white">
             TP
           </span>
           <span>TopoPass</span>
         </Link>
-        <div className="order-3 flex w-full items-center gap-4 overflow-x-auto md:order-2 md:w-auto md:overflow-visible">
+        <div className="order-3 flex w-full items-center gap-2 overflow-x-auto pb-1 md:order-2 md:w-auto md:overflow-visible md:pb-0">
           {navItems.map((item) => (
             <Link
-              className="whitespace-nowrap text-sm font-medium text-slate-600 transition hover:text-road"
+              className="inline-flex min-h-11 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-slate-600 transition hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
               href={item.href}
               key={item.href}
             >
@@ -30,18 +39,40 @@ export function Navbar() {
           ))}
         </div>
         <div className="order-2 flex items-center gap-2 md:order-3">
-          <Link
-            className="rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:text-road"
-            href="/login"
-          >
-            Login
-          </Link>
-          <Link
-            className="hidden rounded-md bg-road px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:inline-flex"
-            href="/practice"
-          >
-            Start Practising
-          </Link>
+          {user ? (
+            <>
+              <Link
+                className="inline-flex min-h-11 max-w-40 items-center justify-center truncate rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                href="/account"
+                title={accountLabel}
+              >
+                {accountLabel}
+              </Link>
+              <form action={signOutAction}>
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                  type="submit"
+                >
+                  Sign out
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                href="/auth/log-in"
+              >
+                Log in
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                href="/auth/sign-up"
+              >
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </nav>
     </header>

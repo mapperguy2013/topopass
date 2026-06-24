@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { EXAM_MAP_ZOOM_LIMITS } from "@/lib/topographicalAtlasStyle";
-import { distanceInMetres, type Coordinates } from "@/lib/distance";
+import type { Coordinates } from "@/lib/distance";
+import {
+  canSubmitMapClickAnswer,
+  mapClickSelectionMessage,
+  scoreMapClickAnswer,
+  type MapClickScoreResult
+} from "@/lib/mapClickInteraction";
 
 const SAFE_MAPBOX_STYLE = "mapbox://styles/mapbox/streets-v12";
 
@@ -22,29 +28,34 @@ export type MapClickQuestionProps = {
   initialZoom?: number;
 };
 
-type ClickResult = {
-  coordinates: Coordinates;
-  distance: number;
-  isCorrect: boolean;
-};
-
-export type MapClickQuestionResult = ClickResult;
+export type MapClickQuestionResult = MapClickScoreResult;
 
 type MapClickQuestionInteractionProps = {
   initialAnswer?: MapClickQuestionResult | null;
   onAnswer?: (result: MapClickQuestionResult) => void;
   onAnswerReset?: () => void;
   showResult?: boolean;
+  submitMode?: "manual" | "auto";
 };
 
 function createSelectedMarkerElement() {
   const marker = document.createElement("div");
-  marker.className =
-    "relative flex size-8 items-center justify-center rounded-full border-2 border-white bg-road shadow-lg ring-4 ring-road/25";
+  marker.className = "relative flex flex-col items-center";
+
+  const pin = document.createElement("div");
+  pin.className =
+    "flex size-9 items-center justify-center rounded-full border-2 border-white bg-road shadow-lg ring-4 ring-road/25";
 
   const centre = document.createElement("div");
   centre.className = "size-2 rounded-full bg-white";
-  marker.appendChild(centre);
+  pin.appendChild(centre);
+
+  const label = document.createElement("div");
+  label.className =
+    "mt-1 rounded bg-white/95 px-2 py-1 text-xs font-bold text-slate-800 shadow";
+  label.textContent = "Selected";
+
+  marker.append(pin, label);
 
   return marker;
 }
@@ -66,18 +77,29 @@ export function MapClickQuestion({
   initialAnswer,
   onAnswer,
   onAnswerReset,
-  showResult = true
+  showResult = true,
+  submitMode = "manual"
 }: MapClickQuestionProps & MapClickQuestionInteractionProps) {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const clickedMarker = useRef<mapboxgl.Marker | null>(null);
   const restoredAnswer = useRef(initialAnswer);
+  const answerHandler = useRef(onAnswer);
   const answerResetHandler = useRef(onAnswerReset);
   restoredAnswer.current = initialAnswer;
+  answerHandler.current = onAnswer;
   answerResetHandler.current = onAnswerReset;
   const [selectedCoordinates, setSelectedCoordinates] =
     useState<Coordinates | null>(initialAnswer?.coordinates ?? null);
-  const [result, setResult] = useState<ClickResult | null>(initialAnswer ?? null);
+  const [result, setResult] = useState<MapClickScoreResult | null>(
+    initialAnswer ?? null
+  );
   const [hasToken] = useState(Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN));
+  const canSubmit = canSubmitMapClickAnswer(selectedCoordinates);
+  const selectionStatusId = "map-click-selection-status";
+  const selectionMessage = mapClickSelectionMessage({
+    selectedCoordinates,
+    hasSubmittedResult: Boolean(result)
+  });
 
   useEffect(() => {
     setSelectedCoordinates(restoredAnswer.current?.coordinates ?? null);
@@ -139,7 +161,20 @@ export function MapClickQuestion({
 
       setSelectedCoordinates(clickedCoordinates);
       setResult(null);
-      answerResetHandler.current?.();
+      if (submitMode === "auto") {
+        const answerResult = scoreMapClickAnswer({
+          selectedCoordinates: clickedCoordinates,
+          target,
+          passRadiusMetres
+        });
+
+        if (answerResult) {
+          setResult(answerResult);
+          answerHandler.current?.(answerResult);
+        }
+      } else {
+        answerResetHandler.current?.();
+      }
     });
 
     return () => {
@@ -147,30 +182,25 @@ export function MapClickQuestion({
       clickedMarker.current = null;
       map.remove();
     };
-  }, [initialCenter, initialZoom, target]);
+  }, [initialCenter, initialZoom, passRadiusMetres, submitMode, target]);
 
   function submitAnswer() {
-    if (!selectedCoordinates) {
+    const answerResult = scoreMapClickAnswer({
+      selectedCoordinates,
+      target,
+      passRadiusMetres
+    });
+
+    if (!answerResult) {
       return;
     }
-
-    const targetCoordinates: Coordinates = {
-      latitude: target.lat,
-      longitude: target.lng
-    };
-    const distance = distanceInMetres(selectedCoordinates, targetCoordinates);
-    const answerResult = {
-      coordinates: selectedCoordinates,
-      distance,
-      isCorrect: distance <= passRadiusMetres
-    };
 
     setResult(answerResult);
     onAnswer?.(answerResult);
   }
 
   return (
-    <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-soft">
         <div className="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -183,6 +213,10 @@ export function MapClickQuestion({
                 {description}
               </p>
             )}
+            <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950">
+              Click the best location on the map with a mouse, pen, or touch.
+              You can change your answer before submitting.
+            </p>
           </div>
           <p className="rounded-md bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-600">
             Within {passRadiusMetres}m
@@ -190,16 +224,25 @@ export function MapClickQuestion({
         </div>
 
         <div className="rounded-md border border-slate-300 bg-slate-100 p-2">
-          <div
-            className="min-h-[460px] overflow-hidden rounded border border-slate-400 bg-slate-100 shadow-inner sm:min-h-[560px] lg:min-h-[620px]"
-            ref={mapContainer}
-          >
-            {!hasToken && (
-              <div className="flex h-full min-h-[460px] items-center justify-center px-6 text-center text-sm font-medium text-slate-600">
-                Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local to load the Mapbox
-                test map.
-              </div>
-            )}
+          <div className="relative">
+            <div
+              aria-describedby={selectionStatusId}
+              className="min-h-[420px] overflow-hidden rounded border border-slate-400 bg-slate-100 shadow-inner sm:min-h-[540px] lg:min-h-[620px]"
+              ref={mapContainer}
+            >
+              {!hasToken && (
+                <div className="flex h-full min-h-[420px] items-center justify-center px-6 text-center text-sm font-medium text-slate-600">
+                  Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local to load the Mapbox
+                  test map.
+                </div>
+              )}
+            </div>
+            <p
+              aria-live="polite"
+              className="pointer-events-none absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] rounded-md border border-slate-200 bg-white/95 px-3 py-2 text-xs font-bold leading-5 text-slate-800 shadow-sm sm:text-sm"
+            >
+              {selectionMessage}
+            </p>
           </div>
         </div>
       </div>
@@ -209,17 +252,43 @@ export function MapClickQuestion({
           Answer panel
         </p>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Click or tap your chosen location on the map, then submit your answer.
+          {submitMode === "auto"
+            ? "Click or tap your chosen location on the map. Your answer is saved automatically; tap the map again to move the selected point before continuing."
+            : "Click or tap your chosen location on the map, then submit your answer. Tap the map again to move the selected point."}
         </p>
 
-        <button
-          className="mt-5 inline-flex w-full items-center justify-center rounded-md bg-road px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-          disabled={!selectedCoordinates}
-          onClick={submitAnswer}
-          type="button"
+        <div
+          aria-live="polite"
+          className={`mt-5 rounded-md border p-4 ${
+            selectedCoordinates
+              ? "border-blue-200 bg-blue-50 text-blue-950"
+              : "border-slate-200 bg-slate-50 text-slate-700"
+          }`}
+          id="map-click-selection-status"
         >
-          Submit answer
-        </button>
+          <p className="text-sm font-bold">
+            {selectedCoordinates ? "Location selected" : "No location selected"}
+          </p>
+          <p className="mt-1 text-sm">{selectionMessage}</p>
+        </div>
+
+        {submitMode === "manual" ? (
+          <button
+            aria-describedby={selectionStatusId}
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-road px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:bg-slate-300"
+            disabled={!canSubmit}
+            onClick={submitAnswer}
+            type="button"
+          >
+            {canSubmit ? "Submit selected location" : "Select a location to submit"}
+          </button>
+        ) : (
+          <p className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-950">
+            {canSubmit
+              ? "Selected location saved. Press Next question to continue."
+              : "Select a location before pressing Next question."}
+          </p>
+        )}
 
         <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm font-semibold text-slate-700">Result</p>

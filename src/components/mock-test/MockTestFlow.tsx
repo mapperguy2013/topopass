@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_MOCK_EXAM_CONFIG } from "@/lib/mockExamConfig";
 import {
+  createMapClickReviewData,
+  createRouteReviewData
+} from "@/lib/reviewData";
+import {
   calculateMockExamResult,
   removeMockExamAnswer,
   saveMockExamAnswer,
@@ -10,6 +14,19 @@ import {
   type MockExamAnswer,
   type MockExamAnswers
 } from "@/lib/mockExamEngine";
+import { validateMockExamQuestionForNext } from "@/lib/mockExamNavigation";
+import {
+  listLocalMockAttempts,
+  listLocalPracticeAttempts,
+  LOCAL_LEARNER_ID
+} from "@/lib/db/localPersistence";
+import { saveMockAttempt } from "@/lib/db/mockAttemptRepository";
+import { buildMockExamForMode } from "@/lib/mockExamModeBuilder";
+import {
+  getMockExamModeMetadata,
+  normalizeMockExamMode,
+  type MockExamModeId
+} from "@/lib/mockExamModes";
 import {
   clearActiveMockExam,
   loadActiveMockExam,
@@ -23,12 +40,11 @@ import {
 } from "@/lib/mockExamTimer";
 import {
   getMockExamQuestionsById,
-  selectMockExamQuestions,
   type KnowledgeMockQuestion,
   type MockExamQuestion,
   type RouteDrawingMockQuestion
 } from "@/lib/mockTestQuestions";
-import { MockExamIntro } from "@/src/components/mock-test/MockExamIntro";
+import { MockModeSelection } from "@/src/components/mock-test/MockModeSelection";
 import { MockExamResults } from "@/src/components/mock-test/MockExamResults";
 import { MockExamReview } from "@/src/components/mock-test/MockExamReview";
 import {
@@ -41,8 +57,16 @@ import {
 } from "@/src/components/route/RouteDrawingQuestion";
 import { kingsCrossEustonRouteGraph } from "@/src/data/maps/kings-cross-euston/routeGraph";
 
-type MockExamMode = "intro" | "exam" | "results" | "review";
+type MockExamScreen = "selection" | "exam" | "results" | "review";
 type SubmissionReason = "submitted" | "time-expired";
+
+function createAttemptId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `mock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 function KnowledgeQuestion({
   question,
@@ -66,7 +90,7 @@ function KnowledgeQuestion({
         {question.options.map((option) => (
           <button
             aria-pressed={selectedAnswer === option}
-            className={`min-h-12 rounded-md border px-4 py-3 text-left text-sm font-semibold transition ${
+            className={`min-h-12 rounded-md border px-4 py-3 text-left text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
               selectedAnswer === option
                 ? "border-road bg-blue-50 text-road"
                 : "border-slate-200 bg-white text-slate-700 hover:border-road"
@@ -124,13 +148,19 @@ function RouteMockQuestion({
       onAnswer={(submittedAnswer) =>
         onAnswer({
           type: "route-drawing",
-          routePoints: submittedAnswer.routePoints
+          routePoints: submittedAnswer.routePoints,
+          reviewData: createRouteReviewData({
+            question: question.routeQuestion,
+            userRoutePoints: submittedAnswer.routePoints,
+            routeScore: submittedAnswer.result
+          })
         })
       }
       onAnswerReset={onAnswerReset}
       question={question.routeQuestion}
       showDeveloperTools={false}
       showResult={false}
+      submitMode="auto"
     />
   );
 }
@@ -145,7 +175,10 @@ export function MockTestFlow() {
   const [questions, setQuestions] = useState<MockExamQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<MockExamAnswers>({});
-  const [mode, setMode] = useState<MockExamMode>("intro");
+  const [mode, setMode] = useState<MockExamScreen>("selection");
+  const [selectedMode, setSelectedMode] =
+    useState<MockExamModeId>("practice");
+  const [modeMessage, setModeMessage] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(
     DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60
@@ -153,6 +186,17 @@ export function MockTestFlow() {
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
   const [submissionReason, setSubmissionReason] =
     useState<SubmissionReason>("submitted");
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [persistedAttemptId, setPersistedAttemptId] = useState<string | null>(
+    null
+  );
+  const [persistenceStatus, setPersistenceStatus] = useState<
+    "idle" | "saving" | "saved" | "failed"
+  >("idle");
+  const [navigationMessage, setNavigationMessage] = useState<string | null>(
+    null
+  );
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = currentQuestion
     ? answers[currentQuestion.id]
@@ -168,33 +212,60 @@ export function MockTestFlow() {
       ),
     [answers, questions]
   );
+  const selectedModeMetadata = getMockExamModeMetadata(selectedMode);
 
   const saveAnswer = useCallback(
     (questionId: string, answer: MockExamAnswer) => {
+      setNavigationMessage(null);
       setAnswers((current) => saveMockExamAnswer(current, questionId, answer));
     },
     []
   );
 
   const resetAnswer = useCallback((questionId: string) => {
+    setNavigationMessage(null);
     setAnswers((current) => removeMockExamAnswer(current, questionId));
   }, []);
 
-  const startNewExam = useCallback(() => {
-    const selectedQuestions = selectMockExamQuestions();
+  const startNewExam = useCallback((mockMode: MockExamModeId = selectedMode) => {
+    const builtExam = buildMockExamForMode({
+      mode: mockMode,
+      practiceAttempts: listLocalPracticeAttempts(),
+      mockAttempts: listLocalMockAttempts()
+    });
+
+    if (builtExam.emptyStateReason || builtExam.questions.length === 0) {
+      setModeMessage(
+        builtExam.emptyStateReason ??
+          "This mock mode could not find enough questions to start."
+      );
+      setMode("selection");
+      return;
+    }
+
+    const selectedQuestions = builtExam.questions;
+    const nextAttemptId = createAttemptId();
+    const nextStartedAt = Date.now();
     const nextExpiresAt =
-      Date.now() + DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60 * 1000;
+      nextStartedAt + DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60 * 1000;
 
     clearActiveMockExam();
+    setSelectedMode(mockMode);
+    setModeMessage(builtExam.fallbackMessage ?? null);
     setQuestions(selectedQuestions);
     setAnswers({});
     setCurrentQuestionIndex(0);
+    setAttemptId(nextAttemptId);
+    setStartedAt(nextStartedAt);
     setExpiresAt(nextExpiresAt);
+    setPersistedAttemptId(null);
+    setPersistenceStatus("idle");
     setRemainingSeconds(DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60);
     setSubmissionReason("submitted");
     setShowSubmitConfirmation(false);
+    setNavigationMessage(null);
     setMode("exam");
-  }, []);
+  }, [selectedMode]);
 
   useEffect(() => {
     const storedAttempt = loadActiveMockExam();
@@ -208,6 +279,13 @@ export function MockTestFlow() {
 
     setQuestions(storedQuestions);
     setAnswers(storedAttempt.answers);
+    setSelectedMode(normalizeMockExamMode(storedAttempt.mode));
+    setAttemptId(storedAttempt.attemptId ?? createAttemptId());
+    setStartedAt(
+      storedAttempt.startedAt ??
+        storedAttempt.expiresAt -
+          DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60 * 1000
+    );
     setCurrentQuestionIndex(
       Math.min(
         Math.max(0, storedAttempt.currentQuestionIndex),
@@ -232,12 +310,72 @@ export function MockTestFlow() {
 
     saveActiveMockExam({
       version: 1,
+      attemptId: attemptId ?? undefined,
       questionIds: questions.map((question) => question.id),
       currentQuestionIndex,
       answers,
-      expiresAt
+      startedAt: startedAt ?? undefined,
+      expiresAt,
+      mode: selectedMode
     });
-  }, [answers, currentQuestionIndex, expiresAt, mode, questions]);
+  }, [
+    answers,
+    attemptId,
+    currentQuestionIndex,
+    expiresAt,
+    mode,
+    questions,
+    selectedMode,
+    startedAt
+  ]);
+
+  useEffect(() => {
+    if (
+      mode !== "results" ||
+      questions.length === 0 ||
+      persistedAttemptId ||
+      persistenceStatus === "saving"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const submittedAt = Date.now();
+    const durationSeconds = startedAt
+      ? Math.max(0, Math.round((submittedAt - startedAt) / 1000))
+      : null;
+
+    setPersistenceStatus("saving");
+    saveMockAttempt({
+      id: attemptId ?? undefined,
+      userId: LOCAL_LEARNER_ID,
+      questionIds: questions.map((question) => question.id),
+      answers,
+      result,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+      durationSeconds,
+      mode: selectedMode
+    }).then((saveResult) => {
+      if (cancelled) return;
+      setPersistedAttemptId(saveResult.id ?? attemptId);
+      setPersistenceStatus(saveResult.persisted ? "saved" : "failed");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    answers,
+    attemptId,
+    expiresAt,
+    mode,
+    persistedAttemptId,
+    persistenceStatus,
+    questions,
+    result,
+    selectedMode,
+    startedAt
+  ]);
 
   useEffect(() => {
     if (mode !== "exam" || !expiresAt) return;
@@ -273,15 +411,75 @@ export function MockTestFlow() {
     ) {
       return;
     }
-    startNewExam();
+    startNewExam(selectedMode);
   }
 
-  if (mode === "intro") {
+  function returnToModeSelection() {
+    if (
+      mode === "exam" &&
+      questions.length > 0 &&
+      !window.confirm("Clear this active mock attempt and choose another mode?")
+    ) {
+      return;
+    }
+
+    clearActiveMockExam();
+    setQuestions([]);
+    setAnswers({});
+    setCurrentQuestionIndex(0);
+    setAttemptId(null);
+    setStartedAt(null);
+    setExpiresAt(null);
+    setPersistedAttemptId(null);
+    setPersistenceStatus("idle");
+    setShowSubmitConfirmation(false);
+    setSubmissionReason("submitted");
+    setNavigationMessage(null);
+    setRemainingSeconds(DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60);
+    setMode("selection");
+  }
+
+  function goToQuestion(index: number) {
+    setNavigationMessage(null);
+    setCurrentQuestionIndex(index);
+  }
+
+  function goToNextQuestion() {
+    if (!currentQuestion) return;
+
+    const navigation = validateMockExamQuestionForNext(
+      currentQuestion,
+      currentAnswer
+    );
+
+    if (!navigation.canAdvance) {
+      setNavigationMessage(navigation.message);
+      return;
+    }
+
+    goToQuestion(currentQuestionIndex + 1);
+  }
+
+  function requestSubmitExam() {
+    if (!currentQuestion) return;
+
+    const navigation = validateMockExamQuestionForNext(
+      currentQuestion,
+      currentAnswer
+    );
+
+    if (!navigation.canAdvance) {
+      setNavigationMessage(navigation.message);
+      return;
+    }
+
+    setNavigationMessage(null);
+    setShowSubmitConfirmation(true);
+  }
+
+  if (mode === "selection") {
     return (
-      <MockExamIntro
-        config={DEFAULT_MOCK_EXAM_CONFIG}
-        onStart={startNewExam}
-      />
+      <MockModeSelection message={modeMessage} onStart={startNewExam} />
     );
   }
 
@@ -290,7 +488,9 @@ export function MockTestFlow() {
       <MockExamResults
         onRestart={restartExam}
         onReview={() => setMode("review")}
+        persistenceStatus={persistenceStatus}
         result={result}
+        mode={selectedModeMetadata}
         submissionNotice={
           submissionReason === "time-expired"
             ? "The time limit expired and the exam was submitted automatically."
@@ -305,6 +505,7 @@ export function MockTestFlow() {
       <MockExamReview
         onBack={() => setMode("results")}
         onRestart={restartExam}
+        mode={selectedModeMetadata}
         questions={questions}
         result={result}
       />
@@ -343,7 +544,8 @@ export function MockTestFlow() {
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
           <div>
             <p className="text-sm font-bold text-ink">
-              Question {currentQuestionIndex + 1} of {questions.length}
+              {selectedModeMetadata.label}: Question {currentQuestionIndex + 1}{" "}
+              of {questions.length}
             </p>
             <p className="mt-1 text-sm text-slate-500">
               {answeredCount} answered - {unansweredCount} unanswered -{" "}
@@ -367,14 +569,34 @@ export function MockTestFlow() {
               {formatExamTime(remainingSeconds)}
             </p>
             <button
-              className="text-sm font-semibold text-slate-600 hover:text-red-700"
+              className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-semibold text-slate-600 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
               onClick={restartExam}
               type="button"
             >
               Restart exam
             </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              onClick={returnToModeSelection}
+              type="button"
+            >
+              Change mode
+            </button>
           </div>
         </div>
+
+        {modeMessage && (
+          <p className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-900">
+            {modeMessage}
+          </p>
+        )}
+
+        {selectedModeMetadata.examStyle && (
+          <p className="mt-3 rounded-md border border-slate-300 bg-slate-50 p-3 text-sm font-semibold text-slate-800">
+            Exam Simulation is running under exam-style conditions. Feedback,
+            answers, explanations, and tips appear only after final submission.
+          </p>
+        )}
 
         {timerLevel === "five-minute-warning" && (
           <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
@@ -406,7 +628,7 @@ export function MockTestFlow() {
                 <button
                   aria-current={isCurrent ? "step" : undefined}
                   aria-label={`Question ${index + 1}: ${isAnswered ? "answered" : "unanswered"}`}
-                  className={`flex size-9 items-center justify-center rounded-md border text-sm font-bold transition ${
+                  className={`flex size-11 items-center justify-center rounded-md border text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
                     isCurrent
                       ? "border-road bg-road text-white"
                       : isAnswered
@@ -414,7 +636,7 @@ export function MockTestFlow() {
                         : "border-slate-300 bg-white text-slate-600 hover:border-road"
                   }`}
                   key={question.id}
-                  onClick={() => setCurrentQuestionIndex(index)}
+                  onClick={() => goToQuestion(index)}
                   type="button"
                 >
                   {index + 1}
@@ -440,7 +662,7 @@ export function MockTestFlow() {
 
       {currentQuestion.type === "map-click" && (
         <MapClickQuestion
-          description="Click or tap the map, then submit the selected location. Results are shown after the exam."
+          description="Click or tap the map to save the selected location. Results are shown after the exam."
           initialAnswer={initialMapAnswer}
           initialCenter={currentQuestion.initialCenter}
           initialZoom={currentQuestion.initialZoom}
@@ -448,12 +670,25 @@ export function MockTestFlow() {
           onAnswer={(mapAnswer) =>
             saveAnswer(currentQuestion.id, {
               type: "map-click",
-              coordinates: mapAnswer.coordinates
+              coordinates: mapAnswer.coordinates,
+              reviewData: createMapClickReviewData({
+                questionId: currentQuestion.id,
+                prompt: currentQuestion.prompt,
+                userCoordinates: mapAnswer.coordinates,
+                correctCoordinates: currentQuestion.target,
+                distanceMeters: mapAnswer.distance,
+                score: mapAnswer.isCorrect ? 100 : 0,
+                isCorrect: mapAnswer.isCorrect,
+                explanation: currentQuestion.explanation,
+                tip: currentQuestion.tip,
+                acceptedAreaDescription: currentQuestion.acceptedAreaDescription
+              })
             })
           }
           onAnswerReset={() => resetAnswer(currentQuestion.id)}
           passRadiusMetres={currentQuestion.toleranceMeters}
           showResult={false}
+          submitMode="auto"
           target={currentQuestion.target}
           title={currentQuestion.prompt}
         />
@@ -469,14 +704,20 @@ export function MockTestFlow() {
         />
       )}
 
+      {navigationMessage && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
+          {navigationMessage}
+        </p>
+      )}
+
       <nav
         aria-label="Mock exam navigation"
         className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center"
       >
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road disabled:cursor-not-allowed disabled:text-slate-300"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:text-slate-300"
           disabled={isFirstQuestion}
-          onClick={() => setCurrentQuestionIndex((index) => index - 1)}
+          onClick={() => goToQuestion(currentQuestionIndex - 1)}
           type="button"
         >
           Previous question
@@ -486,16 +727,16 @@ export function MockTestFlow() {
         </p>
         {isLastQuestion ? (
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-            onClick={() => setShowSubmitConfirmation(true)}
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            onClick={requestSubmitExam}
             type="button"
           >
             Submit mock exam
           </button>
         ) : (
           <button
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-            onClick={() => setCurrentQuestionIndex((index) => index + 1)}
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            onClick={goToNextQuestion}
             type="button"
           >
             Next question
@@ -525,14 +766,14 @@ export function MockTestFlow() {
             </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 onClick={() => setShowSubmitConfirmation(false)}
                 type="button"
               >
                 Continue exam
               </button>
               <button
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 onClick={submitExam}
                 type="button"
               >

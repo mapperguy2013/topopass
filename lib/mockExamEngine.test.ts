@@ -22,6 +22,8 @@ const knowledgeQuestion: KnowledgeMockQuestion = {
   correctAnswer: "South",
   category: "Directions",
   difficulty: "easy",
+  explanation: "South is opposite north.",
+  tip: "Practise cardinal opposites.",
   maxScore: 100
 };
 
@@ -35,6 +37,9 @@ const mapQuestion: MapClickMockQuestion = {
   initialZoom: 15,
   category: "Location knowledge",
   difficulty: "medium",
+  explanation: "The target is the mapped location.",
+  tip: "Use nearby road names to orientate.",
+  acceptedAreaDescription: "Within the target entrance area.",
   maxScore: 100
 };
 
@@ -74,6 +79,8 @@ const routeQuestion: RouteDrawingMockQuestion = {
     status: "active",
     tags: ["test"],
     explanation: "Test feedback",
+    tip: "Use the direct route.",
+    idealRouteDescription: "Follow the accepted straight-line test route.",
     createdAt: "2026-06-23T00:00:00.000Z",
     updatedAt: "2026-06-23T00:00:00.000Z"
   }
@@ -107,6 +114,9 @@ test("knowledge scoring uses exact answer matching", () => {
 
   assert.equal(correct.passed, true);
   assert.equal(correct.score, 100);
+  assert.equal(correct.details.type, "knowledge");
+  assert.equal(correct.details.explanation, "South is opposite north.");
+  assert.equal(correct.details.tip, "Practise cardinal opposites.");
   assert.equal(incorrect.passed, false);
   assert.equal(incorrect.score, 0);
 });
@@ -123,6 +133,9 @@ test("map-click scoring uses target distance and tolerance", () => {
 
   assert.equal(correct.passed, true);
   assert.equal(correct.details.type, "map-click");
+  assert.equal(correct.details.explanation, "The target is the mapped location.");
+  assert.equal(correct.details.tip, "Use nearby road names to orientate.");
+  assert.equal(correct.details.acceptedAreaDescription, "Within the target entrance area.");
   assert.equal(incorrect.passed, false);
 });
 
@@ -135,6 +148,12 @@ test("route-drawing scoring delegates to the hardened route scorer", () => {
   assert.equal(result.passed, true);
   assert.equal(result.details.type, "route-drawing");
   assert.equal(result.details.routeScore?.lengthRatio, 1);
+  assert.equal(result.details.explanation, "Test feedback");
+  assert.equal(result.details.tip, "Use the direct route.");
+  assert.equal(
+    result.details.idealRouteDescription,
+    "Follow the accepted straight-line test route."
+  );
 });
 
 test("mixed final result calculates totals and per-type breakdown", () => {

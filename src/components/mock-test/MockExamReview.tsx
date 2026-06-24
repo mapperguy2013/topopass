@@ -2,11 +2,14 @@ import type {
   MockExamResult,
   MockQuestionScoreResult
 } from "@/lib/mockExamEngine";
+import type { MockExamModeMetadata } from "@/lib/mockExamModes";
 import type { MockExamQuestion } from "@/lib/mockTestQuestions";
+import { QuestionExplanation } from "@/src/components/questions/QuestionExplanation";
 
 type MockExamReviewProps = {
   questions: MockExamQuestion[];
   result: MockExamResult;
+  mode: MockExamModeMetadata;
   onBack: () => void;
   onRestart: () => void;
 };
@@ -106,9 +109,39 @@ function ScoreDetails({ result }: { result: MockQuestionScoreResult }) {
   return null;
 }
 
+function ReviewExplanation({ question }: { question: MockExamQuestion }) {
+  if (question.type === "map-click") {
+    return (
+      <QuestionExplanation
+        acceptedAreaDescription={question.acceptedAreaDescription}
+        explanation={question.explanation}
+        tip={question.tip}
+      />
+    );
+  }
+
+  if (question.type === "route-drawing") {
+    return (
+      <QuestionExplanation
+        explanation={question.routeQuestion.explanation ?? question.explanation}
+        idealRouteDescription={question.routeQuestion.idealRouteDescription}
+        tip={question.routeQuestion.tip ?? question.tip}
+      />
+    );
+  }
+
+  return (
+    <QuestionExplanation
+      explanation={question.explanation}
+      tip={question.tip}
+    />
+  );
+}
+
 export function MockExamReview({
   questions,
   result,
+  mode,
   onBack,
   onRestart
 }: MockExamReviewProps) {
@@ -117,11 +150,12 @@ export function MockExamReview({
       <div className="flex flex-col gap-3 border-y border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-bold uppercase tracking-wide text-road">
-            Answer review
+            {mode.label} answer review
           </p>
           <h2 className="mt-1 text-2xl font-bold text-ink">
             Review all questions
           </h2>
+          <p className="mt-2 text-sm text-slate-600">{mode.resultSummary}</p>
         </div>
         <p className="text-sm font-semibold text-slate-600">
           Final score: {result.percentage}%
@@ -176,6 +210,9 @@ export function MockExamReview({
                 Score: {questionResult.score}/{questionResult.maxScore} ({questionResult.percentage}%)
               </p>
               <ScoreDetails result={questionResult} />
+              <div className="mt-4">
+                <ReviewExplanation question={question} />
+              </div>
             </article>
           );
         })}
@@ -183,14 +220,14 @@ export function MockExamReview({
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
           onClick={onBack}
           type="button"
         >
           Back to results
         </button>
         <button
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
           onClick={onRestart}
           type="button"
         >
