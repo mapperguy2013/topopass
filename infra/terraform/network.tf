@@ -2,6 +2,12 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+data "aws_subnet" "selected_public" {
+  count = local.create_network ? 0 : 1
+
+  id = var.public_subnet_id
+}
+
 resource "aws_vpc" "this" {
   count = local.create_network ? 1 : 0
 
@@ -60,6 +66,7 @@ resource "aws_route_table_association" "public" {
 }
 
 locals {
-  vpc_id           = local.create_network ? aws_vpc.this[0].id : var.vpc_id
-  public_subnet_id = local.create_network ? aws_subnet.public[0].id : var.public_subnet_id
+  vpc_id                          = local.create_network ? aws_vpc.this[0].id : var.vpc_id
+  public_subnet_id                = local.create_network ? aws_subnet.public[0].id : var.public_subnet_id
+  public_subnet_availability_zone = local.create_network ? aws_subnet.public[0].availability_zone : data.aws_subnet.selected_public[0].availability_zone
 }

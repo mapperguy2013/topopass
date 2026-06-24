@@ -52,7 +52,7 @@ resource "aws_instance" "app" {
 }
 
 resource "aws_ebs_volume" "data" {
-  availability_zone = aws_instance.app.availability_zone
+  availability_zone = local.public_subnet_availability_zone
   size              = var.data_volume_size_gb
   type              = "gp3"
   encrypted         = true

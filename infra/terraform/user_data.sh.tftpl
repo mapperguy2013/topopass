@@ -7,22 +7,49 @@ LOG_FILE="/var/log/topopass-user-data.log"
 
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-echo "Preparing ${project_name} ${environment} host"
+log() {
+  echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*"
+}
+
+warn() {
+  log "WARNING: $*"
+}
+
+retry() {
+  local attempts="$1"
+  shift
+  local delay=5
+  local attempt=1
+
+  until "$@"; do
+    if [ "$attempt" -ge "$attempts" ]; then
+      return 1
+    fi
+
+    warn "Command failed on attempt $attempt/$attempts. Retrying in $delay seconds: $*"
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+log "Preparing ${project_name} ${environment} host"
 
 export DEBIAN_FRONTEND=noninteractive
 
-apt-get update
-apt-get install -y \
+log "Installing base packages"
+retry 3 apt-get update
+retry 3 apt-get install -y \
   ca-certificates \
   curl \
   gnupg \
   lsb-release \
   unzip \
-  jq \
-  awscli
+  jq
 
+log "Installing Docker apt repository"
 install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor > /etc/apt/keyrings/docker.gpg
 chmod a+r /etc/apt/keyrings/docker.gpg
 
 echo \
@@ -30,20 +57,93 @@ echo \
   $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
   > /etc/apt/sources.list.d/docker.list
 
-apt-get update
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+log "Installing Docker engine and Compose plugin"
+retry 3 apt-get update
+retry 3 apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-systemctl enable docker
-systemctl start docker
+log "Starting Docker"
+systemctl enable --now docker
 
 if id ubuntu >/dev/null 2>&1; then
+  log "Adding ubuntu user to docker group"
   usermod -aG docker ubuntu
 fi
 
 if id ec2-user >/dev/null 2>&1; then
+  log "Adding ec2-user user to docker group"
   usermod -aG docker ec2-user
 fi
 
+find_root_disk() {
+  local root_source
+  local root_parent
+
+  root_source="$(findmnt -n -o SOURCE / || true)"
+  if [ -n "$root_source" ]; then
+    root_parent="$(lsblk -no PKNAME "$root_source" 2>/dev/null | head -n1 || true)"
+    if [ -n "$root_parent" ]; then
+      echo "/dev/$root_parent"
+      return 0
+    fi
+  fi
+
+  echo ""
+}
+
+find_data_device() {
+  local root_disk="$1"
+  local candidate
+
+  for candidate in $(lsblk -dnpo NAME,TYPE | awk '$2 == "disk" { print $1 }'); do
+    if [ -n "$root_disk" ] && [ "$candidate" = "$root_disk" ]; then
+      continue
+    fi
+
+    if lsblk -nrpo MOUNTPOINT "$candidate" | grep -q '/'; then
+      continue
+    fi
+
+    echo "$candidate"
+    return 0
+  done
+
+  echo ""
+}
+
+log "Preparing persistent data volume"
+mkdir -p "$DATA_DIR"
+
+ROOT_DISK="$(find_root_disk)"
+DATA_DEVICE="$(find_data_device "$ROOT_DISK")"
+
+if mountpoint -q "$DATA_DIR"; then
+  log "$DATA_DIR is already mounted"
+elif [ -n "$DATA_DEVICE" ]; then
+  log "Using data device $DATA_DEVICE"
+
+  if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
+    log "Formatting $DATA_DEVICE as ext4"
+    mkfs.ext4 -F "$DATA_DEVICE"
+  else
+    log "$DATA_DEVICE already has a filesystem"
+  fi
+
+  DATA_UUID="$(blkid -s UUID -o value "$DATA_DEVICE")"
+
+  if ! grep -q "UUID=$DATA_UUID" /etc/fstab; then
+    log "Adding $DATA_DEVICE to /etc/fstab"
+    echo "UUID=$DATA_UUID $DATA_DIR ext4 defaults,nofail 0 2" >> /etc/fstab
+  else
+    log "$DATA_DEVICE is already present in /etc/fstab"
+  fi
+
+  log "Mounting persistent data volume"
+  mount "$DATA_DIR" || mount -a
+else
+  warn "No unmounted data disk found. Persistent data directories remain on root volume until the EBS attachment is visible."
+fi
+
+log "Creating application directories"
 mkdir -p \
   "$APP_DIR" \
   "$APP_DIR/logs/caddy" \
@@ -53,31 +153,43 @@ mkdir -p \
   "$DATA_DIR/backups" \
   /var/log/topopass/backups
 
-DATA_DEVICE=""
-for candidate in $(lsblk -ndo NAME,TYPE,MOUNTPOINT | awk '$2 == "disk" && $3 == "" { print "/dev/" $1 }'); do
-  if [ "$candidate" != "$(findmnt -n -o SOURCE / | sed 's/[0-9]*$//')" ]; then
-    DATA_DEVICE="$candidate"
-    break
-  fi
-done
-
-if [ -n "$DATA_DEVICE" ]; then
-  if ! blkid "$DATA_DEVICE" >/dev/null 2>&1; then
-    mkfs.ext4 -F "$DATA_DEVICE"
+install_aws_cli() {
+  if command -v aws >/dev/null 2>&1; then
+    log "AWS CLI is already installed"
+    return 0
   fi
 
-  DATA_UUID="$(blkid -s UUID -o value "$DATA_DEVICE")"
+  local arch
+  local aws_arch
+  local tmp_dir
 
-  if ! grep -q "$DATA_UUID" /etc/fstab; then
-    echo "UUID=$DATA_UUID $DATA_DIR ext4 defaults,nofail 0 2" >> /etc/fstab
-  fi
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64)
+      aws_arch="x86_64"
+      ;;
+    aarch64 | arm64)
+      aws_arch="aarch64"
+      ;;
+    *)
+      warn "Unsupported architecture for AWS CLI installer: $arch"
+      return 1
+      ;;
+  esac
 
-  mount -a
-  mkdir -p "$DATA_DIR/postgres" "$DATA_DIR/storage" "$DATA_DIR/backups"
-else
-  echo "No unmounted data disk found. Persistent data directories remain on root volume until the EBS attachment is visible."
+  tmp_dir="$(mktemp -d)"
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-$aws_arch.zip" -o "$tmp_dir/awscliv2.zip"
+  unzip -q "$tmp_dir/awscliv2.zip" -d "$tmp_dir"
+  "$tmp_dir/aws/install" --update
+  rm -rf "$tmp_dir"
+}
+
+log "Installing AWS CLI v2 through official installer"
+if ! install_aws_cli; then
+  warn "AWS CLI installation failed. Bootstrap will continue; install AWS CLI manually before running backup/deploy scripts."
 fi
 
+log "Writing host README"
 cat > "$APP_DIR/README-host.md" <<HOSTREADME
 # TopoPass Production Host
 
@@ -107,19 +219,31 @@ ECR registry hint:
 Production containers are not started automatically by user_data.
 HOSTREADME
 
-if ! command -v amazon-cloudwatch-agent-ctl >/dev/null 2>&1; then
-  CW_DEB="/tmp/amazon-cloudwatch-agent.deb"
-  curl -fsSL "https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb" -o "$CW_DEB"
-  dpkg -i "$CW_DEB" || apt-get install -f -y
+install_cloudwatch_agent() {
+  if command -v amazon-cloudwatch-agent-ctl >/dev/null 2>&1; then
+    log "CloudWatch agent is already installed"
+    return 0
+  fi
+
+  local cw_deb="/tmp/amazon-cloudwatch-agent.deb"
+  curl -fsSL "https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb" -o "$cw_deb"
+  dpkg -i "$cw_deb" || apt-get install -f -y
+}
+
+log "Installing and configuring CloudWatch agent"
+if install_cloudwatch_agent; then
+  mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+  printf '%s' '${cloudwatch_agent_config_base64}' | base64 -d > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+  if ! /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -s \
+    -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json; then
+    warn "CloudWatch agent config failed. Bootstrap will continue."
+  fi
+else
+  warn "CloudWatch agent installation failed. Bootstrap will continue."
 fi
 
-mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
-printf '%s' '${cloudwatch_agent_config_base64}' | base64 -d > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-
-/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-  -a fetch-config \
-  -m ec2 \
-  -s \
-  -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json || true
-
-echo "TopoPass host preparation complete"
+log "TopoPass host preparation complete"
