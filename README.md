@@ -58,6 +58,12 @@ moves topographical topic selection to `/practice/topographical`, improves the
 SERU-style practice page, clarifies that `/demo` is only a short public preview,
 and separates public navigation from signed-in learner navigation.
 
+Stage 39.7 is complete as a public assessment-page and logged-out navigation
+polish pass. It adds public `/topographical` and `/seru` information pages,
+adds a signed-out Prepare dropdown for assessment pages, keeps those public
+pages free of the learner sidebar, and keeps Demo positioned as a short public
+preview rather than full Practice.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -137,6 +143,9 @@ Phase 3 guardrails:
   hero visual
 - High-resolution homepage practice-overview SVG asset under
   `public/images/home-practice-overview-hero.svg`
+- Public Topographical Assessment and SERU Assessment information pages for
+  logged-out visitors
+- Signed-out Prepare dropdown linking to `/topographical` and `/seru`
 - Expanded Learn section with structured learning paths
 - SERU preparation support as a separate learning area, not mixed into
   topographical mock exams
@@ -219,6 +228,8 @@ Phase 3 guardrails:
 | Route | Current purpose |
 | --- | --- |
 | `/` | Public TopoPass homepage |
+| `/topographical` | Public topographical assessment preparation information page |
+| `/seru` | Public SERU assessment preparation information page |
 | `/learn` | Expanded learning hub, study path, and SERU preparation support notes |
 | `/practice` | Practice hub for choosing Topographical or SERU-style practice |
 | `/practice/topographical` | Topographical practice hub with topic selector and question-type entry points |
@@ -909,6 +920,43 @@ git diff --cached --check
 
 Result for this Stage 39.6 pass: lint, tests, and production build passed.
 
+## Stage 39.7 Public Assessment Pages QA Status
+
+Stage 39.7 improves the logged-out public experience without adding payments,
+schema migrations, official-question content, or new learner-data behaviour.
+
+Public assessment result:
+
+- `/topographical` explains topographical assessment preparation, map reading,
+  route planning, direction sense, key London locations, mistake review, and how
+  TopoPass helps learners prepare.
+- `/seru` explains SERU-style preparation, Safety, Equality and Regulatory
+  Understanding topics, safeguarding context, original SERU-style practice, and
+  how TopoPass helps learners revise.
+- Both pages use the public `Navbar` and `Footer`; they do not use `AppShell`
+  or the learner sidebar.
+- Both pages include independent/non-affiliation wording and avoid claims that
+  TopoPass is official, guarantees a pass, or provides official TfL questions.
+
+Navigation result:
+
+- Signed-out visitors see a Prepare dropdown with Topographical Assessment and
+  SERU Assessment, plus Demo, Resources, Pricing, Sign in, and Start practising.
+- Signed-in learners still see Dashboard, Practice, Mock Test, Review,
+  Progress, Account, and Sign out.
+- Demo remains a short public preview, not the full Practice area.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 39.7 pass: lint, tests, and production build passed.
+
 ## Phase 3 Manual QA Checklist
 
 ### Public learner flow
@@ -1283,6 +1331,39 @@ Result for this Stage 39.6 pass: lint, tests, and production build passed.
 - While signed in, confirm main nav shows Dashboard, Practice, Mock Test,
   Review, Progress, Account, and Sign out.
 - Confirm the sidebar groups Study, Practice, Review, and Account links.
+
+## Stage 39.7 Manual QA Checklist
+
+### Public assessment pages
+
+- Open `/topographical` signed out on desktop and mobile width.
+- Confirm the page explains topographical assessment preparation clearly.
+- Confirm it has no learner sidebar.
+- Use Start topographical practice, Try demo, and View pricing.
+- Open `/seru` signed out on desktop and mobile width.
+- Confirm the page explains SERU-style preparation clearly.
+- Confirm it has no learner sidebar.
+- Confirm SERU content is described as original SERU-style practice, not
+  official TfL questions.
+- Use Start SERU practice, Try demo, and View pricing.
+
+### Logged-out navigation
+
+- Open `/` signed out.
+- Confirm the public nav shows Prepare, Demo, Resources, Pricing, Sign in, and
+  Start practising.
+- Open the Prepare dropdown and confirm it links to Topographical Assessment
+  and SERU Assessment.
+- Confirm Progress is not a main public nav item.
+
+### Logged-in navigation regression
+
+- Sign in as a learner.
+- Confirm the main nav shows Dashboard, Practice, Mock Test, Review, Progress,
+  Account, and Sign out.
+- Confirm app pages still show the learner sidebar where expected.
+- Confirm `/practice/topographical`, `/practice/seru`, and `/mock-test` still
+  work and SERU questions remain excluded from topographical mock exams.
 
 ## Current Limitations
 

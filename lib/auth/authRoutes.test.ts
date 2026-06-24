@@ -45,6 +45,8 @@ test("navbar exposes signed-out and signed-in account actions", () => {
 test("signed-out learner pages remain public and do not require auth guards", () => {
   const publicLearnerFiles = [
     "app/page.tsx",
+    "app/topographical/page.tsx",
+    "app/seru/page.tsx",
     "app/learn/page.tsx",
     "app/practice/page.tsx",
     "app/practice/topographical/page.tsx",

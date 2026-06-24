@@ -7,6 +7,14 @@ import { fileURLToPath } from "node:url";
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(currentDirectory, "..");
 const homeSource = readFileSync(path.join(projectRoot, "app/page.tsx"), "utf8");
+const topographicalPublicSource = readFileSync(
+  path.join(projectRoot, "app/topographical/page.tsx"),
+  "utf8"
+);
+const seruPublicSource = readFileSync(
+  path.join(projectRoot, "app/seru/page.tsx"),
+  "utf8"
+);
 const practiceSource = readFileSync(
   path.join(projectRoot, "app/practice/page.tsx"),
   "utf8"
@@ -64,6 +72,8 @@ test("home page is outcome-focused and keeps SERU visible without internal headi
   assert.match(homeSource, /What TopoPass helps you prepare for/);
   assert.match(homeSource, /SERU-style preparation/);
   assert.match(homeSource, /\/images\/home-practice-overview-hero\.svg/);
+  assert.match(homeSource, /\/topographical/);
+  assert.match(homeSource, /\/seru/);
   assert.match(homeSource, /\/practice\/seru/);
   assert.match(homeSource, /not affiliated\s+with or endorsed by Transport for London/);
   assert.doesNotMatch(homeSource, /Two preparation areas/);
@@ -138,10 +148,16 @@ test("demo is positioned as a public preview, not full practice", () => {
 test("navigation separates public marketing links from signed-in learner links", () => {
   const publicNavSection =
     navbarSource.match(/const publicNavItems = \[[\s\S]*?\];/)?.[0] ?? "";
+  const prepareSection =
+    navbarSource.match(/const prepareItems = \[[\s\S]*?\];/)?.[0] ?? "";
 
+  assert.match(navbarSource, /Prepare/);
+  assert.match(navbarSource, /prepareItems/);
+  assert.match(prepareSection, /\/topographical/);
+  assert.match(prepareSection, /\/seru/);
+  assert.match(prepareSection, /Topographical Assessment/);
+  assert.match(prepareSection, /SERU Assessment/);
   assert.match(navbarSource, /publicNavItems/);
-  assert.match(navbarSource, /\/practice\/topographical/);
-  assert.match(navbarSource, /\/practice\/seru/);
   assert.match(navbarSource, /\/demo/);
   assert.match(navbarSource, /learnerNavItems/);
   assert.match(navbarSource, /\/dashboard/);
@@ -157,4 +173,27 @@ test("sidebar groups study, practice, review, and account links", () => {
   assert.match(sidebarSource, /title: "Account"/);
   assert.match(sidebarSource, /\/practice\/topographical/);
   assert.match(sidebarSource, /\/progress\/mistakes/);
+});
+
+test("public assessment pages use public layout and safe independent wording", () => {
+  for (const source of [topographicalPublicSource, seruPublicSource]) {
+    assert.match(source, /<Navbar \/>/);
+    assert.match(source, /<Footer \/>/);
+    assert.doesNotMatch(source, /AppShell|Sidebar/);
+    assert.doesNotMatch(source, /guarantee|guaranteed pass/i);
+    assert.doesNotMatch(source, /are official TfL questions|official questions from TfL/i);
+  }
+
+  assert.match(
+    topographicalPublicSource,
+    /Build confidence for the TfL topographical assessment/
+  );
+  assert.match(topographicalPublicSource, /\/practice\/topographical/);
+  assert.match(topographicalPublicSource, /not affiliated\s+with or endorsed by Transport for London/);
+  assert.match(
+    seruPublicSource,
+    /SERU stands for Safety, Equality and Regulatory Understanding/
+  );
+  assert.match(seruPublicSource, /\/practice\/seru/);
+  assert.match(seruPublicSource, /original revision content/);
 });

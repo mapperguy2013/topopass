@@ -17,13 +17,13 @@ const productAreas = [
     title: "Topographical practice",
     description:
       "Build confidence with London map reading, routes, locations, and topographical-style mock preparation.",
-    href: "/practice"
+    href: "/topographical"
   },
   {
     title: "SERU-style preparation",
     description:
       "Practise questions on safety, equality, accessibility, customer care, licensing awareness, and professional responsibilities.",
-    href: "/practice/seru"
+    href: "/seru"
   }
 ] as const;
 
