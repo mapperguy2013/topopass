@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { buildLearnerDashboardSummary } from "@/lib/analytics/learnerDashboard";
 import { getProgressInsights } from "@/lib/analytics/progressInsights";
 import { getPracticeRecommendations } from "@/lib/analytics/recommendationEngine";
 import { calculateLearningStreak } from "@/lib/analytics/streakCalculator";
@@ -21,6 +22,7 @@ import { ProgressDataManager } from "./ProgressDataManager";
 
 type ProgressState = {
   loading: boolean;
+  source: "local-storage" | "supabase";
   practiceAttempts: NormalizedPracticeAttempt[];
   mockAttempts: NormalizedMockAttempt[];
   reviewedMistakeKeys: string[];
@@ -30,6 +32,7 @@ type ProgressState = {
 
 const initialState: ProgressState = {
   loading: true,
+  source: "local-storage",
   practiceAttempts: [],
   mockAttempts: [],
   reviewedMistakeKeys: [],
@@ -72,6 +75,12 @@ function attemptPercentage(
 
 function attemptPassed(attempt: NormalizedPracticeAttempt | NormalizedMockAttempt) {
   return attempt.passed;
+}
+
+function sourceLabel(source: ProgressState["source"]) {
+  return source === "supabase"
+    ? "Account-backed Supabase progress"
+    : "Browser-local progress";
 }
 
 function StatCard({
@@ -136,6 +145,10 @@ export function ProgressDashboard() {
 
         setState({
           loading: false,
+          source:
+            practiceResult.source === "supabase" || mockResult.source === "supabase"
+              ? "supabase"
+              : "local-storage",
           practiceAttempts: normalizePracticeAttempts(practiceResult.attempts),
           mockAttempts: normalizeMockAttempts(mockResult.attempts),
           reviewedMistakeKeys: listReviewedMistakeKeys(),
@@ -178,6 +191,16 @@ export function ProgressDashboard() {
       }),
     [state.mockAttempts, state.practiceAttempts, state.reviewedMistakeKeys]
   );
+  const dashboardSummary = useMemo(
+    () =>
+      buildLearnerDashboardSummary({
+        practiceAttempts: state.practiceAttempts,
+        mockAttempts: state.mockAttempts,
+        minTopicAttempts: 2,
+        recentLimit: 8
+      }),
+    [state.mockAttempts, state.practiceAttempts]
+  );
   const practiceRecommendations = getPracticeRecommendations({
     practiceAttempts: state.practiceAttempts,
     mockAttempts: state.mockAttempts
@@ -200,13 +223,49 @@ export function ProgressDashboard() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              Learner progress
+            </p>
+            <h2 className="mt-1 text-2xl font-bold text-ink">
+              {sourceLabel(state.source)}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+              Signed-out learners see saved browser-local attempts. Signed-in
+              learners use account-scoped Supabase progress when available, with
+              local fallback kept intact.
+            </p>
+          </div>
+          <span className="w-fit rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-blue-950">
+            {state.source === "supabase" ? "Signed-in data" : "Local data"}
+          </span>
+        </div>
+      </section>
+
       {state.error && (
         <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Progress loaded with a repository warning: {state.error}
         </section>
       )}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+        <StatCard
+          helper="Practice answers plus mock question results"
+          label="Questions attempted"
+          value={String(dashboardSummary.totalQuestionsAttempted)}
+        />
+        <StatCard
+          helper="Saved correct answers across review history"
+          label="Correct answers"
+          value={String(dashboardSummary.correctAnswers)}
+        />
+        <StatCard
+          helper="Correct answers divided by answered questions"
+          label="Accuracy"
+          value={formatPercent(dashboardSummary.accuracy)}
+        />
         <StatCard
           helper="Saved knowledge, map-click, and route attempts"
           label="Total practice attempts"
@@ -216,11 +275,6 @@ export function ProgressDashboard() {
           helper="Completed timed mock exams"
           label="Mock exams completed"
           value={String(insights.totalMockAttempts)}
-        />
-        <StatCard
-          helper="Across saved practice and mock records"
-          label="Average score"
-          value={formatPercent(insights.averageScore)}
         />
         <StatCard
           helper="Highest saved attempt score"
@@ -240,6 +294,104 @@ export function ProgressDashboard() {
       </section>
 
       <PracticeRecommendations recommendations={practiceRecommendations} />
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-bold uppercase tracking-wide text-road">
+            Topic strengths and weaknesses
+          </p>
+          <h2 className="mt-2 text-xl font-bold text-ink">
+            {dashboardSummary.guidance}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Topic percentages are highlighted only after at least two saved
+            answers in that topic. Low-data topics stay marked as developing.
+          </p>
+
+          {dashboardSummary.topicPerformance.length === 0 ? (
+            <p className="mt-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+              No topic data yet. Complete knowledge, map-click, route, or mock
+              questions to build a topic picture.
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {dashboardSummary.topicPerformance.slice(0, 8).map((topic) => (
+                <div
+                  className={`rounded-md border p-4 ${
+                    topic.status === "strong"
+                      ? "border-green-200 bg-green-50"
+                      : topic.status === "weak"
+                        ? "border-red-200 bg-red-50"
+                        : "border-slate-200 bg-slate-50"
+                  }`}
+                  key={topic.topic}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-bold text-ink">{topic.topic}</p>
+                    <span className="rounded bg-white/80 px-2 py-1 text-xs font-bold uppercase text-slate-600">
+                      {topic.status}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold text-road">
+                    {topic.enoughData ? formatPercent(topic.accuracy) : "Building"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {topic.correct}/{topic.attempts} correct
+                    {!topic.enoughData ? " - more attempts needed" : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-bold uppercase tracking-wide text-road">
+            Recent activity
+          </p>
+          <h2 className="mt-2 text-xl font-bold text-ink">
+            Latest saved answers
+          </h2>
+          {dashboardSummary.recentActivity.length === 0 ? (
+            <p className="mt-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+              No recent activity yet. Start a practice session or mock exam to
+              populate this list.
+            </p>
+          ) : (
+            <div className="mt-4 divide-y divide-slate-200">
+              {dashboardSummary.recentActivity.map((item) => (
+                <article
+                  className="grid gap-2 py-3 text-sm sm:grid-cols-[1fr_auto]"
+                  key={item.id}
+                >
+                  <div>
+                    <Link
+                      className="font-bold text-ink hover:text-road"
+                      href={item.href}
+                    >
+                      {item.title}
+                    </Link>
+                    <p className="mt-1 text-slate-600">
+                      {item.sourceLabel}
+                      {item.topic ? ` - ${item.topic}` : ""} -{" "}
+                      {formatDate(item.date)}
+                    </p>
+                  </div>
+                  <span
+                    className={`w-fit rounded-md px-3 py-1.5 text-xs font-bold uppercase ${
+                      item.passed
+                        ? "bg-green-100 text-green-800"
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {item.scoreLabel}
+                  </span>
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
+      </section>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -487,7 +639,9 @@ export function ProgressDashboard() {
 
       {hasAttempts && (
         <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-bold text-ink">Recent activity</h2>
+          <h2 className="text-xl font-bold text-ink">
+            Recent saved attempts
+          </h2>
           <div className="mt-4 divide-y divide-slate-200">
             {recentActivity.map((attempt, index) => (
               <article

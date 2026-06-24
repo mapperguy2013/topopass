@@ -36,6 +36,11 @@ topic-based practice entry points, focused practice-session summaries, clearer
 answer feedback and wrong-answer review, admin batch publish/archive actions,
 and admin-only learner previews for question review.
 
+Stage 38 is complete as a learner experience polish pass. It refreshes the
+public home page, improves `/progress` and `/account` dashboards with topic
+strengths/weaknesses and recent activity, and makes mock exam results/review
+clearer with pass/fail guidance and topic breakdowns.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -110,6 +115,8 @@ Phase 3 guardrails:
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
+- Modern public home page with learner CTAs, local-first/account progress copy,
+  and map-learning promotion
 - Expanded Learn section with structured learning paths
 - Practice selector for knowledge, map-click, and route drawing
 - Topic-based practice selector with counts per topic and weak-topic guidance
@@ -122,6 +129,8 @@ Phase 3 guardrails:
 - Mixed mock exam modes and timed exam simulation
 - Progress dashboard with signed-out local analytics and signed-in
   account-scoped Supabase reads when configured
+- Progress and account dashboards with question totals, accuracy, topic
+  strengths/weaknesses, and recent activity
 - Mistake review with retry queue and visual answer review
 - Full `/review` answer history for practice and mock attempts with filters
 - Local data export/import/reset tools for learner progress
@@ -147,6 +156,8 @@ Phase 3 guardrails:
   publishing, import/export, seed safety, and safe logging
 - Mock exam map-click and route-planning answers save from the interaction and
   advance with Next instead of requiring a separate Submit step
+- Mock exam results show pass/fail feedback, score clarity, question-type and
+  topic breakdowns, next-step guidance, and improved answer review metadata
 - OpenStreetMap-derived local route map
 - Cleanroom generated driver-training atlas review asset, not yet integrated
 - Supabase package/helper/schema foundation for Phase 3
@@ -659,6 +670,52 @@ git diff --cached --check
 
 Result for this Stage 37 pass: all commands passed.
 
+## Stage 38 Progress Dashboard, Mock Exam, And Home UI QA Status
+
+Stage 38 improves learner-facing polish without adding a schema migration or
+changing the signed-out local progress fallback.
+
+Home page result:
+
+- The public home page now has a stronger learner-focused hero, primary practice
+  CTA, secondary mock/progress CTAs, and a real generated map preview asset.
+- Map-click, route drawing, and knowledge practice are surfaced directly from
+  the map-learning section.
+- Public copy explains local practice without sign-in and account-backed
+  progress for signed-in learners.
+- Admin-only features are not exposed on the public home page.
+
+Dashboard result:
+
+- `/progress` now clearly labels whether the current view is browser-local or
+  account-backed Supabase progress.
+- The dashboard shows total questions attempted, correct answers, accuracy,
+  mock exams completed, topic strengths/weaknesses, and recent saved answers.
+- Topic percentages are highlighted only when there are enough saved answers;
+  low-data topics remain marked as developing.
+- `/account` now includes account-backed accuracy, topic snapshot, and recent
+  activity for signed-in learners.
+
+Mock exam result:
+
+- Mock exam results now show clearer pass/fail wording, score details,
+  question-type breakdown, topic breakdown, and next-step recommendations.
+- The mock review screen shows each question with learner answer, accepted
+  answer, correctness, topic, difficulty, score, and explanation where
+  available.
+- Older/incomplete review metadata has a fallback message instead of crashing.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 38 pass: lint, tests, and production build passed.
+
 ## Phase 3 Manual QA Checklist
 
 ### Public learner flow
@@ -871,6 +928,39 @@ Result for this Stage 37 pass: all commands passed.
 - Preview invalid import JSON and confirm errors identify record number and
   field without exposing raw payloads in logs.
 - Confirm learner-safe reads still return only `status = 'published'`.
+
+## Stage 38 Manual QA Checklist
+
+### Home page
+
+- Open `/` on desktop and mobile width.
+- Confirm the hero explains TfL/topographical-test practice clearly.
+- Use Start practice, Take a mock exam, and View progress CTAs.
+- Confirm the generated map preview renders.
+- Confirm map-click, route practice, and knowledge practice links work.
+- Confirm no admin-only publishing/import/export features are promoted publicly.
+
+### Progress and account dashboards
+
+- Open `/progress` while signed out with no local activity and confirm the empty
+  state is helpful.
+- Complete knowledge, map-click, route, and mock exam attempts while signed out.
+- Reopen `/progress` and confirm totals, accuracy, topic strengths/weaknesses,
+  and recent activity update from local data.
+- Sign in, complete a practice question and mock exam, then open `/account`.
+- Confirm account-backed totals, topic snapshot, and recent activity render.
+- Confirm signed-out local progress still remains available after signing out.
+
+### Mock exam polish
+
+- Complete a mock exam with a passing score and confirm pass-level feedback,
+  topic breakdown, and next-step guidance.
+- Complete or simulate a failed mock and confirm below-pass feedback and weakest
+  topic guidance.
+- Open Review answers from the result screen.
+- Confirm each review card shows question, learner answer, accepted answer,
+  correctness, topic, difficulty, score, and explanation.
+- Confirm old/incomplete review metadata shows a fallback instead of crashing.
 
 ## Current Limitations
 

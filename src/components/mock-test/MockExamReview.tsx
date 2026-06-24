@@ -4,6 +4,7 @@ import type {
 } from "@/lib/mockExamEngine";
 import type { MockExamModeMetadata } from "@/lib/mockExamModes";
 import type { MockExamQuestion } from "@/lib/mockTestQuestions";
+import { formatMockExamReviewItems } from "@/lib/mockExamReview";
 import { QuestionExplanation } from "@/src/components/questions/QuestionExplanation";
 
 type MockExamReviewProps = {
@@ -145,6 +146,8 @@ export function MockExamReview({
   onBack,
   onRestart
 }: MockExamReviewProps) {
+  const reviewItems = formatMockExamReviewItems(questions, result);
+
   return (
     <section className="space-y-5">
       <div className="flex flex-col gap-3 border-y border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -165,6 +168,7 @@ export function MockExamReview({
       <div className="space-y-4">
         {result.questionResults.map((questionResult, index) => {
           const question = questions[index];
+          const reviewItem = reviewItems[index];
           return (
             <article
               className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
@@ -176,8 +180,21 @@ export function MockExamReview({
                     Question {index + 1} - {typeLabels[questionResult.type]}
                   </p>
                   <h3 className="mt-2 text-base font-bold text-ink">
-                    {question.prompt}
+                    {reviewItem.prompt}
                   </h3>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="rounded-md bg-blue-50 px-2.5 py-1 text-xs font-bold uppercase text-road">
+                      {reviewItem.topic}
+                    </span>
+                    <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-bold uppercase text-slate-600">
+                      {reviewItem.difficulty}
+                    </span>
+                    {!reviewItem.answered && (
+                      <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900">
+                        unanswered
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span
                   className={`w-fit rounded-md px-3 py-1.5 text-xs font-bold uppercase ${
@@ -194,7 +211,7 @@ export function MockExamReview({
                 <div className="rounded-md bg-slate-50 p-3">
                   <dt className="font-semibold text-slate-500">Your answer</dt>
                   <dd className="mt-1 text-slate-800">
-                    {questionResult.userAnswerSummary}
+                    {reviewItem.learnerAnswer}
                   </dd>
                 </div>
                 <div className="rounded-md bg-slate-50 p-3">
@@ -202,16 +219,23 @@ export function MockExamReview({
                     Correct / accepted answer
                   </dt>
                   <dd className="mt-1 text-slate-800">
-                    {questionResult.acceptedAnswerSummary}
+                    {reviewItem.acceptedAnswer}
                   </dd>
                 </div>
               </dl>
               <p className="mt-3 text-sm font-bold text-slate-700">
-                Score: {questionResult.score}/{questionResult.maxScore} ({questionResult.percentage}%)
+                Score: {reviewItem.scoreLabel} ({reviewItem.percentage}%)
               </p>
               <ScoreDetails result={questionResult} />
               <div className="mt-4">
-                <ReviewExplanation question={question} />
+                {question ? (
+                  <ReviewExplanation question={question} />
+                ) : (
+                  <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    Full question metadata is unavailable for this older saved
+                    attempt.
+                  </p>
+                )}
               </div>
             </article>
           );

@@ -1,9 +1,15 @@
 import type { MockExamResult } from "@/lib/mockExamEngine";
 import type { MockExamModeMetadata } from "@/lib/mockExamModes";
+import type { MockExamQuestion } from "@/lib/mockTestQuestions";
+import {
+  getMockExamNextStep,
+  getMockExamTopicBreakdown
+} from "@/lib/mockExamReview";
 
 type MockExamResultsProps = {
   result: MockExamResult;
   mode: MockExamModeMetadata;
+  questions: MockExamQuestion[];
   submissionNotice?: string;
   persistenceStatus?: "idle" | "saving" | "saved" | "failed";
   onReview: () => void;
@@ -18,12 +24,16 @@ const typeLabels = {
 
 export function MockExamResults({
   mode,
+  questions,
   result,
   persistenceStatus = "idle",
   submissionNotice,
   onReview,
   onRestart
 }: MockExamResultsProps) {
+  const topicBreakdown = getMockExamTopicBreakdown(questions, result);
+  const nextStep = getMockExamNextStep(result, topicBreakdown);
+
   return (
     <section className="space-y-6">
       <div
@@ -61,7 +71,7 @@ export function MockExamResults({
               {result.percentage}%
             </h2>
             <p className="mt-2 text-lg font-bold text-ink">
-              {result.passed ? "Pass" : "Not passed"}
+              {result.passed ? "Pass-level result" : "Below pass mark"}
             </p>
             <p className="mt-1 text-sm text-slate-600">
               Pass mark: {result.passPercentage}%
@@ -88,6 +98,9 @@ export function MockExamResults({
             </div>
           </dl>
         </div>
+        <p className="mt-4 rounded-md border border-white/70 bg-white/70 p-3 text-sm font-semibold text-slate-800">
+          {nextStep}
+        </p>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
@@ -110,6 +123,36 @@ export function MockExamResults({
             </article>
           ))}
         </div>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="text-xl font-bold text-ink">Topic breakdown</h3>
+        {topicBreakdown.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-600">
+            Topic breakdown is not available for this attempt.
+          </p>
+        ) : (
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {topicBreakdown.map((topic) => (
+              <article
+                className={`rounded-lg border p-4 ${
+                  topic.percentage >= result.passPercentage
+                    ? "border-green-200 bg-green-50"
+                    : "border-red-200 bg-red-50"
+                }`}
+                key={topic.topic}
+              >
+                <p className="text-sm font-bold text-ink">{topic.topic}</p>
+                <p className="mt-2 text-2xl font-bold text-road">
+                  {topic.percentage}%
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  {topic.passed}/{topic.total} passed - {topic.answered} answered
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row">

@@ -1,150 +1,142 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 
-const features = [
+const featureCards = [
   {
-    title: "Map reading",
+    title: "Map learning",
     description:
-      "Build confidence reading street layouts, symbols, grids, and location references."
+      "Practise London locations, transport hubs, landmarks, and TfL-style map skills."
   },
   {
-    title: "Direction awareness",
+    title: "Route drawing practice",
     description:
-      "Practise north, south, east, west, left and right decisions in realistic prompts."
+      "Draw point-to-point routes, compare your route with an accepted journey, and learn from route feedback."
   },
   {
-    title: "Route choice",
+    title: "Knowledge questions",
     description:
-      "Work through sensible route planning questions with a focus on London journeys."
+      "Build confidence with directions, street-atlas use, major roads, bridges, and passenger scenarios."
   },
   {
-    title: "Points of interest",
+    title: "Mock exams",
     description:
-      "Revise airports, stations, hospitals, landmarks, boroughs, and key destinations."
+      "Try mixed timed sessions across knowledge, map-click, and route-planning questions."
   },
   {
-    title: "Mock test practice",
+    title: "Progress tracking",
     description:
-      "Complete mixed knowledge, map-click, and route-drawing questions in one scored mock exam."
-  },
-  {
-    title: "Mistake review",
-    description:
-      "Review weak spots and turn repeated mistakes into focused study sessions."
+      "Review accuracy, recent activity, mistakes, and topic strengths after practice."
   }
-];
+] as const;
 
-const steps = [
-  "Practise realistic questions",
-  "Get instant feedback",
-  "Track weak areas before your assessment"
-];
-
-const trustBadges = [
-  "TfL Topographical Test",
-  "Uber Driver Applicants",
-  "Bolt Driver Applicants",
-  "FREENOW Driver Applicants",
-  "London PHV Licence",
-  "Private Hire Prep"
-];
-
-const audienceCards = [
+const practiceRoutes = [
   {
-    title: "TfL test preparation",
-    description:
-      "Practise map reading, directions, route choice, and London location knowledge."
+    href: "/practice/map-click",
+    title: "Map-click locations",
+    description: "Find stations, hospitals, bridges, and landmarks on the map."
   },
   {
-    title: "Private hire focused",
-    description:
-      "Built around the skills private hire applicants need before they can start working."
+    href: "/practice/routes",
+    title: "Route practice",
+    description: "Draw journeys between London points and review your route."
   },
   {
-    title: "Works on desktop and mobile",
-    description:
-      "Study at home on a laptop or practise on your phone whenever you have time."
+    href: "/practice/knowledge",
+    title: "Knowledge drills",
+    description: "Answer focused topographical and route-planning questions."
   }
-];
+] as const;
+
+const stats = [
+  { label: "Practice modes", value: "3" },
+  { label: "Mock modes", value: "4" },
+  { label: "Local practice", value: "No login" }
+] as const;
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-surface text-ink">
       <Navbar />
-      <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.96)_0%,rgba(255,255,255,0.9)_46%,rgba(255,255,255,0.55)_100%)]" />
-        <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[linear-gradient(135deg,#dbeafe_1px,transparent_1px),linear-gradient(45deg,#cbd5e1_1px,transparent_1px)] bg-[length:42px_42px] opacity-70 lg:block" />
-        <div className="relative mx-auto grid min-h-[calc(100vh-72px)] max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:px-8">
-          <div className="max-w-3xl">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-road">
-              TopoPass
+
+      <section className="border-b border-slate-200 bg-white">
+        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-12 lg:grid-cols-[0.98fr_1.02fr] lg:px-8 lg:py-16">
+          <div className="flex flex-col justify-center">
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              London topographical skills practice
             </p>
-            <h1 className="text-4xl font-bold leading-tight text-ink sm:text-5xl lg:text-6xl">
-              Pass your TfL Topographical Test with interactive map practice
+            <h1 className="mt-4 text-4xl font-bold leading-tight text-ink sm:text-5xl lg:text-6xl">
+              Practise map skills, routes, and mock exams for the TfL test
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700">
-              Built for London private hire applicants preparing for the TfL
-              Topographical Skills Assessment — including drivers planning to
-              work with Uber, Bolt, FREENOW, local minicab firms, and other
-              licensed PHV operators.
+            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg">
+              TopoPass helps London private-hire learners build practical map
+              confidence with focused location practice, route drawing,
+              knowledge questions, mock exams, and progress review.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 href="/practice"
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
               >
-                Start Practising
+                Start practice
               </Link>
               <Link
-                href="/resources"
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                href="/mock-test"
               >
-                Explore Resources
+                Take a mock exam
+              </Link>
+              <Link
+                className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                href="/progress"
+              >
+                View progress
               </Link>
             </div>
-            <div className="mt-10 border-t border-slate-200 pt-6">
-              <p className="text-sm font-semibold text-slate-600">
-                Practice built around the audience and assessment:
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                {trustBadges.map((badge) => (
-                  <span
-                    className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-                    key={badge}
-                  >
-                    {badge}
-                  </span>
-                ))}
-              </div>
+
+            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+              {stats.map((item) => (
+                <div
+                  className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+                  key={item.label}
+                >
+                  <p className="text-2xl font-bold text-ink">{item.value}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    {item.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="relative hidden lg:block">
-            <div className="rounded-lg border border-slate-200 bg-white/95 p-5 shadow-soft">
-              <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Practice workspace
+
+          <div className="flex items-center">
+            <div className="w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-soft">
+              <div className="border-b border-slate-200 bg-white px-4 py-3">
+                <p className="text-sm font-bold text-ink">
+                  Driver-training map practice
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Local map assets, route drawing, and location practice.
+                </p>
+              </div>
+              <div className="relative aspect-[4/3] bg-white">
+                <Image
+                  alt="Generated London driver-training atlas map preview"
+                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 50vw, 100vw"
+                  src="/maps/generated/kings-cross-euston-driver-training-atlas.svg"
+                />
+                <div className="absolute bottom-4 left-4 right-4 rounded-md border border-slate-200 bg-white/95 p-4 shadow-sm">
+                  <p className="text-sm font-bold text-ink">
+                    Draw routes and review mistakes
                   </p>
-                  <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-success">
-                    Ready
-                  </span>
-                </div>
-                <div className="relative min-h-[320px] overflow-hidden rounded-md border border-slate-200 bg-white">
-                  <div className="absolute left-10 top-8 h-56 w-1 rounded-full bg-slate-300" />
-                  <div className="absolute left-24 top-0 h-full w-1 rotate-12 rounded-full bg-slate-200" />
-                  <div className="absolute left-0 top-28 h-1 w-full bg-slate-300" />
-                  <div className="absolute left-0 top-48 h-1 w-full -rotate-6 bg-slate-200" />
-                  <div className="absolute bottom-8 right-10 rounded-md border border-road/20 bg-blue-50 px-4 py-3">
-                    <p className="text-xs font-semibold text-road">
-                      Question 04
-                    </p>
-                    <p className="mt-1 max-w-48 text-sm font-semibold text-ink">
-                      Choose the most sensible route across central London.
-                    </p>
-                  </div>
-                  <div className="absolute left-20 top-20 size-4 rounded-full border-4 border-road bg-white" />
-                  <div className="absolute right-32 top-40 size-4 rounded-full border-4 border-success bg-white" />
+                  <p className="mt-1 text-xs leading-5 text-slate-600">
+                    Use local practice without signing in. Sign in later to keep
+                    new progress across devices when Supabase is configured.
+                  </p>
                 </div>
               </div>
             </div>
@@ -154,58 +146,64 @@ export default function Home() {
 
       <section className="border-b border-slate-200 bg-surface px-6 py-14 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-4xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-road">
-              Clear preparation focus
+          <div className="max-w-3xl">
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              Map learning
             </p>
-            <h2 className="mt-3 text-3xl font-bold text-ink">
-              Made for private hire applicants
+            <h2 className="mt-2 text-3xl font-bold text-ink">
+              Build practical London map confidence
             </h2>
-            <p className="mt-4 text-base leading-8 text-slate-700">
-              TopoPass is designed for people preparing for their London private
-              hire licence and the TfL Topographical Skills Assessment. Whether
-              you plan to drive with Uber, Bolt, FREENOW, a local minicab
-              company, or another licensed PHV operator, the core map-reading
-              skills are the same.
+            <p className="mt-3 text-base leading-8 text-slate-700">
+              Practise locations, route choices, direction sense, and
+              TfL-style map skills in short sessions. Start with map-click
+              locations, then move into route drawing and mixed mock exams.
             </p>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {audienceCards.map((card) => (
-              <article
-                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-                key={card.title}
+
+          <div className="mt-7 grid gap-4 md:grid-cols-3">
+            {practiceRoutes.map((route) => (
+              <Link
+                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-road/50 hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                href={route.href}
+                key={route.href}
               >
-                <h3 className="text-lg font-semibold text-ink">
-                  {card.title}
-                </h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  {card.description}
+                <h3 className="text-lg font-bold text-ink">{route.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {route.description}
                 </p>
-              </article>
+                <p className="mt-4 text-sm font-bold text-road">
+                  Open practice
+                </p>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-white px-6 py-16 lg:px-8">
+      <section className="bg-white px-6 py-14 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-road">
-              Practise the skills that matter
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-road">
+                Learner tools
+              </p>
+              <h2 className="mt-2 text-3xl font-bold text-ink">
+                Everything points back to exam-ready practice
+              </h2>
+            </div>
+            <p className="max-w-xl text-sm leading-6 text-slate-600">
+              The app stays useful signed out. Signing in adds account-backed
+              progress for new practice and mock completions.
             </p>
-            <h2 className="mt-3 text-3xl font-bold text-ink">
-              Study with a clear purpose
-            </h2>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => (
+
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {featureCards.map((feature) => (
               <article
-                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-road/40 hover:shadow-soft"
+                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
                 key={feature.title}
               >
-                <h3 className="text-lg font-semibold text-ink">
-                  {feature.title}
-                </h3>
+                <h3 className="text-lg font-bold text-ink">{feature.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
                   {feature.description}
                 </p>
@@ -215,75 +213,79 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-y border-slate-200 bg-slate-50 px-6 py-16 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-road">
-              How TopoPass works
+      <section className="border-y border-slate-200 bg-slate-50 px-6 py-14 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              Progress loop
             </p>
-            <h2 className="mt-3 text-3xl font-bold text-ink">
-              A simple study loop before assessment day
+            <h2 className="mt-2 text-3xl font-bold text-ink">
+              Know what to practise next
             </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Review scores, recent activity, topic strengths, mistakes, and
+              mock exam results so the next session has a clear purpose.
+            </p>
+            <Link
+              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              href="/progress"
+            >
+              Open progress dashboard
+            </Link>
           </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {steps.map((step, index) => (
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              ["1", "Practise a focused topic"],
+              ["2", "Read feedback and explanations"],
+              ["3", "Review weak areas before a mock"]
+            ].map(([step, text]) => (
               <article
                 className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
                 key={step}
               >
                 <p className="flex size-10 items-center justify-center rounded-md bg-road text-sm font-bold text-white">
-                  {index + 1}
+                  {step}
                 </p>
-                <h3 className="mt-5 text-lg font-semibold text-ink">{step}</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Work through focused practice, learn from each response, and
-                  use your review history to decide what to study next.
-                </p>
+                <h3 className="mt-5 text-lg font-bold text-ink">{text}</h3>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-white px-6 py-16 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-road">
-              Why candidates need practice
+      <section className="bg-ink px-6 py-14 text-white lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase tracking-wide text-blue-200">
+              Start local-first
             </p>
-            <h2 className="mt-3 text-3xl font-bold text-ink">
-              The assessment rewards practical map confidence
+            <h2 className="mt-3 text-3xl font-bold">
+              Practise now, sign in when you want account progress
             </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-200">
+              Signed-out learners can complete practice and mock exams with
+              browser-local progress. Signed-in learners can save new progress
+              to their account when Supabase is configured.
+            </p>
           </div>
-          <p className="text-base leading-8 text-slate-700">
-            The test asks candidates to understand maps, identify locations, and
-            think through sensible route planning. Regular practice helps turn
-            unfamiliar London geography into repeatable decisions under time
-            pressure.
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              href="/practice"
+            >
+              Start practice
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/40 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              href="/auth/sign-up"
+            >
+              Create account
+            </Link>
+          </div>
         </div>
       </section>
 
-      <section className="bg-ink px-6 py-16 text-white lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-200">
-              Resource hub
-            </p>
-            <h2 className="mt-3 text-3xl font-bold">Keep useful links close</h2>
-            <p className="mt-4 text-base leading-7 text-slate-200">
-              Find useful links for booking, official TfL information, map study
-              materials, and video guides.
-            </p>
-          </div>
-          <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            href="/resources"
-          >
-            View Resources
-          </Link>
-        </div>
-      </section>
       <Footer />
     </main>
   );

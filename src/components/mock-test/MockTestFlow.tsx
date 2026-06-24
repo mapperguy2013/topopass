@@ -489,6 +489,7 @@ export function MockTestFlow() {
         onRestart={restartExam}
         onReview={() => setMode("review")}
         persistenceStatus={persistenceStatus}
+        questions={questions}
         result={result}
         mode={selectedModeMetadata}
         submissionNotice={
