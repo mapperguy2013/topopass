@@ -4,6 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import type {
   NormalizedMockAttempt,
@@ -18,6 +19,7 @@ import {
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(currentDirectory, "../..");
 const knowledgeQuestion = knowledgeQuestionBank[0];
+const seruQuestion = seruQuestionBank[0];
 const mapQuestion = demoMapClickQuestions[0];
 
 function practiceAttempt(
@@ -106,6 +108,31 @@ test("review history includes correct and incorrect answers", () => {
   assert.equal(history.length, 2);
   assert.ok(history.some((item) => item.passed));
   assert.ok(history.some((item) => !item.passed));
+});
+
+test("review history includes SERU-style practice answers from the SERU bank", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [
+      practiceAttempt({
+        id: "seru-practice",
+        questionId: seruQuestion.id,
+        questionType: "knowledge",
+        answer: { selectedAnswer: seruQuestion.correctAnswer },
+        result: {
+          correctAnswer: seruQuestion.correctAnswer,
+          questionFamily: "seru"
+        },
+        passed: true
+      })
+    ],
+    mockAttempts: []
+  });
+
+  assert.equal(history.length, 1);
+  assert.equal(history[0].questionId, seruQuestion.id);
+  assert.equal(history[0].category, seruQuestion.category);
+  assert.equal(history[0].source, "practice");
+  assert.match(history[0].title, /private hire|driver|passenger/i);
 });
 
 test("review filters by subject", () => {

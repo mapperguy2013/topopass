@@ -5,6 +5,7 @@ import type {
   NormalizedPracticeAttempt
 } from "../db/progressMigration.ts";
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 import { buildLearnerDashboardSummary } from "./learnerDashboard.ts";
 
 const directionQuestion = knowledgeQuestionBank.find(
@@ -13,6 +14,7 @@ const directionQuestion = knowledgeQuestionBank.find(
 const routeQuestion = knowledgeQuestionBank.find(
   (question) => question.category === "Route planning"
 );
+const seruQuestion = seruQuestionBank[0];
 
 if (!directionQuestion || !routeQuestion) {
   throw new Error("Expected seeded knowledge questions for dashboard tests.");
@@ -81,6 +83,36 @@ test("learner dashboard summary calculates core progress totals", () => {
   assert.equal(summary.correctAnswers, 1);
   assert.equal(summary.accuracy, 50);
   assert.equal(summary.mockExamsCompleted, 1);
+});
+
+test("learner dashboard separates topographical and SERU preparation summaries", () => {
+  const summary = buildLearnerDashboardSummary({
+    practiceAttempts: [
+      practiceAttempt({}),
+      practiceAttempt({
+        id: "seru-practice-1",
+        questionId: seruQuestion.id,
+        answer: { selectedAnswer: seruQuestion.correctAnswer },
+        result: {
+          correctAnswer: seruQuestion.correctAnswer,
+          questionFamily: "seru"
+        },
+        passed: true,
+        score: 1,
+        maxScore: 1,
+        percentage: 100
+      })
+    ],
+    mockAttempts: []
+  });
+
+  assert.equal(summary.familyBreakdown.topographical.totalQuestionsAttempted, 1);
+  assert.equal(summary.familyBreakdown.seru.totalQuestionsAttempted, 1);
+  assert.equal(summary.familyBreakdown.seru.label, "SERU Preparation");
+  assert.equal(
+    summary.familyBreakdown.seru.topicPerformance[0].topic,
+    seruQuestion.category
+  );
 });
 
 test("learner dashboard detects topic strengths and weaknesses only with enough data", () => {

@@ -8,6 +8,7 @@ export type KnowledgeQuestionData = {
   category: string;
   sourceNote: string;
   isActive: boolean;
+  questionFamily?: "topographical" | "seru";
   explanation?: string;
   tip?: string;
   incorrectExplanations?: Record<string, string>;

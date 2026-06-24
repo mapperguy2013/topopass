@@ -7,9 +7,9 @@ import type {
   TableRow
 } from "./types.ts";
 import {
-  isQuestionTopic,
-  QUESTION_DIFFICULTIES,
-  QUESTION_TOPICS
+  ALL_QUESTION_TOPICS,
+  isAnyQuestionTopic,
+  QUESTION_DIFFICULTIES
 } from "../questions/topics.ts";
 
 export type QuestionExportStatusFilter = "all" | QuestionStatus;
@@ -431,12 +431,12 @@ function validateQuestionRecord(
   const recordId = requiredString(value.id, "id", errors, index, id);
   const prompt = requiredString(value.prompt, "prompt", errors, index, id);
   const category = requiredString(value.category, "category", errors, index, id);
-  if (category && !isQuestionTopic(category)) {
+  if (category && !isAnyQuestionTopic(category)) {
     errors.push({
       index,
       id,
       field: "category",
-      message: `category must be one of: ${QUESTION_TOPICS.join(", ")}.`
+      message: `category must be one of: ${ALL_QUESTION_TOPICS.join(", ")}.`
     });
   }
 

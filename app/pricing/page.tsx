@@ -42,19 +42,19 @@ const pricingTiers = [
     href: "/auth/sign-up"
   },
   {
-    name: "SERU support",
-    price: "Planned",
-    status: "Future stage",
+    name: "SERU preparation",
+    price: "Included in preview",
+    status: "Starter practice live",
     description:
-      "A separate SERU-style preparation area is planned so SERU knowledge does not mix into topographical mock exams.",
+      "A separate SERU-style preparation area is available as starter practice so SERU knowledge does not mix into topographical mock exams.",
     features: [
+      "Dedicated SERU-style practice route",
       "Safety and safeguarding topics",
       "Equality, accessibility, and customer service",
-      "Licensing rules and driver responsibilities",
       "Same learner login as Topographical practice"
     ],
-    cta: "Read SERU plan",
-    href: "/learn#seru-preparation"
+    cta: "Start SERU practice",
+    href: "/practice/seru"
   }
 ] as const;
 

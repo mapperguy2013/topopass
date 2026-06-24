@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import {
   getActiveRouteQuestions,
@@ -9,7 +10,12 @@ import {
 } from "../../src/data/routeQuestions.ts";
 import { DEFAULT_MOCK_EXAM_CONFIG } from "../mockExamConfig.ts";
 import { selectMockExamQuestions } from "../mockTestQuestions.ts";
-import { isQuestionTopic, QUESTION_TOPICS } from "./topics.ts";
+import {
+  isQuestionTopic,
+  isSeruQuestionTopic,
+  QUESTION_TOPICS,
+  SERU_QUESTION_TOPICS
+} from "./topics.ts";
 
 function assertUniqueIds(label: string, ids: string[]) {
   const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -33,6 +39,10 @@ test("question banks have unique stable IDs", () => {
   assertUniqueIds(
     "knowledge question bank",
     knowledgeQuestionBank.map((question) => question.id)
+  );
+  assertUniqueIds(
+    "SERU question bank",
+    seruQuestionBank.map((question) => question.id)
   );
   assertUniqueIds(
     "map-click question bank",
@@ -68,6 +78,44 @@ test("knowledge questions have valid options, answers, explanations, and tips", 
     assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
     assert.ok(question.tip?.trim(), `${question.id} needs tip`);
   });
+});
+
+test("SERU questions are original active starter content with valid topics", () => {
+  assert.ok(
+    seruQuestionBank.length >= 20 && seruQuestionBank.length <= 30,
+    "Stage 39.5 should add a starter SERU question bank without overbuilding"
+  );
+
+  seruQuestionBank.forEach((question) => {
+    assert.equal(question.type, "knowledge", question.id);
+    assert.equal(question.questionFamily, "seru", question.id);
+    assert.ok(question.id.startsWith("seru-"), question.id);
+    assert.ok(question.prompt.trim().length > 0, question.id);
+    assert.ok(question.options.length >= 2, question.id);
+    assertUniqueIds(
+      `SERU options for ${question.id}`,
+      question.options.map((option) => option.trim())
+    );
+    assert.ok(
+      question.options.includes(question.correctAnswer),
+      `${question.id} correct answer must appear in options`
+    );
+    assert.ok(isSeruQuestionTopic(question.category), question.id);
+    assert.ok(question.isActive, question.id);
+    assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
+    assert.ok(question.tip?.trim(), `${question.id} needs tip`);
+    assert.match(
+      question.sourceNote ?? "",
+      /Original SERU-style private hire learning content/
+    );
+  });
+
+  assert.ok(
+    SERU_QUESTION_TOPICS.every((topic) =>
+      seruQuestionBank.some((question) => question.category === topic)
+    ),
+    "SERU starter bank should cover every SERU topic"
+  );
 });
 
 test("map-click questions have valid coordinates, tolerances, explanations, and tips", () => {
@@ -141,6 +189,25 @@ test("static question banks use the Stage 36 topic structure", () => {
   }
 });
 
+test("topographical knowledge and SERU knowledge banks stay separated", () => {
+  assert.ok(
+    knowledgeQuestionBank.every(
+      (question) =>
+        question.questionFamily !== "seru" &&
+        question.id.startsWith("knowledge-") &&
+        isQuestionTopic(question.category)
+    )
+  );
+  assert.ok(
+    seruQuestionBank.every(
+      (question) =>
+        question.questionFamily === "seru" &&
+        question.id.startsWith("seru-") &&
+        isSeruQuestionTopic(question.category)
+    )
+  );
+});
+
 test("mock exam selection still works with expanded banks", () => {
   const questions = selectMockExamQuestions(
     DEFAULT_MOCK_EXAM_CONFIG,
@@ -163,6 +230,10 @@ test("mock exam selection still works with expanded banks", () => {
   assert.equal(
     questions.filter((question) => question.type === "route-drawing").length,
     DEFAULT_MOCK_EXAM_CONFIG.questionCounts["route-drawing"]
+  );
+  assert.ok(
+    questions.every((question) => !question.id.startsWith("seru-")),
+    "Topographical mock exam selection must not include SERU questions"
   );
   assert.ok(getActiveRouteQuestions().length >= 10);
 });

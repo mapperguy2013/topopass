@@ -55,6 +55,13 @@ test("practice filters normalise unsafe topic and difficulty values", () => {
     topic: "Route planning",
     difficulty: "hard"
   });
+  assert.deepEqual(
+    normalizePracticeQuestionFilter("Equality and accessibility", "medium"),
+    {
+      topic: "Equality and accessibility",
+      difficulty: "medium"
+    }
+  );
   assert.deepEqual(normalizePracticeQuestionFilter("Legacy topic", "expert"), {
     topic: "all",
     difficulty: "all"
@@ -77,6 +84,11 @@ test("practice filters apply topic and difficulty to questions", () => {
       id: "three",
       tags: ["Route planning"],
       difficulty: "hard" as const
+    },
+    {
+      id: "seru",
+      category: "Equality and accessibility",
+      difficulty: "medium" as const
     }
   ];
 
@@ -93,6 +105,13 @@ test("practice filters apply topic and difficulty to questions", () => {
       difficulty: "hard"
     }).map((question) => question.id),
     ["three"]
+  );
+  assert.deepEqual(
+    filterByPracticeFilter(questions, {
+      topic: "Equality and accessibility",
+      difficulty: "medium"
+    }).map((question) => question.id),
+    ["seru"]
   );
 });
 

@@ -17,12 +17,13 @@ const socialPreview = path.join(
 );
 
 test("home page promotes learner CTAs and map practice routes", () => {
-  assert.match(homeSource, /Start free practice/);
-  assert.match(homeSource, /Take a mock exam/);
-  assert.match(homeSource, /Create account/);
+  assert.match(homeSource, /Start practising/);
+  assert.match(homeSource, /Explore SERU preparation/);
+  assert.match(homeSource, /View progress/);
   assert.match(homeSource, /\/practice\/map-click/);
   assert.match(homeSource, /\/practice\/routes/);
   assert.match(homeSource, /\/practice\/knowledge/);
+  assert.match(homeSource, /\/practice\/seru/);
 });
 
 test("home page stays public and does not expose admin tooling", () => {
@@ -31,10 +32,14 @@ test("home page stays public and does not expose admin tooling", () => {
 });
 
 test("home page positions SERU as a separate product area", () => {
-  assert.match(homeSource, /SERU-style learning/);
-  assert.match(homeSource, /\/learn#seru-preparation/);
-  assert.match(homeSource, /future SERU questions do not get mixed into topographical mocks/);
+  assert.match(homeSource, /SERU Preparation/);
+  assert.match(homeSource, /\/practice\/seru/);
+  assert.match(homeSource, /SERU questions do not get mixed into topographical mocks/);
   assert.match(homeSource, /not affiliated\s+with or endorsed by Transport for London/);
+  assert.match(
+    homeSource,
+    /One account\. Two clear learning areas: Topographical Skills and\s+SERU Preparation/
+  );
 });
 
 test("pricing page keeps payments as placeholders and links one account to both areas", () => {

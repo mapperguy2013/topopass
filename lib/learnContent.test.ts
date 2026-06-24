@@ -88,3 +88,21 @@ test("learn sections cover the required guidance areas", () => {
     );
   });
 });
+
+test("SERU learning entries point to the separate SERU practice route", () => {
+  const seruLesson = lessonCards.find(
+    (lesson) => lesson.id === "seru-preparation-support"
+  );
+  const seruSection = learnSections.find(
+    (section) => section.id === "seru-preparation"
+  );
+
+  assert.equal(seruLesson?.href, "/practice/seru");
+  assert.equal(seruLesson?.actionLabel, "Start SERU practice");
+  assert.equal(seruSection?.href, "/practice/seru");
+  assert.equal(seruSection?.actionLabel, "Start SERU practice");
+  assert.match(
+    seruSection?.description ?? "",
+    /without mixing those questions into topographical mock exams/
+  );
+});

@@ -28,6 +28,10 @@ function formatLatestMockScore(
   return "Saved";
 }
 
+function formatPercent(value: number | null) {
+  return typeof value === "number" ? `${value}%` : "--";
+}
+
 export default async function AccountPage() {
   const user = await requireUser("/account");
   const { profile, error } = await ensureProfileForUser(user);
@@ -266,6 +270,38 @@ export default async function AccountPage() {
                 </div>
               )}
             </article>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {Object.values(dashboardSummary.familyBreakdown).map((family) => (
+              <article
+                className="rounded-lg border border-slate-200 bg-white p-4"
+                key={family.family}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold uppercase tracking-wide text-road">
+                      {family.label}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-600">
+                      {family.totalQuestionsAttempted} saved answer
+                      {family.totalQuestionsAttempted === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <span className="rounded-md bg-slate-100 px-3 py-1 text-sm font-bold text-ink">
+                    {formatPercent(family.accuracy)}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {family.weakTopics[0]
+                    ? `Weakest measured topic: ${family.weakTopics[0].topic}.`
+                    : family.totalQuestionsAttempted > 0
+                      ? "No measured weak topic yet."
+                      : family.family === "seru"
+                        ? "Complete SERU-style practice to populate this area."
+                        : "Complete topographical practice to populate this area."}
+                </p>
+              </article>
+            ))}
           </div>
           {"error" in progressSummary && progressSummary.error && (
             <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">

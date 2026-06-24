@@ -13,7 +13,7 @@ type PracticeSessionIntroProps = {
   questionCount: number;
   filter: PracticeQuestionFilter;
   baseHref: string;
-  questionType: PracticeQuestionType;
+  questionType: PracticeQuestionType | string;
 };
 
 type PracticeSessionSummaryPanelProps = {
@@ -44,6 +44,9 @@ export function PracticeSessionIntro({
   baseHref,
   questionType
 }: PracticeSessionIntroProps) {
+  const questionTypeLabel =
+    questionTypeLabels[questionType as PracticeQuestionType] ?? questionType;
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -54,8 +57,8 @@ export function PracticeSessionIntro({
           <h2 className="mt-1 text-xl font-bold text-ink">{title}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
             This session is filtered to {filterLabel(filter)}. Answer each{" "}
-            {questionTypeLabels[questionType]} question, read the feedback, and
-            use the session summary to decide what to practise next.
+            {questionTypeLabel} question, read the feedback, and use the
+            session summary to decide what to practise next.
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:min-w-64">
@@ -67,7 +70,7 @@ export function PracticeSessionIntro({
           </div>
           <Link
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-            href="/practice"
+            href={baseHref}
           >
             Change topic
           </Link>

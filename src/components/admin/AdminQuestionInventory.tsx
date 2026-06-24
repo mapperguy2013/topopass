@@ -16,10 +16,15 @@ import {
   type QuestionBankItemSummary
 } from "@/lib/db/questionRepository";
 import type { QuestionDifficulty, QuestionStatus } from "@/lib/db/types";
+import {
+  getQuestionFamily,
+  getQuestionFamilyLabel,
+  type QuestionFamily
+} from "@/lib/questions/families";
 import { logger } from "@/lib/logging/logger";
 import {
-  QUESTION_DIFFICULTIES,
-  QUESTION_TOPICS
+  ALL_QUESTION_TOPICS,
+  QUESTION_DIFFICULTIES
 } from "@/lib/questions/topics";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -36,6 +41,7 @@ type InventoryRow = {
   prompt: string;
   type: string;
   category: string;
+  family: QuestionFamily;
   difficulty: QuestionDifficulty | "unknown";
   source: "source-bank" | "question_bank_items";
   sourceState: string;
@@ -107,6 +113,10 @@ function databaseOnlyRows(
       prompt: item.prompt,
       type: item.question_type,
       category: item.category ?? "Uncategorised",
+      family: getQuestionFamily({
+        category: item.category,
+        id: item.id
+      }),
       difficulty: item.difficulty ?? "unknown",
       source: "question_bank_items" as const,
       sourceState: "Database only",
@@ -155,6 +165,11 @@ export async function AdminQuestionInventory({
         prompt: getQuestionPrompt(question),
         type: question.type === "route" ? "route-drawing" : question.type,
         category: getQuestionCategory(question),
+        family: getQuestionFamily({
+          category: getQuestionCategory(question),
+          id: question.id,
+          tags: question.type === "route" ? question.tags : [getQuestionCategory(question)]
+        }),
         difficulty: question.difficulty,
         source: "source-bank",
         sourceState: isQuestionActive(question) ? "Active" : "Inactive",
@@ -187,12 +202,13 @@ export async function AdminQuestionInventory({
     difficulty: normalizeDifficultyFilter(filters.difficulty)
   };
   const topicOptions = [
-    ...new Set([
-      ...QUESTION_TOPICS,
+      ...new Set([
+      ...ALL_QUESTION_TOPICS,
       ...rows.map((row) => row.category).filter(Boolean)
     ])
   ].sort();
   const statusCounts = countBy(rows, (row) => row.status);
+  const familyCounts = countBy(rows, (row) => row.family);
   const topicCounts = countBy(rows, (row) => row.category);
   const difficultyCounts = countBy(rows, (row) => row.difficulty);
   const filteredRows = rows.filter((row) => {
@@ -258,10 +274,10 @@ export async function AdminQuestionInventory({
         </div>
         <div className="rounded-md bg-slate-50 p-3">
           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-            Database-only
+            SERU records
           </p>
           <p className="mt-1 text-2xl font-bold text-ink">
-            {rows.filter((row) => row.source === "question_bank_items").length}
+            {familyCounts.seru ?? 0}
           </p>
         </div>
       </div>
@@ -407,7 +423,7 @@ export async function AdminQuestionInventory({
             <tr>
               <th className="px-4 py-3">Select</th>
               <th className="px-4 py-3">ID / prompt</th>
-              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Family / type</th>
               <th className="px-4 py-3">Topic</th>
               <th className="px-4 py-3">Difficulty</th>
               <th className="px-4 py-3">Source</th>
@@ -435,7 +451,10 @@ export async function AdminQuestionInventory({
                     {row.prompt}
                   </p>
                 </td>
-                <td className="px-4 py-4 font-semibold">{row.type}</td>
+                <td className="px-4 py-4">
+                  <p className="font-semibold">{getQuestionFamilyLabel(row.family)}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.type}</p>
+                </td>
                 <td className="px-4 py-4 text-slate-600">{row.category}</td>
                 <td className="px-4 py-4 text-slate-600">{row.difficulty}</td>
                 <td className="px-4 py-4 text-slate-600">

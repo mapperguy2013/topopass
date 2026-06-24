@@ -5,7 +5,8 @@ import {
   selectMockExamQuestions,
   knowledgeMockQuestionBank,
   mapClickMockQuestionBank,
-  routeDrawingMockQuestionBank
+  routeDrawingMockQuestionBank,
+  mockQuestionBank
 } from "./mockTestQuestions.ts";
 import {
   getMockExamTimerLevel,
@@ -34,6 +35,17 @@ test("expanded banks contain enough questions for configured exam counts", () =>
     routeDrawingMockQuestionBank.length >=
       DEFAULT_MOCK_EXAM_CONFIG.questionCounts["route-drawing"]
   );
+});
+
+test("topographical mock question banks do not include SERU questions", () => {
+  assert.ok(
+    knowledgeMockQuestionBank.every(
+      (question) =>
+        !question.id.startsWith("seru-") &&
+        (question as { questionFamily?: string }).questionFamily !== "seru"
+    )
+  );
+  assert.ok(mockQuestionBank.every((question) => !question.id.startsWith("seru-")));
 });
 
 test("question selector returns configured mixed counts without duplicates", () => {

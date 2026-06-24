@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DEFAULT_MOCK_EXAM_CONFIG, getMockExamQuestionTotal } from "@/lib/mockExamConfig";
 import { trackEvent } from "@/lib/analytics/events";
 import {
@@ -30,8 +31,10 @@ export function MockModeSelection({ message, onStart }: MockModeSelectionProps) 
           Choose your mock exam mode
         </h2>
         <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-          Pick a standard mixed mock, a stricter exam simulation, or a focused
-          mock based on saved progress and previous mistakes.
+          Pick a standard mixed topographical mock, a stricter topographical
+          exam simulation, or a focused mock based on saved progress and
+          previous mistakes. SERU-style questions stay in a separate practice
+          area and are not included in these mocks.
         </p>
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
@@ -105,6 +108,31 @@ export function MockModeSelection({ message, onStart }: MockModeSelectionProps) 
           </article>
         ))}
       </div>
+
+      <article className="rounded-lg border border-orange-200 bg-orange-50 p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-orange-900">
+              Separate SERU area
+            </p>
+            <h3 className="mt-2 text-xl font-bold text-ink">
+              SERU mock exams are planned separately
+            </h3>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700">
+              Use SERU-style practice questions for safety, equality,
+              accessibility, customer service, safeguarding, and regulatory
+              awareness. A dedicated SERU mock exam can be added later without
+              mixing SERU content into topographical mock exams.
+            </p>
+          </div>
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-orange-300 bg-white px-5 py-2 text-sm font-bold text-orange-900 hover:border-orange-500"
+            href="/practice/seru"
+          >
+            Open SERU practice
+          </Link>
+        </div>
+      </article>
     </section>
   );
 }

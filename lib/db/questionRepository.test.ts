@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { getAllQuestions } from "../admin/questionAdminHelpers.ts";
 import { QUESTION_TOPICS } from "../questions/topics.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 import { hasSupabaseConfig } from "../supabaseClient.ts";
 import {
   dbRowToStaticQuestion,
@@ -582,6 +583,25 @@ test("import preview preserves topic and difficulty metadata", () => {
   assert.equal(preview.previewItems[0].difficulty, "hard");
 });
 
+test("question import validation accepts SERU topics through question_bank_items", () => {
+  const question = seruQuestionBank[0];
+  const preview = previewQuestionImport(
+    JSON.stringify({
+      question_bank_items: [
+        {
+          ...rowFromQuestion(question, "draft"),
+          status: undefined
+        }
+      ]
+    })
+  );
+
+  assert.equal(preview.errors.length, 0);
+  assert.equal(preview.validRecords.length, 1);
+  assert.equal(preview.validRecords[0].category, question.category);
+  assert.equal(preview.validRecords[0].status, "draft");
+});
+
 test("admin import writes validated records to question_bank_items", async () => {
   const question = getAllQuestions().find((entry) => entry.type === "knowledge");
   assert.ok(question);
@@ -794,7 +814,7 @@ test("admin inventory supports topic, status, and difficulty organisation", () =
     "utf8"
   );
 
-  assert.match(source, /QUESTION_TOPICS/);
+  assert.match(source, /ALL_QUESTION_TOPICS/);
   assert.match(source, /QUESTION_DIFFICULTIES/);
   assert.match(source, /statusCounts/);
   assert.match(source, /databaseOnlyRows/);

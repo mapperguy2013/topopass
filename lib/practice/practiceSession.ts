@@ -3,7 +3,9 @@ import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import {
   QUESTION_DIFFICULTIES,
   QUESTION_TOPICS,
+  isAnyQuestionTopic,
   isQuestionTopic,
+  type AnyQuestionTopic,
   type QuestionTopic
 } from "../questions/topics.ts";
 import {
@@ -16,7 +18,7 @@ export type PracticeDifficulty = (typeof QUESTION_DIFFICULTIES)[number];
 export type PracticeDifficultyFilter = PracticeDifficulty | "all";
 
 export type PracticeQuestionFilter = {
-  topic: QuestionTopic | "all";
+  topic: AnyQuestionTopic | "all";
   difficulty: PracticeDifficultyFilter;
 };
 
@@ -68,7 +70,7 @@ export function normalizePracticeQuestionFilter(
   difficulty: unknown
 ): PracticeQuestionFilter {
   return {
-    topic: isQuestionTopic(topic) ? topic : "all",
+    topic: isAnyQuestionTopic(topic) ? topic : "all",
     difficulty: normalizeDifficulty(difficulty)
   };
 }

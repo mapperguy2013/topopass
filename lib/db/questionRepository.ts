@@ -19,6 +19,7 @@ import { asPersistenceClient } from "./queryClient.ts";
 import { getSupabaseClient } from "../supabaseClient.ts";
 import type { KnowledgeQuestionData } from "../knowledgeQuestions.ts";
 import type { MapClickQuestionData } from "../mapClickQuestions.ts";
+import { getQuestionFamily } from "../questions/families.ts";
 import type { RouteQuestion } from "../../src/data/routeQuestions.ts";
 
 export type QuestionRepositorySource = "supabase" | "static";
@@ -248,7 +249,7 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
     prompt: row.prompt,
     difficulty: row.difficulty ?? "medium",
     explanation: row.explanation ?? "",
-    sourceNote: row.source ?? "Supabase question row"
+      sourceNote: row.source ?? "Supabase question row"
   } as const;
 
   if (row.question_type === "knowledge") {
@@ -269,6 +270,11 @@ export function dbRowToStaticQuestion(row: QuestionRow): AdminQuestion | null {
           ? (incorrectExplanations as Record<string, string>)
           : undefined,
       category: row.category ?? "Knowledge",
+      questionFamily: getQuestionFamily({
+        category: row.category,
+        id: row.id,
+        tags: row.tags
+      }),
       isActive: row.status === PUBLISHED_QUESTION_STATUS
     } satisfies KnowledgeQuestionData;
   }

@@ -1,10 +1,10 @@
 # TopoPass
 
 TopoPass is a responsive study web app for London private hire applicants
-preparing for the TfL Private Hire Topographical Skills Assessment. It helps
-learners practise map reading, location knowledge, point-to-point route
-planning, route drawing, mock-test decision making, and mistake review before
-assessment day.
+preparing for TfL-style private hire learning. It helps learners practise
+topographical map reading, location knowledge, point-to-point route planning,
+route drawing, mock-test decision making, mistake review, and separate
+SERU-style private hire knowledge.
 
 TopoPass is an independent study tool. It is not affiliated with, endorsed by,
 or sponsored by Transport for London, Uber, Bolt, FREENOW, or any private hire
@@ -43,9 +43,14 @@ clearer with pass/fail guidance and topic breakdowns.
 
 Stage 39 is complete as a launch-readiness and conversion polish pass. It
 refreshes the public homepage with a cleaner learning-map visual, positions
-SERU-style practice as a separate future product area, improves the pricing
+SERU-style preparation as a separate product area, improves the pricing
 placeholder, adds public-page SEO/social metadata, and introduces a no-op typed
 analytics event structure for future provider wiring.
+
+Stage 39.5 is complete as a SERU practice foundation pass. It adds a separate
+SERU-style starter practice area, original SERU question bank content,
+SERU-aware review/progress summaries, and homepage separation polish while
+keeping topographical mock exams free of SERU questions.
 
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
@@ -122,15 +127,17 @@ Phase 3 guardrails:
 
 - Landing page with private-hire applicant positioning
 - Modern public home page with learner CTAs, local-first/account progress copy,
-  map-learning promotion, SERU preparation positioning, and a clean custom hero
-  visual
+  clear Topographical/SERU separation, and a clean custom practice-overview
+  hero visual
 - Expanded Learn section with structured learning paths
-- SERU preparation support copy as a separate planned learning area, not mixed
-  into topographical mock exams
-- Practice selector for knowledge, map-click, and route drawing
-- Disabled SERU practice placeholder for the future separate SERU mode
+- SERU preparation support as a separate learning area, not mixed into
+  topographical mock exams
+- Practice selector for knowledge, map-click, route drawing, and SERU-style
+  starter practice
 - Topic-based practice selector with counts per topic and weak-topic guidance
 - Knowledge practice with local saved attempts
+- SERU-style practice route with original multiple-choice starter questions,
+  explanations, and topic/difficulty filters
 - Map-click practice with selected marker feedback and distance scoring
 - Route-drawing practice with continuous line drawing, pan/zoom, undo, clear,
   reset, and route scoring
@@ -143,6 +150,8 @@ Phase 3 guardrails:
   strengths/weaknesses, and recent activity
 - Mistake review with retry queue and visual answer review
 - Full `/review` answer history for practice and mock attempts with filters
+- Review and progress summaries can separate Topographical Skills from SERU
+  Preparation where saved answers contain SERU question IDs/topics
 - Local data export/import/reset tools for learner progress
 - Optional learner account sign-up, log-in, sign-out, and account page
 - Signed-in practice/mock completion saves to Supabase account tables
@@ -173,7 +182,7 @@ Phase 3 guardrails:
 - Static social preview asset under `public/social/topopass-social.svg`
 - Typed no-op analytics event helper for public CTA, practice-start,
   mock-start, pricing, and sign-up intent events
-- Pricing preview page with Free, Plus, and SERU support placeholders; no
+- Pricing preview page with Free, Plus, and SERU preparation tiers; no
   payment provider is connected
 - OpenStreetMap-derived local route map
 - Cleanroom generated driver-training atlas review asset, not yet integrated
@@ -201,10 +210,11 @@ Phase 3 guardrails:
 | --- | --- |
 | `/` | Public TopoPass homepage |
 | `/learn` | Expanded learning hub, study path, and SERU preparation support notes |
-| `/practice` | Practice-area selector with future SERU placeholder kept separate |
+| `/practice` | Practice-area selector with Topographical and SERU options kept separate |
 | `/practice/knowledge` | Knowledge question practice |
 | `/practice/map-click` | Map-click location practice |
 | `/practice/routes` | Route-drawing practice |
+| `/practice/seru` | Separate SERU-style private hire knowledge practice |
 | `/mock-test` | Mock exam mode selection and exam flow |
 | `/progress` | Local progress dashboard |
 | `/progress/mistakes` | Mistake review and retry flow |
@@ -237,6 +247,12 @@ Phase 3 guardrails:
 
 Multiple-choice questions are stored in `lib/knowledgeQuestions.ts`. Practice
 and mock-exam scoring use exact answer matching.
+
+### SERU-Style Knowledge
+
+SERU-style starter questions are stored separately in `lib/seruQuestions.ts`.
+They use the same multiple-choice practice component and learner account, but
+they are not imported into the topographical mock exam bank.
 
 ### Map Click
 
@@ -754,19 +770,19 @@ Public UX result:
 
 SERU positioning result:
 
-- SERU is presented as a separate product area/category for future
+- SERU is presented as a separate product area/category and now has starter
   SERU-style practice.
 - SERU copy covers safety, equality, accessibility, customer service,
   safeguarding, licensing rules, driver responsibilities, complaints, lost
   property, and regulatory awareness.
 - Current topographical mock exams remain topographical-only; SERU questions are
   not mixed into the existing mock exam engine.
-- Recommended future Stage 40 is a separate SERU question bank, SERU practice
-  mode, SERU mock exam, and exam-family-separated progress sections.
+- Future SERU work can add a dedicated SERU mock exam and deeper
+  exam-family-separated analytics.
 
 Pricing and launch result:
 
-- `/pricing` now shows Free, Plus, and SERU support placeholder tiers.
+- `/pricing` now shows Free, Plus, and SERU preparation tiers.
 - Paid plans are marked as coming later, and payment processing is not live.
 - Pricing copy states that one account is planned to eventually include both
   Topographical and SERU preparation support.
@@ -795,6 +811,50 @@ git diff --cached --check
 ```
 
 Result for this Stage 39 pass: lint, tests, and production build passed.
+
+## Stage 39.5 SERU Practice Foundation QA Status
+
+Stage 39.5 turns the Stage 39 SERU positioning into a small separate learner
+practice foundation without adding a SERU mock exam, payment provider, or schema
+migration.
+
+SERU practice result:
+
+- `/practice/seru` provides a separate SERU-style starter practice area.
+- `lib/seruQuestions.ts` contains 24 original multiple-choice SERU-style
+  questions with explanations, tips, difficulty, and topic metadata.
+- SERU topics cover driver licensing and responsibilities, passenger safety,
+  safeguarding, equality and accessibility, customer service, complaints and
+  professionalism, private hire regulations, journey planning and conduct, lost
+  property, and road safety awareness.
+- SERU questions use the existing knowledge practice component and local-first
+  progress saving, with signed-in Supabase progress saving preserved through
+  the existing practice-attempt repository.
+- Review history and dashboard summaries can identify SERU answers from SERU
+  question IDs and topics.
+
+Separation result:
+
+- Topographical mock exams still select from `lib/knowledgeQuestions.ts`,
+  `lib/mapClickQuestions.ts`, and route questions only.
+- SERU starter questions are not imported into `knowledgeMockQuestionBank` or
+  `mockQuestionBank`.
+- The public homepage, practice page, mock-test intro, resources page, pricing
+  page, and Learn content now point to SERU as a separate preparation area.
+- Admin question inventory includes SERU source-bank records and validates SERU
+  topics for import/export through `question_bank_items`.
+- No Supabase schema migration was added for this stage.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 39.5 pass: lint, tests, and production build passed.
 
 ## Phase 3 Manual QA Checklist
 
@@ -1047,31 +1107,31 @@ Result for this Stage 39 pass: lint, tests, and production build passed.
 ### Homepage and conversion
 
 - Open `/` on desktop and mobile width.
-- Confirm the hero copy mentions map practice, SERU-style learning, mocks, and
-  progress.
-- Confirm the custom learning-map visual renders cleanly and replaces the old
-  screenshot/map-preview hero.
-- Use Start free practice, Take a mock exam, Create account, and View pricing
-  preview CTAs.
+- Confirm the hero copy says "Build confidence for your TfL private hire
+  journey".
+- Confirm the custom practice-overview visual renders cleanly and replaces the
+  old screenshot/map-preview hero.
+- Use Start practising, Explore SERU preparation, View progress, and View
+  pricing preview CTAs.
 - Confirm no admin-only publishing, import/export, draft, archived, or database
   table details appear on the public home page.
 - Confirm the independent/non-affiliation disclaimer is visible.
 
 ### SERU positioning
 
-- Open `/learn#seru-preparation`.
-- Confirm SERU is described as a separate preparation support area.
+- Open `/practice/seru`.
+- Confirm SERU is described as a separate preparation area.
 - Confirm SERU topics include safety, equality, accessibility, customer
   service, safeguarding, licensing rules, driver responsibilities, complaints,
   lost property, and regulatory awareness.
 - Confirm current topographical mock exams do not include a SERU mode.
-- Confirm `/practice` only shows SERU as a coming-soon placeholder, not as an
-  active topographical question set.
+- Confirm `/practice` links to SERU as an active separate practice area, not as
+  part of the topographical mock set.
 
 ### Pricing preview
 
 - Open `/pricing` on desktop and mobile width.
-- Confirm Free, Plus, and SERU support placeholder tiers stack cleanly.
+- Confirm Free, Plus, and SERU preparation tiers stack cleanly.
 - Confirm payment is clearly marked as not live.
 - Confirm one account is described as planned for both Topographical and SERU
   preparation.
@@ -1097,6 +1157,35 @@ Result for this Stage 39 pass: lint, tests, and production build passed.
 - Visit `/admin` signed out and as a learner to confirm admin protection remains
   unchanged.
 
+## Stage 39.5 Manual QA Checklist
+
+### SERU starter practice
+
+- Open `/practice/seru` on desktop and mobile width.
+- Confirm the page explains SERU-style practice as separate from
+  Topographical Skills.
+- Filter by a SERU topic such as `Equality and accessibility`.
+- Filter by difficulty.
+- Answer a SERU question correctly and confirm explanation/tip feedback appears.
+- Answer a SERU question incorrectly and confirm the accepted answer is clear.
+- Confirm signed-out local progress still saves after SERU practice.
+- Sign in, answer a SERU question, and confirm normal signed-in progress saving
+  still works with Supabase configured.
+
+### SERU separation
+
+- Open `/mock-test`.
+- Confirm the mock-test intro says the current mocks are topographical and that
+  SERU mock exams are separate/future.
+- Complete a topographical mock and confirm no SERU question appears.
+- Open `/review` after SERU practice and confirm the SERU answer appears in
+  review history.
+- Open `/progress` and `/account` after SERU practice and confirm the
+  Topographical/SERU preparation cards remain separated.
+- Open `/admin/questions` as an admin and confirm SERU records appear in the
+  inventory with SERU topics.
+- Confirm non-admin learners still cannot access admin question tools.
+
 ## Current Limitations
 
 - Learner accounts are optional; signed-in completions save to Supabase, but
@@ -1113,8 +1202,8 @@ Result for this Stage 39 pass: lint, tests, and production build passed.
 - A full multi-step editorial approval workflow is not implemented yet; current
   production review is admin-managed draft, publish, and archive.
 - Payment and subscription logic is not implemented.
-- SERU practice and SERU mock exams are not implemented yet; Stage 39 only
-  prepares product positioning and safe placeholders.
+- SERU starter practice is implemented as a separate knowledge area; SERU mock
+  exams and deeper SERU analytics remain future work.
 - Analytics is structured and typed, but no third-party provider is connected.
 - External production observability services are not implemented; logging is
   currently local/server-console only.

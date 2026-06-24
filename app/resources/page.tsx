@@ -74,12 +74,13 @@ const resourceCategories: {
         title: "SERU-style study themes",
         description:
           "Review safety, equality, accessibility, customer service, safeguarding, licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness.",
-        href: "/learn#seru-preparation"
+        href: "/practice/seru"
       },
       {
         title: "Separate from topographical mocks",
         description:
-          "SERU-style private hire knowledge is planned as a separate TopoPass learning area, not mixed into topographical map mock exams."
+          "SERU-style private hire knowledge is a separate TopoPass learning area, not mixed into topographical map mock exams.",
+        href: "/practice/seru"
       },
       {
         title: "Original learning content",

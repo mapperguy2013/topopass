@@ -293,6 +293,73 @@ export function ProgressDashboard() {
         />
       </section>
 
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <p className="text-sm font-bold uppercase tracking-wide text-road">
+          Preparation areas
+        </p>
+        <h2 className="mt-2 text-xl font-bold text-ink">
+          Topographical and SERU progress are tracked separately
+        </h2>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {Object.values(dashboardSummary.familyBreakdown).map((family) => (
+            <article
+              className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+              key={family.family}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-ink">
+                    {family.label}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {family.totalQuestionsAttempted} saved answer
+                    {family.totalQuestionsAttempted === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <span className="w-fit rounded-md bg-white px-3 py-1 text-sm font-bold text-road">
+                  {formatPercent(family.accuracy)}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Correct
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-ink">
+                    {family.correctAnswers}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Weak topics
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-ink">
+                    {family.weakTopics.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Strong topics
+                  </p>
+                  <p className="mt-1 text-xl font-bold text-ink">
+                    {family.strongTopics.length}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                {family.weakTopics[0]
+                  ? `Focus next on ${family.weakTopics[0].topic}.`
+                  : family.totalQuestionsAttempted > 0
+                    ? "Keep building a wider topic spread."
+                    : family.family === "seru"
+                      ? "Start SERU-style practice to build this section."
+                      : "Start topographical practice to build this section."}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <PracticeRecommendations recommendations={practiceRecommendations} />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

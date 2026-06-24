@@ -6,6 +6,7 @@ import {
   getQuestionsByType,
   isQuestionActive
 } from "./questionAdminHelpers.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 
 test("admin helpers return all supported question types", () => {
   const questions = getAllQuestions();
@@ -13,6 +14,16 @@ test("admin helpers return all supported question types", () => {
   assert.ok(getQuestionsByType("knowledge").length > 0);
   assert.ok(getQuestionsByType("map-click").length > 0);
   assert.ok(getQuestionsByType("route").length > 0);
+});
+
+test("admin helpers include SERU questions in the knowledge inventory", () => {
+  const seruIds = new Set(seruQuestionBank.map((question) => question.id));
+  const knowledgeIds = new Set(
+    getQuestionsByType("knowledge").map((question) => question.id)
+  );
+
+  assert.ok(seruQuestionBank.length >= 20);
+  assert.ok([...seruIds].every((id) => knowledgeIds.has(id)));
 });
 
 test("admin lookup returns a stable question by ID", () => {

@@ -49,6 +49,7 @@ export const validLearnHrefs = [
   "/practice/knowledge",
   "/practice/map-click",
   "/practice/routes",
+  "/practice/seru",
   "/mock-test",
   "/progress",
   "/progress/mistakes",
@@ -180,10 +181,10 @@ export const lessonCards: LessonCard[] = [
     id: "seru-preparation-support",
     title: "SERU preparation support",
     description:
-      "Understand the SERU-style themes TopoPass will support separately from topographical mock exams, including safety, equality, accessibility, and driver responsibilities.",
+      "Practise SERU-style themes separately from topographical mock exams, including safety, equality, accessibility, customer service, and driver responsibilities.",
     skillType: "SERU",
-    href: "/learn#seru-preparation",
-    actionLabel: "Read SERU notes"
+    href: "/practice/seru",
+    actionLabel: "Start SERU practice"
   }
 ];
 
@@ -232,7 +233,7 @@ export const seruPreparationTips = [
   "Build confidence with safety, equality, accessibility, customer service, and safeguarding themes.",
   "Review licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness as practical decisions.",
   "Use original learning content and public guidance-style knowledge rather than copied official questions.",
-  "When SERU practice is added, keep progress separated from map skills while using the same learner account."
+  "Keep SERU progress separated from map skills while using the same learner account."
 ] as const;
 
 export const learnSections: LearnSection[] = [
@@ -274,10 +275,10 @@ export const learnSections: LearnSection[] = [
     eyebrow: "Separate knowledge area",
     title: "SERU Preparation Support",
     description:
-      "SERU-style preparation is a separate product area for private hire knowledge confidence. It is planned to cover safety, equality, accessibility, customer service, safeguarding, licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness without mixing those questions into topographical mock exams.",
+      "SERU-style preparation is a separate product area for private hire knowledge confidence. It covers safety, equality, accessibility, customer service, safeguarding, licensing rules, driver responsibilities, complaints, lost property, and regulatory awareness without mixing those questions into topographical mock exams.",
     skillType: "SERU",
-    href: "/learn#seru-preparation",
-    actionLabel: "Read SERU guidance",
+    href: "/practice/seru",
+    actionLabel: "Start SERU practice",
     guidance: [...seruPreparationTips]
   },
   {

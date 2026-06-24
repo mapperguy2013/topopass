@@ -5,7 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { LOCAL_LEARNER_ID } from "@/lib/db/localPersistence";
 import { orderQuestionsByRetryQueue } from "@/lib/db/mistakeRetryQueue";
 import { savePracticeAttempt } from "@/lib/db/practiceAttemptRepository";
-import { knowledgeQuestionBank } from "@/lib/knowledgeQuestions";
+import {
+  knowledgeQuestionBank,
+  type KnowledgeQuestionData
+} from "@/lib/knowledgeQuestions";
 import {
   filterByPracticeFilter,
   normalizePracticeQuestionFilter,
@@ -26,19 +29,33 @@ const basePracticeQuestions = knowledgeQuestionBank.filter(
 type KnowledgePracticeFlowProps = {
   initialTopic?: string;
   initialDifficulty?: string;
+  questions?: KnowledgeQuestionData[];
+  baseHref?: string;
+  title?: string;
+  questionTypeLabel?: string;
+  emptyQuestionTypeLabel?: string;
+  retryQueueType?: "knowledge";
+  practiceFamily?: "topographical" | "seru";
 };
 
 export function KnowledgePracticeFlow({
+  baseHref = "/practice/knowledge",
+  emptyQuestionTypeLabel = "knowledge",
+  practiceFamily = "topographical",
+  questionTypeLabel = "knowledge",
+  questions = basePracticeQuestions,
   initialTopic,
-  initialDifficulty
+  initialDifficulty,
+  retryQueueType = "knowledge",
+  title = "Knowledge practice"
 }: KnowledgePracticeFlowProps) {
   const filter = useMemo(
     () => normalizePracticeQuestionFilter(initialTopic, initialDifficulty),
     [initialDifficulty, initialTopic]
   );
   const filteredBaseQuestions = useMemo(
-    () => filterByPracticeFilter(basePracticeQuestions, filter),
-    [filter]
+    () => filterByPracticeFilter(questions, filter),
+    [filter, questions]
   );
   const [practiceQuestions, setPracticeQuestions] =
     useState(filteredBaseQuestions);
@@ -55,16 +72,21 @@ export function KnowledgePracticeFlow({
 
   useEffect(() => {
     setPracticeQuestions(
-      orderQuestionsByRetryQueue(filteredBaseQuestions, "knowledge")
+      orderQuestionsByRetryQueue(filteredBaseQuestions, retryQueueType)
     );
     setCurrentQuestionIndex(0);
     setSelectedAnswer(null);
     setHasSubmitted(false);
     setSaveStatus("idle");
-  }, [filteredBaseQuestions]);
+  }, [filteredBaseQuestions, retryQueueType]);
 
   if (!currentQuestion) {
-    return <PracticeEmptyState filter={filter} questionTypeLabel="knowledge" />;
+    return (
+      <PracticeEmptyState
+        filter={filter}
+        questionTypeLabel={emptyQuestionTypeLabel}
+      />
+    );
   }
 
   const isFirstQuestion = currentQuestionIndex === 0;
@@ -121,6 +143,7 @@ export function KnowledgePracticeFlow({
       result: {
         correctAnswer: currentQuestion.correctAnswer,
         explanation: currentQuestion.explanation,
+        questionFamily: currentQuestion.questionFamily ?? practiceFamily,
         tip: currentQuestion.tip
       },
       score,
@@ -134,11 +157,11 @@ export function KnowledgePracticeFlow({
   return (
     <div className="space-y-5">
       <PracticeSessionIntro
-        baseHref="/practice/knowledge"
+        baseHref={baseHref}
         filter={filter}
         questionCount={practiceQuestions.length}
-        questionType="knowledge"
-        title="Knowledge practice"
+        questionType={questionTypeLabel}
+        title={title}
       />
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

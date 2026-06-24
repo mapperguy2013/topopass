@@ -1,4 +1,5 @@
 import { knowledgeQuestionBank, type KnowledgeQuestionData } from "../knowledgeQuestions.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 import { demoMapClickQuestions, type MapClickQuestionData } from "../mapClickQuestions.ts";
 import { getRouteQuestions, type RouteQuestion } from "../../src/data/routeQuestions.ts";
 
@@ -13,6 +14,7 @@ export type AdminQuestion =
 export function getAllQuestions(): AdminQuestion[] {
   return [
     ...knowledgeQuestionBank,
+    ...seruQuestionBank,
     ...demoMapClickQuestions,
     ...getRouteQuestions().map((question) => ({
       ...question,

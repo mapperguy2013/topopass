@@ -1,5 +1,6 @@
 import type { Coordinates } from "../distance.ts";
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
+import { seruQuestionBank } from "../seruQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import type {
   NormalizedMockAttempt,
@@ -166,7 +167,9 @@ function mapClickQuestionForId(questionId: string) {
 }
 
 function knowledgeQuestionForId(questionId: string) {
-  return knowledgeQuestionBank.find((question) => question.id === questionId);
+  return [...knowledgeQuestionBank, ...seruQuestionBank].find(
+    (question) => question.id === questionId
+  );
 }
 
 function titleForQuestion(questionId: string) {
@@ -492,6 +495,7 @@ export function getReviewSourceLabel(source: ReviewSource) {
 export function buildReviewQuestionMetadata() {
   return {
     knowledgeCount: knowledgeQuestionBank.length,
+    seruCount: seruQuestionBank.length,
     mapClickCount: demoMapClickQuestions.length,
     routeCount: getActiveRouteQuestions().length
   };

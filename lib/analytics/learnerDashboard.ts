@@ -4,6 +4,10 @@ import {
   getReviewSourceLabel,
   type ReviewHistoryItem
 } from "../review/reviewHistory.ts";
+import {
+  getQuestionFamily,
+  type QuestionFamily
+} from "../questions/families.ts";
 import type {
   NormalizedMockAttempt,
   NormalizedPracticeAttempt
@@ -39,6 +43,18 @@ export type LearnerDashboardSummary = {
   weakTopics: LearnerTopicPerformance[];
   recentActivity: LearnerRecentActivity[];
   guidance: string;
+  familyBreakdown: Record<QuestionFamily, LearnerFamilySummary>;
+};
+
+export type LearnerFamilySummary = {
+  family: QuestionFamily;
+  label: string;
+  totalQuestionsAttempted: number;
+  correctAnswers: number;
+  accuracy: number | null;
+  topicPerformance: LearnerTopicPerformance[];
+  strongTopics: LearnerTopicPerformance[];
+  weakTopics: LearnerTopicPerformance[];
 };
 
 type LearnerDashboardInput = {
@@ -116,6 +132,37 @@ function getRecentActivity(
     }));
 }
 
+function familyForReviewItem(item: ReviewHistoryItem): QuestionFamily {
+  return getQuestionFamily({
+    category: item.category,
+    id: item.questionId
+  });
+}
+
+function getFamilySummary(
+  family: QuestionFamily,
+  label: string,
+  reviewItems: ReviewHistoryItem[],
+  minTopicAttempts: number
+): LearnerFamilySummary {
+  const items = reviewItems.filter((item) => familyForReviewItem(item) === family);
+  const totalQuestionsAttempted = items.length;
+  const correctAnswers = items.filter((item) => item.passed).length;
+  const accuracy = percent(correctAnswers, totalQuestionsAttempted);
+  const topicPerformance = getTopicPerformance(items, minTopicAttempts);
+
+  return {
+    family,
+    label,
+    totalQuestionsAttempted,
+    correctAnswers,
+    accuracy,
+    topicPerformance,
+    strongTopics: topicPerformance.filter((topic) => topic.status === "strong"),
+    weakTopics: topicPerformance.filter((topic) => topic.status === "weak")
+  };
+}
+
 function guidance({
   totalQuestionsAttempted,
   weakTopics,
@@ -169,6 +216,20 @@ export function buildLearnerDashboardSummary({
     strongTopics,
     weakTopics,
     recentActivity: getRecentActivity(reviewItems, recentLimit),
+    familyBreakdown: {
+      topographical: getFamilySummary(
+        "topographical",
+        "Topographical Skills",
+        reviewItems,
+        minTopicAttempts
+      ),
+      seru: getFamilySummary(
+        "seru",
+        "SERU Preparation",
+        reviewItems,
+        minTopicAttempts
+      )
+    },
     guidance: guidance({
       totalQuestionsAttempted,
       weakTopics,

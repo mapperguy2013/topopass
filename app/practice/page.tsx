@@ -42,8 +42,9 @@ const practiceOptions = [
   {
     title: "SERU Preparation",
     description:
-      "A separate SERU-style practice mode is planned for safety, equality, accessibility, customer service, and regulatory awareness.",
-    available: false
+      "Practise original SERU-style questions covering safety, equality, accessibility, customer service, safeguarding, and regulatory awareness.",
+    href: "/practice/seru",
+    available: true
   }
 ] as const;
 
