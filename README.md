@@ -65,6 +65,12 @@ page explaining how the course works, keeps those public pages free of the
 learner sidebar, and splits Demo into short Topographical and SERU previews
 rather than full Practice.
 
+Stage 40 is complete as a monetisation foundation and beta-launch prep pass. It
+adds a simple Free, Plus, and Pro plan model, shows Free plan status in account,
+upgrades `/pricing` into a launch-ready preview with safe upgrade-interest
+capture, adds light upgrade-coming-soon placeholders, and keeps payment
+processing intentionally inactive.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -151,6 +157,13 @@ Phase 3 guardrails:
 - Public `/course` page explaining the guided TopoPass preparation course
 - Public `/demo` page with separate 10-question timed Topographical and SERU
   demo routes
+- Monetisation foundation with Free, Plus, and Pro plan definitions
+- Free plan status on `/account` with included features and upgrade-coming-soon
+  copy
+- Pricing preview with safe no-PII upgrade-interest capture and no live payment
+  provider
+- Light feature-gating placeholders for advanced progress insights and expanded
+  content
 - Expanded Learn section with structured learning paths
 - SERU preparation support as a separate learning area, not mixed into
   topographical mock exams
@@ -972,6 +985,123 @@ git diff --cached --check
 ```
 
 Result for this Stage 39.7 pass: lint, tests, and production build passed.
+
+## Stage 40 Monetisation Foundation QA Status
+
+Stage 40 prepares TopoPass for beta users and future paid upgrades without
+activating billing.
+
+Plan structure:
+
+- `free` is the default for signed-out and signed-in learners.
+- `plus` and `pro` are coming-soon placeholders only.
+- Current free access remains available; existing practice, mock, progress,
+  review, account, and admin flows are not hidden behind unfinished payment
+  logic.
+
+Pricing and upgrade intent:
+
+- `/pricing` shows Free, Plus, and Pro plan cards.
+- The Free CTA continues learners into practice.
+- Plus and Pro CTAs register upgrade interest on the page without collecting
+  email, taking payment, or calling a payment provider.
+- The pricing page states that one TopoPass account is planned to support both
+  Topographical and SERU-style preparation while keeping the learning areas
+  separate.
+
+Account plan display:
+
+- `/account` shows the current Free plan, included features, upgrade-coming-soon
+  items, and a link back to pricing.
+- Account progress, signed-out local progress, and signed-in Supabase progress
+  remain unchanged.
+
+Safety result:
+
+- No payment provider, checkout, Stripe integration, subscription billing, or
+  schema migration was added.
+- No personal data is collected for upgrade interest.
+- Analytics events remain allow-listed and no-op unless a safe provider is
+  supplied.
+- Disclaimers now state that TopoPass is independent, practice content is for
+  preparation only, SERU-style questions are original learning questions, and
+  learners should refer to official TfL guidance where appropriate.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 40 pass: lint, tests, and production build passed.
+
+## Beta Launch Checklist
+
+### Environment and Supabase
+
+- Confirm `.env.local` has `NEXT_PUBLIC_SUPABASE_URL` and
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Confirm no service-role key is present in frontend code, README examples, or
+  committed files.
+- Apply Supabase migrations in order.
+- Confirm RLS policies are enabled and learner progress is scoped to the
+  authenticated user.
+
+### Admin and content
+
+- Create or promote an admin account by setting `profiles.role` to `admin`.
+- Log in as admin and confirm `/admin` loads.
+- Review `question_bank_items` in admin inventory.
+- Confirm draft, published, and archived statuses work.
+- Publish only reviewed learner-safe content.
+- Validate import/export on `/admin/questions/import-export`.
+- Confirm seed content starts as draft unless intentionally published.
+
+### Learner QA
+
+- Complete Topographical practice while signed out and confirm local progress
+  saves.
+- Complete SERU-style practice while signed out and confirm local progress
+  saves.
+- Log in and complete Topographical practice; confirm `/account` progress
+  updates from Supabase.
+- Log in and complete SERU-style practice; confirm account and review data stay
+  scoped to the current user.
+- Complete a topographical mock exam and review results.
+- Confirm SERU questions do not appear in topographical mock exams.
+- Open `/review` and `/progress/mistakes` and confirm answer history remains
+  readable.
+
+### Public and monetisation QA
+
+- Open `/`, `/course`, `/topographical`, `/seru`, `/demo`, and `/pricing` on
+  desktop and mobile widths.
+- Confirm the Course dropdown links only to Topographical Course, SERU Course,
+  and How the course works.
+- Complete `/demo/topographical` and `/demo/seru`; confirm each demo is short,
+  timed, and limited to 10 questions.
+- Open `/pricing` and confirm Free is available now while Plus and Pro are
+  coming soon.
+- Click Register interest and confirm the page shows a confirmation without
+  asking for email or payment details.
+- Confirm no checkout, payment form, subscription state, or payment provider is
+  active.
+
+### Mobile, disclaimers, and launch safety
+
+- Check homepage, Course, Demo, Pricing, Practice, Mock Test, Progress, Account,
+  and Admin on mobile width.
+- Confirm buttons remain tappable and no learner sidebar appears on public
+  logged-out pages.
+- Confirm disclaimers mention independent learning support and no TfL
+  affiliation.
+- Confirm SERU-style questions are described as original learning questions, not
+  official TfL questions.
+- Confirm logs do not include learner answers, tokens, cookies, passwords, raw
+  Supabase user objects, or payment data.
 
 ## Phase 3 Manual QA Checklist
 

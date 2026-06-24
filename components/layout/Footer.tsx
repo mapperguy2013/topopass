@@ -1,5 +1,5 @@
 const disclaimer =
-  "TopoPass is an independent study tool and is not affiliated with, endorsed by, or sponsored by Transport for London, Uber, Bolt, FREENOW, or any private hire operator.";
+  "TopoPass is an independent learning tool and is not affiliated with, endorsed by, or sponsored by Transport for London, Uber, Bolt, FREENOW, or any private hire operator. Practice content is for preparation only; SERU-style questions are original learning questions, not official TfL questions. Learners should refer to official TfL guidance where appropriate.";
 
 export function Footer() {
   return (

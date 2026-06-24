@@ -78,6 +78,18 @@ test("account page is protected by the reusable user requirement", () => {
   assert.match(accountPage, /signOutAction/);
 });
 
+test("account page shows current free plan without active billing", () => {
+  const accountPage = readProjectFile("app/account/page.tsx");
+
+  assert.match(accountPage, /getCurrentLearnerPlan/);
+  assert.match(accountPage, /getPlanDefinition/);
+  assert.match(accountPage, /Current plan/);
+  assert.match(accountPage, /Free plan/);
+  assert.match(accountPage, /Upgrade coming soon/);
+  assert.match(accountPage, /account_upgrade_cta_clicked/);
+  assert.doesNotMatch(accountPage, /checkout|subscription|stripe/i);
+});
+
 test("sign-out action exists and signs out through Supabase auth", () => {
   const actions = readProjectFile("app/auth/actions.ts");
 

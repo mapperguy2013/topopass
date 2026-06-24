@@ -195,7 +195,9 @@ export default function ResourcesPage() {
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
             TopoPass is an independent learning tool and is not affiliated with
-            or endorsed by Transport for London.
+            or endorsed by Transport for London. Practice content is for
+            preparation only; learners should refer to official TfL guidance
+            where appropriate.
           </p>
         </div>
       </section>

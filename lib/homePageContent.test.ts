@@ -56,6 +56,10 @@ const pricingSource = readFileSync(
   path.join(projectRoot, "app/pricing/page.tsx"),
   "utf8"
 );
+const footerSource = readFileSync(
+  path.join(projectRoot, "components/layout/Footer.tsx"),
+  "utf8"
+);
 const socialPreview = path.join(
   projectRoot,
   "public/social/topopass-social.svg"
@@ -104,11 +108,23 @@ test("home page is outcome-focused and keeps SERU visible without internal headi
   );
 });
 
-test("pricing page keeps payments as placeholders and links one account to both areas", () => {
-  assert.match(pricingSource, /Payments not live/);
-  assert.match(pricingSource, /Topographical and SERU preparation in one account/);
-  assert.match(pricingSource, /No Stripe or payment provider connected yet/);
+test("pricing page defines beta plans without live payments", () => {
+  assert.match(pricingSource, /planDefinitions/);
+  assert.match(pricingSource, /PricingViewedTracker/);
+  assert.match(pricingSource, /UpgradeInterestButton/);
+  assert.match(pricingSource, /free_practice_continued/);
+  assert.match(pricingSource, /No live payment provider is connected yet/);
+  assert.match(pricingSource, /One TopoPass account/);
+  assert.match(pricingSource, /Topographical map preparation/);
+  assert.match(pricingSource, /SERU-style private\s+hire knowledge practice/);
   assert.doesNotMatch(pricingSource, /from\s+["']stripe/i);
+});
+
+test("footer carries independent preparation disclaimer", () => {
+  assert.match(footerSource, /independent learning tool/);
+  assert.match(footerSource, /not affiliated with, endorsed by, or sponsored by Transport for London/);
+  assert.match(footerSource, /Practice content is for preparation only/);
+  assert.match(footerSource, /SERU-style questions are original learning questions/);
 });
 
 test("public social preview asset exists", () => {

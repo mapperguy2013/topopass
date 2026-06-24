@@ -3,7 +3,12 @@ export const analyticsEventNames = [
   "practice_start_click",
   "mock_exam_start_click",
   "pricing_cta_click",
-  "signup_intent_click"
+  "signup_intent_click",
+  "pricing_viewed",
+  "plan_selected",
+  "free_practice_continued",
+  "upgrade_interest_clicked",
+  "account_upgrade_cta_clicked"
 ] as const;
 
 export type AnalyticsEventName = (typeof analyticsEventNames)[number];

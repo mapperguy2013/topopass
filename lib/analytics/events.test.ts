@@ -9,6 +9,9 @@ import {
 test("analytics event names are explicitly allow-listed", () => {
   assert.equal(isAnalyticsEventName("home_cta_click"), true);
   assert.equal(isAnalyticsEventName("mock_exam_start_click"), true);
+  assert.equal(isAnalyticsEventName("pricing_viewed"), true);
+  assert.equal(isAnalyticsEventName("upgrade_interest_clicked"), true);
+  assert.equal(isAnalyticsEventName("account_upgrade_cta_clicked"), true);
   assert.equal(isAnalyticsEventName("learner_answer_submitted"), false);
 });
 
