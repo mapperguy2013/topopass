@@ -8,7 +8,11 @@ export const analyticsEventNames = [
   "plan_selected",
   "free_practice_continued",
   "upgrade_interest_clicked",
-  "account_upgrade_cta_clicked"
+  "account_upgrade_cta_clicked",
+  "newsletter_signup_started",
+  "newsletter_signup_submitted",
+  "newsletter_signup_success",
+  "newsletter_signup_error"
 ] as const;
 
 export type AnalyticsEventName = (typeof analyticsEventNames)[number];

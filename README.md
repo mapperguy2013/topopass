@@ -69,7 +69,9 @@ Stage 40 is complete as a monetisation foundation and beta-launch prep pass. It
 adds a simple Free, Plus, and Pro plan model, shows Free plan status in account,
 upgrades `/pricing` into a launch-ready preview with safe upgrade-interest
 capture, adds light upgrade-coming-soon placeholders, and keeps payment
-processing intentionally inactive.
+processing intentionally inactive. The additional Stage 40 footer pass adds a
+full public footer, Supabase-backed newsletter signup, placeholder social icons,
+and beta-ready information/legal pages.
 
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
@@ -164,6 +166,14 @@ Phase 3 guardrails:
   provider
 - Light feature-gating placeholders for advanced progress insights and expanded
   content
+- Fuller public footer with Prepare, Learn, Account, and Information columns
+- Newsletter signup using Supabase `newsletter_signups`; no email provider is
+  connected
+- Placeholder social icons for Instagram, TikTok, YouTube, Facebook, X/Twitter,
+  and LinkedIn
+- Public `/about`, `/contact`, `/privacy`, `/terms`, and `/disclaimer` pages
+- Contact email: `support@topopass.co.uk`; TopoPass is currently a sole trader
+  project
 - Expanded Learn section with structured learning paths
 - SERU preparation support as a separate learning area, not mixed into
   topographical mock exams
@@ -252,6 +262,11 @@ Phase 3 guardrails:
 | `/demo` | Public demo chooser for Topographical and SERU previews |
 | `/demo/topographical` | Short timed Topographical demo |
 | `/demo/seru` | Short timed SERU-style demo |
+| `/about` | Public information page about TopoPass |
+| `/contact` | Public contact page with support email and beta business address note |
+| `/privacy` | Beta-ready privacy policy placeholder |
+| `/terms` | Beta-ready plain-English terms placeholder |
+| `/disclaimer` | Independent-learning and no-affiliation disclaimer |
 | `/learn` | Expanded learning hub, study path, and SERU preparation support notes |
 | `/practice` | Practice hub for choosing Topographical or SERU-style practice |
 | `/practice/topographical` | Topographical practice hub with topic selector and question-type entry points |
@@ -1019,7 +1034,7 @@ Account plan display:
 Safety result:
 
 - No payment provider, checkout, Stripe integration, subscription billing, or
-  schema migration was added.
+  paid-plan schema migration was added.
 - No personal data is collected for upgrade interest.
 - Analytics events remain allow-listed and no-op unless a safe provider is
   supplied.
@@ -1037,6 +1052,54 @@ git diff --cached --check
 ```
 
 Result for this Stage 40 pass: lint, tests, and production build passed.
+
+## Stage 40 Footer, Newsletter, And Info Pages QA Status
+
+The additional Stage 40 public trust pass adds launch-supporting surfaces
+without adding email delivery, payments, or fake company details.
+
+Footer result:
+
+- The shared footer now includes Prepare, Learn, Account, and Information link
+  columns.
+- Footer bottom copy uses `© 2026 TopoPass. All rights reserved.`
+- Footer disclaimer states that TopoPass is independent, not affiliated with or
+  endorsed by TfL, and that SERU-style questions are original learning
+  questions, not official TfL questions.
+- Contact email is `support@topopass.co.uk`.
+- TopoPass is presented as a sole trader project; no company number, registered
+  office, fake certification, or fake address was added.
+
+Newsletter result:
+
+- Newsletter signup is available in the footer for signed-out and signed-in
+  visitors.
+- A Supabase migration was added for `newsletter_signups`.
+- Stored fields are email, source, consent text, consent version, and timestamp.
+- Duplicate emails are handled with a friendly already-signed-up message.
+- No Mailchimp, Resend, SendGrid, ConvertKit, SMTP provider, or confirmation
+  email was added.
+- Analytics events are no-op/allow-listed and do not include email addresses.
+
+Social and information pages result:
+
+- Footer social icons for Instagram, TikTok, YouTube, Facebook, X/Twitter, and
+  LinkedIn are placeholders only and marked as coming soon.
+- `/about`, `/contact`, `/privacy`, `/terms`, and `/disclaimer` were added as
+  useful beta-ready placeholder pages.
+- Legal/information pages should still be reviewed before full public launch.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this additional Stage 40 pass: lint, tests, and production build
+passed.
 
 ## Beta Launch Checklist
 

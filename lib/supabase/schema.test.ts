@@ -16,6 +16,11 @@ const publishingMigrationPath = path.join(
   "supabase/migrations/002_question_publishing_workflow.sql"
 );
 const publishingMigrationSql = readFileSync(publishingMigrationPath, "utf8");
+const newsletterMigrationPath = path.join(
+  projectRoot,
+  "supabase/migrations/003_newsletter_signups.sql"
+);
+const newsletterMigrationSql = readFileSync(newsletterMigrationPath, "utf8");
 
 const requiredTables = [
   "profiles",
@@ -117,6 +122,25 @@ test("question bank admin role helper uses the current profiles.role model", () 
   assert.match(publishingMigrationSql, /from public\.profiles/i);
   assert.match(publishingMigrationSql, /role = 'admin'/i);
   assert.match(publishingMigrationSql, /auth\.uid\(\)/i);
+});
+
+test("newsletter signup migration is narrow public insert only", () => {
+  assert.match(
+    newsletterMigrationSql,
+    /create table if not exists public\.newsletter_signups/i
+  );
+  assert.match(newsletterMigrationSql, /email text not null/i);
+  assert.match(newsletterMigrationSql, /consent_text text not null/i);
+  assert.match(newsletterMigrationSql, /consent_version text not null/i);
+  assert.match(
+    newsletterMigrationSql,
+    /alter table public\.newsletter_signups enable row level security/i
+  );
+  assert.match(
+    newsletterMigrationSql,
+    /create policy "newsletter_signups_public_insert"[\s\S]+?for insert[\s\S]+?to anon, authenticated/i
+  );
+  assert.doesNotMatch(newsletterMigrationSql, /for select/i);
 });
 
 test("Supabase env docs expose only public browser-safe values", () => {

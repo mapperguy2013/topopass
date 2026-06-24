@@ -309,6 +309,31 @@ export type Database = {
         };
         Relationships: [];
       };
+      newsletter_signups: {
+        Row: {
+          id: string;
+          email: string;
+          source: string;
+          consent_text: string;
+          consent_version: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          email: string;
+          source?: string;
+          consent_text: string;
+          consent_version?: string;
+          created_at?: string;
+        };
+        Update: {
+          email?: string;
+          source?: string;
+          consent_text?: string;
+          consent_version?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;

@@ -49,6 +49,11 @@ test("signed-out learner pages remain public and do not require auth guards", ()
     "app/demo/page.tsx",
     "app/demo/topographical/page.tsx",
     "app/demo/seru/page.tsx",
+    "app/about/page.tsx",
+    "app/contact/page.tsx",
+    "app/privacy/page.tsx",
+    "app/terms/page.tsx",
+    "app/disclaimer/page.tsx",
     "app/topographical/page.tsx",
     "app/seru/page.tsx",
     "app/learn/page.tsx",
@@ -128,6 +133,7 @@ test("Stage 28 auth files do not reference private Supabase keys", () => {
     "lib/db/mockAttemptRepository.ts",
     "lib/db/practiceAttemptRepository.ts",
     "lib/db/progressRepository.ts",
+    "app/newsletter/actions.ts",
     "middleware.ts"
   ];
 

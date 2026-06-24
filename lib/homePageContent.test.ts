@@ -60,6 +60,21 @@ const footerSource = readFileSync(
   path.join(projectRoot, "components/layout/Footer.tsx"),
   "utf8"
 );
+const newsletterActionSource = readFileSync(
+  path.join(projectRoot, "app/newsletter/actions.ts"),
+  "utf8"
+);
+const newsletterFormSource = readFileSync(
+  path.join(projectRoot, "src/components/newsletter/NewsletterSignupForm.tsx"),
+  "utf8"
+);
+const infoPageSources = [
+  "app/about/page.tsx",
+  "app/contact/page.tsx",
+  "app/privacy/page.tsx",
+  "app/terms/page.tsx",
+  "app/disclaimer/page.tsx"
+].map((file) => readFileSync(path.join(projectRoot, file), "utf8"));
 const socialPreview = path.join(
   projectRoot,
   "public/social/topopass-social.svg"
@@ -122,9 +137,41 @@ test("pricing page defines beta plans without live payments", () => {
 
 test("footer carries independent preparation disclaimer", () => {
   assert.match(footerSource, /independent learning tool/);
-  assert.match(footerSource, /not affiliated with, endorsed by, or sponsored by Transport for London/);
-  assert.match(footerSource, /Practice content is for preparation only/);
+  assert.match(footerSource, /not affiliated with or endorsed by Transport for London/);
   assert.match(footerSource, /SERU-style questions are original learning questions/);
+  assert.match(footerSource, /© 2026 TopoPass\. All rights reserved\./);
+  assert.match(footerSource, /support@topopass\.co\.uk/);
+  assert.match(footerSource, /\/about/);
+  assert.match(footerSource, /\/contact/);
+  assert.match(footerSource, /\/privacy/);
+  assert.match(footerSource, /\/terms/);
+  assert.match(footerSource, /\/disclaimer/);
+  assert.match(footerSource, /Instagram/);
+  assert.match(footerSource, /TikTok/);
+  assert.match(footerSource, /coming soon/);
+});
+
+test("newsletter signup is Supabase-backed without an email provider", () => {
+  assert.match(footerSource, /NewsletterSignupForm/);
+  assert.match(newsletterFormSource, /Get TopoPass updates|Get updates/);
+  assert.match(newsletterFormSource, /newsletter_signup_started/);
+  assert.match(newsletterFormSource, /newsletter_signup_submitted/);
+  assert.match(newsletterFormSource, /newsletter_signup_success/);
+  assert.match(newsletterFormSource, /newsletter_signup_error/);
+  assert.match(newsletterActionSource, /\.from\("newsletter_signups"\)/);
+  assert.match(newsletterActionSource, /support@topopass\.co\.uk/);
+  assert.doesNotMatch(newsletterActionSource, /mailchimp|sendgrid|resend|convertkit/i);
+  assert.doesNotMatch(newsletterFormSource, /mailchimp|sendgrid|resend|convertkit/i);
+});
+
+test("information and legal pages exist with beta-ready placeholder copy", () => {
+  for (const source of infoPageSources) {
+    assert.match(source, /<Navbar \/>/);
+    assert.match(source, /<Footer \/>/);
+    assert.match(source, /buildPageMetadata/);
+    assert.match(source, /support@topopass\.co\.uk|TopoPass|Last updated: 2026/);
+    assert.doesNotMatch(source, /Company number|registered office|guaranteed pass/i);
+  }
 });
 
 test("public social preview asset exists", () => {

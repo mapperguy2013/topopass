@@ -12,6 +12,10 @@ test("analytics event names are explicitly allow-listed", () => {
   assert.equal(isAnalyticsEventName("pricing_viewed"), true);
   assert.equal(isAnalyticsEventName("upgrade_interest_clicked"), true);
   assert.equal(isAnalyticsEventName("account_upgrade_cta_clicked"), true);
+  assert.equal(isAnalyticsEventName("newsletter_signup_started"), true);
+  assert.equal(isAnalyticsEventName("newsletter_signup_submitted"), true);
+  assert.equal(isAnalyticsEventName("newsletter_signup_success"), true);
+  assert.equal(isAnalyticsEventName("newsletter_signup_error"), true);
   assert.equal(isAnalyticsEventName("learner_answer_submitted"), false);
 });
 
