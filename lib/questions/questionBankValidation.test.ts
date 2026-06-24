@@ -9,6 +9,7 @@ import {
 } from "../../src/data/routeQuestions.ts";
 import { DEFAULT_MOCK_EXAM_CONFIG } from "../mockExamConfig.ts";
 import { selectMockExamQuestions } from "../mockTestQuestions.ts";
+import { isQuestionTopic, QUESTION_TOPICS } from "./topics.ts";
 
 function assertUniqueIds(label: string, ids: string[]) {
   const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
@@ -63,6 +64,7 @@ test("knowledge questions have valid options, answers, explanations, and tips", 
       `${question.id} correct answer must appear in options`
     );
     assert.ok(question.category.trim().length > 0, question.id);
+    assert.ok(isQuestionTopic(question.category), question.id);
     assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
     assert.ok(question.tip?.trim(), `${question.id} needs tip`);
   });
@@ -82,6 +84,7 @@ test("map-click questions have valid coordinates, tolerances, explanations, and 
     assert.ok(isValidLongitude(question.answer.lng), `${question.id} longitude`);
     assert.ok(question.toleranceMeters > 0, `${question.id} tolerance`);
     assert.ok(question.category.trim().length > 0, question.id);
+    assert.ok(isQuestionTopic(question.category), question.id);
     assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
     assert.ok(question.tip?.trim(), `${question.id} needs tip`);
     assert.ok(
@@ -115,7 +118,27 @@ test("route questions have valid endpoints, stored geometry, explanations, and t
     assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
     assert.ok(question.tip?.trim(), `${question.id} needs tip`);
     assert.ok(question.idealRouteDescription?.trim(), question.id);
+    assert.ok(isQuestionTopic(question.tags[0]), question.id);
   });
+});
+
+test("static question banks use the Stage 36 topic structure", () => {
+  const staticTopics = new Set([
+    ...knowledgeQuestionBank.map((question) => question.category),
+    ...demoMapClickQuestions.map((question) => question.category),
+    ...routeQuestions.map((question) => question.tags[0])
+  ]);
+
+  assert.ok(staticTopics.size >= 8);
+  assert.ok(staticTopics.has("Route planning"));
+  assert.ok(staticTopics.has("Stations and transport hubs"));
+  assert.ok(staticTopics.has("Map interpretation"));
+  for (const topic of staticTopics) {
+    assert.ok(
+      QUESTION_TOPICS.includes(topic as (typeof QUESTION_TOPICS)[number]),
+      `Unexpected topic: ${topic}`
+    );
+  }
 });
 
 test("mock exam selection still works with expanded banks", () => {

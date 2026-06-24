@@ -57,7 +57,7 @@ const sharedQuestionMetadata = {
   mapArea: KINGS_CROSS_EUSTON_MAP,
   mapBounds: KINGS_CROSS_EUSTON_BOUNDS,
   status: "active" as const,
-  tags: ["route-planning", "london"],
+  tags: ["Route planning", "London geography"],
   explanation:
     "Compare your route with the accepted journey and review the start, destination, coverage, and off-route feedback.",
   tip:

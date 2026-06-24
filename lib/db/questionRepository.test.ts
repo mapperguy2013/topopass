@@ -4,6 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { getAllQuestions } from "../admin/questionAdminHelpers.ts";
+import { QUESTION_TOPICS } from "../questions/topics.ts";
 import { hasSupabaseConfig } from "../supabaseClient.ts";
 import {
   dbRowToStaticQuestion,
@@ -296,6 +297,8 @@ test("admin question inventory can read all publishing statuses", async () => {
     ),
     false
   );
+  assert.equal(result.items[0].category, question.category);
+  assert.equal(result.items[0].difficulty, question.difficulty);
 });
 
 test("admin export reads question_bank_items with optional status filter", async () => {
@@ -313,6 +316,8 @@ test("admin export reads question_bank_items with optional status filter", async
     result.items.map((item) => item.status),
     ["published"]
   );
+  assert.equal(result.items[0].category, question.category);
+  assert.equal(result.items[0].difficulty, question.difficulty);
   assert.ok(
     client.calls.some(
       (call) =>
@@ -445,6 +450,31 @@ test("question import validation rejects old fields and invalid statuses", () =>
   assert.ok(preview.errors.some((error) => error.field === "status"));
 });
 
+test("question import validation rejects invalid topics and difficulty values", () => {
+  const question = getAllQuestions().find((entry) => entry.type === "knowledge");
+  assert.ok(question);
+
+  const invalidTopicRecord = {
+    ...rowFromQuestion(question, "draft"),
+    id: "invalid-topic-question",
+    category: "Unofficial local trivia"
+  };
+  const invalidDifficultyRecord = {
+    ...rowFromQuestion(question, "draft"),
+    id: "invalid-difficulty-question",
+    difficulty: "expert"
+  };
+  const preview = previewQuestionImport(
+    JSON.stringify({
+      question_bank_items: [invalidTopicRecord, invalidDifficultyRecord]
+    })
+  );
+
+  assert.equal(preview.validRecords.length, 0);
+  assert.ok(preview.errors.some((error) => error.field === "category"));
+  assert.ok(preview.errors.some((error) => error.field === "difficulty"));
+});
+
 test("imported question records default to draft unless status is valid", () => {
   const question = getAllQuestions().find((entry) => entry.type === "knowledge");
   assert.ok(question);
@@ -463,6 +493,26 @@ test("imported question records default to draft unless status is valid", () => 
   assert.equal(preview.validRecords.length, 1);
   assert.equal(preview.validRecords[0].status, "draft");
   assert.equal(preview.validRecords[0].published_at, null);
+});
+
+test("import preview preserves topic and difficulty metadata", () => {
+  const question = getAllQuestions().find((entry) => entry.type === "knowledge");
+  assert.ok(question);
+
+  const record = {
+    ...rowFromQuestion(question, "draft"),
+    category: "Passenger scenario judgement",
+    difficulty: "hard" as const
+  };
+  const preview = previewQuestionImport(
+    JSON.stringify({ question_bank_items: [record] })
+  );
+
+  assert.equal(preview.errors.length, 0);
+  assert.equal(preview.validRecords[0].category, "Passenger scenario judgement");
+  assert.equal(preview.validRecords[0].difficulty, "hard");
+  assert.equal(preview.previewItems[0].category, "Passenger scenario judgement");
+  assert.equal(preview.previewItems[0].difficulty, "hard");
 });
 
 test("admin import writes validated records to question_bank_items", async () => {
@@ -639,6 +689,7 @@ test("production question seed file exists and validates through import preview"
   assert.ok(Array.isArray(seed.question_bank_items));
   assert.equal(preview.errors.length, 0);
   assert.equal(preview.validRecords.length, seed.question_bank_items.length);
+  assert.ok(preview.validRecords.length >= 18);
   assert.ok(questionTypes.has("knowledge"));
   assert.ok(questionTypes.has("map-click"));
   assert.ok(questionTypes.has("route-drawing"));
@@ -660,6 +711,28 @@ test("production question seed targets question_bank_items with safe draft statu
   );
   assert.ok(preview.validRecords.every((record) => record.status === "draft"));
   assert.ok(preview.validRecords.every((record) => record.published_at === null));
+  assert.ok(
+    preview.validRecords.every((record) =>
+      QUESTION_TOPICS.includes(record.category as (typeof QUESTION_TOPICS)[number])
+    )
+  );
+  assert.ok(
+    new Set(preview.validRecords.map((record) => record.category)).size >= 8
+  );
+});
+
+test("admin inventory supports topic, status, and difficulty organisation", () => {
+  const source = readFileSync(
+    path.join(projectRoot, "src/components/admin/AdminQuestionInventory.tsx"),
+    "utf8"
+  );
+
+  assert.match(source, /QUESTION_TOPICS/);
+  assert.match(source, /QUESTION_DIFFICULTIES/);
+  assert.match(source, /statusCounts/);
+  assert.match(source, /databaseOnlyRows/);
+  assert.match(source, /name="topic"/);
+  assert.match(source, /difficulty/);
 });
 
 test("manual seed script reuses Stage 32 validation and avoids old tables", () => {

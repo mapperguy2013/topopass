@@ -6,6 +6,11 @@ import type {
   TableInsert,
   TableRow
 } from "./types.ts";
+import {
+  isQuestionTopic,
+  QUESTION_DIFFICULTIES,
+  QUESTION_TOPICS
+} from "../questions/topics.ts";
 
 export type QuestionExportStatusFilter = "all" | QuestionStatus;
 export type QuestionImportMode = "create" | "upsert";
@@ -23,6 +28,8 @@ export type QuestionImportPreviewItem = {
   id: string;
   questionType: QuestionType;
   status: QuestionStatus;
+  category: string | null;
+  difficulty: QuestionDifficulty;
   prompt: string;
 };
 
@@ -42,7 +49,6 @@ export type QuestionBankExport = {
 
 const QUESTION_TYPES = ["knowledge", "map-click", "route-drawing"] as const;
 const QUESTION_STATUSES = ["draft", "published", "archived"] as const;
-const QUESTION_DIFFICULTIES = ["easy", "medium", "hard"] as const;
 const OLD_TABLE_KEYS = ["questions", "mock_test_attempts", "mock_test_answers"];
 const OLD_QUESTION_FIELDS = ["bank_id", "source_note"];
 
@@ -424,6 +430,15 @@ function validateQuestionRecord(
 
   const recordId = requiredString(value.id, "id", errors, index, id);
   const prompt = requiredString(value.prompt, "prompt", errors, index, id);
+  const category = requiredString(value.category, "category", errors, index, id);
+  if (category && !isQuestionTopic(category)) {
+    errors.push({
+      index,
+      id,
+      field: "category",
+      message: `category must be one of: ${QUESTION_TOPICS.join(", ")}.`
+    });
+  }
 
   if (!isQuestionType(value.question_type)) {
     errors.push({
@@ -448,7 +463,7 @@ function validateQuestionRecord(
     }
   }
 
-  let difficulty: QuestionDifficulty | null = null;
+  let difficulty: QuestionDifficulty = "medium";
   if (value.difficulty !== undefined && value.difficulty !== null) {
     if (isQuestionDifficulty(value.difficulty)) {
       difficulty = value.difficulty;
@@ -457,7 +472,7 @@ function validateQuestionRecord(
         index,
         id,
         field: "difficulty",
-        message: "difficulty must be easy, medium, or hard when provided."
+        message: `difficulty must be one of: ${QUESTION_DIFFICULTIES.join(", ")}.`
       });
     }
   }
@@ -496,7 +511,7 @@ function validateQuestionRecord(
       question_type: value.question_type,
       status,
       difficulty,
-      category: optionalString(value.category),
+      category,
       prompt,
       explanation: optionalString(value.explanation),
       tip: optionalString(value.tip),
@@ -618,6 +633,8 @@ export function previewQuestionImport(rawJson: string): QuestionImportPreview {
       id: record.id,
       questionType: record.question_type,
       status: record.status ?? "draft",
+      category: record.category ?? null,
+      difficulty: record.difficulty ?? "medium",
       prompt: record.prompt
     })),
     errors

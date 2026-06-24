@@ -231,12 +231,14 @@ export function QuestionImportExportPanel() {
 
           {previewState.previewItems.length > 0 && (
             <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[720px] text-left text-sm">
+              <table className="w-full min-w-[920px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-3 py-2">ID</th>
                     <th className="px-3 py-2">Type</th>
                     <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Topic</th>
+                    <th className="px-3 py-2">Difficulty</th>
                     <th className="px-3 py-2">Prompt</th>
                   </tr>
                 </thead>
@@ -255,6 +257,12 @@ export function QuestionImportExportPanel() {
                         >
                           {item.status}
                         </span>
+                      </td>
+                      <td className="px-3 py-3 text-slate-700">
+                        {item.category ?? "Uncategorised"}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700">
+                        {item.difficulty}
                       </td>
                       <td className="px-3 py-3 text-slate-700">{item.prompt}</td>
                     </tr>

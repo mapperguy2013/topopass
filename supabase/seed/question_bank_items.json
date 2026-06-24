@@ -5,145 +5,446 @@
   "statusFilter": "all",
   "question_bank_items": [
     {
-      "id": "seed-knowledge-cardinal-route-check",
+      "id": "stage36-knowledge-thames-orientation",
       "question_type": "knowledge",
       "status": "draft",
       "difficulty": "easy",
-      "category": "Map reading",
-      "prompt": "On a standard street atlas, which direction is normally at the top of the map page?",
-      "explanation": "Most printed and digital maps are drawn with north at the top unless a rotation marker says otherwise.",
-      "tip": "Check the north arrow or page orientation before planning a route.",
-      "tags": ["Map reading", "Orientation"],
+      "category": "London geography",
+      "prompt": "In central London, which feature is the most useful broad north/south orientation line?",
+      "explanation": "The River Thames is the clearest central London orientation feature and separates many north-bank and south-bank routes.",
+      "tip": "When uncertain, place the Thames first, then locate the destination north or south of it.",
+      "tags": ["London geography", "River Thames", "Orientation"],
       "payload": {
-        "options": ["North", "South", "East", "West"],
-        "correctAnswer": "North",
+        "options": ["River Thames", "M25", "Regent's Canal only", "Piccadilly line"],
+        "correctAnswer": "River Thames",
         "incorrectExplanations": {
-          "South": "South is normally at the bottom of a north-up map.",
-          "East": "East is normally to the right on a north-up map.",
-          "West": "West is normally to the left on a north-up map."
+          "M25": "The M25 is an orbital motorway outside central London, not a central orientation line.",
+          "Regent's Canal only": "The canal can help locally, but it is not the main central London divider.",
+          "Piccadilly line": "Tube lines are useful references, but road-map orientation should start with visible geography."
         }
       },
       "version": 1,
-      "source": "production-seed"
+      "source": "stage-36-production-seed"
     },
     {
-      "id": "seed-knowledge-one-way-awareness",
+      "id": "stage36-knowledge-a501-corridor",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Major roads and routes",
+      "prompt": "Which road corridor links Marylebone Road, Euston Road, Pentonville Road, and City Road?",
+      "explanation": "These roads form the A501 / Inner Ring Road corridor across north central London.",
+      "tip": "Learn the A501 as a driver orientation spine from west to east across north central London.",
+      "tags": ["Major roads and routes", "A501", "Inner Ring Road"],
+      "payload": {
+        "options": ["A501 / Inner Ring Road", "A3", "South Circular", "A10 only"],
+        "correctAnswer": "A501 / Inner Ring Road",
+        "incorrectExplanations": {
+          "A3": "The A3 is a different south-west route corridor.",
+          "South Circular": "The South Circular is well south of this central corridor.",
+          "A10 only": "The A10 links north-south routes, but it is not the full west-east corridor named here."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-knowledge-bridge-westminster",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Bridges and river crossings",
+      "prompt": "Which Thames bridge connects Westminster with the St Thomas' Hospital / Waterloo area?",
+      "explanation": "Westminster Bridge crosses the Thames between Parliament Square and the St Thomas' Hospital side.",
+      "tip": "Pair each bridge with the nearest landmark on both banks.",
+      "tags": ["Bridges and river crossings", "Westminster", "Hospitals"],
+      "payload": {
+        "options": ["Westminster Bridge", "Tower Bridge", "Chelsea Bridge", "Putney Bridge"],
+        "correctAnswer": "Westminster Bridge",
+        "incorrectExplanations": {
+          "Tower Bridge": "Tower Bridge is much farther east by the Tower of London.",
+          "Chelsea Bridge": "Chelsea Bridge is west of Westminster.",
+          "Putney Bridge": "Putney Bridge is in west London, away from the Westminster hospital area."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-knowledge-station-interchange",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Stations and transport hubs",
+      "prompt": "Which two mainline stations sit close together around King's Cross Road and Euston Road?",
+      "explanation": "King's Cross and St Pancras are adjacent major termini and are often treated as one transport hub for local orientation.",
+      "tip": "Treat King's Cross St Pancras as a major north-central anchor when reading route questions.",
+      "tags": ["Stations and transport hubs", "King's Cross", "St Pancras"],
+      "payload": {
+        "options": ["King's Cross and St Pancras", "Victoria and Waterloo", "Paddington and Marylebone", "London Bridge and Blackfriars"],
+        "correctAnswer": "King's Cross and St Pancras",
+        "incorrectExplanations": {
+          "Victoria and Waterloo": "These stations are on different sides of Westminster and the river.",
+          "Paddington and Marylebone": "These are both west/north-west central, but not the King's Cross Road hub.",
+          "London Bridge and Blackfriars": "These are farther south/east around the Thames and City approaches."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-knowledge-uclh-euston-road",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Hospitals and key public buildings",
+      "prompt": "University College Hospital is most closely associated with which central London road corridor?",
+      "explanation": "University College Hospital is near Euston Road and Tottenham Court Road.",
+      "tip": "Hospitals often need both a landmark and a road-corridor memory cue.",
+      "tags": ["Hospitals and key public buildings", "Euston Road", "UCLH"],
+      "payload": {
+        "options": ["Euston Road", "King's Road", "Commercial Road", "Old Kent Road"],
+        "correctAnswer": "Euston Road",
+        "incorrectExplanations": {
+          "King's Road": "King's Road is in Chelsea, not the UCLH area.",
+          "Commercial Road": "Commercial Road is in east London.",
+          "Old Kent Road": "Old Kent Road is south-east of central London."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-knowledge-british-museum-area",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Landmarks and destinations",
+      "prompt": "The British Museum is in which central London area?",
+      "explanation": "The British Museum is in Bloomsbury, close to Great Russell Street.",
+      "tip": "Link Bloomsbury with museums, hospitals, universities, and garden squares.",
+      "tags": ["Landmarks and destinations", "Bloomsbury", "British Museum"],
+      "payload": {
+        "options": ["Bloomsbury", "Docklands", "Battersea", "Hammersmith"],
+        "correctAnswer": "Bloomsbury",
+        "incorrectExplanations": {
+          "Docklands": "Docklands is east of the City, not the British Museum area.",
+          "Battersea": "Battersea is south-west of central London.",
+          "Hammersmith": "Hammersmith is west London."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-knowledge-one-way-route-judgement",
       "question_type": "knowledge",
       "status": "draft",
       "difficulty": "medium",
       "category": "Route planning",
-      "prompt": "Why should a driver check one-way streets before finalising a route?",
-      "explanation": "A route that looks direct on the page may be impossible or unsafe if it goes against a one-way restriction.",
-      "tip": "Use one-way arrows and access restrictions to confirm the route is driveable.",
-      "tags": ["Route planning", "Road restrictions"],
+      "prompt": "A route looks shortest on the map, but the first street is one-way against you. What is the best judgement?",
+      "explanation": "The shortest visible line is not valid if it ignores traffic direction. A legal, driveable alternative is needed.",
+      "tip": "In route planning, first check that each chosen road can be driven in the intended direction.",
+      "tags": ["Route planning", "Route judgement", "One-way streets"],
       "payload": {
         "options": [
-          "To avoid planning a route against the permitted traffic direction",
-          "To estimate the age of the road surface",
-          "To identify all bus stops on the route",
-          "To avoid using any A roads"
+          "Choose a legal alternative route",
+          "Use the street anyway because it is shorter",
+          "Ignore one-way arrows on short roads",
+          "Stop planning and use only the destination road"
         ],
-        "correctAnswer": "To avoid planning a route against the permitted traffic direction",
+        "correctAnswer": "Choose a legal alternative route",
         "incorrectExplanations": {
-          "To estimate the age of the road surface": "Road surface age is not the purpose of one-way signs.",
-          "To identify all bus stops on the route": "Bus stops may matter for observation, but one-way checks are about permitted direction.",
-          "To avoid using any A roads": "A roads may be appropriate; one-way checks are not a ban on main roads."
+          "Use the street anyway because it is shorter": "A route must be lawful and driveable, not only short.",
+          "Ignore one-way arrows on short roads": "One-way restrictions still matter on short streets.",
+          "Stop planning and use only the destination road": "The route must still connect the start to the destination."
         }
       },
       "version": 1,
-      "source": "production-seed"
+      "source": "stage-36-production-seed"
     },
     {
-      "id": "seed-map-click-kings-cross-station",
-      "question_type": "map-click",
+      "id": "stage36-knowledge-east-west-sense",
+      "question_type": "knowledge",
       "status": "draft",
       "difficulty": "easy",
-      "category": "Location knowledge",
-      "prompt": "Click King's Cross St Pancras station area.",
-      "explanation": "King's Cross St Pancras is a major north London transport interchange on Euston Road.",
-      "tip": "Use Euston Road and the nearby rail termini as anchors.",
-      "tags": ["Location knowledge", "Stations"],
+      "category": "Direction sense",
+      "prompt": "On a north-up map, if a destination is to the right of your start point, it is generally in which direction?",
+      "explanation": "On a north-up map, east is to the right and west is to the left.",
+      "tip": "Before tracing roads, confirm north-up orientation and read east/west consistently.",
+      "tags": ["Direction sense", "Map orientation"],
       "payload": {
-        "targetName": "King's Cross St Pancras",
-        "answer": {
-          "lat": 51.5308,
-          "lng": -0.1238
-        },
-        "toleranceMeters": 180,
-        "acceptedAreaDescription": "The station complex and immediate entrances around King's Cross and St Pancras."
+        "options": ["East", "West", "South", "North-west"],
+        "correctAnswer": "East",
+        "incorrectExplanations": {
+          "West": "West is normally to the left on a north-up map.",
+          "South": "South is normally down the page.",
+          "North-west": "North-west would be up and left, not simply right."
+        }
       },
       "version": 1,
-      "source": "production-seed"
+      "source": "stage-36-production-seed"
     },
     {
-      "id": "seed-map-click-euston-station",
-      "question_type": "map-click",
-      "status": "draft",
-      "difficulty": "easy",
-      "category": "Location knowledge",
-      "prompt": "Click Euston station.",
-      "explanation": "Euston station sits on Euston Road west of King's Cross and St Pancras.",
-      "tip": "Follow Euston Road west from King's Cross to locate Euston station.",
-      "tags": ["Location knowledge", "Stations"],
-      "payload": {
-        "targetName": "Euston station",
-        "answer": {
-          "lat": 51.5282,
-          "lng": -0.1337
-        },
-        "toleranceMeters": 180,
-        "acceptedAreaDescription": "The Euston station concourse and immediate frontage on Euston Road."
-      },
-      "version": 1,
-      "source": "production-seed"
-    },
-    {
-      "id": "seed-route-kings-cross-to-euston",
-      "question_type": "route-drawing",
+      "id": "stage36-knowledge-index-grid-sequence",
+      "question_type": "knowledge",
       "status": "draft",
       "difficulty": "medium",
+      "category": "Map interpretation",
+      "prompt": "When using a printed street atlas, what is the sensible sequence for finding a named street?",
+      "explanation": "Use the street index to find the page/grid reference, then locate that grid square on the map page.",
+      "tip": "Do not scan a whole atlas page before using the index and grid.",
+      "tags": ["Map interpretation", "Street index", "Grid references"],
+      "payload": {
+        "options": [
+          "Street index, page, grid square",
+          "Compass rose, scale bar, page edge",
+          "Nearest park, nearest station, road colour",
+          "Page number only, then guess"
+        ],
+        "correctAnswer": "Street index, page, grid square",
+        "incorrectExplanations": {
+          "Compass rose, scale bar, page edge": "Those help orientation and distance, but not first lookup of a named street.",
+          "Nearest park, nearest station, road colour": "Landmarks can help after locating the page/grid reference.",
+          "Page number only, then guess": "The grid reference avoids guessing within a dense road network."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-knowledge-passenger-dropoff",
+      "question_type": "knowledge",
+      "status": "draft",
+      "difficulty": "hard",
+      "category": "Passenger scenario judgement",
+      "prompt": "A passenger asks for a hospital entrance on a busy one-way street. What should a driver prioritise when planning the final approach?",
+      "explanation": "The final approach should be safe, legal, and close to the correct entrance, accounting for one-way and stopping restrictions.",
+      "tip": "For passenger scenarios, think beyond the destination name and plan the usable arrival side.",
+      "tags": ["Passenger scenario judgement", "Hospitals", "Access restrictions"],
+      "payload": {
+        "options": [
+          "A safe legal approach to the correct entrance",
+          "The shortest line drawn across the map",
+          "Any nearby street with the same postcode",
+          "The first road with a bus stop"
+        ],
+        "correctAnswer": "A safe legal approach to the correct entrance",
+        "incorrectExplanations": {
+          "The shortest line drawn across the map": "The shortest visual line may ignore access, legality, or the correct entrance.",
+          "Any nearby street with the same postcode": "Nearby is not enough if the passenger needs a specific entrance.",
+          "The first road with a bus stop": "A bus stop does not automatically make a safe or legal private-hire drop-off."
+        }
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-map-click-paddington-station",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Stations and transport hubs",
+      "prompt": "Click Paddington Station.",
+      "explanation": "Paddington is a major west-central London terminus around Praed Street.",
+      "tip": "Use Edgware Road, Bayswater, and Hyde Park as west-central orientation anchors.",
+      "tags": ["Stations and transport hubs", "Paddington", "Rail stations"],
+      "payload": {
+        "targetName": "Paddington Station",
+        "answer": { "lat": 51.5154, "lng": -0.1755 },
+        "toleranceMeters": 180,
+        "acceptedAreaDescription": "The main Paddington station footprint and immediate entrance area."
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-map-click-victoria-station",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Stations and transport hubs",
+      "prompt": "Click Victoria Station.",
+      "explanation": "Victoria station is close to Westminster, Buckingham Palace Road, and Victoria Street.",
+      "tip": "Victoria is a useful west Westminster anchor for passenger routes.",
+      "tags": ["Stations and transport hubs", "Victoria", "Westminster"],
+      "payload": {
+        "targetName": "Victoria Station",
+        "answer": { "lat": 51.4952, "lng": -0.1441 },
+        "toleranceMeters": 180,
+        "acceptedAreaDescription": "The station concourse and immediate entrances around Victoria."
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-map-click-st-thomas-hospital",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Hospitals and key public buildings",
+      "prompt": "Click St Thomas' Hospital.",
+      "explanation": "St Thomas' Hospital is on the south bank by Westminster Bridge.",
+      "tip": "Find Parliament and Westminster Bridge, then look directly across the river.",
+      "tags": ["Hospitals and key public buildings", "St Thomas' Hospital", "Westminster Bridge"],
+      "payload": {
+        "targetName": "St Thomas' Hospital",
+        "answer": { "lat": 51.4984, "lng": -0.118 },
+        "toleranceMeters": 190,
+        "acceptedAreaDescription": "The St Thomas' Hospital campus beside Westminster Bridge."
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-map-click-tower-bridge",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Bridges and river crossings",
+      "prompt": "Click Tower Bridge.",
+      "explanation": "Tower Bridge crosses the Thames just east of the Tower of London.",
+      "tip": "Do not confuse Tower Bridge with London Bridge, which is farther west.",
+      "tags": ["Bridges and river crossings", "Tower Bridge", "Thames"],
+      "payload": {
+        "targetName": "Tower Bridge",
+        "answer": { "lat": 51.5055, "lng": -0.0754 },
+        "toleranceMeters": 180,
+        "acceptedAreaDescription": "The bridge deck and immediate approaches."
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-map-click-british-museum",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "easy",
+      "category": "Landmarks and destinations",
+      "prompt": "Click the British Museum.",
+      "explanation": "The British Museum is in Bloomsbury near Great Russell Street.",
+      "tip": "Use Russell Square, Holborn, and Tottenham Court Road as nearby anchors.",
+      "tags": ["Landmarks and destinations", "British Museum", "Bloomsbury"],
+      "payload": {
+        "targetName": "British Museum",
+        "answer": { "lat": 51.5194, "lng": -0.127 },
+        "toleranceMeters": 170,
+        "acceptedAreaDescription": "The British Museum block and immediate entrances."
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-map-click-oxford-circus",
+      "question_type": "map-click",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Major roads and routes",
+      "prompt": "Click Oxford Circus.",
+      "explanation": "Oxford Circus is the junction of Oxford Street and Regent Street.",
+      "tip": "Use major shopping streets as route anchors, but check one-way and access restrictions nearby.",
+      "tags": ["Major roads and routes", "Oxford Street", "Regent Street"],
+      "payload": {
+        "targetName": "Oxford Circus",
+        "answer": { "lat": 51.5152, "lng": -0.1419 },
+        "toleranceMeters": 150,
+        "acceptedAreaDescription": "The Oxford Circus junction and station entrance area."
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-route-kings-cross-to-euston",
+      "question_type": "route-drawing",
+      "status": "draft",
+      "difficulty": "easy",
       "category": "Route planning",
       "prompt": "Plan a direct route from King's Cross St Pancras to Euston station.",
-      "explanation": "The straightforward route uses Euston Road westbound, while still requiring attention to junctions, bus lanes, and access restrictions.",
-      "tip": "Start by identifying the main westbound road corridor before checking local turns.",
-      "tags": ["Route planning", "Central London", "Stations"],
+      "explanation": "This is a short central route that should stay close to the Euston Road corridor while respecting junctions and access.",
+      "tip": "Identify the westbound corridor first, then check the final station approach.",
+      "tags": ["Route planning", "Stations and transport hubs", "Central London"],
       "payload": {
         "title": "King's Cross St Pancras to Euston station",
         "fromLabel": "King's Cross St Pancras",
         "toLabel": "Euston station",
-        "from": {
-          "lat": 51.5308,
-          "lng": -0.1238
-        },
-        "to": {
-          "lat": 51.5282,
-          "lng": -0.1337
-        },
+        "from": { "lat": 51.5308, "lng": -0.1238 },
+        "to": { "lat": 51.5282, "lng": -0.1337 },
         "acceptedRoute": {
-          "geometry": [
-            [880, 390],
-            [760, 410],
-            [610, 430],
-            [470, 450],
-            [330, 470]
-          ],
+          "geometry": [[880, 390], [760, 410], [610, 430], [470, 450], [330, 470]],
           "source": "manual",
           "coordinateSystem": "map",
           "reviewed": true
         },
         "mapArea": "kings-cross-euston",
-        "mapBounds": {
-          "minX": 0,
-          "minY": 0,
-          "maxX": 1200,
-          "maxY": 800
-        },
-        "idealRouteDescription": "Use the Euston Road corridor westbound from King's Cross St Pancras toward Euston station, checking access restrictions and junction positioning before the final approach.",
+        "mapBounds": { "minX": 0, "minY": 0, "maxX": 1200, "maxY": 800 },
+        "idealRouteDescription": "Use the Euston Road corridor westbound from King's Cross St Pancras toward Euston station, checking junction positioning before the final approach.",
         "createdAt": "2026-06-24T00:00:00.000Z",
         "updatedAt": "2026-06-24T00:00:00.000Z"
       },
       "version": 1,
-      "source": "production-seed"
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-route-euston-to-british-museum",
+      "question_type": "route-drawing",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Route planning",
+      "prompt": "Plan a route from Euston station to the British Museum.",
+      "explanation": "This journey tests Bloomsbury orientation and the choice of connected streets south of Euston Road.",
+      "tip": "Work from Euston toward Bloomsbury and avoid drifting too far east toward King's Cross.",
+      "tags": ["Route planning", "Landmarks and destinations", "Bloomsbury"],
+      "payload": {
+        "title": "Euston station to the British Museum",
+        "fromLabel": "Euston station",
+        "toLabel": "British Museum",
+        "from": { "lat": 51.5282, "lng": -0.1337 },
+        "to": { "lat": 51.5194, "lng": -0.127 },
+        "acceptedRoute": {
+          "geometry": [[340, 470], [390, 560], [500, 640], [610, 705], [700, 735]],
+          "source": "manual",
+          "coordinateSystem": "map",
+          "reviewed": false
+        },
+        "mapArea": "kings-cross-euston",
+        "mapBounds": { "minX": 0, "minY": 0, "maxX": 1200, "maxY": 800 },
+        "idealRouteDescription": "Use a clear south-east Bloomsbury route from Euston toward Great Russell Street and the British Museum.",
+        "createdAt": "2026-06-24T00:00:00.000Z",
+        "updatedAt": "2026-06-24T00:00:00.000Z"
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
+    },
+    {
+      "id": "stage36-route-russell-square-to-uclh",
+      "question_type": "route-drawing",
+      "status": "draft",
+      "difficulty": "medium",
+      "category": "Hospitals and key public buildings",
+      "prompt": "Plan a route from Russell Square to University College Hospital.",
+      "explanation": "This route checks local Bloomsbury road reading and the final approach to a hospital destination.",
+      "tip": "Find the hospital's road corridor first, then check the final approach side.",
+      "tags": ["Hospitals and key public buildings", "Route planning", "Bloomsbury"],
+      "payload": {
+        "title": "Russell Square to University College Hospital",
+        "fromLabel": "Russell Square",
+        "toLabel": "University College Hospital",
+        "from": { "lat": 51.5231, "lng": -0.1243 },
+        "to": { "lat": 51.5246, "lng": -0.1372 },
+        "acceptedRoute": {
+          "geometry": [[740, 590], [640, 595], [525, 585], [420, 565], [350, 545]],
+          "source": "manual",
+          "coordinateSystem": "map",
+          "reviewed": false
+        },
+        "mapArea": "kings-cross-euston",
+        "mapBounds": { "minX": 0, "minY": 0, "maxX": 1200, "maxY": 800 },
+        "idealRouteDescription": "Work west from Russell Square toward the Tottenham Court Road / Euston Road hospital area using connected streets.",
+        "createdAt": "2026-06-24T00:00:00.000Z",
+        "updatedAt": "2026-06-24T00:00:00.000Z"
+      },
+      "version": 1,
+      "source": "stage-36-production-seed"
     }
   ]
 }

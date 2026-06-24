@@ -42,6 +42,8 @@ const QUESTION_STATUSES = ["draft", "published", "archived"] as const;
 export type QuestionBankItemSummary = Pick<
   QuestionRow,
   | "id"
+  | "category"
+  | "difficulty"
   | "question_type"
   | "status"
   | "prompt"
@@ -397,7 +399,7 @@ export async function readAdminQuestionItems(
 
   const { data, error } = await client
     .from("question_bank_items")
-    .select("id, question_type, status, prompt, updated_at, published_at")
+    .select("id, question_type, status, prompt, category, difficulty, updated_at, published_at")
     .order("updated_at", { ascending: false });
 
   return {

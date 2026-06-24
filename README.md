@@ -26,6 +26,11 @@ error/loading states, production-safe logging, account data isolation checks,
 full `/review` answer history, and a simpler mock exam flow where map-click and
 route-planning questions continue with Next after a valid answer.
 
+Stage 36 is complete as a post-Phase-3 content-readiness pass. It expands the
+draft-first production question seed, standardises the question topic structure,
+keeps learner reads published-only, and improves admin inventory organisation
+with topic, status, and difficulty filters.
+
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
@@ -119,7 +124,13 @@ Phase 3 guardrails:
 - Protected prototype admin question managers and validators
 - Protected admin publishing controls for Supabase `question_bank_items`
 - Admin-only JSON import/export tools for `question_bank_items`
-- Production starter seed content and manual question-bank seed command
+- Expanded draft-first production starter seed content and manual question-bank
+  seed command
+- Canonical learner content topics for `question_bank_items`: London geography,
+  major roads and routes, bridges and river crossings, stations and transport
+  hubs, hospitals/key public buildings, landmarks and destinations, route
+  planning, direction sense, map interpretation, and passenger scenario
+  judgement
 - Root/admin/account error boundaries and async loading states
 - Safe structured logger for production-safe diagnostics
 - Phase 3 regression tests for auth, progress persistence, admin protection,
@@ -271,10 +282,16 @@ then either create new records only or upsert matching IDs. Import writes only
 to `question_bank_items`, defaults missing status values to `draft`, and rejects
 old table-shaped payloads rather than silently mapping them.
 
-Stage 33 adds production seed support. The starter seed file lives at
-`supabase/seed/question_bank_items.json`, uses the same Stage 32 import format,
-and currently starts all records as `draft` so admins must review and publish
-content deliberately.
+Stage 33 adds production seed support. Stage 36 expands the starter seed file at
+`supabase/seed/question_bank_items.json` into a larger draft-first content set
+covering knowledge, map-click, route-planning, direction sense, landmarks,
+stations, hospitals, bridges, roads, and passenger scenario judgement. It uses
+the same Stage 32 import format and starts all records as `draft` so admins must
+review and publish content deliberately.
+
+The admin question inventory now shows source-bank and Supabase-only
+`question_bank_items` records together, with counts and filters for publishing
+status, topic/category, and difficulty.
 
 To make a browser-local admin draft permanent today:
 
@@ -301,11 +318,11 @@ Question bank exports use this envelope:
       "question_type": "knowledge",
       "status": "draft",
       "difficulty": "easy",
-      "category": "Map reading",
+      "category": "Map interpretation",
       "prompt": "Example question?",
       "explanation": "Example explanation.",
       "tip": "Example tip.",
-      "tags": ["Map reading"],
+      "tags": ["Map interpretation"],
       "payload": {
         "options": ["North", "South"],
         "correctAnswer": "North"
@@ -318,10 +335,24 @@ Question bank exports use this envelope:
 ```
 
 Imports also accept a raw array of `question_bank_items` records. The importer
-validates required fields, `knowledge` options/answer payloads, `map-click`
+validates required fields, canonical topic/category values, `easy`/`medium`/
+`hard` difficulty, `knowledge` options/answer payloads, `map-click`
 coordinate/radius payloads, and `route-drawing` endpoint/map-bounds payloads.
 Only `draft`, `published`, and `archived` are accepted statuses; missing status
-defaults to `draft`.
+defaults to `draft`, and missing difficulty defaults to `medium`.
+
+Canonical Stage 36 topics are:
+
+- `London geography`
+- `Major roads and routes`
+- `Bridges and river crossings`
+- `Stations and transport hubs`
+- `Hospitals and key public buildings`
+- `Landmarks and destinations`
+- `Route planning`
+- `Direction sense`
+- `Map interpretation`
+- `Passenger scenario judgement`
 
 ## Production Seed Data
 
@@ -359,8 +390,9 @@ SUPABASE_SEED_ADMIN_PASSWORD=
 `profiles.role` is `admin`. Do not commit real seed credentials.
 
 Seeded draft questions are visible in `/admin/questions` and hidden from
-learner-safe database reads. Review seeded content in admin, then publish only
-records that are ready for learners.
+learner-safe database reads. Review seeded content in admin, use the topic,
+status, and difficulty filters to organise the larger content set, then publish
+only records that are ready for learners.
 
 ## Error Handling And Logging
 
@@ -533,6 +565,44 @@ npm.cmd run build
 
 Result for this Stage 35.6 pass: all three commands passed.
 
+## Stage 36 Content Readiness QA Status
+
+Stage 36 expands content and organisation without adding monetisation,
+payments, subscriptions, or launch marketing.
+
+Content result:
+
+- `supabase/seed/question_bank_items.json` now contains a larger draft-first
+  starter set across knowledge, map-click, and route-drawing question types.
+- New seed records use canonical `category` topics and `easy`/`medium`/`hard`
+  difficulty values.
+- Existing static question-bank categories now align with the same canonical
+  topic structure.
+- Import validation rejects invalid topics, invalid difficulty values, invalid
+  statuses, old table-shaped payloads, and malformed question payloads.
+- Learner-safe question reads still filter Supabase content to
+  `status = 'published'`.
+
+Admin result:
+
+- `/admin/questions` shows source-bank and Supabase-only `question_bank_items`
+  records together.
+- Admin inventory includes counts and filters for status, topic/category, and
+  difficulty.
+- `/admin/questions/import-export` previews topic and difficulty metadata before
+  commit.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Stage 36 pass: all commands passed.
+
 ## Phase 3 Manual QA Checklist
 
 ### Public learner flow
@@ -678,6 +748,39 @@ Result for this Stage 35.6 pass: all three commands passed.
 - Complete the exam.
 - Confirm score and review answers are correct.
 
+## Stage 36 Manual QA Checklist
+
+### Draft content review
+
+- Open `/admin/questions` as an admin.
+- Confirm the inventory shows status, topic, difficulty, source, and validation
+  columns.
+- Filter by `draft`, `published`, `archived`, and `not-saved`.
+- Filter by several topics, including `Route planning`, `Map interpretation`,
+  and `Stations and transport hubs`.
+- Filter by `easy`, `medium`, and `hard`.
+- Confirm imported database-only rows appear in the same inventory.
+
+### Seed/import workflow
+
+- Open `/admin/questions/import-export`.
+- Paste or upload `supabase/seed/question_bank_items.json`.
+- Preview the import and confirm valid records show topic and difficulty.
+- Confirm all seed records are `draft`.
+- Try an invalid topic and confirm the preview rejects it clearly.
+- Try an invalid difficulty and confirm the preview rejects it clearly.
+- Commit valid seed records as an admin in a configured Supabase environment.
+
+### Learner visibility
+
+- Confirm draft seed records do not appear in learner practice, mock exam, or
+  learner-safe question reads.
+- Publish one reviewed sample question from `/admin/questions`.
+- Confirm the published sample can be returned by learner-safe Supabase reads.
+- Archive the sample and confirm it is hidden from learner-safe reads again.
+- Confirm signed-out local practice and mock exam flows still work.
+- Confirm signed-in progress saving still works after publishing changes.
+
 ## Current Limitations
 
 - Learner accounts are optional; signed-in completions save to Supabase, but
@@ -691,7 +794,8 @@ Result for this Stage 35.6 pass: all three commands passed.
 - Static TypeScript question banks remain the active learner content source.
 - Supabase account progress writes are implemented for new signed-in practice
   and mock completions; broader syncing and migration remain deferred.
-- Production moderation workflow is not implemented yet.
+- A full multi-step editorial approval workflow is not implemented yet; current
+  production review is admin-managed draft, publish, and archive.
 - Payment and subscription logic is not implemented.
 - External production observability services are not implemented; logging is
   currently local/server-console only.
