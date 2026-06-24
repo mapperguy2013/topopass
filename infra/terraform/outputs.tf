@@ -73,6 +73,16 @@ output "alerts_topic_arn" {
   value       = aws_sns_topic.alerts.arn
 }
 
+output "budget_alerts_topic_arn" {
+  description = "SNS topic ARN for monthly AWS Budget alerts."
+  value       = aws_sns_topic.budget_alerts.arn
+}
+
+output "budget_kill_switch_lambda_name" {
+  description = "Budget kill-switch Lambda name if enabled."
+  value       = try(aws_lambda_function.budget_kill_switch[0].function_name, null)
+}
+
 output "ssh_info" {
   description = "SSH status. SSH ingress is disabled unless ssh_cidr_blocks is set."
   value       = length(var.ssh_cidr_blocks) == 0 ? "SSH disabled. Use SSM Session Manager." : "SSH enabled only for configured ssh_cidr_blocks. Prefer SSM Session Manager."

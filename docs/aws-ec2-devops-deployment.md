@@ -263,6 +263,39 @@ Step 45 adds lean CloudWatch monitoring:
 - Terraform creates an SNS alert topic and optional email subscription through
   `alert_email`.
 
+## AWS Budget Kill Switch
+
+Step 45 also adds an optional AWS Budget cost-protection kill switch. It is
+disabled by default and should be enabled only after reviewing the behavior.
+
+Terraform variables:
+
+- `budget_limit_amount`: default `20`
+- `budget_limit_unit`: default `USD`
+- `budget_alert_email`: owner email for budget SNS alerts
+- `enable_budget_kill_switch`: default `false`
+
+Budget notifications:
+
+- `50%` actual spend: email alert through the budget SNS topic.
+- `80%` forecasted spend: email alert through the budget SNS topic.
+- `100%` actual spend: SNS notification that can invoke the Lambda kill switch.
+
+The Lambda only stops running EC2 instances tagged:
+
+```text
+Project = topopass
+Environment = production
+```
+
+It must not delete EC2 instances, EBS volumes, snapshots, Route 53 records, ECR
+repositories, or Secrets Manager entries. The IAM policy allows only
+`ec2:DescribeInstances`, `ec2:StopInstances`, and Lambda log writes.
+
+AWS Budgets can take time to evaluate and notify. This is not a hard real-time
+spending cap. Keep billing alerts, cost reviews, and low-cost instance sizing in
+place.
+
 ## Backups
 
 Step 45 adds logical backup scripts under `infra/backups`.

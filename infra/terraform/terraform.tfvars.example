@@ -39,6 +39,11 @@ memory_alarm_threshold_percent = 85
 disk_alarm_threshold_percent   = 85
 alarm_evaluation_periods       = 2
 
+budget_limit_amount       = 20
+budget_limit_unit         = "USD"
+budget_alert_email        = ""
+enable_budget_kill_switch = false
+
 common_tags = {
   Owner = "topopass"
 }

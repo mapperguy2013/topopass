@@ -160,6 +160,30 @@ variable "alarm_evaluation_periods" {
   default     = 2
 }
 
+variable "budget_limit_amount" {
+  description = "Monthly AWS Budget limit amount used for cost-protection alerts."
+  type        = number
+  default     = 20
+}
+
+variable "budget_limit_unit" {
+  description = "Currency unit for the monthly AWS Budget."
+  type        = string
+  default     = "USD"
+}
+
+variable "budget_alert_email" {
+  description = "Optional owner email subscribed to AWS Budget alert SNS notifications."
+  type        = string
+  default     = ""
+}
+
+variable "enable_budget_kill_switch" {
+  description = "Whether the 100 percent actual AWS Budget notification should invoke Lambda to stop tagged EC2 instances."
+  type        = bool
+  default     = false
+}
+
 variable "common_tags" {
   description = "Additional tags applied to all supported resources."
   type        = map(string)

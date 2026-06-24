@@ -39,6 +39,8 @@ test("terraform provisions private encrypted backup storage and alerting", () =>
   const backups = read("infra/terraform/backups.tf");
   const monitoring = read("infra/terraform/monitoring.tf");
   const iam = read("infra/terraform/iam.tf");
+  const budget = read("infra/terraform/budget.tf");
+  const lambda = read("infra/terraform/lambda/budget_kill_switch.py");
 
   assert.match(backups, /aws_s3_bucket" "backups/);
   assert.match(backups, /aws_s3_bucket_public_access_block/);
@@ -49,6 +51,17 @@ test("terraform provisions private encrypted backup storage and alerting", () =>
   assert.match(monitoring, /aws_cloudwatch_metric_alarm/);
   assert.match(monitoring, /aws_sns_topic/);
   assert.match(iam, /CloudWatchAgentServerPolicy/);
+  assert.match(budget, /aws_budgets_budget" "monthly_cost/);
+  assert.match(budget, /threshold\s+=\s+50/);
+  assert.match(budget, /notification_type\s+=\s+"FORECASTED"/);
+  assert.match(budget, /threshold\s+=\s+100/);
+  assert.match(budget, /ec2:StopInstances/);
+  assert.match(budget, /ec2:ResourceTag\/Project/);
+  assert.match(budget, /ec2:ResourceTag\/Environment/);
+  assert.doesNotMatch(budget, /TerminateInstances|DeleteVolume|DeleteSnapshot|DeleteHostedZone|DeleteRepository|DeleteSecret/);
+  assert.match(lambda, /stop_instances/);
+  assert.match(lambda, /tag:Project/);
+  assert.match(lambda, /tag:Environment/);
 });
 
 test("monitoring and backup files avoid Supabase service keys and legacy tables", () => {
@@ -59,6 +72,8 @@ test("monitoring and backup files avoid Supabase service keys and legacy tables"
     read("infra/monitoring/cloudwatch-agent.json"),
     read("infra/terraform/backups.tf"),
     read("infra/terraform/monitoring.tf"),
+    read("infra/terraform/budget.tf"),
+    read("infra/terraform/lambda/budget_kill_switch.py"),
   ].join("\n");
 
   const forbidden = new RegExp(

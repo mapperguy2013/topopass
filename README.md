@@ -251,6 +251,8 @@ Step 45 monitoring/backups status:
 | CloudWatch log retention | Configured in Terraform |
 | CloudWatch alarms | EC2 status, CPU, memory, disk |
 | SNS alert topic | Configured, optional email subscription |
+| AWS Budget monthly cost monitor | Configured |
+| AWS Budget kill switch | Optional, disabled by default |
 | S3 backup bucket | Configured with public block, encryption, versioning, lifecycle |
 | EC2 backup IAM policy | Scoped to backup bucket/prefix |
 | Postgres backup script | Added at `infra/backups/backup-postgres.sh` |
@@ -277,6 +279,7 @@ Phase 4 checklist:
 - [x] S3 logical backup bucket is defined in Terraform.
 - [x] Backup scripts and restore runbook exist.
 - [x] CloudWatch log groups, alarms, and SNS alerting are defined.
+- [x] AWS Budget cost monitor and optional EC2 stop kill switch are defined.
 - [ ] Create the private ECR repository in AWS.
 - [ ] Create the GitHub OIDC IAM role in AWS.
 - [ ] Add required GitHub Actions variables/secrets.
@@ -288,6 +291,8 @@ Phase 4 checklist:
 - [ ] Verify Route 53 DNS points to the EC2 Elastic IP.
 - [ ] Confirm CloudWatch agent logs and metrics arrive after deployment.
 - [ ] Confirm SNS email subscription if `alert_email` is set.
+- [ ] Confirm AWS Budget email subscription if `budget_alert_email` is set.
+- [ ] Keep `enable_budget_kill_switch = false` until the budget alert path is tested.
 - [ ] Run and verify first Postgres backup.
 - [ ] Enable the Postgres backup systemd timer.
 - [ ] Complete a restore drill before launch.
@@ -422,6 +427,13 @@ Step 45 monitoring and backups:
   retention and EC2 instance-role access scoped to the backup prefix.
 - Terraform provisions CloudWatch log groups, status/CPU/memory/disk alarms,
   and an SNS alert topic.
+- Terraform provisions a monthly AWS Budget with 50% actual, 80% forecasted,
+  and 100% actual thresholds.
+- `enable_budget_kill_switch` is disabled by default. When enabled, the 100%
+  actual budget notification can invoke Lambda to stop only EC2 instances tagged
+  `Project = topopass` and `Environment = production`.
+- AWS Budgets are not instant and this is not a hard spending cap. It is a
+  safety net alongside regular billing checks.
 - Required host-only backup env values:
 
 ```bash
@@ -1743,6 +1755,8 @@ Manual production checks still required:
 - Confirm CloudWatch agent starts on the EC2 host.
 - Confirm log groups receive user-data, syslog, backup, Caddy, and deploy logs.
 - Confirm SNS email subscription if `alert_email` is set.
+- Confirm AWS Budget email subscription if `budget_alert_email` is set.
+- Test the budget notification path before enabling `enable_budget_kill_switch`.
 - Run `backup-postgres.sh --dry-run`.
 - Run one real backup and verify it with `verify-latest-backup.sh`.
 - Enable the systemd timer after a successful manual backup.

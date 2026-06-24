@@ -20,6 +20,7 @@ It creates:
 - daily EBS snapshot policy
 - private S3 backup bucket for logical Postgres/storage backups
 - CloudWatch log groups, alarms, and SNS alert topic
+- AWS Budget alerts and an optional EC2 stop kill switch for cost protection
 
 It does not deploy the application containers and it does not write production
 secrets.
@@ -56,6 +57,8 @@ Important defaults:
 - snapshot retention: `14` daily snapshots by default
 - S3 logical backup retention: `14` days by default
 - CloudWatch log retention: `14` days by default
+- Monthly AWS Budget: `20 USD` by default
+- Budget kill switch: disabled by default
 
 Optional domain defaults:
 
@@ -98,6 +101,38 @@ delivered.
 
 The CloudWatch agent config lives at `infra/monitoring/cloudwatch-agent.json`.
 `user_data` installs the agent and writes that config to the host.
+
+## AWS Budget Cost Protection
+
+Terraform creates a monthly AWS Budget and a dedicated budget-alert SNS topic.
+Defaults are intentionally conservative:
+
+- `budget_limit_amount = 20`
+- `budget_limit_unit = "USD"`
+- `budget_alert_email = ""`
+- `enable_budget_kill_switch = false`
+
+Budget notifications:
+
+- `50%` actual spend publishes to the budget SNS topic for email alerting.
+- `80%` forecasted spend publishes to the budget SNS topic for email alerting.
+- `100%` actual spend publishes to the budget SNS topic and, only when
+  `enable_budget_kill_switch = true`, invokes Lambda.
+
+The Lambda can only describe instances and stop EC2 instances tagged:
+
+```text
+Project = topopass
+Environment = production
+```
+
+It does not have permissions to terminate EC2 instances, delete EBS volumes,
+delete snapshots, change Route 53, delete ECR repositories, or read/delete
+Secrets Manager values.
+
+AWS Budgets notifications are not instant and are not a hard spending cap. Treat
+the kill switch as a last-resort safety net. You should still monitor the AWS
+Billing console, use small instance sizes, and review cost explorer regularly.
 
 ## S3 Logical Backups
 
