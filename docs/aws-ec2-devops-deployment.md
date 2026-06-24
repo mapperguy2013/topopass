@@ -96,6 +96,8 @@ This stage adds:
 - `Dockerfile`
 - `.dockerignore`
 - `.env.production.example`
+- `.env.docker.example`
+- `docker-compose.yml`
 - `deploy/docker-compose.prod.yml`
 
 The Dockerfile builds the app using Next.js standalone output. The runtime image
@@ -122,7 +124,17 @@ service-role key. RLS remains the security boundary for learner data.
 
 ## Docker Compose Template
 
-`deploy/docker-compose.prod.yml` runs only the app service for now:
+`docker-compose.yml` runs only the app service for local and first EC2 app
+runs:
+
+- service name: `topopass-app`
+- image name: `topopass-web:local`
+- env file: `.env.docker`
+- host mapping: `3000:3000`
+- restart policy: `unless-stopped`
+- health check against the local app
+
+`deploy/docker-compose.prod.yml` is the stricter production-oriented template:
 
 - image supplied by `TOPOPASS_IMAGE`
 - restart policy: `unless-stopped`
@@ -130,9 +142,10 @@ service-role key. RLS remains the security boundary for learner data.
 - app bound to `127.0.0.1:3000:3000`
 - health check against the local app
 
-The app is intentionally not published directly to the public internet. A later
-Caddy or Nginx container should expose only ports 80 and 443 and proxy traffic
-to `127.0.0.1:3000`.
+For EC2, prefer the production-oriented template once Caddy or Nginx is added.
+The app should not be published directly to the public internet after the
+reverse proxy exists. A later Caddy or Nginx container should expose only ports
+80 and 443 and proxy traffic to `127.0.0.1:3000`.
 
 ## Secret Rules
 
@@ -191,6 +204,8 @@ No workflow is added in this stage. The future workflow should:
 - [ ] Confirm Docker is available locally or in CI.
 - [ ] Build the Docker image without real secrets.
 - [ ] Confirm `.env.production.example` contains placeholders only.
+- [ ] Copy `.env.docker.example` to an untracked `.env.docker` for local
+      Compose tests.
 - [ ] Create production runtime env file directly on EC2.
 - [ ] Confirm managed Supabase project has correct auth redirect URLs.
 - [ ] Confirm Supabase RLS still protects learner data.

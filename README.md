@@ -180,12 +180,26 @@ Stage 40 deployment-prep status:
 | Real production secrets | Not added |
 | AWS deployment | Not run |
 
+Stage 41 Dockerisation status:
+
+| Item | Status |
+| --- | --- |
+| Root `docker-compose.yml` for local/EC2 app runs | Added |
+| Docker runtime env example | Added at `.env.docker.example` |
+| Docker helper npm scripts | Added |
+| App service healthcheck | Added |
+| App service runs as non-root user | Yes |
+| Self-hosted Supabase | Not added |
+| Product features/UI changed | No |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
 - [x] Production env template exists with placeholders only.
 - [x] AWS EC2 architecture is documented.
 - [x] Docker Compose app-only production template exists.
+- [x] Root Docker Compose app runner exists.
+- [x] Docker helper scripts exist.
 - [x] Managed Supabase remains the planned backend for this stage.
 - [x] No real secrets are committed.
 - [ ] GitHub Actions build/push workflow.
@@ -207,6 +221,29 @@ Phase 4 guardrails:
 - Keep signed-in managed Supabase progress working.
 - Keep Topographical and SERU product areas separate.
 
+Local Docker commands:
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+npm.cmd run docker:build
+npm.cmd run docker:up
+npm.cmd run docker:logs
+npm.cmd run docker:down
+```
+
+EC2-oriented Docker notes:
+
+- Copy or pull the repository on the EC2 host.
+- Create the runtime env file on the server, for example `.env.docker` for the
+  root compose file or `/opt/topopass/env/app.env` for the production deploy
+  template.
+- Fill the managed Supabase public URL and anon key with real production
+  values on the server only.
+- Run `docker compose up -d --build`.
+- Check logs with `docker compose logs -f topopass-app`.
+- Do not commit runtime env files, real secrets, `.next`, `node_modules`, build
+  outputs, or Docker local artifacts.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
@@ -217,6 +254,7 @@ Phase 4 guardrails:
   `public/images/home-practice-overview-hero.svg`
 - Production Docker support for the Next.js app, with managed Supabase retained
   as the backend for this deployment phase
+- Root Docker Compose workflow for app-only local/EC2 runs
 - Public Topographical Course and SERU Course information pages for logged-out
   visitors
 - Signed-out Course dropdown linking to `/topographical`, `/seru`, and
@@ -1207,6 +1245,75 @@ git diff --cached --check
 
 Result for this Phase 4 Stage 40 deployment-prep pass: lint, tests,
 production build, and Docker image build passed.
+
+## Stage 41 Dockerise Application QA Status
+
+Stage 41 turns the deployment-prep scaffold into a practical app-only Docker
+workflow. It does not add self-hosted Supabase, product feature changes, UI
+changes, AWS deployment, or production secrets.
+
+Dockerisation result:
+
+- The production `Dockerfile` uses a multi-stage build and Next.js standalone
+  output.
+- The runtime container copies only the standalone app output, public assets,
+  and static build assets.
+- The runtime container runs as the non-root `nextjs` user and exposes port
+  `3000`.
+- `.dockerignore` excludes local dependencies, build outputs, env files, git
+  files, logs, local workspace folders, and generated artifacts.
+- `docker-compose.yml` builds and runs the app service as `topopass-app`,
+  loads `.env.docker`, maps host port `3000` to the container by default, uses
+  `restart: unless-stopped`, and includes a healthcheck.
+- `.env.docker.example` documents placeholder managed Supabase and runtime
+  values only.
+- `package.json` includes `docker:build`, `docker:up`, `docker:down`, and
+  `docker:logs` helper scripts.
+
+Local run commands:
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+npm.cmd run docker:up
+npm.cmd run docker:logs
+npm.cmd run docker:down
+```
+
+If local port `3000` is already in use, set a shell override before starting
+Compose:
+
+```powershell
+$env:TOPOPASS_HOST_PORT = "3001"
+npm.cmd run docker:up
+```
+
+EC2 run outline:
+
+1. Copy or pull the repository onto the EC2 host.
+2. Create the runtime env file on the server only.
+3. Fill managed Supabase public URL and anon key on the server.
+4. Run `docker compose up -d --build`.
+5. Check logs with `docker compose logs -f topopass-app`.
+6. Put Caddy or Nginx in front of the app in a later stage.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+docker build --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 --build-arg NEXT_PUBLIC_SUPABASE_URL= --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY= -t topopass-web:stage41 .
+docker compose up -d --build
+docker compose ps
+docker compose logs --tail 80 topopass-app
+docker compose down
+git diff --cached --check
+```
+
+Result for this Stage 41 pass: lint, tests, production build, Docker image
+build, Docker Compose startup, container logs, HTTP 200 response, and Compose
+shutdown passed. Local Compose was verified with `TOPOPASS_HOST_PORT=3001`
+because port `3000` was already occupied on the development machine.
 
 ## Beta Launch Checklist
 

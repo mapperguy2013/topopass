@@ -14,6 +14,7 @@ work
 .env.*
 !.env.example
 !.env.production.example
+!.env.docker.example
 
 npm-debug.log*
 yarn-debug.log*
