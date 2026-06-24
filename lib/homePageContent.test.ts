@@ -33,8 +33,9 @@ test("home page is outcome-focused and keeps SERU visible without internal headi
   assert.match(homeSource, /TfL private hire and PCO preparation/);
   assert.match(
     homeSource,
-    /Pass your TfL private hire preparation with more confidence/
+    /Prepare for your TfL private hire assessment with confidence/
   );
+  assert.match(homeSource, /Designed for focused revision before test day/);
   assert.match(homeSource, /What TopoPass helps you prepare for/);
   assert.match(homeSource, /SERU-style preparation/);
   assert.match(homeSource, /\/practice\/seru/);

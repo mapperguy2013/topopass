@@ -30,7 +30,7 @@ const howItWorks = [
   {
     title: "Practise",
     description:
-      "Start with focused topographical and SERU-style practice sessions."
+      "Answer focused topographical and SERU-style questions."
   },
   {
     title: "Review",
@@ -48,25 +48,25 @@ const benefitCards = [
   {
     title: "Focused map and route practice",
     description:
-      "Practise London locations, direction sense, route drawing, and map-reading decisions."
+      "Work on locations, route choices, map reading, and London direction sense in short sessions."
   },
   {
     title: "SERU-style learning support",
     description:
-      "Build knowledge around safety, accessibility, customer care, licensing, and professional conduct."
+      "Revise safety, equality, accessibility, customer care, licensing awareness, and driver responsibilities."
   },
   {
     title: "Mock exams and review",
     description:
-      "Use topographical mock exams, explanations, and answer review to identify what needs work."
+      "Use mock-style practice, explanations, and answer review to understand what needs more work."
   },
   {
-    title: "Track progress over time",
+    title: "Progress tracking",
     description:
-      "See recent answers, accuracy, mistakes, and weak areas as your practice history grows."
+      "See recent answers, accuracy, mistakes, and weak areas as your revision history grows."
   },
   {
-    title: "One account across both learning areas",
+    title: "One account for your revision",
     description:
       "Use the same login for topographical practice and SERU-style preparation when you want account progress."
   }
@@ -76,28 +76,40 @@ function HeroLearningVisual() {
   return (
     <div
       aria-label="Illustration of route practice, SERU preparation, and progress tracking"
-      className="relative overflow-hidden rounded-[1.75rem] border border-blue-100 bg-white shadow-soft"
+      className="relative overflow-hidden rounded-[2rem] border border-blue-100/80 bg-white shadow-[0_28px_80px_rgba(37,99,235,0.12)]"
       role="img"
     >
-      <div className="relative min-h-[560px] bg-[#f8fbff] p-5 sm:min-h-[610px] sm:p-8 lg:min-h-[690px] lg:p-10">
+      <div className="relative min-h-[590px] bg-[radial-gradient(circle_at_50%_10%,#ffffff_0%,#f7fbff_44%,#edf6ff_100%)] p-5 sm:min-h-[640px] sm:p-8 lg:min-h-[705px] lg:p-10">
+        <div className="pointer-events-none absolute inset-x-10 top-8 h-40 rounded-full bg-blue-100/40 blur-3xl" />
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold text-ink">Practice overview</h2>
-          <p className="mt-2 text-base leading-7 text-slate-600">
-            Build confidence with Topographical Skills and SERU Preparation
+          <h2 className="text-2xl font-bold tracking-tight text-ink">
+            Practice overview
+          </h2>
+          <p className="mt-2 max-w-3xl text-base leading-7 text-slate-600">
+            Build confidence with map skills and SERU-style learning
           </p>
         </div>
 
         <svg
           aria-hidden="true"
-          className="absolute inset-x-0 top-16 h-[430px] w-full sm:h-[510px] lg:top-20 lg:h-[560px]"
+          className="absolute inset-x-0 top-16 h-[455px] w-full opacity-95 sm:h-[525px] lg:top-20 lg:h-[575px]"
           viewBox="0 0 920 520"
         >
           <defs>
             <linearGradient id="mapFade" x1="0" x2="1" y1="0" y2="1">
               <stop offset="0" stopColor="#f8fbff" stopOpacity="0.45" />
-              <stop offset="0.55" stopColor="#eef6ff" stopOpacity="0.82" />
+              <stop offset="0.55" stopColor="#edf6ff" stopOpacity="0.72" />
               <stop offset="1" stopColor="#f8fbff" stopOpacity="0.55" />
             </linearGradient>
+            <filter id="routeShadow" x="-8%" y="-20%" width="116%" height="140%">
+              <feDropShadow
+                dx="0"
+                dy="8"
+                floodColor="#2563eb"
+                floodOpacity="0.18"
+                stdDeviation="6"
+              />
+            </filter>
             <filter id="pinShadow" x="-40%" y="-20%" width="180%" height="170%">
               <feDropShadow
                 dx="0"
@@ -111,14 +123,30 @@ function HeroLearningVisual() {
           <rect width="920" height="520" fill="url(#mapFade)" />
           <path
             d="M40 122 H880 M40 212 H880 M40 302 H880 M40 392 H880"
-            stroke="#dfe8f4"
+            stroke="#e1eaf4"
             strokeLinecap="round"
-            strokeWidth="12"
+            strokeWidth="13"
           />
           <path
             d="M106 70 V476 M220 70 V476 M334 70 V476 M448 70 V476 M562 70 V476 M676 70 V476 M790 70 V476"
-            stroke="#dfe8f4"
+            stroke="#e1eaf4"
             strokeLinecap="round"
+            strokeWidth="13"
+          />
+          <path
+            d="M64 474 C144 410 236 428 320 382 C400 338 432 374 520 330 C612 284 698 302 844 248"
+            fill="none"
+            stroke="#ffffff"
+            strokeLinecap="round"
+            strokeOpacity="0.84"
+            strokeWidth="14"
+          />
+          <path
+            d="M150 66 C216 116 298 92 374 138 C446 182 524 132 594 174 C676 224 752 178 846 210"
+            fill="none"
+            stroke="#ffffff"
+            strokeLinecap="round"
+            strokeOpacity="0.72"
             strokeWidth="12"
           />
           <path
@@ -131,9 +159,10 @@ function HeroLearningVisual() {
           <path
             d="M34 438 C112 412 138 354 220 344 C314 332 338 248 426 246 C526 244 526 174 632 160 C724 148 782 122 872 104"
             fill="none"
+            filter="url(#routeShadow)"
             stroke="#2f74f7"
             strokeLinecap="round"
-            strokeWidth="13"
+            strokeWidth="14"
           />
           <path
             d="M34 438 C112 412 138 354 220 344 C314 332 338 248 426 246 C526 244 526 174 632 160 C724 148 782 122 872 104"
@@ -165,10 +194,13 @@ function HeroLearningVisual() {
             strokeWidth="34"
           />
           <circle cx="34" cy="438" fill="#2563eb" r="20" />
+          <circle cx="34" cy="438" fill="none" stroke="#bfdbfe" strokeWidth="7" r="28" />
           <circle cx="34" cy="438" fill="#ffffff" r="9" />
           <circle cx="314" cy="332" fill="#2563eb" r="15" />
+          <circle cx="314" cy="332" fill="none" stroke="#bfdbfe" strokeWidth="6" r="23" />
           <circle cx="314" cy="332" fill="#ffffff" r="7" />
           <circle cx="526" cy="244" fill="#2563eb" r="15" />
+          <circle cx="526" cy="244" fill="none" stroke="#bfdbfe" strokeWidth="6" r="23" />
           <circle cx="526" cy="244" fill="#ffffff" r="7" />
           <g filter="url(#pinShadow)">
             <path
@@ -179,8 +211,8 @@ function HeroLearningVisual() {
           </g>
         </svg>
 
-        <div className="relative z-10 mt-8 grid min-h-[360px] gap-5 md:grid-cols-[0.9fr_1fr] md:items-center lg:min-h-[430px]">
-          <div className="max-w-sm rounded-[1.25rem] border border-blue-100 bg-white/95 p-5 shadow-sm lg:p-6">
+        <div className="relative z-10 mt-9 grid min-h-[385px] gap-6 md:grid-cols-[0.92fr_1fr] md:items-center lg:min-h-[455px]">
+          <div className="max-w-sm rounded-[1.35rem] border border-blue-100 bg-white/95 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur lg:p-6">
             <div className="flex items-start gap-4">
               <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-blue-100 text-road">
                 <svg
@@ -199,11 +231,11 @@ function HeroLearningVisual() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-2xl font-bold leading-tight text-ink">
-                  Topographical Skills
+                <h3 className="text-2xl font-bold leading-tight tracking-tight text-ink">
+                  Topographical practice
                 </h3>
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Practise locations, draw routes, and sharpen map skills.
+                  Practise locations, routes, and map-reading skills.
                 </p>
               </div>
             </div>
@@ -211,7 +243,7 @@ function HeroLearningVisual() {
             <ul className="mt-6 space-y-3 border-t border-slate-200 pt-5 text-sm text-slate-700">
               {[
                 "Identify locations",
-                "Draw and review routes",
+                "Review routes",
                 "Build map confidence"
               ].map((item) => (
                 <li className="flex items-center gap-3" key={item}>
@@ -228,7 +260,7 @@ function HeroLearningVisual() {
           </div>
 
           <div>
-            <div className="ml-auto max-w-sm rounded-[1.25rem] border border-orange-100 bg-white/95 p-5 shadow-sm lg:p-6">
+            <div className="ml-auto max-w-sm rounded-[1.35rem] border border-orange-100 bg-white/95 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur lg:p-6">
               <div className="flex items-start gap-4">
                 <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600">
                   <svg
@@ -262,8 +294,8 @@ function HeroLearningVisual() {
               <ul className="mt-6 space-y-3 border-t border-slate-200 pt-5 text-sm text-slate-700">
                 {[
                   "SERU-style questions",
-                  "timed practice",
-                  "Track and improve"
+                  "Topic practice",
+                  "Track improvement"
                 ].map((item) => (
                   <li className="flex items-center gap-3" key={item}>
                     <span
@@ -280,7 +312,7 @@ function HeroLearningVisual() {
           </div>
         </div>
 
-        <div className="relative z-10 mt-5 grid gap-0 overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white/95 p-4 shadow-sm sm:grid-cols-3 lg:p-5">
+        <div className="relative z-10 mt-6 grid gap-0 overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white/95 p-3 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur sm:grid-cols-3 lg:p-5">
           {[
             {
               value: "74%",
@@ -392,16 +424,16 @@ export default function Home() {
               TfL private hire and PCO preparation
             </p>
             <h1 className="mt-4 text-4xl font-bold leading-tight text-ink sm:text-5xl lg:text-6xl">
-              Pass your TfL private hire preparation with more confidence
+              Prepare for your TfL private hire assessment with confidence
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg">
-              TopoPass helps you prepare for topographical map questions,
-              SERU-style learning, mock exams, and progress review in one clear
-              place. Practise step by step, track weak areas, and build
-              confidence before test day.
+              TopoPass helps private-hire learners practise topographical map
+              skills, SERU-style knowledge, mock exams, and progress review in
+              one clear place. Build confidence step by step, learn from
+              mistakes, and focus on the areas that need more work.
             </p>
             <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Prepare smarter for your TfL private hire journey.
+              Designed for focused revision before test day.
             </p>
 
             <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
@@ -453,9 +485,8 @@ export default function Home() {
               What TopoPass helps you prepare for
             </h2>
             <p className="mt-3 text-base leading-8 text-slate-700">
-              Build the practical skills and knowledge areas that private hire
-              learners need to revise, then use review tools to focus your next
-              session.
+              Build confidence across the key areas private-hire learners need
+              to revise, then use review tools to focus your next session.
             </p>
           </div>
 
