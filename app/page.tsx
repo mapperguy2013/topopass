@@ -14,13 +14,13 @@ export const metadata = buildPageMetadata({
 
 const productAreas = [
   {
-    title: "Topographical practice",
+    title: "Topographical course",
     description:
       "Build confidence with London map reading, routes, locations, and topographical-style mock preparation.",
     href: "/topographical"
   },
   {
-    title: "SERU-style preparation",
+    title: "SERU-style preparation course",
     description:
       "Practise questions on safety, equality, accessibility, customer care, licensing awareness, and professional responsibilities.",
     href: "/seru"
@@ -156,14 +156,16 @@ export default function Home() {
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Practice coverage
+              TopoPass preparation course
             </p>
             <h2 className="mt-2 text-3xl font-bold text-ink">
-              What TopoPass helps you prepare for
+              A structured preparation course for TfL private hire learners
             </h2>
             <p className="mt-3 text-base leading-8 text-slate-700">
-              Build confidence across the key areas private-hire learners need
-              to revise, then use review tools to focus your next session.
+              TopoPass brings together topographical practice, SERU-style
+              learning, mock exams, explanations, mistake review, and progress
+              tracking in one guided course. Work through focused topics, build
+              confidence step by step, and know what to revise next.
             </p>
           </div>
 
@@ -186,7 +188,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-slate-200 bg-white px-6 py-14 lg:px-8">
+      <section
+        className="border-b border-slate-200 bg-white px-6 py-14 lg:px-8"
+        id="how-it-works"
+      >
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <p className="text-sm font-bold uppercase tracking-wide text-road">

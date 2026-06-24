@@ -5,9 +5,9 @@ import { buildPageMetadata } from "@/lib/seo";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
-  title: "Topographical Assessment Preparation",
+  title: "Topographical Course",
   description:
-    "Learn about TfL private-hire topographical assessment preparation and practise London map, route, direction, and location skills with TopoPass.",
+    "Use the TopoPass topographical course to practise London map, route, direction, and location skills for private-hire preparation.",
   path: "/topographical"
 });
 
@@ -51,7 +51,7 @@ const helpCards = [
 function TopographicalHeroVisual() {
   return (
     <div
-      aria-label="Abstract route map illustration for topographical assessment preparation"
+      aria-label="Abstract route map illustration for the Topographical Course"
       className="relative min-h-72 overflow-hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-soft"
       role="img"
     >
@@ -120,17 +120,17 @@ export default function TopographicalPage() {
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.85fr] lg:items-center">
           <div>
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              Topographical assessment preparation
+              Topographical Course
             </p>
             <h1 className="mt-3 text-4xl font-bold leading-tight text-ink sm:text-5xl">
-              Build confidence for the TfL topographical assessment
+              Build confidence with a structured topographical course
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700">
               The topographical assessment is designed to check whether
               private-hire applicants can use maps, understand routes, recognise
               locations, and make sensible journey-planning decisions. TopoPass
-              helps you practise these skills step by step with focused
-              questions, route practice, mistake review, and mock-style
+              gives learners a guided learning path for these skills with
+              focused questions, route practice, mistake review, and mock-style
               preparation.
             </p>
             <p className="mt-4 max-w-3xl text-xs leading-5 text-slate-500">
@@ -171,7 +171,7 @@ export default function TopographicalPage() {
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold text-ink">
-              What is the topographical assessment?
+              What the topographical course covers
             </h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
               Before becoming licensed as a London private-hire driver,

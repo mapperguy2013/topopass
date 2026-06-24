@@ -60,9 +60,10 @@ and separates public navigation from signed-in learner navigation.
 
 Stage 39.7 is complete as a public assessment-page and logged-out navigation
 polish pass. It adds public `/topographical` and `/seru` information pages,
-adds a signed-out Prepare dropdown for assessment pages, keeps those public
-pages free of the learner sidebar, and keeps Demo positioned as a short public
-preview rather than full Practice.
+adds a signed-out Course dropdown for course discovery, adds a public `/course`
+page explaining how the course works, keeps those public pages free of the
+learner sidebar, and splits Demo into short Topographical and SERU previews
+rather than full Practice.
 
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
@@ -143,9 +144,13 @@ Phase 3 guardrails:
   hero visual
 - High-resolution homepage practice-overview SVG asset under
   `public/images/home-practice-overview-hero.svg`
-- Public Topographical Assessment and SERU Assessment information pages for
-  logged-out visitors
-- Signed-out Prepare dropdown linking to `/topographical` and `/seru`
+- Public Topographical Course and SERU Course information pages for logged-out
+  visitors
+- Signed-out Course dropdown linking to `/topographical`, `/seru`, and
+  `/course`
+- Public `/course` page explaining the guided TopoPass preparation course
+- Public `/demo` page with separate 10-question timed Topographical and SERU
+  demo routes
 - Expanded Learn section with structured learning paths
 - SERU preparation support as a separate learning area, not mixed into
   topographical mock exams
@@ -228,8 +233,12 @@ Phase 3 guardrails:
 | Route | Current purpose |
 | --- | --- |
 | `/` | Public TopoPass homepage |
-| `/topographical` | Public topographical assessment preparation information page |
-| `/seru` | Public SERU assessment preparation information page |
+| `/course` | Public page explaining how the TopoPass preparation course works |
+| `/topographical` | Public Topographical Course information page |
+| `/seru` | Public SERU-style preparation course information page |
+| `/demo` | Public demo chooser for Topographical and SERU previews |
+| `/demo/topographical` | Short timed Topographical demo |
+| `/demo/seru` | Short timed SERU-style demo |
 | `/learn` | Expanded learning hub, study path, and SERU preparation support notes |
 | `/practice` | Practice hub for choosing Topographical or SERU-style practice |
 | `/practice/topographical` | Topographical practice hub with topic selector and question-type entry points |
@@ -927,7 +936,10 @@ schema migrations, official-question content, or new learner-data behaviour.
 
 Public assessment result:
 
-- `/topographical` explains topographical assessment preparation, map reading,
+- `/course` explains the guided TopoPass preparation course, the learner
+  journey, included course areas, product-preview cards, focused revision, and
+  independent-learning positioning.
+- `/topographical` explains the Topographical Course, map reading,
   route planning, direction sense, key London locations, mistake review, and how
   TopoPass helps learners prepare.
 - `/seru` explains SERU-style preparation, Safety, Equality and Regulatory
@@ -940,11 +952,15 @@ Public assessment result:
 
 Navigation result:
 
-- Signed-out visitors see a Prepare dropdown with Topographical Assessment and
-  SERU Assessment, plus Demo, Resources, Pricing, Sign in, and Start practising.
+- Signed-out visitors see a Course dropdown with Topographical Course, SERU
+  Course, and How the course works, plus Demo, Resources, Pricing, Sign in, and
+  Start practising.
 - Signed-in learners still see Dashboard, Practice, Mock Test, Review,
   Progress, Account, and Sign out.
-- Demo remains a short public preview, not the full Practice area.
+- Demo remains separate from Course navigation and offers short public
+  Topographical and SERU previews, not the full Practice area.
+- Each demo is timed, limited to 10 questions, shows feedback, and ends with a
+  short result summary plus full-practice/account CTAs.
 
 Verification commands for this pass:
 
@@ -1336,8 +1352,12 @@ Result for this Stage 39.7 pass: lint, tests, and production build passed.
 
 ### Public assessment pages
 
+- Open `/course` signed out on desktop and mobile width.
+- Confirm the page explains the course journey, included course areas, preview
+  cards, focused revision, and independent learning support.
+- Confirm `/course` has no learner sidebar.
 - Open `/topographical` signed out on desktop and mobile width.
-- Confirm the page explains topographical assessment preparation clearly.
+- Confirm the page explains the Topographical Course clearly.
 - Confirm it has no learner sidebar.
 - Use Start topographical practice, Try demo, and View pricing.
 - Open `/seru` signed out on desktop and mobile width.
@@ -1350,11 +1370,27 @@ Result for this Stage 39.7 pass: lint, tests, and production build passed.
 ### Logged-out navigation
 
 - Open `/` signed out.
-- Confirm the public nav shows Prepare, Demo, Resources, Pricing, Sign in, and
+- Confirm the public nav shows Course, Demo, Resources, Pricing, Sign in, and
   Start practising.
-- Open the Prepare dropdown and confirm it links to Topographical Assessment
-  and SERU Assessment.
+- Open the Course dropdown and confirm it links to Topographical Course, SERU
+  Course, and How the course works.
+- Confirm the Course dropdown does not include Free demo.
+- Confirm Demo remains a separate main public nav item.
 - Confirm Progress is not a main public nav item.
+
+### Demo split
+
+- Open `/demo` signed out.
+- Confirm it shows separate Topographical demo and SERU demo cards.
+- Start `/demo/topographical`.
+- Confirm it is timed, limited to 10 questions, and shows instant feedback.
+- Complete the Topographical demo and confirm the short result summary appears.
+- Start `/demo/seru`.
+- Confirm it is timed, limited to 10 questions, and shows instant feedback.
+- Complete the SERU demo and confirm the short result summary appears.
+- Confirm demo result CTAs point to full practice and account sign-in.
+- Confirm demo pages do not show full topic filters, weak-topic dashboard,
+  mock exams, admin content, or account-only features.
 
 ### Logged-in navigation regression
 
@@ -1369,9 +1405,8 @@ Result for this Stage 39.7 pass: lint, tests, and production build passed.
 
 - Learner accounts are optional; signed-in completions save to Supabase, but
   local-to-account migration is not implemented yet.
-- Demo is currently a short map-click preview and CTA page, not a full
-  multi-question guided sample with separate Topographical and SERU mini-result
-  flow.
+- Demo is a short public preview with separate 10-question Topographical and
+  SERU routes, not the full guided Practice mode.
 - Legacy `/login` and `/register` remain placeholder routes; active auth lives
   under `/auth/*`.
 - The progress dashboard uses browser-local progress for signed-out learners

@@ -5,9 +5,9 @@ import { buildPageMetadata } from "@/lib/seo";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
-  title: "SERU Assessment Preparation",
+  title: "SERU Course",
   description:
-    "Learn about SERU-style private hire preparation and practise safety, equality, accessibility, customer care, safeguarding, licensing, and professional conduct topics.",
+    "Use the TopoPass SERU-style preparation course to practise safety, equality, accessibility, customer care, safeguarding, licensing, and professional conduct topics.",
   path: "/seru"
 });
 
@@ -100,18 +100,18 @@ export default function SeruPage() {
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_0.85fr] lg:items-center">
           <div>
             <p className="text-sm font-bold uppercase tracking-wide text-orange-700">
-              SERU assessment preparation
+              SERU Course
             </p>
             <h1 className="mt-3 text-4xl font-bold leading-tight text-ink sm:text-5xl">
-              Practise SERU-style knowledge with clear explanations
+              Follow a SERU-style preparation course with clear explanations
             </h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700">
               SERU-style preparation helps private-hire learners build
               confidence with safety, equality, accessibility, customer service,
               safeguarding, licensing awareness, driver responsibilities, and
-              professional conduct. TopoPass gives you original practice
-              questions, explanations, and topic-based review so you can focus
-              on the areas that need more work.
+              professional conduct. TopoPass gives you a guided learning path
+              with original practice questions, explanations, and topic-based
+              review so you can focus on the areas that need more work.
             </p>
             <p className="mt-4 max-w-3xl text-xs leading-5 text-slate-500">
               TopoPass is an independent learning tool. Its SERU-style practice

@@ -15,6 +15,10 @@ const seruPublicSource = readFileSync(
   path.join(projectRoot, "app/seru/page.tsx"),
   "utf8"
 );
+const courseSource = readFileSync(
+  path.join(projectRoot, "app/course/page.tsx"),
+  "utf8"
+);
 const practiceSource = readFileSync(
   path.join(projectRoot, "app/practice/page.tsx"),
   "utf8"
@@ -28,6 +32,18 @@ const seruPracticeSource = readFileSync(
   "utf8"
 );
 const demoSource = readFileSync(path.join(projectRoot, "app/demo/page.tsx"), "utf8");
+const topographicalDemoSource = readFileSync(
+  path.join(projectRoot, "app/demo/topographical/page.tsx"),
+  "utf8"
+);
+const seruDemoSource = readFileSync(
+  path.join(projectRoot, "app/demo/seru/page.tsx"),
+  "utf8"
+);
+const demoFlowSource = readFileSync(
+  path.join(projectRoot, "src/components/demo/DemoQuestionFlow.tsx"),
+  "utf8"
+);
 const navbarSource = readFileSync(
   path.join(projectRoot, "components/layout/Navbar.tsx"),
   "utf8"
@@ -69,13 +85,18 @@ test("home page is outcome-focused and keeps SERU visible without internal headi
     /Prepare for your TfL private hire assessment with confidence/
   );
   assert.match(homeSource, /Designed for focused revision before test day/);
-  assert.match(homeSource, /What TopoPass helps you prepare for/);
-  assert.match(homeSource, /SERU-style preparation/);
+  assert.match(
+    homeSource,
+    /A structured preparation course for TfL private hire learners/
+  );
+  assert.match(homeSource, /Topographical course/);
+  assert.match(homeSource, /SERU-style preparation course/);
   assert.match(homeSource, /\/images\/home-practice-overview-hero\.svg/);
   assert.match(homeSource, /\/topographical/);
   assert.match(homeSource, /\/seru/);
   assert.match(homeSource, /\/practice\/seru/);
   assert.match(homeSource, /not affiliated\s+with or endorsed by Transport for London/);
+  assert.doesNotMatch(homeSource, /official course|TfL-approved course|guaranteed pass/i);
   assert.doesNotMatch(homeSource, /Two preparation areas/);
   assert.doesNotMatch(
     homeSource,
@@ -139,24 +160,35 @@ test("SERU practice keeps safe wording and separate practice controls", () => {
 });
 
 test("demo is positioned as a public preview, not full practice", () => {
-  assert.match(demoSource, /Short public demo/);
+  assert.match(demoSource, /Free demo/);
+  assert.match(demoSource, /Topographical demo/);
+  assert.match(demoSource, /SERU demo/);
+  assert.match(demoSource, /10 questions/);
+  assert.match(demoSource, /timed demo/);
   assert.match(demoSource, /Start full practice/);
-  assert.match(demoSource, /Create account to save progress/);
-  assert.match(demoSource, /Practice is the real learning area/);
+  assert.match(demoSource, /no full progress dashboard/);
+  assert.match(topographicalDemoSource, /\/practice\/topographical/);
+  assert.match(seruDemoSource, /\/practice\/seru/);
+  assert.match(demoFlowSource, /const DEMO_SECONDS = 10 \* 60/);
+  assert.match(demoFlowSource, /Create account \/ sign in to save progress/);
 });
 
 test("navigation separates public marketing links from signed-in learner links", () => {
   const publicNavSection =
     navbarSource.match(/const publicNavItems = \[[\s\S]*?\];/)?.[0] ?? "";
-  const prepareSection =
-    navbarSource.match(/const prepareItems = \[[\s\S]*?\];/)?.[0] ?? "";
+  const courseSection =
+    navbarSource.match(/const courseItems = \[[\s\S]*?\];/)?.[0] ?? "";
 
-  assert.match(navbarSource, /Prepare/);
-  assert.match(navbarSource, /prepareItems/);
-  assert.match(prepareSection, /\/topographical/);
-  assert.match(prepareSection, /\/seru/);
-  assert.match(prepareSection, /Topographical Assessment/);
-  assert.match(prepareSection, /SERU Assessment/);
+  assert.match(navbarSource, /Course/);
+  assert.match(navbarSource, /courseItems/);
+  assert.match(courseSection, /\/topographical/);
+  assert.match(courseSection, /\/seru/);
+  assert.match(courseSection, /\/course/);
+  assert.match(courseSection, /Topographical Course/);
+  assert.match(courseSection, /SERU Course/);
+  assert.match(courseSection, /How the course works/);
+  assert.doesNotMatch(courseSection, /Free demo/);
+  assert.doesNotMatch(courseSection, /\/demo/);
   assert.match(navbarSource, /publicNavItems/);
   assert.match(navbarSource, /\/demo/);
   assert.match(navbarSource, /learnerNavItems/);
@@ -164,6 +196,24 @@ test("navigation separates public marketing links from signed-in learner links",
   assert.match(navbarSource, /\/review/);
   assert.match(navbarSource, /Start practising/);
   assert.doesNotMatch(publicNavSection, /Progress/);
+});
+
+test("course page explains the public course without app dashboard layout", () => {
+  assert.match(courseSource, /How the course works/);
+  assert.match(
+    courseSource,
+    /A guided preparation course for TfL private hire learners/
+  );
+  assert.match(courseSource, /Your course journey/);
+  assert.match(courseSource, /What is included in the course\?/);
+  assert.match(courseSource, /See what the course looks like/);
+  assert.match(courseSource, /Built for focused revision/);
+  assert.match(courseSource, /Independent learning support/);
+  assert.match(courseSource, /not affiliated\s+with, endorsed by, or sponsored by Transport for London/);
+  assert.match(courseSource, /<Navbar \/>/);
+  assert.match(courseSource, /<Footer \/>/);
+  assert.doesNotMatch(courseSource, /AppShell|Sidebar/);
+  assert.doesNotMatch(courseSource, /official course|TfL-approved course|guaranteed pass/i);
 });
 
 test("sidebar groups study, practice, review, and account links", () => {
@@ -186,14 +236,17 @@ test("public assessment pages use public layout and safe independent wording", (
 
   assert.match(
     topographicalPublicSource,
-    /Build confidence for the TfL topographical assessment/
+    /Build confidence with a structured topographical course/
   );
+  assert.match(topographicalPublicSource, /Topographical Course/);
   assert.match(topographicalPublicSource, /\/practice\/topographical/);
   assert.match(topographicalPublicSource, /not affiliated\s+with or endorsed by Transport for London/);
   assert.match(
     seruPublicSource,
     /SERU stands for Safety, Equality and Regulatory Understanding/
   );
+  assert.match(seruPublicSource, /SERU Course/);
+  assert.match(seruPublicSource, /SERU-style preparation course/);
   assert.match(seruPublicSource, /\/practice\/seru/);
   assert.match(seruPublicSource, /original revision content/);
 });

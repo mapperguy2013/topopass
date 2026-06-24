@@ -2,9 +2,10 @@ import Link from "next/link";
 import { signOutAction } from "@/app/auth/actions";
 import { getCurrentAuthState } from "@/lib/auth/session";
 
-const prepareItems = [
-  { href: "/topographical", label: "Topographical Assessment" },
-  { href: "/seru", label: "SERU Assessment" }
+const courseItems = [
+  { href: "/topographical", label: "Topographical Course" },
+  { href: "/seru", label: "SERU Course" },
+  { href: "/course", label: "How the course works" }
 ];
 
 const publicNavItems = [
@@ -43,16 +44,10 @@ export async function Navbar() {
           {!user && (
             <details className="group relative shrink-0">
               <summary className="inline-flex min-h-11 cursor-pointer list-none items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-slate-600 transition hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road">
-                Prepare
-                <span
-                  aria-hidden="true"
-                  className="ml-1 text-xs transition group-open:rotate-180"
-                >
-                  ▼
-                </span>
+                Course
               </summary>
               <div className="mt-1 min-w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-soft md:absolute md:left-0 md:top-full md:z-50">
-                {prepareItems.map((item) => (
+                {courseItems.map((item) => (
                   <Link
                     className="block rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                     href={item.href}
