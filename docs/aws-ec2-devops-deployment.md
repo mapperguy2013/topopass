@@ -185,16 +185,38 @@ Recommended network exposure:
 
 ## GitHub Actions Plan
 
-No workflow is added in this stage. The future workflow should:
+Step 42 adds `.github/workflows/docker-publish-ecr.yml`. That workflow only
+builds and publishes the app image to private ECR.
 
-1. Run lint, tests, and production build.
-2. Build the Docker image.
-3. Push to ECR.
-4. Deploy to EC2 through SSH or SSM.
-5. Pull the image on EC2.
-6. Run `docker compose up -d`.
-7. Check app health.
-8. Keep rollback instructions for the previous image tag.
+The workflow:
+
+1. Runs on push to `main` and manual `workflow_dispatch`.
+2. Checks out the repository.
+3. Assumes an AWS IAM role through GitHub OIDC.
+4. Logs in to Amazon ECR.
+5. Builds the Docker image from the existing Dockerfile.
+6. Tags the image with the Git commit SHA and `latest`.
+7. Pushes both tags to the configured private ECR repository.
+
+Required GitHub repository variables:
+
+- `AWS_REGION`
+- `AWS_ROLE_TO_ASSUME`
+- `ECR_REPOSITORY`
+- optional `NEXT_PUBLIC_SITE_URL`
+- optional `NEXT_PUBLIC_SUPABASE_URL`
+
+Optional GitHub repository secret:
+
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`, only if the image build needs the managed
+  Supabase anon key at build time.
+
+The workflow does not deploy to EC2. A later deployment workflow should:
+
+1. Pull the ECR image on EC2.
+2. Run `docker compose up -d`.
+3. Check app health.
+4. Keep rollback instructions for the previous image tag.
 
 ## Phase 4 Manual Checklist
 
@@ -224,7 +246,7 @@ No workflow is added in this stage. The future workflow should:
 ## Out Of Scope For This Stage
 
 - Actual AWS deployment.
-- GitHub Actions workflow implementation.
+- GitHub Actions deployment workflow implementation.
 - Caddy or Nginx configuration.
 - Terraform.
 - Self-hosted Supabase.

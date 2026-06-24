@@ -192,6 +192,19 @@ Stage 41 Dockerisation status:
 | Self-hosted Supabase | Not added |
 | Product features/UI changed | No |
 
+Step 42 ECR publishing status:
+
+| Item | Status |
+| --- | --- |
+| GitHub Actions Docker publish workflow | Added |
+| Push trigger on `main` | Added |
+| Manual `workflow_dispatch` trigger | Added |
+| GitHub OIDC AWS role assumption | Configured |
+| Amazon ECR login | Configured |
+| Docker image tags | Git SHA and `latest` |
+| EC2 deployment logic | Not added |
+| ECS/Fargate/ALB/Terraform | Not added |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -200,10 +213,12 @@ Phase 4 checklist:
 - [x] Docker Compose app-only production template exists.
 - [x] Root Docker Compose app runner exists.
 - [x] Docker helper scripts exist.
+- [x] GitHub Actions ECR image publishing workflow exists.
 - [x] Managed Supabase remains the planned backend for this stage.
 - [x] No real secrets are committed.
-- [ ] GitHub Actions build/push workflow.
-- [ ] ECR repository and IAM deploy role.
+- [ ] Create the private ECR repository in AWS.
+- [ ] Create the GitHub OIDC IAM role in AWS.
+- [ ] Add required GitHub Actions variables/secrets.
 - [ ] EC2 host provisioning.
 - [ ] Caddy or Nginx reverse proxy.
 - [ ] Route 53 DNS.
@@ -243,6 +258,24 @@ EC2-oriented Docker notes:
 - Check logs with `docker compose logs -f topopass-app`.
 - Do not commit runtime env files, real secrets, `.next`, `node_modules`, build
   outputs, or Docker local artifacts.
+
+Step 42 GitHub Actions/ECR setup:
+
+- Create a private ECR repository, for example `topopass/topopass-web`.
+- Create an AWS IAM role trusted by GitHub OIDC for this repository.
+- Grant the role least-privilege ECR push access for that repository.
+- Add these GitHub repository variables:
+  - `AWS_REGION`
+  - `AWS_ROLE_TO_ASSUME`
+  - `ECR_REPOSITORY`
+  - optional `NEXT_PUBLIC_SITE_URL`
+  - optional `NEXT_PUBLIC_SUPABASE_URL`
+- Add this GitHub repository secret only if the managed Supabase anon key should
+  be supplied during the image build:
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Do not add AWS access keys to the repository.
+- Do not add deployment credentials, service-role keys, or `.env` files.
+- Step 42 only publishes the image to ECR. EC2 deployment remains a later stage.
 
 ## Current Feature Set
 
@@ -1314,6 +1347,59 @@ Result for this Stage 41 pass: lint, tests, production build, Docker image
 build, Docker Compose startup, container logs, HTTP 200 response, and Compose
 shutdown passed. Local Compose was verified with `TOPOPASS_HOST_PORT=3001`
 because port `3000` was already occupied on the development machine.
+
+## Step 42 GitHub Actions ECR Publishing QA Status
+
+Step 42 adds image publishing only. It does not deploy to EC2, add ECS/Fargate,
+add an ALB, add Terraform, provision servers, or change Supabase hosting.
+
+Workflow result:
+
+- `.github/workflows/docker-publish-ecr.yml` runs on push to `main` and manual
+  `workflow_dispatch`.
+- The workflow uses `contents: read` and `id-token: write` permissions only.
+- AWS credentials are configured through `aws-actions/configure-aws-credentials`
+  using GitHub OIDC role assumption.
+- Amazon ECR login uses `aws-actions/amazon-ecr-login`.
+- The existing Dockerfile is built and tagged with both the Git commit SHA and
+  `latest`.
+- Both tags are pushed to the configured private ECR repository.
+- No EC2 deploy commands, SSH, SSM, ECS/Fargate, ALB, Terraform, or server
+  provisioning logic was added.
+
+Required GitHub/AWS configuration:
+
+- `AWS_REGION`: GitHub repository variable.
+- `AWS_ROLE_TO_ASSUME`: GitHub repository variable containing the OIDC role ARN.
+- `ECR_REPOSITORY`: GitHub repository variable containing the private ECR
+  repository name.
+- `NEXT_PUBLIC_SITE_URL`: optional GitHub repository variable.
+- `NEXT_PUBLIC_SUPABASE_URL`: optional GitHub repository variable.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: optional GitHub repository secret if the
+  image build needs the managed Supabase anon key at build time.
+
+Verification checklist:
+
+- Confirm the private ECR repository exists.
+- Confirm the OIDC role trust policy is scoped to the GitHub repository.
+- Confirm the role has only the ECR permissions needed to push images.
+- Confirm the workflow runs successfully from `workflow_dispatch`.
+- Confirm the ECR repository receives both `latest` and the commit SHA tag.
+- Confirm no AWS access keys, Supabase service-role keys, `.env` files,
+  `node_modules`, `.next`, or build outputs are committed.
+
+Verification commands for this pass:
+
+```powershell
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --cached --check
+```
+
+Result for this Step 42 pass: lint, tests, production build, and cached diff
+checks passed locally. ECR push must be tested from GitHub after the required
+repository variables and OIDC role are configured.
 
 ## Beta Launch Checklist
 
