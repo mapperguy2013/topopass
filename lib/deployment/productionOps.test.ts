@@ -58,6 +58,34 @@ test("runtime env fetch requires Supabase auth config without printing values", 
   assert.match(ecrWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY GitHub repository secret is required/);
 });
 
+test("Mapbox public token is wired into production builds without runtime browser env gates", () => {
+  const dockerfile = read("Dockerfile");
+  const ecrWorkflow = read(".github/workflows/docker-publish-ecr.yml");
+  const deploymentDocs = read("docs/aws-ec2-devops-deployment.md");
+  const mapboxConfig = read("lib/mapbox/config.ts");
+  const mapClickQuestion = read("src/components/questions/MapClickQuestion.tsx");
+  const mapReview = read("src/components/progress/MapClickAnswerReview.tsx");
+  const mapView = read("components/map/MapView.tsx");
+  const adminPicker = read("src/components/admin/AdminCoordinatePicker.tsx");
+
+  assert.match(ecrWorkflow, /NEXT_PUBLIC_MAPBOX_TOKEN GitHub repository variable is required/);
+  assert.match(ecrWorkflow, /--build-arg NEXT_PUBLIC_MAPBOX_TOKEN=/);
+  assert.match(dockerfile, /ARG NEXT_PUBLIC_MAPBOX_TOKEN=""/);
+  assert.match(dockerfile, /ENV NEXT_PUBLIC_MAPBOX_TOKEN=\$NEXT_PUBLIC_MAPBOX_TOKEN/);
+  assert.match(deploymentDocs, /NEXT_PUBLIC_MAPBOX_TOKEN/);
+  assert.match(deploymentDocs, /runtime env alone will not change already-built client chunks/);
+
+  assert.match(mapboxConfig, /publicMapboxConfig/);
+  assert.match(mapboxConfig, /process\.env\.NEXT_PUBLIC_MAPBOX_TOKEN/);
+  assert.match(mapboxConfig, /getMapboxPublicConfig/);
+  assert.match(mapboxConfig, /hasMapboxPublicConfig/);
+
+  for (const source of [mapClickQuestion, mapReview, mapView, adminPicker]) {
+    assert.match(source, /getMapboxPublicConfig/);
+    assert.doesNotMatch(source, /process\.env\.NEXT_PUBLIC_MAPBOX_TOKEN/);
+  }
+});
+
 test("terraform provisions private encrypted backup storage and alerting", () => {
   const backups = read("infra/terraform/backups.tf");
   const monitoring = read("infra/terraform/monitoring.tf");

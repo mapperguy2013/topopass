@@ -382,10 +382,10 @@ Step 42 GitHub Actions/ECR setup:
   - `AWS_REGION`
   - `AWS_ROLE_TO_ASSUME`
   - `ECR_REPOSITORY`
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_MAPBOX_TOKEN`
   - optional `NEXT_PUBLIC_SITE_URL`
-  - optional `NEXT_PUBLIC_SUPABASE_URL`
-- Add this GitHub repository secret only if the Supabase anon key should
-  be supplied during the image build:
+- Add this GitHub repository secret:
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - Do not add AWS access keys to the repository.
 - Do not add deployment credentials, service-role keys, or `.env` files.
@@ -934,7 +934,11 @@ NEXT_PUBLIC_MAPBOX_TOKEN=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-`NEXT_PUBLIC_MAPBOX_TOKEN` is required for current Mapbox map-click pages.
+`NEXT_PUBLIC_MAPBOX_TOKEN` is required for current Mapbox map-click pages. For
+production Docker images, it must be supplied to the GitHub Actions build as a
+repository variable so the browser bundle is built with Mapbox enabled; adding
+it only to the EC2 runtime dotenv file is not enough for already-built client
+chunks.
 Supabase public URL and anon key are optional until Phase 3 stages wire database
 behaviour into learner flows. They are required to use account pages and
 account-backed progress saving. `NEXT_PUBLIC_SITE_URL` is optional and is used
@@ -1486,7 +1490,7 @@ Verification commands for this pass:
 npm.cmd run lint
 npm.cmd test
 npm.cmd run build
-docker build --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 --build-arg NEXT_PUBLIC_SUPABASE_URL= --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY= -t topopass-web:stage40 .
+docker build --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 --build-arg NEXT_PUBLIC_SUPABASE_URL= --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY= --build-arg NEXT_PUBLIC_MAPBOX_TOKEN= -t topopass-web:stage40 .
 git diff --cached --check
 ```
 
@@ -1550,7 +1554,7 @@ Verification commands for this pass:
 npm.cmd run lint
 npm.cmd test
 npm.cmd run build
-docker build --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 --build-arg NEXT_PUBLIC_SUPABASE_URL= --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY= -t topopass-web:stage41 .
+docker build --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 --build-arg NEXT_PUBLIC_SUPABASE_URL= --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY= --build-arg NEXT_PUBLIC_MAPBOX_TOKEN= -t topopass-web:stage41 .
 docker compose up -d --build
 docker compose ps
 docker compose logs --tail 80 topopass-app
@@ -1589,9 +1593,11 @@ Required GitHub/AWS configuration:
 - `ECR_REPOSITORY`: GitHub repository variable containing the private ECR
   repository name.
 - `NEXT_PUBLIC_SITE_URL`: optional GitHub repository variable.
-- `NEXT_PUBLIC_SUPABASE_URL`: optional GitHub repository variable.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: optional GitHub repository secret if the
-  image build needs the Supabase anon key at build time.
+- `NEXT_PUBLIC_SUPABASE_URL`: required GitHub repository variable.
+- `NEXT_PUBLIC_MAPBOX_TOKEN`: required GitHub repository variable for map-click
+  pages.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: required GitHub repository secret for
+  production auth pages.
 
 Verification checklist:
 

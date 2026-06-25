@@ -6,6 +6,10 @@ import {
   mapClickSelectionMessage,
   scoreMapClickAnswer
 } from "./mapClickInteraction.ts";
+import {
+  getMapboxPublicConfig,
+  hasMapboxPublicConfig
+} from "./mapbox/config.ts";
 
 test("canSubmitMapClickAnswer requires a finite selected coordinate", () => {
   assert.equal(canSubmitMapClickAnswer(null), false);
@@ -68,4 +72,17 @@ test("mapClickSelectionMessage explains unselected, selected, and submitted stat
     }),
     "Answer submitted. Click or tap the map again to change it."
   );
+});
+
+test("Mapbox public config normalizes configured and missing tokens", () => {
+  assert.equal(
+    hasMapboxPublicConfig({ NEXT_PUBLIC_MAPBOX_TOKEN: "pk.public-token" }),
+    true
+  );
+  assert.deepEqual(
+    getMapboxPublicConfig({ NEXT_PUBLIC_MAPBOX_TOKEN: "  pk.public-token  " }),
+    { accessToken: "pk.public-token" }
+  );
+  assert.equal(hasMapboxPublicConfig({ NEXT_PUBLIC_MAPBOX_TOKEN: "" }), false);
+  assert.equal(getMapboxPublicConfig({}), null);
 });

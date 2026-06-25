@@ -138,11 +138,15 @@ GitHub OIDC role:
   - `ECR_REPOSITORY`
   - `NEXT_PUBLIC_SITE_URL`
   - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_MAPBOX_TOKEN`
 - Add this GitHub repository secret:
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required
   for production image builds so the Next.js browser bundle is not built with
   blank Supabase auth config. Never use a Supabase service-role key here.
+- `NEXT_PUBLIC_MAPBOX_TOKEN` is required for production image builds so the
+  browser bundle is not built with the Mapbox fallback message. Updating EC2
+  runtime env alone will not change already-built client chunks.
 
 ECR:
 
@@ -241,11 +245,13 @@ docker build \
   --build-arg NEXT_PUBLIC_SITE_URL=https://example.com \
   --build-arg NEXT_PUBLIC_SUPABASE_URL=https://supabase.example.com \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key \
+  --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=your-public-mapbox-token \
   -t "$ECR_IMAGE" .
 ```
 
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` is public browser configuration, not a
-service-role key. RLS remains the security boundary for learner data.
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` and `NEXT_PUBLIC_MAPBOX_TOKEN` are public
+browser configuration values, not service-role keys. RLS remains the security
+boundary for learner data.
 
 ## Docker Compose Template
 
@@ -390,12 +396,18 @@ and non-empty:
 The fetch script intentionally fails if either key is missing or blank. It does
 not print the values.
 
+Map-click pages also require this public browser token in the production image
+build and in the runtime dotenv for clear host configuration:
+
+- `NEXT_PUBLIC_MAPBOX_TOKEN`
+
 Example shape:
 
 ```dotenv
 NEXT_PUBLIC_SITE_URL=http://13.134.170.158
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+NEXT_PUBLIC_MAPBOX_TOKEN=your-public-mapbox-token
 ```
 
 To update the current runtime secret without printing values, fetch it to a
@@ -495,9 +507,16 @@ sudo docker compose -f deploy/docker-compose.prod.yml ps
 
 The Docker image also receives `NEXT_PUBLIC_SUPABASE_URL` and
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` as build-time `NEXT_PUBLIC_*` values for any
-browser-side Supabase bundle code. Keep the GitHub Actions variables/secrets in
-sync with the runtime Secrets Manager values, then rebuild and republish the
-image if those values were blank during the latest ECR build.
+browser-side Supabase bundle code. It also receives `NEXT_PUBLIC_MAPBOX_TOKEN`
+for map-click pages. Keep the GitHub Actions variables/secrets in sync with the
+runtime Secrets Manager values, then rebuild and republish the image if those
+values were blank during the latest ECR build.
+
+If a deployed map says "Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local to load the
+Mapbox test map", confirm the `NEXT_PUBLIC_MAPBOX_TOKEN` GitHub repository
+variable is set, rerun the ECR image publishing workflow, pull the new image on
+EC2, and recreate the Compose stack. Updating the EC2 runtime dotenv alone will
+not change a client bundle that was built without the public Mapbox token.
 
 Because `app.env` is root-readable only, run the production deploy script with
 `sudo`:

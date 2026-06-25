@@ -3,9 +3,11 @@
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
 import type { Coordinates } from "@/lib/distance";
+import { getMapboxPublicConfig } from "@/lib/mapbox/config";
 import { QuestionExplanation } from "@/src/components/questions/QuestionExplanation";
 
 const REVIEW_MAP_STYLE = "mapbox://styles/mapbox/streets-v12";
+const mapboxConfig = getMapboxPublicConfig();
 
 export type MapClickAnswerReviewProps = {
   userCoordinates?: Coordinates | null;
@@ -75,7 +77,7 @@ export function MapClickAnswerReview({
   const hasUserCoordinate = isCoordinate(userCoordinates);
   const hasCorrectCoordinate = isTarget(correctCoordinates);
   const shouldRenderMap =
-    Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN) &&
+    Boolean(mapboxConfig) &&
     (hasUserCoordinate || hasCorrectCoordinate);
   const attemptDetail =
     hasUserCoordinate && typeof distanceMeters === "number"
@@ -85,9 +87,9 @@ export function MapClickAnswerReview({
         : "Your clicked location was not saved for this older attempt.";
 
   useEffect(() => {
-    if (!containerRef.current || !shouldRenderMap) return;
+    if (!containerRef.current || !shouldRenderMap || !mapboxConfig) return;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN as string;
+    mapboxgl.accessToken = mapboxConfig.accessToken;
     const visiblePoints: [number, number][] = [];
 
     if (hasUserCoordinate) {
@@ -211,7 +213,7 @@ export function MapClickAnswerReview({
           />
         ) : (
           <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
-            {!process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+            {!mapboxConfig
               ? "Add NEXT_PUBLIC_MAPBOX_TOKEN to .env.local to load the real Mapbox review map."
               : "Map coordinates are unavailable for this attempt."}
           </div>

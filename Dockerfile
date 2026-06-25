@@ -12,15 +12,17 @@ WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# These are public browser configuration values, not private secrets. They may
-# be supplied by CI/build tooling when building the production image.
+# These are public browser configuration values, not private secrets. They must
+# be supplied by CI/build tooling before Next.js builds the client bundle.
 ARG NEXT_PUBLIC_SITE_URL="http://localhost:3000"
 ARG NEXT_PUBLIC_SUPABASE_URL=""
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+ARG NEXT_PUBLIC_MAPBOX_TOKEN=""
 
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_MAPBOX_TOKEN=$NEXT_PUBLIC_MAPBOX_TOKEN
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .

@@ -2,20 +2,23 @@
 
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
+import { getMapboxPublicConfig } from "@/lib/mapbox/config";
 
 type MapViewProps = {
   className?: string;
 };
 
+const mapboxConfig = getMapboxPublicConfig();
+
 export function MapView({ className = "" }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!mapContainer.current || !process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
+    if (!mapContainer.current || !mapboxConfig) {
       return;
     }
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    mapboxgl.accessToken = mapboxConfig.accessToken;
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,
@@ -36,7 +39,7 @@ export function MapView({ className = "" }: MapViewProps) {
       className={`flex min-h-[320px] items-center justify-center rounded-md border border-slate-200 bg-slate-100 text-sm text-slate-600 ${className}`}
       ref={mapContainer}
     >
-      {!process.env.NEXT_PUBLIC_MAPBOX_TOKEN && "Mapbox token required"}
+      {!mapboxConfig && "Mapbox token required"}
     </div>
   );
 }

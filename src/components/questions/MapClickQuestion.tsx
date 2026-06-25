@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
+import { getMapboxPublicConfig } from "@/lib/mapbox/config";
 import { EXAM_MAP_ZOOM_LIMITS } from "@/lib/topographicalAtlasStyle";
 import type { Coordinates } from "@/lib/distance";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/mapClickInteraction";
 
 const SAFE_MAPBOX_STYLE = "mapbox://styles/mapbox/streets-v12";
+const mapboxConfig = getMapboxPublicConfig();
 
 export type MapClickQuestionProps = {
   title: string;
@@ -93,7 +95,7 @@ export function MapClickQuestion({
   const [result, setResult] = useState<MapClickScoreResult | null>(
     initialAnswer ?? null
   );
-  const [hasToken] = useState(Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN));
+  const hasToken = Boolean(mapboxConfig);
   const canSubmit = canSubmitMapClickAnswer(selectedCoordinates);
   const selectionStatusId = "map-click-selection-status";
   const selectionMessage = mapClickSelectionMessage({
@@ -109,13 +111,13 @@ export function MapClickQuestion({
   }, [target.lat, target.lng, title]);
 
   useEffect(() => {
-    if (!mapContainer.current || !process.env.NEXT_PUBLIC_MAPBOX_TOKEN) {
+    if (!mapContainer.current || !mapboxConfig) {
       return;
     }
 
     const center = initialCenter ?? target;
 
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    mapboxgl.accessToken = mapboxConfig.accessToken;
 
     const map = new mapboxgl.Map({
       container: mapContainer.current,

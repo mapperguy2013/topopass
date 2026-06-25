@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import mapboxgl from "mapbox-gl";
+import { getMapboxPublicConfig } from "@/lib/mapbox/config";
 
 export type AdminCoordinatePoint = {
   id: string;
@@ -17,6 +18,8 @@ type AdminCoordinatePickerProps = {
   onPointChange: (id: string, coordinates: { lat: number; lng: number }) => void;
 };
 
+const mapboxConfig = getMapboxPublicConfig();
+
 export function AdminCoordinatePicker({ points, activePointId, onPointChange }: AdminCoordinatePickerProps) {
   const container = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -28,9 +31,9 @@ export function AdminCoordinatePicker({ points, activePointId, onPointChange }: 
   changeHandler.current = onPointChange;
 
   useEffect(() => {
-    if (!container.current || !process.env.NEXT_PUBLIC_MAPBOX_TOKEN) return;
+    if (!container.current || !mapboxConfig) return;
     const initial = initialPoints.current.find((point) => point.id === activeId.current) ?? initialPoints.current[0];
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    mapboxgl.accessToken = mapboxConfig.accessToken;
     const map = new mapboxgl.Map({ container: container.current, style: "mapbox://styles/mapbox/streets-v12", center: initial ? [initial.lng, initial.lat] : [-0.12, 51.52], zoom: 14, dragRotate: false, pitchWithRotate: false });
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     map.on("click", (event) => changeHandler.current(activeId.current, { lat: event.lngLat.lat, lng: event.lngLat.lng }));
@@ -52,5 +55,5 @@ export function AdminCoordinatePicker({ points, activePointId, onPointChange }: 
     });
   }, [points]);
 
-  return <div className="min-h-[360px] overflow-hidden rounded-md border border-slate-300 bg-slate-100" ref={container}>{!process.env.NEXT_PUBLIC_MAPBOX_TOKEN && <div className="flex min-h-[360px] items-center justify-center p-5 text-center text-sm text-slate-600">Add NEXT_PUBLIC_MAPBOX_TOKEN to use the coordinate picker.</div>}</div>;
+  return <div className="min-h-[360px] overflow-hidden rounded-md border border-slate-300 bg-slate-100" ref={container}>{!mapboxConfig && <div className="flex min-h-[360px] items-center justify-center p-5 text-center text-sm text-slate-600">Add NEXT_PUBLIC_MAPBOX_TOKEN to use the coordinate picker.</div>}</div>;
 }
