@@ -25,6 +25,7 @@ fi
 require_command aws
 require_command install
 require_command mktemp
+require_command sed
 
 validate_dotenv_file() {
   local path="$1"
@@ -50,6 +51,22 @@ validate_dotenv_file() {
   ' "$path"; then
     fail "Runtime env file contains invalid dotenv lines. Expected KEY=value, comments, or blank lines only."
   fi
+}
+
+require_dotenv_key() {
+  local path="$1"
+  local key="$2"
+
+  if ! grep -Eq "^${key}=.+" "$path" || grep -Eq "^${key}=([[:space:]]*|\"\"|'')$" "$path"; then
+    fail "Required runtime env key ${key} is missing or blank."
+  fi
+}
+
+validate_required_runtime_keys() {
+  local path="$1"
+
+  require_dotenv_key "$path" "NEXT_PUBLIC_SUPABASE_URL"
+  require_dotenv_key "$path" "NEXT_PUBLIC_SUPABASE_ANON_KEY"
 }
 
 ENV_DIR="$(dirname "$APP_ENV_FILE")"
@@ -81,7 +98,9 @@ if grep -qx "None" "$TMP_FILE"; then
   fail "Runtime secret has no SecretString value. Store plain dotenv text in the secret value."
 fi
 
+sed -i 's/\r$//' "$TMP_FILE"
 validate_dotenv_file "$TMP_FILE"
+validate_required_runtime_keys "$TMP_FILE"
 
 install -d -o root -g root -m 750 "$ENV_DIR"
 install -o root -g root -m 600 "$TMP_FILE" "$APP_ENV_FILE"
@@ -89,6 +108,7 @@ sed -i 's/\r$//' "$APP_ENV_FILE"
 chown root:root "$APP_ENV_FILE"
 chmod 600 "$APP_ENV_FILE"
 validate_dotenv_file "$APP_ENV_FILE"
+validate_required_runtime_keys "$APP_ENV_FILE"
 
 log "Runtime env file written to $APP_ENV_FILE with root-only permissions"
 log "Secret values were not printed"

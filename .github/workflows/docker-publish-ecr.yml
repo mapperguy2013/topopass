@@ -36,6 +36,20 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Validate public build config
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL" || {
+            echo "NEXT_PUBLIC_SUPABASE_URL GitHub repository variable is required for production image builds." >&2
+            exit 1
+          }
+          test -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" || {
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY GitHub repository secret is required for production image builds." >&2
+            exit 1
+          }
+
       - name: Build Docker image
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
@@ -44,8 +58,8 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_SITE_URL="${{ vars.NEXT_PUBLIC_SITE_URL || 'https://topopass.co.uk' }}" \
-            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ vars.NEXT_PUBLIC_SUPABASE_URL || '' }}" \
-            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || '' }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_SHA_TAG" \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
             .

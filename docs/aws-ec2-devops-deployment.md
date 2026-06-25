@@ -136,11 +136,13 @@ GitHub OIDC role:
   - `AWS_REGION`
   - `AWS_ROLE_TO_ASSUME`
   - `ECR_REPOSITORY`
-- Add optional build-time values only if needed:
   - `NEXT_PUBLIC_SITE_URL`
   - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` as a GitHub secret, never a service-role
-    key.
+- Add this GitHub repository secret:
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required
+  for production image builds so the Next.js browser bundle is not built with
+  blank Supabase auth config. Never use a Supabase service-role key here.
 
 ECR:
 
@@ -376,8 +378,17 @@ or store a secret value. After Terraform apply:
    GitHub Actions logs, shell history, or documentation.
 
 Use plain dotenv text, not JSON. If the AWS Console editor adds Windows CRLF
-line endings, `infra/deploy/fetch-runtime-env.sh` normalizes the fetched file to
-Unix LF before Docker Compose reads it.
+line endings, `infra/deploy/fetch-runtime-env.sh` normalizes the fetched
+payload to Unix LF before Docker Compose reads it.
+
+Supabase authentication requires these production runtime keys to be present
+and non-empty:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+The fetch script intentionally fails if either key is missing or blank. It does
+not print the values.
 
 Example shape:
 
@@ -433,8 +444,60 @@ The fetch script:
 - calls `aws secretsmanager get-secret-value` using the EC2 instance role
 - writes `/srv/topopass/env/app.env`
 - sets root ownership and `0600` permissions
-- fails if the secret is missing, empty, or not dotenv-like
+- fails if the secret is missing, empty, not dotenv-like, or missing required
+  Supabase auth variables
 - does not print the secret value
+
+To verify the host file has the required keys without printing values:
+
+```bash
+sudo sh -c 'for key in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+  if grep -Eq "^${key}=.+" /srv/topopass/env/app.env &&
+     ! grep -Eq "^${key}=([[:space:]]*|\"\"|'"'"''"'"')$" /srv/topopass/env/app.env; then
+    echo "${key}=set"
+  else
+    echo "${key}=missing-or-blank"
+  fi
+done'
+```
+
+To verify the running container received the keys without printing values:
+
+```bash
+sudo docker exec topopass-web sh -lc 'for key in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+  eval "value=\${$key:-}"
+  if [ -n "$value" ]; then
+    echo "${key}=set"
+  else
+    echo "${key}=missing-or-blank"
+  fi
+done'
+```
+
+If `/auth/log-in` or `/auth/sign-up` says "Supabase authentication is not
+configured in this environment", check the AWS Secrets Manager value for
+`topopass/production/app-env`. The most common cause is a dotenv value with:
+
+```dotenv
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+```
+
+Update the secret with the managed Supabase project URL and anon key, fetch the
+runtime env again, and recreate the app container:
+
+```bash
+cd /srv/topopass
+sudo bash infra/deploy/fetch-runtime-env.sh
+sudo docker compose -f deploy/docker-compose.prod.yml up -d --force-recreate app
+sudo docker compose -f deploy/docker-compose.prod.yml ps
+```
+
+The Docker image also receives `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` as build-time `NEXT_PUBLIC_*` values for any
+browser-side Supabase bundle code. Keep the GitHub Actions variables/secrets in
+sync with the runtime Secrets Manager values, then rebuild and republish the
+image if those values were blank during the latest ECR build.
 
 Because `app.env` is root-readable only, run the production deploy script with
 `sudo`:
@@ -752,13 +815,15 @@ Required GitHub repository variables:
 - `AWS_REGION`
 - `AWS_ROLE_TO_ASSUME`
 - `ECR_REPOSITORY`
-- optional `NEXT_PUBLIC_SITE_URL`
-- optional `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
 
-Optional GitHub repository secret:
+Required GitHub repository secret:
 
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`, only if the image build needs the managed
-  Supabase anon key at build time.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+The workflow validates these public Supabase build values before `docker build`
+and fails safely if they are missing. It does not print the values.
 
 The workflow does not deploy to EC2. A later deployment workflow should:
 

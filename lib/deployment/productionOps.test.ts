@@ -36,6 +36,28 @@ test("backup scripts use S3 and do not print database passwords", () => {
   assert.doesNotMatch(postgres, /echo .*POSTGRES_PASSWORD|printf .*POSTGRES_PASSWORD/);
 });
 
+test("runtime env fetch requires Supabase auth config without printing values", () => {
+  const fetchRuntimeEnv = read("infra/deploy/fetch-runtime-env.sh");
+  const deploymentDocs = read("docs/aws-ec2-devops-deployment.md");
+  const terraformDocs = read("infra/terraform/README.md");
+  const ecrWorkflow = read(".github/workflows/docker-publish-ecr.yml");
+
+  assert.match(fetchRuntimeEnv, /validate_required_runtime_keys/);
+  assert.match(fetchRuntimeEnv, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(fetchRuntimeEnv, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.match(fetchRuntimeEnv, /Required runtime env key .* is missing or blank/);
+  assert.doesNotMatch(fetchRuntimeEnv, /cat "\$APP_ENV_FILE"|echo .*\$NEXT_PUBLIC_SUPABASE/);
+
+  assert.match(deploymentDocs, /Supabase authentication requires/);
+  assert.match(deploymentDocs, /NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(deploymentDocs, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.match(deploymentDocs, /missing-or-blank/);
+  assert.match(terraformDocs, /Supabase authentication requires/);
+  assert.match(ecrWorkflow, /Validate public build config/);
+  assert.match(ecrWorkflow, /NEXT_PUBLIC_SUPABASE_URL GitHub repository variable is required/);
+  assert.match(ecrWorkflow, /NEXT_PUBLIC_SUPABASE_ANON_KEY GitHub repository secret is required/);
+});
+
 test("terraform provisions private encrypted backup storage and alerting", () => {
   const backups = read("infra/terraform/backups.tf");
   const monitoring = read("infra/terraform/monitoring.tf");

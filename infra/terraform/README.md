@@ -222,8 +222,17 @@ After apply:
    commits, pull requests, screenshots, or support messages.
 
 Do not store JSON in this secret. It must be plain dotenv text. The EC2 fetch
-script normalizes Windows CRLF line endings to Unix LF after writing
-`/srv/topopass/env/app.env`.
+script normalizes Windows CRLF line endings to Unix LF before Docker Compose
+reads `/srv/topopass/env/app.env`.
+
+Supabase authentication requires these runtime keys to be present and non-empty:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+If either value is blank, `/auth/log-in` and `/auth/sign-up` will show that
+Supabase authentication is not configured. The EC2 fetch script now fails before
+deployment when those required keys are missing or blank.
 
 Example shape:
 
@@ -243,6 +252,15 @@ Fetch the runtime env on the EC2 host:
 cd /srv/topopass
 sudo bash infra/deploy/fetch-runtime-env.sh
 sudo ls -l /srv/topopass/env/app.env
+```
+
+Check key presence without printing secret values:
+
+```bash
+sudo docker exec topopass-web sh -lc 'for key in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+  eval "value=\${$key:-}"
+  [ -n "$value" ] && echo "${key}=set" || echo "${key}=missing-or-blank"
+done'
 ```
 
 The file is written as root-owned with `0600` permissions. Run deployment with
