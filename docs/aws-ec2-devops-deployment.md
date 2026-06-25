@@ -254,11 +254,13 @@ runs:
 `deploy/docker-compose.prod.yml` is the stricter production-oriented template:
 
 - Caddy is the only service publishing host ports `80` and `443`.
-- Caddy loads `infra/caddy/Caddyfile`.
+- Caddy loads `deploy/Caddyfile`.
 - Caddy keeps persistent `caddy_data` and `caddy_config` volumes.
-- App image is supplied by `TOPOPASS_IMAGE`.
+- App image defaults to
+  `006419716542.dkr.ecr.eu-west-2.amazonaws.com/topopass-web:latest`, and can
+  be overridden through `TOPOPASS_IMAGE`.
 - App restart policy is `unless-stopped`.
-- App env file is `/opt/topopass/env/app.env`.
+- App env file is `/srv/topopass/env/app.env`.
 - App exposes only internal Docker network port `3000`.
 - App health check stays internal.
 - Caddy health check validates the active Caddyfile.
@@ -271,39 +273,140 @@ the app must not publish direct public host ports.
 
 ## Domain, HTTPS, And Caddy
 
-`infra/caddy/Caddyfile` defines three public hostnames through runtime
+`deploy/Caddyfile` supports the current IP-only smoke test and future real
+domain mode through runtime environment variables.
+
+Current no-domain smoke test values:
+
+```bash
+APP_DOMAIN=:80
+WWW_DOMAIN=http://www.topopass.invalid
+SUPABASE_DOMAIN=http://supabase.topopass.invalid
+ACME_EMAIL=admin@example.com
+```
+
+With `APP_DOMAIN=:80`, Caddy serves the app over plain HTTP on the EC2 public
+IP. It does not request certificates for placeholder domains.
+
+Future domain values:
+
+```bash
+APP_DOMAIN=example.com
+WWW_DOMAIN=www.example.com
+SUPABASE_DOMAIN=supabase.example.com
+ACME_EMAIL=admin@example.com
+```
+
+Caddy handles automatic HTTPS, redirects `www` to the apex app domain, proxies
+the app domain to `app:3000`, and prepares the Supabase domain proxy to
+`kong:8000` for the later self-hosted Supabase stack. Supabase Studio is not
+exposed publicly by default. If Studio access is needed, use SSM tunnelling or
+add a separately protected option later.
+
+The legacy `infra/caddy/Caddyfile` remains for historical reference, but the
+production Compose stack uses `deploy/Caddyfile`.
+
+`deploy/env/proxy.env.example` documents the expected reverse-proxy env shape.
+
+## EC2 Compose Deployment
+
+Connect using SSM:
+
+```bash
+aws ssm start-session --target <instance-id> --region eu-west-2
+```
+
+Copy or pull the repository onto the host under `/srv/topopass`. For example:
+
+```bash
+cd /srv
+sudo git clone https://github.com/<owner>/<repo>.git topopass
+sudo chown -R ubuntu:ubuntu /srv/topopass
+```
+
+If the repo is already present, pull the latest safe deployment commit:
+
+```bash
+cd /srv/topopass
+git pull --ff-only
+```
+
+Create host env files from the examples without committing them:
+
+```bash
+sudo mkdir -p /srv/topopass/env /srv/topopass/logs/caddy /srv/topopass/logs/deploy
+sudo cp /srv/topopass/deploy/env/app.env.example /srv/topopass/env/app.env
+sudo cp /srv/topopass/deploy/env/proxy.env.example /srv/topopass/env/proxy.env
+sudo nano /srv/topopass/env/app.env
+sudo nano /srv/topopass/env/proxy.env
+```
+
+For the first IP-only smoke test, keep `APP_DOMAIN=:80` in `proxy.env` and set
+`NEXT_PUBLIC_SITE_URL=http://<EC2_PUBLIC_IP>` in `app.env`.
+
+Authenticate Docker to ECR using the EC2 instance role:
+
+```bash
+aws ecr get-login-password --region eu-west-2 \
+  | docker login --username AWS --password-stdin 006419716542.dkr.ecr.eu-west-2.amazonaws.com
+```
+
+The deploy script performs that login automatically, pulls the latest ECR image,
+validates Compose, restarts the stack, shows status, and runs a local Caddy
+health check:
+
+```bash
+cd /srv/topopass
+bash infra/deploy/deploy-ec2-compose.sh
+```
+
+Manual equivalent:
+
+```bash
+cd /srv/topopass
+export TOPOPASS_IMAGE=006419716542.dkr.ecr.eu-west-2.amazonaws.com/topopass-web:latest
+export TOPOPASS_APP_ENV_FILE=/srv/topopass/env/app.env
+export TOPOPASS_PROXY_ENV_FILE=/srv/topopass/env/proxy.env
+docker compose -f deploy/docker-compose.prod.yml config
+docker compose -f deploy/docker-compose.prod.yml pull
+docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
+docker compose -f deploy/docker-compose.prod.yml ps
+```
+
+IP smoke tests:
+
+```bash
+curl -I http://127.0.0.1
+curl -fsS http://127.0.0.1/api/health
+curl -I http://<EC2_PUBLIC_IP>
+```
+
+Logs and operations:
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml logs --tail 100 app
+docker compose -f deploy/docker-compose.prod.yml logs --tail 100 caddy
+docker compose -f deploy/docker-compose.prod.yml restart app
+docker compose -f deploy/docker-compose.prod.yml restart caddy
+docker compose -f deploy/docker-compose.prod.yml down
+```
+
+When DNS is ready, update `/srv/topopass/env/proxy.env` with real
+`APP_DOMAIN`, `WWW_DOMAIN`, `SUPABASE_DOMAIN`, and `ACME_EMAIL` values, update
+`NEXT_PUBLIC_SITE_URL` in `/srv/topopass/env/app.env`, then rerun
+`bash infra/deploy/deploy-ec2-compose.sh`.
+
+Do not commit `/srv/topopass/env/app.env`, `/srv/topopass/env/proxy.env`,
+Terraform state, `terraform.tfvars`, AWS credentials, Docker output, logs,
+`.next`, or `node_modules`.
+
+Legacy notes from the earlier reverse-proxy stage used these runtime
 environment variables:
 
 - `APP_DOMAIN=example.com`
 - `WWW_DOMAIN=www.example.com`
 - `SUPABASE_DOMAIN=supabase.example.com`
 - `ACME_EMAIL=admin@example.com`
-
-Caddy handles automatic HTTPS, redirects `www` to the apex app domain, proxies
-the app domain to `app:3000`, and proxies the Supabase domain to `kong:8000`.
-Supabase Studio is not exposed publicly by default. If Studio access is needed,
-use SSM/SSH tunnelling or add a separately protected option later.
-
-Production env values should be created on the EC2 host only:
-
-```bash
-sudo mkdir -p /opt/topopass/env
-sudo nano /opt/topopass/env/app.env
-sudo nano /opt/topopass/env/proxy.env
-```
-
-Use the placeholders in `.env.production.example` as the shape, but never
-commit the real files.
-
-Production Compose checks:
-
-```bash
-export TOPOPASS_APP_ENV_FILE=/opt/topopass/env/app.env
-export TOPOPASS_PROXY_ENV_FILE=/opt/topopass/env/proxy.env
-docker compose -f deploy/docker-compose.prod.yml config
-docker compose -f deploy/docker-compose.prod.yml up -d --build
-docker compose -f deploy/docker-compose.prod.yml logs -f caddy
-```
 
 HTTPS verification:
 
@@ -323,7 +426,7 @@ HTTPS verification:
 - No `.env`, `.env.local`, or `.env.production` committed.
 - No secrets baked into Docker images.
 - Runtime env files live only on EC2, for example
-  `/opt/topopass/env/app.env`.
+  `/srv/topopass/env/app.env`.
 - GitHub Actions secrets are used only where required for ECR/AWS deployment.
 - No Supabase service-role key in browser code.
 - No service-role key in Docker build arguments.
@@ -339,12 +442,15 @@ HTTPS verification:
 Recommended host layout:
 
 ```text
-/opt/topopass/
-  compose.yml
+/srv/topopass/
+  deploy/docker-compose.prod.yml
+  deploy/Caddyfile
   env/
     app.env
-  releases/
+    proxy.env
   logs/
+    caddy/
+    deploy/
 ```
 
 Recommended network exposure:

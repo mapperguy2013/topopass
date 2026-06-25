@@ -208,11 +208,14 @@ Do not put these values in Terraform state. Do not commit them to Git.
 host:
 
 ```bash
-APP_DOMAIN=example.com
-WWW_DOMAIN=www.example.com
-SUPABASE_DOMAIN=supabase.example.com
+APP_DOMAIN=:80
+WWW_DOMAIN=http://www.topopass.invalid
+SUPABASE_DOMAIN=http://supabase.topopass.invalid
 ACME_EMAIL=admin@example.com
 ```
+
+For real DNS later, change those values to the apex domain, `www` domain, and
+Supabase gateway subdomain.
 
 ## Deploy With Docker Compose Later
 
@@ -222,16 +225,28 @@ After the host exists and the app image has been pushed to ECR:
 2. Authenticate Docker to ECR.
 3. Copy or pull the repository under `/srv/topopass`.
 4. Create env files manually on the host.
-5. Run:
+5. Run the deployment script:
 
 ```bash
 cd /srv/topopass
-export TOPOPASS_APP_ENV_FILE=/opt/topopass/env/app.env
-export TOPOPASS_PROXY_ENV_FILE=/opt/topopass/env/proxy.env
+bash infra/deploy/deploy-ec2-compose.sh
+```
+
+The script logs in to ECR with the EC2 instance role, pulls the latest app
+image, validates the Compose config, starts the stack, shows container status,
+and runs a local Caddy health check.
+
+Manual equivalent:
+
+```bash
+cd /srv/topopass
+export TOPOPASS_IMAGE=006419716542.dkr.ecr.eu-west-2.amazonaws.com/topopass-web:latest
+export TOPOPASS_APP_ENV_FILE=/srv/topopass/env/app.env
+export TOPOPASS_PROXY_ENV_FILE=/srv/topopass/env/proxy.env
 docker compose -f deploy/docker-compose.prod.yml config
 docker compose -f deploy/docker-compose.prod.yml pull
-docker compose -f deploy/docker-compose.prod.yml up -d
-docker compose -f deploy/docker-compose.prod.yml logs -f caddy
+docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
+docker compose -f deploy/docker-compose.prod.yml logs --tail 100 caddy
 ```
 
 Production containers are not started automatically by Terraform.
@@ -242,6 +257,14 @@ expected to be internal on `kong:8000` when the self-hosted Supabase stack is
 added. Do not publish Postgres, Kong, Studio, or app ports directly.
 
 ## HTTPS Checks
+
+Before DNS is connected, smoke test HTTP through the EC2 public IP:
+
+```bash
+curl -I http://127.0.0.1
+curl -fsS http://127.0.0.1/api/health
+curl -I http://<EC2_PUBLIC_IP>
+```
 
 After DNS has propagated and Caddy has started:
 

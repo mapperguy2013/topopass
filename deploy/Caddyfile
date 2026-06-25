@@ -1,0 +1,39 @@
+{
+	email {$ACME_EMAIL:admin@example.com}
+}
+
+{$APP_DOMAIN::80} {
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/app-access.log
+		format json
+	}
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+	}
+
+	reverse_proxy app:3000
+}
+
+{$WWW_DOMAIN:http://www.topopass.invalid} {
+	redir https://{$APP_DOMAIN}{uri} permanent
+}
+
+{$SUPABASE_DOMAIN:http://supabase.topopass.invalid} {
+	encode zstd gzip
+
+	log {
+		output file /var/log/caddy/supabase-access.log
+		format json
+	}
+
+	reverse_proxy kong:8000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-Host {host}
+		header_up X-Real-IP {remote_host}
+	}
+}

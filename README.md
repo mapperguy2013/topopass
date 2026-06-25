@@ -230,7 +230,7 @@ Step 44 domain/HTTPS reverse proxy status:
 | Item | Status |
 | --- | --- |
 | Caddy production reverse proxy | Added |
-| Caddyfile | Added at `infra/caddy/Caddyfile` |
+| Caddyfile | Added at `deploy/Caddyfile` |
 | App domain HTTPS route | Configured through `APP_DOMAIN` |
 | WWW redirect | Configured through `WWW_DOMAIN` |
 | Supabase gateway HTTPS route | Configured through `SUPABASE_DOMAIN` |
@@ -326,16 +326,17 @@ EC2-oriented Docker notes:
 
 - Copy or pull the repository on the EC2 host.
 - Create the runtime env file on the server, for example `.env.docker` for the
-  root compose file or `/opt/topopass/env/app.env` for the production deploy
+  root compose file or `/srv/topopass/env/app.env` for the production deploy
   template.
-- Create `/opt/topopass/env/proxy.env` with `APP_DOMAIN`, `WWW_DOMAIN`,
+- Create `/srv/topopass/env/proxy.env` with `APP_DOMAIN`, `WWW_DOMAIN`,
   `SUPABASE_DOMAIN`, and `ACME_EMAIL`.
 - Fill Supabase public URL values with the production HTTPS Supabase gateway
   domain on the server only.
-- Set `TOPOPASS_APP_ENV_FILE=/opt/topopass/env/app.env` and
-  `TOPOPASS_PROXY_ENV_FILE=/opt/topopass/env/proxy.env` on the host.
+- Set `TOPOPASS_APP_ENV_FILE=/srv/topopass/env/app.env` and
+  `TOPOPASS_PROXY_ENV_FILE=/srv/topopass/env/proxy.env` on the host.
 - Run `docker compose -f deploy/docker-compose.prod.yml config`.
-- Run `docker compose -f deploy/docker-compose.prod.yml up -d --build`.
+- Run `bash infra/deploy/deploy-ec2-compose.sh` or
+  `docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans`.
 - Check Caddy logs with
   `docker compose -f deploy/docker-compose.prod.yml logs -f caddy`.
 - Do not commit runtime env files, real secrets, `.next`, `node_modules`, build
@@ -382,7 +383,7 @@ terraform -chdir=infra/terraform plan
 
 Step 44 domain/HTTPS setup:
 
-- Production Caddy configuration lives in `infra/caddy/Caddyfile`.
+- Production Caddy configuration lives in `deploy/Caddyfile`.
 - Production Compose lives in `deploy/docker-compose.prod.yml`.
 - Caddy is the only production service publishing ports `80` and `443`.
 - The app is available only inside the Docker network as `app:3000`.
@@ -1650,7 +1651,8 @@ Infrastructure result:
 
 Docker/Caddy result:
 
-- `infra/caddy/Caddyfile` configures automatic HTTPS, app proxying, `www`
+- `deploy/Caddyfile` supports current IP-only HTTP smoke testing plus future
+  automatic HTTPS, app proxying, `www`
   redirect, security headers, and Supabase gateway proxying.
 - `deploy/docker-compose.prod.yml` now includes Caddy with persistent
   `caddy_data` and `caddy_config` volumes.

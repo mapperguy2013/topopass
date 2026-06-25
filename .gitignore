@@ -32,6 +32,8 @@ infra/backups/output/
 .env*.local
 .env.production
 .env.docker
+deploy/env/*.env
+!deploy/env/*.env.example
 
 # terraform
 .terraform/

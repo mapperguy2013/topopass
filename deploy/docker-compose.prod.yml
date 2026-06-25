@@ -1,3 +1,5 @@
+name: topopass-prod
+
 services:
   caddy:
     image: caddy:2.8-alpine
@@ -7,7 +9,7 @@ services:
       app:
         condition: service_healthy
     env_file:
-      - ${TOPOPASS_PROXY_ENV_FILE:-../deploy/proxy.env.example}
+      - ${TOPOPASS_PROXY_ENV_FILE:-/srv/topopass/env/proxy.env}
     ports:
       - "80:80"
       - "443:443"
@@ -19,17 +21,19 @@ services:
       retries: 3
       start_period: 30s
     volumes:
-      - ../infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /srv/topopass/logs/caddy:/var/log/caddy
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      - topopass-prod
 
   app:
-    image: ${TOPOPASS_IMAGE:-topopass-web:latest}
+    image: ${TOPOPASS_IMAGE:-006419716542.dkr.ecr.eu-west-2.amazonaws.com/topopass-web:latest}
     container_name: topopass-web
     restart: unless-stopped
     env_file:
-      - ${TOPOPASS_APP_ENV_FILE:-../.env.production.example}
+      - ${TOPOPASS_APP_ENV_FILE:-/srv/topopass/env/app.env}
     environment:
       NODE_ENV: production
       PORT: "3000"
@@ -48,9 +52,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    networks:
+      - topopass-prod
 
 networks:
-  default:
+  topopass-prod:
     name: topopass-prod
 
 volumes:
