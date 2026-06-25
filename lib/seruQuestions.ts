@@ -1,8 +1,9 @@
 import type { KnowledgeQuestionData } from "./knowledgeQuestions.ts";
+import { phvHandbookQuestions } from "./seruPhvQuestions.ts";
 
 const sourceNote = "Original SERU-style private hire learning content";
 
-export const seruQuestionBank: KnowledgeQuestionData[] = [
+const starterSeruQuestions: KnowledgeQuestionData[] = [
   {
     id: "seru-driver-licence-check",
     type: "knowledge",
@@ -524,4 +525,9 @@ export const seruQuestionBank: KnowledgeQuestionData[] = [
       "Professional drivers need current knowledge, not just test-day knowledge.",
     tip: "Make checking trusted updates part of your regular working routine."
   }
+];
+
+export const seruQuestionBank: KnowledgeQuestionData[] = [
+  ...starterSeruQuestions,
+  ...phvHandbookQuestions
 ];

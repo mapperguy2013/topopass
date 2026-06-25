@@ -5,6 +5,11 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
 import { seruQuestionBank } from "../seruQuestions.ts";
+import { phvHandbookQuestions } from "../seruPhvQuestions.ts";
+import {
+  sentenceCompletionQuestions,
+  advancedSentenceCompletionQuestions
+} from "../seruEnglishQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import type {
   NormalizedMockAttempt,
@@ -20,6 +25,9 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(currentDirectory, "../..");
 const knowledgeQuestion = knowledgeQuestionBank[0];
 const seruQuestion = seruQuestionBank[0];
+const phvQuestion = phvHandbookQuestions[0];
+const englishSingleQuestion = sentenceCompletionQuestions[0];
+const englishAdvancedQuestion = advancedSentenceCompletionQuestions[0];
 const mapQuestion = demoMapClickQuestions[0];
 
 function practiceAttempt(
@@ -133,6 +141,79 @@ test("review history includes SERU-style practice answers from the SERU bank", (
   assert.equal(history[0].category, seruQuestion.category);
   assert.equal(history[0].source, "practice");
   assert.match(history[0].title, /private hire|driver|passenger/i);
+});
+
+test("review history includes PHV handbook section and topic metadata", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [
+      practiceAttempt({
+        id: "phv-practice",
+        questionId: phvQuestion.id,
+        questionType: "knowledge",
+        answer: { selectedAnswer: phvQuestion.correctAnswer },
+        result: {
+          correctAnswer: phvQuestion.correctAnswer,
+          explanation: phvQuestion.explanation,
+          handbookSection: phvQuestion.handbookSection,
+          questionFamily: "seru",
+          topic: phvQuestion.topic
+        },
+        passed: true
+      })
+    ],
+    mockAttempts: []
+  });
+
+  assert.equal(history.length, 1);
+  assert.equal(history[0].category, phvQuestion.category);
+  assert.equal(history[0].handbookSection, phvQuestion.handbookSection);
+  assert.equal(history[0].topic, phvQuestion.topic);
+});
+
+test("review history resolves SERU English sentence completion answers", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [
+      practiceAttempt({
+        id: "seru-english-single",
+        questionId: englishSingleQuestion.id,
+        questionType: "knowledge",
+        answer: { selectedAnswer: englishSingleQuestion.correctAnswer },
+        result: {
+          correctAnswer: englishSingleQuestion.correctAnswer,
+          explanation: englishSingleQuestion.explanation,
+          questionFamily: "seru",
+          questionSubtype: "sentence_completion"
+        },
+        passed: true
+      }),
+      practiceAttempt({
+        id: "seru-english-advanced",
+        questionId: englishAdvancedQuestion.id,
+        questionType: "knowledge",
+        answer: { selectedWords: englishAdvancedQuestion.correctAnswers },
+        result: {
+          correctAnswer: englishAdvancedQuestion.correctAnswers.join(" / "),
+          explanation: englishAdvancedQuestion.explanation,
+          questionFamily: "seru",
+          questionSubtype: "multi_sentence_completion"
+        },
+        passed: true
+      })
+    ],
+    mockAttempts: []
+  });
+
+  assert.equal(history.length, 2);
+  assert.equal(history[0].questionType, "knowledge");
+  assert.match(history[0].title, /___/);
+  assert.ok(
+    history.every((item) => item.category?.startsWith("SERU English"))
+  );
+  assert.ok(
+    history.some((item) =>
+      item.learnerAnswer.includes(englishAdvancedQuestion.correctAnswers[0])
+    )
+  );
 });
 
 test("review filters by subject", () => {

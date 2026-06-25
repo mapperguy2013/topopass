@@ -1,6 +1,10 @@
 import type { Coordinates } from "../distance.ts";
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
 import { seruQuestionBank } from "../seruQuestions.ts";
+import {
+  advancedSentenceCompletionQuestions,
+  sentenceCompletionQuestions
+} from "../seruEnglishQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import type {
   NormalizedMockAttempt,
@@ -44,6 +48,8 @@ export type ReviewHistoryItem = {
   questionId: string;
   title: string;
   category: string | null;
+  handbookSection: string | null;
+  topic: string | null;
   questionType: ReviewQuestionType;
   source: ReviewSource;
   answeredAt: string;
@@ -172,9 +178,25 @@ function knowledgeQuestionForId(questionId: string) {
   );
 }
 
+function englishQuestionForId(questionId: string) {
+  return [
+    ...sentenceCompletionQuestions,
+    ...advancedSentenceCompletionQuestions
+  ].find((question) => question.id === questionId);
+}
+
+function englishCorrectAnswerForId(questionId: string) {
+  const question = englishQuestionForId(questionId);
+  if (!question) return null;
+  return "correctAnswer" in question
+    ? question.correctAnswer
+    : question.correctAnswers.join(" / ");
+}
+
 function titleForQuestion(questionId: string) {
   return (
     knowledgeQuestionForId(questionId)?.prompt ??
+    englishQuestionForId(questionId)?.sentence ??
     mapClickQuestionForId(questionId)?.prompt ??
     routeQuestionForId(questionId)?.title ??
     questionId
@@ -182,7 +204,13 @@ function titleForQuestion(questionId: string) {
 }
 
 function categoryForQuestion(questionId: string, type: ReviewQuestionType) {
-  if (type === "knowledge") return knowledgeQuestionForId(questionId)?.category ?? null;
+  if (type === "knowledge") {
+    return (
+      knowledgeQuestionForId(questionId)?.category ??
+      englishQuestionForId(questionId)?.category ??
+      null
+    );
+  }
   if (type === "map-click") return mapClickQuestionForId(questionId)?.category ?? null;
   return routeQuestionForId(questionId)?.tags[0] ?? "Route planning";
 }
@@ -199,6 +227,7 @@ function practiceCorrectAnswer(attempt: NormalizedPracticeAttempt) {
     return (
       stringValue(result.correctAnswer) ??
       knowledgeQuestionForId(attempt.questionId)?.correctAnswer ??
+      englishCorrectAnswerForId(attempt.questionId) ??
       "Correct answer not stored"
     );
   }
@@ -227,7 +256,13 @@ function practiceLearnerAnswer(attempt: NormalizedPracticeAttempt) {
   const reviewData = objectValue(attempt.reviewData);
 
   if (attempt.questionType === "knowledge") {
-    return stringValue(answer.selectedAnswer) ?? "No answer stored";
+    const selectedWords = Array.isArray(answer.selectedWords)
+      ? answer.selectedWords
+          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          .join(" / ")
+      : null;
+
+    return stringValue(answer.selectedAnswer) ?? selectedWords ?? "No answer stored";
   }
 
   if (attempt.questionType === "map-click") {
@@ -249,6 +284,8 @@ function practiceReviewItem(attempt: NormalizedPracticeAttempt): ReviewHistoryIt
   const mapQuestion = type === "map-click" ? mapClickQuestionForId(attempt.questionId) : null;
   const knowledgeQuestion =
     type === "knowledge" ? knowledgeQuestionForId(attempt.questionId) : null;
+  const englishQuestion =
+    type === "knowledge" ? englishQuestionForId(attempt.questionId) : null;
   const routeQuestion =
     type === "route-drawing" ? routeQuestionForId(attempt.questionId) : null;
   const answer = objectValue(attempt.answer);
@@ -261,6 +298,9 @@ function practiceReviewItem(attempt: NormalizedPracticeAttempt): ReviewHistoryIt
     questionId: attempt.questionId,
     title: titleForQuestion(attempt.questionId),
     category: categoryForQuestion(attempt.questionId, type),
+    handbookSection:
+      stringValue(result.handbookSection) ?? knowledgeQuestion?.handbookSection ?? null,
+    topic: stringValue(result.topic) ?? knowledgeQuestion?.topic ?? null,
     questionType: type,
     source: "practice",
     answeredAt: attempt.createdAt,
@@ -273,6 +313,7 @@ function practiceReviewItem(attempt: NormalizedPracticeAttempt): ReviewHistoryIt
       stringValue(reviewData.explanation) ??
       stringValue(result.explanation) ??
       knowledgeQuestion?.explanation ??
+      englishQuestion?.explanation ??
       mapQuestion?.explanation ??
       routeQuestion?.explanation ??
       null,
@@ -338,6 +379,8 @@ function mockReviewItem(
   const mapQuestion = type === "map-click" ? mapClickQuestionForId(questionId) : null;
   const knowledgeQuestion =
     type === "knowledge" ? knowledgeQuestionForId(questionId) : null;
+  const englishQuestion =
+    type === "knowledge" ? englishQuestionForId(questionId) : null;
   const routeQuestion =
     type === "route-drawing" ? routeQuestionForId(questionId) : null;
   const answer = answerForMockQuestion(attempt, questionId);
@@ -350,6 +393,9 @@ function mockReviewItem(
     questionId,
     title: titleForQuestion(questionId),
     category: categoryForQuestion(questionId, type),
+    handbookSection:
+      stringValue(details.handbookSection) ?? knowledgeQuestion?.handbookSection ?? null,
+    topic: stringValue(details.topic) ?? knowledgeQuestion?.topic ?? null,
     questionType: type,
     source: "mock",
     answeredAt: attempt.submittedAt,
@@ -362,6 +408,7 @@ function mockReviewItem(
       stringValue(reviewData.explanation) ??
       stringValue(details.explanation) ??
       knowledgeQuestion?.explanation ??
+      englishQuestion?.explanation ??
       mapQuestion?.explanation ??
       routeQuestion?.explanation ??
       null,
@@ -496,6 +543,8 @@ export function buildReviewQuestionMetadata() {
   return {
     knowledgeCount: knowledgeQuestionBank.length,
     seruCount: seruQuestionBank.length,
+    seruEnglishCount:
+      sentenceCompletionQuestions.length + advancedSentenceCompletionQuestions.length,
     mapClickCount: demoMapClickQuestions.length,
     routeCount: getActiveRouteQuestions().length
   };

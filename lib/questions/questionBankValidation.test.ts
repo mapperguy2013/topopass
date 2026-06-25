@@ -3,6 +3,20 @@ import test from "node:test";
 
 import { knowledgeQuestionBank } from "../knowledgeQuestions.ts";
 import { seruQuestionBank } from "../seruQuestions.ts";
+import {
+  PHV_HANDBOOK_SOURCE,
+  phvHandbookQuestions,
+  phvHandbookSections
+} from "../seruPhvQuestions.ts";
+import {
+  advancedSentenceCompletionQuestions,
+  clearAllBlanks,
+  clearBlank,
+  placeWordInBlank,
+  scoreMultiSentenceCompletion,
+  scoreSentenceCompletion,
+  sentenceCompletionQuestions
+} from "../seruEnglishQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import {
   getActiveRouteQuestions,
@@ -13,8 +27,7 @@ import { selectMockExamQuestions } from "../mockTestQuestions.ts";
 import {
   isQuestionTopic,
   isSeruQuestionTopic,
-  QUESTION_TOPICS,
-  SERU_QUESTION_TOPICS
+  QUESTION_TOPICS
 } from "./topics.ts";
 
 function assertUniqueIds(label: string, ids: string[]) {
@@ -43,6 +56,18 @@ test("question banks have unique stable IDs", () => {
   assertUniqueIds(
     "SERU question bank",
     seruQuestionBank.map((question) => question.id)
+  );
+  assertUniqueIds(
+    "PHV handbook question bank",
+    phvHandbookQuestions.map((question) => question.id)
+  );
+  assertUniqueIds(
+    "SERU English single sentence bank",
+    sentenceCompletionQuestions.map((question) => question.id)
+  );
+  assertUniqueIds(
+    "SERU English advanced sentence bank",
+    advancedSentenceCompletionQuestions.map((question) => question.id)
   );
   assertUniqueIds(
     "map-click question bank",
@@ -81,12 +106,16 @@ test("knowledge questions have valid options, answers, explanations, and tips", 
 });
 
 test("SERU questions are original active starter content with valid topics", () => {
+  const starterQuestions = seruQuestionBank.filter(
+    (question) => question.practiceArea !== "seru-phv-handbook"
+  );
+
   assert.ok(
-    seruQuestionBank.length >= 20 && seruQuestionBank.length <= 30,
+    starterQuestions.length >= 20 && starterQuestions.length <= 30,
     "Stage 39.5 should add a starter SERU question bank without overbuilding"
   );
 
-  seruQuestionBank.forEach((question) => {
+  starterQuestions.forEach((question) => {
     assert.equal(question.type, "knowledge", question.id);
     assert.equal(question.questionFamily, "seru", question.id);
     assert.ok(question.id.startsWith("seru-"), question.id);
@@ -110,12 +139,134 @@ test("SERU questions are original active starter content with valid topics", () 
     );
   });
 
+  const starterTopics = new Set(starterQuestions.map((question) => question.category));
   assert.ok(
-    SERU_QUESTION_TOPICS.every((topic) =>
-      seruQuestionBank.some((question) => question.category === topic)
-    ),
+    [
+      "Driver licensing and responsibilities",
+      "Passenger safety",
+      "Safeguarding",
+      "Equality and accessibility",
+      "Customer service",
+      "Complaints and professionalism",
+      "Private hire regulations",
+      "Journey planning and conduct",
+      "Lost property",
+      "Road safety awareness"
+    ].every((topic) => starterTopics.has(topic)),
     "SERU starter bank should cover every SERU topic"
   );
+});
+
+test("PHV Driver Handbook practice has exactly 100 valid original questions", () => {
+  assert.equal(phvHandbookSections.length, 10);
+  assert.equal(phvHandbookQuestions.length, 100);
+
+  phvHandbookSections.forEach((section) => {
+    const sectionQuestions = phvHandbookQuestions.filter(
+      (question) => question.sectionId === section.id
+    );
+
+    assert.equal(sectionQuestions.length, 10, section.name);
+    assert.ok(isSeruQuestionTopic(section.name), section.name);
+
+    sectionQuestions.forEach((question) => {
+      assert.equal(question.type, "knowledge", question.id);
+      assert.equal(question.questionFamily, "seru", question.id);
+      assert.equal(question.practiceArea, "seru-phv-handbook", question.id);
+      assert.equal(question.questionSubtype, "multiple_choice", question.id);
+      assert.ok(question.id.startsWith("seru-phv-"), question.id);
+      assert.equal(question.options.length, 4, question.id);
+      assertUniqueIds(
+        `PHV options for ${question.id}`,
+        question.options.map((option) => option.trim())
+      );
+      assert.ok(question.options.includes(question.correctAnswer), question.id);
+      assert.equal(question.category, section.name, question.id);
+      assert.equal(question.sectionName, section.name, question.id);
+      assert.equal(question.handbookSection, section.handbookSection, question.id);
+      assert.equal(question.source, PHV_HANDBOOK_SOURCE, question.id);
+      assert.match(question.sourceNote, /original TopoPass practice question/);
+      assert.ok(question.topic?.trim(), `${question.id} needs topic`);
+      assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
+      assert.ok(question.tip?.trim(), `${question.id} needs tip`);
+      assert.ok(
+        ["beginner", "intermediate", "advanced"].includes(
+          question.seruDifficulty ?? ""
+        ),
+        `${question.id} needs SERU difficulty`
+      );
+    });
+  });
+});
+
+test("SERU English single sentence completion bank is valid and scores answers", () => {
+  assert.equal(sentenceCompletionQuestions.length, 20);
+  assert.ok(isSeruQuestionTopic("SERU English - Complete the Sentence"));
+
+  sentenceCompletionQuestions.forEach((question) => {
+    assert.equal(question.type, "sentence_completion", question.id);
+    assert.ok(question.id.startsWith("seru-english-single-"), question.id);
+    assert.equal(question.category, "SERU English - Complete the Sentence");
+    assert.match(question.sentence, /___/, question.id);
+    assert.equal(question.options.length, 4, question.id);
+    assertUniqueIds(
+      `SERU English options for ${question.id}`,
+      question.options.map((option) => option.trim())
+    );
+    assert.ok(question.options.includes(question.correctAnswer), question.id);
+    assert.ok(question.explanation.trim(), question.id);
+    assert.equal(scoreSentenceCompletion(question, question.correctAnswer), true);
+    assert.equal(scoreSentenceCompletion(question, "not-the-answer"), false);
+  });
+});
+
+test("SERU English advanced sentence completion bank is valid and scores all blanks", () => {
+  assert.equal(advancedSentenceCompletionQuestions.length, 20);
+  assert.ok(isSeruQuestionTopic("SERU English - Advanced Sentence Completion"));
+
+  advancedSentenceCompletionQuestions.forEach((question) => {
+    assert.equal(question.type, "multi_sentence_completion", question.id);
+    assert.ok(question.id.startsWith("seru-english-advanced-"), question.id);
+    assert.equal(question.category, "SERU English - Advanced Sentence Completion");
+    assert.equal(question.sentence.match(/___/g)?.length, 3, question.id);
+    assert.equal(question.options.length, 7, question.id);
+    assert.equal(question.correctAnswers.length, 3, question.id);
+    assertUniqueIds(
+      `SERU advanced options for ${question.id}`,
+      question.options.map((option) => option.trim())
+    );
+    question.correctAnswers.forEach((answer) =>
+      assert.ok(question.options.includes(answer), `${question.id}: ${answer}`)
+    );
+    assert.ok(question.explanation.trim(), question.id);
+
+    const fullScore = scoreMultiSentenceCompletion(
+      question,
+      question.correctAnswers
+    );
+    assert.deepEqual(fullScore.blankResults, [true, true, true], question.id);
+    assert.equal(fullScore.correct, true, question.id);
+
+    const partialScore = scoreMultiSentenceCompletion(question, [
+      question.correctAnswers[0],
+      "wrong",
+      question.correctAnswers[2]
+    ]);
+    assert.deepEqual(partialScore.blankResults, [true, false, true], question.id);
+    assert.equal(partialScore.correct, false, question.id);
+  });
+
+  assert.deepEqual(clearAllBlanks(3), [null, null, null]);
+  assert.deepEqual(placeWordInBlank(["their", null, null], 1, "their"), [
+    null,
+    "their",
+    null
+  ]);
+  assert.deepEqual(clearBlank(["their", "there", "they"], 1), [
+    "their",
+    null,
+    "they"
+  ]);
 });
 
 test("map-click questions have valid coordinates, tolerances, explanations, and tips", () => {

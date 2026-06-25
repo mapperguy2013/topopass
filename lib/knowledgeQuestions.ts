@@ -9,6 +9,17 @@ export type KnowledgeQuestionData = {
   sourceNote: string;
   isActive: boolean;
   questionFamily?: "topographical" | "seru";
+  practiceArea?: "seru-phv-handbook" | "seru-english";
+  sectionId?: string;
+  sectionName?: string;
+  source?: string;
+  handbookSection?: string;
+  topic?: string;
+  seruDifficulty?: "beginner" | "intermediate" | "advanced";
+  questionSubtype?:
+    | "multiple_choice"
+    | "sentence_completion"
+    | "multi_sentence_completion";
   explanation?: string;
   tip?: string;
   incorrectExplanations?: Record<string, string>;

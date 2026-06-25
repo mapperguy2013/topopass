@@ -86,6 +86,13 @@ function ReviewItemCard({ item }: { item: ReviewHistoryItem }) {
           <p className="mt-1 text-sm text-slate-500">
             Answered {formatDate(item.answeredAt)}
           </p>
+          {(item.handbookSection || item.topic) && (
+            <p className="mt-2 rounded-md bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-900">
+              {item.handbookSection}
+              {item.handbookSection && item.topic ? " - " : ""}
+              {item.topic}
+            </p>
+          )}
         </div>
         <span
           className={`w-fit rounded-md px-3 py-1.5 text-xs font-bold uppercase ${

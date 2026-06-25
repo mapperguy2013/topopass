@@ -214,12 +214,14 @@ test("topographical practice has its own route and keeps mock flow topographical
 test("SERU practice keeps safe wording and separate practice controls", () => {
   assert.match(
     seruPracticeSource,
-    /Practise private-hire knowledge with clear explanations/
+    /Practise PHV handbook knowledge and SERU-style English/
   );
-  assert.match(seruPracticeSource, /SERU-style practice helps you revise/);
-  assert.match(seruPracticeSource, /SERU mock coming soon/);
-  assert.match(seruPracticeSource, /not affiliated with or endorsed by Transport/);
-  assert.doesNotMatch(seruPracticeSource, /official TfL questions/i);
+  assert.match(seruPracticeSource, /PHV Driver Handbook Practice/);
+  assert.match(seruPracticeSource, /SERU English - Complete the Sentence/);
+  assert.match(seruPracticeSource, /SERU English - Advanced Sentence Completion/);
+  assert.match(seruPracticeSource, /They are not official TfL questions/);
+  assert.match(seruPracticeSource, /not\s+affiliated with or endorsed by Transport/);
+  assert.doesNotMatch(seruPracticeSource, /official course|TfL-approved course|guaranteed pass/i);
 });
 
 test("demo is positioned as a public preview, not full practice", () => {

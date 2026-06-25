@@ -21,7 +21,19 @@ export const SERU_QUESTION_TOPICS = [
   "Private hire regulations",
   "Journey planning and conduct",
   "Lost property",
-  "Road safety awareness"
+  "Road safety awareness",
+  "London PHV Driver Licensing",
+  "Licensing Requirements for PHVs",
+  "Carrying out Private Hire Journeys",
+  "Staying Safe",
+  "Driver Behaviour",
+  "Driving and Parking in London",
+  "Safer Driving",
+  "Being Aware of Equality and Disability",
+  "Safeguarding Children and Adults at Risk",
+  "Ridesharing",
+  "SERU English - Complete the Sentence",
+  "SERU English - Advanced Sentence Completion"
 ] as const;
 
 export const QUESTION_TOPICS = TOPOGRAPHICAL_QUESTION_TOPICS;

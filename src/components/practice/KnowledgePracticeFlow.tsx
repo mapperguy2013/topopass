@@ -143,8 +143,11 @@ export function KnowledgePracticeFlow({
       result: {
         correctAnswer: currentQuestion.correctAnswer,
         explanation: currentQuestion.explanation,
+        handbookSection: currentQuestion.handbookSection,
         questionFamily: currentQuestion.questionFamily ?? practiceFamily,
-        tip: currentQuestion.tip
+        source: currentQuestion.source,
+        tip: currentQuestion.tip,
+        topic: currentQuestion.topic
       },
       score,
       maxScore: 1,
@@ -174,6 +177,12 @@ export function KnowledgePracticeFlow({
         <p className="mt-2 text-sm text-slate-500">
           {currentQuestion.category} - {currentQuestion.difficulty}
         </p>
+        {currentQuestion.handbookSection && (
+          <p className="mt-2 rounded-md bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-900">
+            {currentQuestion.handbookSection}
+            {currentQuestion.topic ? ` - ${currentQuestion.topic}` : ""}
+          </p>
+        )}
         <p
           aria-live="polite"
           className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700"
@@ -257,6 +266,14 @@ export function KnowledgePracticeFlow({
                 tip={currentQuestion.tip}
               />
             </div>
+            {currentQuestion.source && (
+              <p className="mt-3 rounded-md border border-orange-100 bg-white/80 p-3 text-sm text-orange-900">
+                Source area: {currentQuestion.source}
+                {currentQuestion.handbookSection
+                  ? ` - ${currentQuestion.handbookSection}`
+                  : ""}
+              </p>
+            )}
             {saveStatus !== "idle" && (
               <p className="mt-3 text-sm font-semibold text-slate-700">
                 {saveStatus === "saving" && "Saving practice attempt..."}
