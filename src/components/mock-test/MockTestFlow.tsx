@@ -631,17 +631,7 @@ export function MockTestFlow() {
             }}
           />
         </div>
-        <div className="mt-2 flex justify-end">
-          <button
-            className="inline-flex min-h-9 items-center justify-center rounded-md px-2 text-xs font-semibold text-slate-500 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-            onClick={restartExam}
-            type="button"
-          >
-            Restart exam
-          </button>
-        </div>
-
-        <nav aria-label="Question navigator" className="mt-3">
+        <nav aria-label="Question navigator" className="mt-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-wrap gap-2">
               {questions.map((question, index) => {

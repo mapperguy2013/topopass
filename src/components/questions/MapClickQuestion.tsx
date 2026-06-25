@@ -248,7 +248,7 @@ export function MapClickQuestion({
   }
 
   return (
-    <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section>
       <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-soft">
         <div className="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -293,96 +293,53 @@ export function MapClickQuestion({
             </p>
           </div>
         </div>
-      </div>
-
-      <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-sm font-semibold uppercase tracking-wide text-road">
-          Answer panel
-        </p>
-        <p className="mt-3 text-sm leading-6 text-slate-600">
-          {submitMode === "auto"
-            ? "Click or tap your chosen location on the map. Your answer is saved automatically; tap the map again to move the selected point before continuing."
-            : "Click or tap your chosen location on the map, then submit your answer. Tap the map again to move the selected point."}
-        </p>
 
         <div
           aria-live="polite"
-          className={`mt-5 rounded-md border p-4 ${
+          className={`mt-3 flex flex-col gap-3 rounded-md border px-3 py-3 text-sm sm:flex-row sm:items-center sm:justify-between ${
             selectedCoordinates
               ? "border-blue-200 bg-blue-50 text-blue-950"
               : "border-slate-200 bg-slate-50 text-slate-700"
           }`}
           id="map-click-selection-status"
         >
-          <p className="text-sm font-bold">
-            {selectedCoordinates ? "Location selected" : "No location selected"}
-          </p>
-          <p className="mt-1 text-sm">{selectionMessage}</p>
-        </div>
-
-        {submitMode === "manual" ? (
-          <button
-            aria-describedby={selectionStatusId}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-road px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:bg-slate-300"
-            disabled={!canSubmit}
-            onClick={submitAnswer}
-            type="button"
-          >
-            {canSubmit ? "Submit selected location" : "Select a location to submit"}
-          </button>
-        ) : (
-          <p className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-950">
-            {canSubmit
-              ? "Selected location saved. Press Next question to continue."
-              : "Select a location before pressing Next question."}
-          </p>
-        )}
-
-        <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-700">Result</p>
-          <p
-            className={`mt-2 text-2xl font-bold ${
-              result && showResult
-                ? result.isCorrect
-                  ? "text-success"
-                  : "text-red-700"
-                : "text-slate-500"
-            }`}
-          >
-            {result
-              ? showResult
-                ? result.isCorrect
-                  ? "Correct"
-                  : "Try again"
-                : "Answer submitted"
-              : "Waiting"}
-          </p>
-          {result && showResult && (
-            <p className="mt-2 text-sm text-slate-600">
-              Distance from target: {Math.round(result.distance)} metres
+          <div>
+            <p className="font-bold">
+              {selectedCoordinates ? "Selection saved" : "No selection yet"}
+            </p>
+            <p className="mt-1">{selectionMessage}</p>
+          </div>
+          {submitMode === "manual" ? (
+            <button
+              aria-describedby={selectionStatusId}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-road px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+              disabled={!canSubmit}
+              onClick={submitAnswer}
+              type="button"
+            >
+              {canSubmit ? "Submit selected location" : "Select a location"}
+            </button>
+          ) : (
+            <p className="shrink-0 rounded-md border border-blue-200 bg-white/80 px-3 py-2 text-sm font-semibold text-blue-950">
+              {canSubmit ? "Saved for this question" : "Select before Next"}
             </p>
           )}
         </div>
-
-        <div className="mt-5 space-y-3 text-sm">
-          <div>
-            <p className="font-semibold text-slate-700">Clicked latitude</p>
-            <p className="mt-1 font-mono text-slate-600">
-              {selectedCoordinates
-                ? selectedCoordinates.latitude.toFixed(6)
-                : "--"}
+        {result && showResult && (
+          <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <p
+              className={`font-bold ${
+                result.isCorrect ? "text-success" : "text-red-700"
+              }`}
+            >
+              {result.isCorrect ? "Correct" : "Try again"}
+            </p>
+            <p className="mt-1">
+              Distance from target: {Math.round(result.distance)} metres
             </p>
           </div>
-          <div>
-            <p className="font-semibold text-slate-700">Clicked longitude</p>
-            <p className="mt-1 font-mono text-slate-600">
-              {selectedCoordinates
-                ? selectedCoordinates.longitude.toFixed(6)
-                : "--"}
-            </p>
-          </div>
-        </div>
-      </aside>
+        )}
+      </div>
     </section>
   );
 }

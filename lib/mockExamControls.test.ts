@@ -23,7 +23,8 @@ test("active mock exam flag control stays near the question navigator", () => {
   );
 });
 
-test("active mock exam omits change mode and the visible navigator legend", () => {
+test("active mock exam omits restart, change mode, and the visible navigator legend", () => {
+  assert.doesNotMatch(mockTestFlowSource, />Restart exam</);
   assert.doesNotMatch(mockTestFlowSource, />Change mode</);
   assert.doesNotMatch(mockTestFlowSource, /Outlined: unanswered/);
   assert.doesNotMatch(mockTestFlowSource, /Dark: answered/);
