@@ -172,6 +172,10 @@ After apply:
 5. Do not paste the value into Terraform variables, GitHub Actions logs,
    commits, pull requests, screenshots, or support messages.
 
+Do not store JSON in this secret. It must be plain dotenv text. The EC2 fetch
+script normalizes Windows CRLF line endings to Unix LF after writing
+`/srv/topopass/env/app.env`.
+
 Example shape:
 
 ```dotenv

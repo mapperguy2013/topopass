@@ -358,6 +358,10 @@ or store a secret value. After Terraform apply:
 5. Save the secret value without copying it into Git, Terraform variables,
    GitHub Actions logs, shell history, or documentation.
 
+Use plain dotenv text, not JSON. If the AWS Console editor adds Windows CRLF
+line endings, `infra/deploy/fetch-runtime-env.sh` normalizes the fetched file to
+Unix LF before Docker Compose reads it.
+
 Example shape:
 
 ```dotenv

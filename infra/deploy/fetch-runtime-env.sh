@@ -26,6 +26,32 @@ require_command aws
 require_command install
 require_command mktemp
 
+validate_dotenv_file() {
+  local path="$1"
+
+  if [ ! -s "$path" ]; then
+    fail "Runtime env file is empty."
+  fi
+
+  if grep -q $'\r' "$path"; then
+    fail "Runtime env file still contains CRLF line endings after normalization."
+  fi
+
+  if grep -Eq '^[[:space:]]*[{\[]' "$path"; then
+    fail "Runtime secret looks like JSON. Store plain dotenv KEY=value text instead."
+  fi
+
+  if ! awk '
+    /^[[:space:]]*$/ { next }
+    /^[[:space:]]*#/ { next }
+    /^[A-Za-z_][A-Za-z0-9_]*=/ { next }
+    { bad = 1 }
+    END { exit bad }
+  ' "$path"; then
+    fail "Runtime env file contains invalid dotenv lines. Expected KEY=value, comments, or blank lines only."
+  fi
+}
+
 ENV_DIR="$(dirname "$APP_ENV_FILE")"
 TMP_FILE="$(mktemp)"
 
@@ -55,12 +81,14 @@ if grep -qx "None" "$TMP_FILE"; then
   fail "Runtime secret has no SecretString value. Store plain dotenv text in the secret value."
 fi
 
-if ! grep -Eq '^[A-Za-z_][A-Za-z0-9_]*=' "$TMP_FILE"; then
-  fail "Runtime secret does not look like dotenv text. Expected KEY=value lines."
-fi
+validate_dotenv_file "$TMP_FILE"
 
 install -d -o root -g root -m 750 "$ENV_DIR"
 install -o root -g root -m 600 "$TMP_FILE" "$APP_ENV_FILE"
+sed -i 's/\r$//' "$APP_ENV_FILE"
+chown root:root "$APP_ENV_FILE"
+chmod 600 "$APP_ENV_FILE"
+validate_dotenv_file "$APP_ENV_FILE"
 
 log "Runtime env file written to $APP_ENV_FILE with root-only permissions"
 log "Secret values were not printed"
