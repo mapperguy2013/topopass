@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { hasSupabasePublicConfig } from "../supabase/config.ts";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(currentDirectory, "../..");
@@ -15,6 +16,9 @@ test("Stage 28 learner auth route files exist", () => {
   const requiredFiles = [
     "app/auth/sign-up/page.tsx",
     "app/auth/log-in/page.tsx",
+    "app/login/page.tsx",
+    "app/register/page.tsx",
+    "app/create-account/page.tsx",
     "app/auth/callback/route.ts",
     "app/account/page.tsx",
     "app/auth/actions.ts",
@@ -26,6 +30,50 @@ test("Stage 28 learner auth route files exist", () => {
       existsSync(path.join(projectRoot, requiredFile)),
       true,
       `${requiredFile} is missing`
+    );
+  }
+});
+
+test("configured Supabase env enables production auth route forms", () => {
+  const loginPage = readProjectFile("app/auth/log-in/page.tsx");
+  const signUpPage = readProjectFile("app/auth/sign-up/page.tsx");
+  const loginAlias = readProjectFile("app/login/page.tsx");
+  const registerAlias = readProjectFile("app/register/page.tsx");
+  const createAccountAlias = readProjectFile("app/create-account/page.tsx");
+
+  assert.equal(
+    hasSupabasePublicConfig({
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key"
+    }),
+    true
+  );
+
+  assert.match(loginPage, /hasSupabasePublicConfig/);
+  assert.match(loginPage, /name="email"/);
+  assert.match(loginPage, /name="password"/);
+  assert.match(loginPage, /logInAction/);
+  assert.match(loginPage, /Continue without signing in/);
+
+  assert.match(signUpPage, /hasSupabasePublicConfig/);
+  assert.match(signUpPage, /name="email"/);
+  assert.match(signUpPage, /name="password"/);
+  assert.match(signUpPage, /name="displayName"/);
+  assert.match(signUpPage, /signUpAction/);
+  assert.match(signUpPage, /Continue without signing in/);
+
+  assert.match(loginAlias, /AuthLogInPage/);
+  assert.match(registerAlias, /AuthSignUpPage/);
+  assert.match(createAccountAlias, /AuthSignUpPage/);
+
+  for (const source of [loginPage, signUpPage, loginAlias, registerAlias, createAccountAlias]) {
+    assert.doesNotMatch(
+      source,
+      /User accounts are not connected in the Phase 1 local MVP/
+    );
+    assert.doesNotMatch(
+      source,
+      /Account registration is intentionally not connected in the Phase 1/
     );
   }
 });
@@ -73,6 +121,10 @@ test("signed-out learner pages remain public and do not require auth guards", ()
     assert.doesNotMatch(source, /requireUser\(/, learnerFile);
     assert.doesNotMatch(source, /requireAdmin|getAdminAccessState/, learnerFile);
   }
+
+  const dashboardPage = readProjectFile("app/dashboard/page.tsx");
+  assert.doesNotMatch(dashboardPage, /requireUser\(/);
+  assert.match(dashboardPage, /View progress/);
 });
 
 test("account page is protected by the reusable user requirement", () => {

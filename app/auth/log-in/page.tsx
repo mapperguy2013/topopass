@@ -80,11 +80,17 @@ export default async function LogInPage({ searchParams }: LogInPageProps) {
           New to TopoPass?{" "}
           <Link
             className="font-semibold text-road hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-            href="/auth/sign-up"
+            href="/create-account"
           >
             Create an account
           </Link>
         </p>
+        <Link
+          className="mt-4 inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+          href="/dashboard"
+        >
+          Continue without signing in
+        </Link>
         <Link
           className="mt-4 inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
           href="/"

@@ -89,11 +89,17 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
           Already have an account?{" "}
           <Link
             className="font-semibold text-road hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-            href="/auth/log-in"
+            href="/login"
           >
             Log in
           </Link>
         </p>
+        <Link
+          className="mt-4 inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+          href="/dashboard"
+        >
+          Continue without signing in
+        </Link>
         <Link
           className="mt-4 inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
           href="/"

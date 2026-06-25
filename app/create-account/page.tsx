@@ -1,12 +1,12 @@
 import AuthSignUpPage from "@/app/auth/sign-up/page";
 
-type RegisterPageProps = {
+type CreateAccountPageProps = {
   searchParams: Promise<{
     error?: string;
     message?: string;
   }>;
 };
 
-export default async function RegisterPage(props: RegisterPageProps) {
+export default async function CreateAccountPage(props: CreateAccountPageProps) {
   return AuthSignUpPage(props);
 }
