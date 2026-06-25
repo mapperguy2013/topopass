@@ -373,6 +373,86 @@ EC2-oriented Docker notes:
 - Do not commit runtime env files, real secrets, `.next`, `node_modules`, build
   outputs, or Docker local artifacts.
 
+EC2 rebuild and recovery notes:
+
+Current production EC2 deployment reference:
+
+| Item | Current value |
+| --- | --- |
+| AWS region | `eu-west-2` |
+| Public IP | `13.134.170.158` |
+| Instance ID | `i-008798ec45e9cb274` |
+| ECR image | `006419716542.dkr.ecr.eu-west-2.amazonaws.com/topopass-web:latest` |
+| Runtime secret | `topopass/production/app-env` |
+| App directory | `/srv/topopass` |
+| Compose file | `deploy/docker-compose.prod.yml` |
+| Runtime app env file | `/srv/topopass/env/app.env` |
+| Runtime proxy env file | `/srv/topopass/env/proxy.env` |
+| Systemd service | `topopass-compose.service` |
+
+If the EC2 instance is destroyed, rebuilt, or replaced, these items survive
+outside the host:
+
+- Git-tracked files survive because they are in the repository.
+- Terraform can recreate infrastructure from `infra/terraform`.
+- ECR images survive because they are stored outside EC2.
+- The Secrets Manager value survives in AWS Secrets Manager.
+- Docker containers can be recreated from ECR images with Docker Compose.
+
+These items do not automatically survive a fresh EC2 host:
+
+- `/usr/local/bin/update`
+- `/srv/topopass/env/app.env`
+- `/srv/topopass/env/proxy.env` unless recreated or fetched again
+- running Docker containers
+- manually created files that were never committed to Git
+- the installed `topopass-compose.service` systemd unit unless reinstalled
+
+Fresh EC2 recovery flow:
+
+```bash
+sudo git clone https://github.com/mapperguy2013/topopass.git /srv/topopass
+cd /srv/topopass
+
+sudo bash infra/deploy/fetch-runtime-env.sh
+
+sudo cp infra/deploy/update /usr/local/bin/update
+sudo chmod +x /usr/local/bin/update
+
+sudo cp infra/deploy/systemd/topopass-compose.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now topopass-compose.service
+
+update
+```
+
+Recovery source table:
+
+| Item | Recovery source |
+| --- | --- |
+| Application source, Docker Compose, Caddyfile, deploy scripts | Git |
+| EC2, Elastic IP, security groups, IAM, EBS, CloudWatch, backup resources | Terraform |
+| Production app image | ECR |
+| Runtime app dotenv content | AWS Secrets Manager |
+| `/srv/topopass/env/app.env` | Recreate with `sudo bash infra/deploy/fetch-runtime-env.sh` |
+| `/srv/topopass/env/proxy.env` | Recreate manually from documented host values |
+| `/usr/local/bin/update` | Reinstall from `infra/deploy/update` |
+| `topopass-compose.service` | Reinstall from `infra/deploy/systemd/topopass-compose.service` |
+| Running containers | Recreate with `update` or Docker Compose |
+
+The update deploy helper lives in Git at `infra/deploy/update`. Install it on
+the server with:
+
+```bash
+sudo cp infra/deploy/update /usr/local/bin/update
+sudo chmod +x /usr/local/bin/update
+```
+
+Anything created manually on EC2 should either be committed to Git, stored in
+AWS Secrets Manager, managed by Terraform, or clearly documented. Do not store
+real secrets in Git, Terraform variables, Terraform state, Docker images, or
+README examples.
+
 Step 42 GitHub Actions/ECR setup:
 
 - Create a private ECR repository, for example `topopass/topopass-web`.
