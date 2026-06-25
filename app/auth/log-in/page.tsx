@@ -85,18 +85,20 @@ export default async function LogInPage({ searchParams }: LogInPageProps) {
             Create an account
           </Link>
         </p>
-        <Link
-          className="mt-4 inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-          href="/dashboard"
-        >
-          Continue without signing in
-        </Link>
-        <Link
-          className="mt-4 inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-          href="/"
-        >
-          Back to home
-        </Link>
+        <div className="mt-5 flex flex-col items-start gap-3">
+          <Link
+            className="inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            href="/dashboard"
+          >
+            Continue without signing in
+          </Link>
+          <Link
+            className="inline-flex text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            href="/"
+          >
+            Back to home
+          </Link>
+        </div>
       </section>
     </main>
   );

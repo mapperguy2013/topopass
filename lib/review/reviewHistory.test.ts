@@ -10,6 +10,7 @@ import {
   sentenceCompletionQuestions,
   advancedSentenceCompletionQuestions
 } from "../seruEnglishQuestions.ts";
+import { SERU_READING_UNDERSTANDING_QUESTIONS } from "../seruReadingQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import type {
   NormalizedMockAttempt,
@@ -28,6 +29,7 @@ const seruQuestion = seruQuestionBank[0];
 const phvQuestion = phvHandbookQuestions[0];
 const englishSingleQuestion = sentenceCompletionQuestions[0];
 const englishAdvancedQuestion = advancedSentenceCompletionQuestions[0];
+const readingQuestion = SERU_READING_UNDERSTANDING_QUESTIONS[0];
 const mapQuestion = demoMapClickQuestions[0];
 
 function practiceAttempt(
@@ -214,6 +216,41 @@ test("review history resolves SERU English sentence completion answers", () => {
       item.learnerAnswer.includes(englishAdvancedQuestion.correctAnswers[0])
     )
   );
+});
+
+test("review history resolves SERU reading comprehension answers", () => {
+  const history = buildReviewHistory({
+    practiceAttempts: [
+      practiceAttempt({
+        id: "seru-reading",
+        questionId: readingQuestion.id,
+        questionType: "knowledge",
+        answer: {
+          selectedAnswer: readingQuestion.correctAnswer,
+          questionSubtype: "reading_comprehension"
+        },
+        result: {
+          correctAnswer: readingQuestion.correctAnswer,
+          explanation: readingQuestion.explanation,
+          handbookSection: readingQuestion.handbookSection,
+          questionFamily: "seru",
+          questionSubtype: "reading_comprehension",
+          topic: readingQuestion.topic
+        },
+        passed: true
+      })
+    ],
+    mockAttempts: []
+  });
+
+  assert.equal(history.length, 1);
+  assert.equal(history[0].questionId, readingQuestion.id);
+  assert.equal(history[0].title, readingQuestion.title);
+  assert.equal(history[0].category, "SERU Reading and Understanding");
+  assert.equal(history[0].handbookSection, readingQuestion.handbookSection);
+  assert.equal(history[0].topic, readingQuestion.topic);
+  assert.equal(history[0].correctAnswer, readingQuestion.correctAnswer);
+  assert.equal(history[0].explanation, readingQuestion.explanation);
 });
 
 test("review filters by subject", () => {

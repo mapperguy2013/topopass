@@ -54,6 +54,7 @@ test("configured Supabase env enables production auth route forms", () => {
   assert.match(loginPage, /name="password"/);
   assert.match(loginPage, /logInAction/);
   assert.match(loginPage, /Continue without signing in/);
+  assert.match(loginPage, /flex flex-col items-start gap-3/);
 
   assert.match(signUpPage, /hasSupabasePublicConfig/);
   assert.match(signUpPage, /name="email"/);
@@ -61,6 +62,7 @@ test("configured Supabase env enables production auth route forms", () => {
   assert.match(signUpPage, /name="displayName"/);
   assert.match(signUpPage, /signUpAction/);
   assert.match(signUpPage, /Continue without signing in/);
+  assert.match(signUpPage, /flex flex-col items-start gap-3/);
 
   assert.match(loginAlias, /AuthLogInPage/);
   assert.match(registerAlias, /AuthSignUpPage/);
@@ -136,6 +138,10 @@ test("signed-out learner pages remain public and do not require auth guards", ()
     "app/practice/map-click/page.tsx",
     "app/practice/routes/page.tsx",
     "app/practice/seru/page.tsx",
+    "app/practice/seru/phv-handbook/page.tsx",
+    "app/practice/seru/english-complete-sentence/page.tsx",
+    "app/practice/seru/english-advanced/page.tsx",
+    "app/practice/seru/reading-understanding/page.tsx",
     "app/mock-test/page.tsx",
     "app/progress/page.tsx",
     "app/progress/mistakes/page.tsx"

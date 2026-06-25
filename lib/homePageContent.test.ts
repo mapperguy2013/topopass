@@ -31,6 +31,36 @@ const seruPracticeSource = readFileSync(
   path.join(projectRoot, "app/practice/seru/page.tsx"),
   "utf8"
 );
+const seruPhvHandbookSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/phv-handbook/page.tsx"),
+  "utf8"
+);
+const seruEnglishSingleSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/english-complete-sentence/page.tsx"),
+  "utf8"
+);
+const seruEnglishAdvancedSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/english-advanced/page.tsx"),
+  "utf8"
+);
+const seruReadingSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/reading-understanding/page.tsx"),
+  "utf8"
+);
+const seruSentenceFlowSource = readFileSync(
+  path.join(
+    projectRoot,
+    "src/components/practice/SeruSentenceCompletionPracticeFlow.tsx"
+  ),
+  "utf8"
+);
+const seruReadingFlowSource = readFileSync(
+  path.join(
+    projectRoot,
+    "src/components/practice/SeruReadingComprehensionPracticeFlow.tsx"
+  ),
+  "utf8"
+);
 const demoSource = readFileSync(path.join(projectRoot, "app/demo/page.tsx"), "utf8");
 const topographicalDemoSource = readFileSync(
   path.join(projectRoot, "app/demo/topographical/page.tsx"),
@@ -214,14 +244,52 @@ test("topographical practice has its own route and keeps mock flow topographical
 test("SERU practice keeps safe wording and separate practice controls", () => {
   assert.match(
     seruPracticeSource,
-    /Practise PHV handbook knowledge and SERU-style English/
+    /Choose a focused SERU practice area/
   );
   assert.match(seruPracticeSource, /PHV Driver Handbook Practice/);
   assert.match(seruPracticeSource, /SERU English - Complete the Sentence/);
   assert.match(seruPracticeSource, /SERU English - Advanced Sentence Completion/);
+  assert.match(seruPracticeSource, /SERU Reading and Understanding/);
+  assert.match(seruPracticeSource, /\/practice\/seru\/phv-handbook/);
+  assert.match(seruPracticeSource, /\/practice\/seru\/english-complete-sentence/);
+  assert.match(seruPracticeSource, /\/practice\/seru\/english-advanced/);
+  assert.match(seruPracticeSource, /\/practice\/seru\/reading-understanding/);
   assert.match(seruPracticeSource, /They are not official TfL questions/);
   assert.match(seruPracticeSource, /not\s+affiliated with or endorsed by Transport/);
+  assert.doesNotMatch(seruPracticeSource, /KnowledgePracticeFlow/);
+  assert.doesNotMatch(seruPracticeSource, /SeruSentenceCompletionPracticeFlow/);
   assert.doesNotMatch(seruPracticeSource, /official course|TfL-approved course|guaranteed pass/i);
+});
+
+test("SERU dedicated practice routes render the active flows separately", () => {
+  assert.match(seruPhvHandbookSource, /phvHandbookSections/);
+  assert.match(seruPhvHandbookSource, /Practice all PHV Handbook questions/);
+  assert.match(seruPhvHandbookSource, /KnowledgePracticeFlow/);
+  assert.match(seruPhvHandbookSource, /topic=/);
+
+  assert.match(seruEnglishSingleSource, /sentenceCompletionQuestions/);
+  assert.match(seruEnglishSingleSource, /mode="single"/);
+  assert.match(seruEnglishAdvancedSource, /advancedSentenceCompletionQuestions/);
+  assert.match(seruEnglishAdvancedSource, /mode="advanced"/);
+  assert.match(seruReadingSource, /SERU_READING_UNDERSTANDING_QUESTIONS/);
+  assert.match(seruReadingSource, /SeruReadingComprehensionPracticeFlow/);
+});
+
+test("SERU sentence completion uses inline selectable blanks", () => {
+  assert.match(seruSentenceFlowSource, /data-inline-blank="true"/);
+  assert.match(seruSentenceFlowSource, /<select/);
+  assert.match(seruSentenceFlowSource, /<option value="">Select<\/option>/);
+  assert.match(seruSentenceFlowSource, /onDrop/);
+  assert.match(seruSentenceFlowSource, /Clear all/);
+  assert.match(seruSentenceFlowSource, /blankResults/);
+});
+
+test("SERU reading flow renders passage, question, scoring, and progress saving", () => {
+  assert.match(seruReadingFlowSource, /Passage/);
+  assert.match(seruReadingFlowSource, /scoreSeruReadingQuestion/);
+  assert.match(seruReadingFlowSource, /savePracticeAttempt/);
+  assert.match(seruReadingFlowSource, /questionSubtype: "reading_comprehension"/);
+  assert.match(seruReadingFlowSource, /PracticeSessionSummaryPanel/);
 });
 
 test("demo is positioned as a public preview, not full practice", () => {

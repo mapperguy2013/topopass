@@ -33,7 +33,8 @@ export const SERU_QUESTION_TOPICS = [
   "Safeguarding Children and Adults at Risk",
   "Ridesharing",
   "SERU English - Complete the Sentence",
-  "SERU English - Advanced Sentence Completion"
+  "SERU English - Advanced Sentence Completion",
+  "SERU Reading and Understanding"
 ] as const;
 
 export const QUESTION_TOPICS = TOPOGRAPHICAL_QUESTION_TOPICS;

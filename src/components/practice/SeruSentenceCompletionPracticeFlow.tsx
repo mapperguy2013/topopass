@@ -94,14 +94,16 @@ function WordOptionButton({
   );
 }
 
-function BlankButton({
+function BlankSelect({
   answer,
   disabled,
   index,
   isCorrect,
   onClear,
   onDropWord,
+  onSelectWord,
   onTapBlank,
+  options,
   showFeedback
 }: {
   answer: string | null;
@@ -110,7 +112,9 @@ function BlankButton({
   isCorrect?: boolean;
   onClear?: () => void;
   onDropWord: (word: string) => void;
+  onSelectWord: (word: string) => void;
   onTapBlank: () => void;
+  options: string[];
   showFeedback?: boolean;
 }) {
   const feedbackClass = showFeedback
@@ -123,24 +127,33 @@ function BlankButton({
 
   return (
     <span className="inline-flex items-center gap-2 align-middle">
-      <button
+      <select
         aria-label={`Blank ${index + 1}${answer ? ` filled with ${answer}` : ""}`}
-        className={`mx-1 inline-flex min-h-11 min-w-28 items-center justify-center rounded-md border px-3 py-2 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 ${feedbackClass}`}
+        className={`mx-1 inline-flex min-h-11 min-w-32 rounded-md border px-3 py-2 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 ${feedbackClass}`}
+        data-inline-blank="true"
         disabled={disabled}
+        onChange={(event) => {
+          if (event.target.value) onSelectWord(event.target.value);
+        }}
         onClick={onTapBlank}
         onDragOver={(event) => {
           event.preventDefault();
           event.dataTransfer.dropEffect = "copy";
         }}
-        onDrop={(event: DragEvent<HTMLButtonElement>) => {
+        onDrop={(event: DragEvent<HTMLSelectElement>) => {
           event.preventDefault();
           const word = event.dataTransfer.getData("text/plain");
           if (word) onDropWord(word);
         }}
-        type="button"
+        value={answer ?? ""}
       >
-        {answer ?? `Blank ${index + 1}`}
-      </button>
+        <option value="">Select</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
       {answer && !disabled && onClear && (
         <button
           className="rounded-md px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
@@ -160,6 +173,7 @@ function SentenceRenderer({
   disabled,
   onClearBlank,
   onDropWord,
+  options,
   onTapBlank,
   sentence,
   showFeedback
@@ -169,6 +183,7 @@ function SentenceRenderer({
   disabled?: boolean;
   onClearBlank?: (index: number) => void;
   onDropWord: (index: number, word: string) => void;
+  options: string[];
   onTapBlank: (index: number) => void;
   sentence: string;
   showFeedback?: boolean;
@@ -181,7 +196,7 @@ function SentenceRenderer({
         <span key={`${part}-${index}`}>
           {part}
           {index < parts.length - 1 && (
-            <BlankButton
+            <BlankSelect
               answer={answers[index] ?? null}
               disabled={disabled}
               index={index}
@@ -190,7 +205,9 @@ function SentenceRenderer({
                 onClearBlank ? () => onClearBlank(index) : undefined
               }
               onDropWord={(word) => onDropWord(index, word)}
+              onSelectWord={(word) => onDropWord(index, word)}
               onTapBlank={() => onTapBlank(index)}
+              options={options}
               showFeedback={showFeedback}
             />
           )}
@@ -417,6 +434,7 @@ export function SeruSentenceCompletionPracticeFlow(
             disabled={hasSubmitted}
             onClearBlank={clearAnswer}
             onDropWord={placeAnswer}
+            options={currentQuestion.options}
             onTapBlank={tapBlank}
             sentence={currentQuestion.sentence}
             showFeedback={hasSubmitted}
@@ -466,7 +484,7 @@ export function SeruSentenceCompletionPracticeFlow(
             onClick={resetCurrentAnswer}
             type="button"
           >
-            Clear answer
+            {mode === "advanced" ? "Clear all" : "Clear answer"}
           </button>
         </div>
 

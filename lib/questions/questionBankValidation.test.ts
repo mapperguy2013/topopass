@@ -17,6 +17,11 @@ import {
   scoreSentenceCompletion,
   sentenceCompletionQuestions
 } from "../seruEnglishQuestions.ts";
+import {
+  SERU_READING_UNDERSTANDING_QUESTIONS,
+  scoreSeruReadingQuestion,
+  validateSeruReadingUnderstandingQuestions
+} from "../seruReadingQuestions.ts";
 import { demoMapClickQuestions } from "../mapClickQuestions.ts";
 import {
   getActiveRouteQuestions,
@@ -68,6 +73,10 @@ test("question banks have unique stable IDs", () => {
   assertUniqueIds(
     "SERU English advanced sentence bank",
     advancedSentenceCompletionQuestions.map((question) => question.id)
+  );
+  assertUniqueIds(
+    "SERU reading understanding bank",
+    SERU_READING_UNDERSTANDING_QUESTIONS.map((question) => question.id)
   );
   assertUniqueIds(
     "map-click question bank",
@@ -223,6 +232,9 @@ test("SERU English single sentence completion bank is valid and scores answers",
 test("SERU English advanced sentence completion bank is valid and scores all blanks", () => {
   assert.equal(advancedSentenceCompletionQuestions.length, 20);
   assert.ok(isSeruQuestionTopic("SERU English - Advanced Sentence Completion"));
+  const advancedQuestionText = advancedSentenceCompletionQuestions
+    .map((question) => `${question.sentence} ${question.options.join(" ")}`)
+    .join(" ");
 
   advancedSentenceCompletionQuestions.forEach((question) => {
     assert.equal(question.type, "multi_sentence_completion", question.id);
@@ -237,6 +249,10 @@ test("SERU English advanced sentence completion bank is valid and scores all bla
     );
     question.correctAnswers.forEach((answer) =>
       assert.ok(question.options.includes(answer), `${question.id}: ${answer}`)
+    );
+    assertUniqueIds(
+      `SERU advanced correct answers for ${question.id}`,
+      [...question.correctAnswers]
     );
     assert.ok(question.explanation.trim(), question.id);
 
@@ -267,6 +283,44 @@ test("SERU English advanced sentence completion bank is valid and scores all bla
     null,
     "they"
   ]);
+  assert.match(advancedQuestionText, /must|should|may|cannot/);
+  assert.match(advancedQuestionText, /before|after|while|when|unless/);
+  assert.match(advancedQuestionText, /because|therefore|however/);
+  assert.match(advancedQuestionText, /appropriate|reasonable|serious|accurate|suitable|licensed/);
+  assert.match(advancedQuestionText, /through|between|from|at|on|to/);
+});
+
+test("SERU reading and understanding bank has 20 valid original passages", () => {
+  assert.equal(SERU_READING_UNDERSTANDING_QUESTIONS.length, 20);
+  assert.ok(isSeruQuestionTopic("SERU Reading and Understanding"));
+  assert.equal(validateSeruReadingUnderstandingQuestions(), true);
+
+  SERU_READING_UNDERSTANDING_QUESTIONS.forEach((question) => {
+    const passageWordCount = question.passage.trim().split(/\s+/).length;
+
+    assert.equal(question.type, "reading_comprehension", question.id);
+    assert.equal(question.questionFamily, "seru", question.id);
+    assert.equal(question.categoryId, "seru_reading_understanding", question.id);
+    assert.equal(question.category, "SERU Reading and Understanding", question.id);
+    assert.ok(question.id.startsWith("seru-reading-"), question.id);
+    assert.ok(question.title.trim().length > 0, question.id);
+    assert.ok(question.question.trim().length > 0, question.id);
+    assert.ok(
+      passageWordCount >= 70 && passageWordCount <= 130,
+      `${question.id} has ${passageWordCount} passage words`
+    );
+    assert.equal(question.options.length, 4, question.id);
+    assertUniqueIds(
+      `SERU reading options for ${question.id}`,
+      question.options.map((option) => option.trim())
+    );
+    assert.ok(question.options.includes(question.correctAnswer), question.id);
+    assert.ok(question.explanation.trim(), question.id);
+    assert.ok(question.handbookSection.trim(), question.id);
+    assert.ok(question.topic.trim(), question.id);
+    assert.equal(scoreSeruReadingQuestion(question, question.correctAnswer), true);
+    assert.equal(scoreSeruReadingQuestion(question, "not-the-answer"), false);
+  });
 });
 
 test("map-click questions have valid coordinates, tolerances, explanations, and tips", () => {
