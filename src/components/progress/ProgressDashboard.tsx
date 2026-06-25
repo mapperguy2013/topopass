@@ -4,8 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { buildLearnerDashboardSummary } from "@/lib/analytics/learnerDashboard";
 import { getProgressInsights } from "@/lib/analytics/progressInsights";
+import {
+  calculateAccuracySummary,
+  calculateRecentTrend,
+  getLongestStreak,
+  getRecentActivityCount,
+  getRecentScoredAttempts
+} from "@/lib/analytics/progressSummary";
 import { getPracticeRecommendations } from "@/lib/analytics/recommendationEngine";
-import { calculateLearningStreak } from "@/lib/analytics/streakCalculator";
 import { LOCAL_LEARNER_ID } from "@/lib/db/localPersistence";
 import { listMistakeRetryQueue } from "@/lib/db/mistakeRetryQueue";
 import { listReviewedMistakeKeys } from "@/lib/db/mistakeReviewRepository";
@@ -19,6 +25,8 @@ import {
 } from "@/lib/db/progressMigration";
 import { PracticeRecommendations } from "./PracticeRecommendations";
 import { ProgressDataManager } from "./ProgressDataManager";
+import { AccuracyDonutChart } from "./AccuracyDonutChart";
+import { RecentScoresChart } from "./RecentScoresChart";
 
 type ProgressState = {
   loading: boolean;
@@ -101,29 +109,15 @@ function StatCard({
   );
 }
 
-function trendLabel(direction: string) {
-  if (direction === "improving") return "Improving";
-  if (direction === "declining") return "Declining";
-  if (direction === "stable") return "Stable";
-  return "Not enough data";
+function trendStatusClasses(status: string) {
+  if (status === "improving") return "border-green-200 bg-green-50 text-green-900";
+  if (status === "declining") return "border-red-200 bg-red-50 text-red-900";
+  if (status === "stable") return "border-blue-200 bg-blue-50 text-blue-950";
+  return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
-function trendHelper(direction: string) {
-  if (direction === "improving") return "Recent scores are moving up.";
-  if (direction === "declining") return "Recent scores are dipping.";
-  if (direction === "stable") return "Recent scores are broadly steady.";
-  return "Complete more attempts to calculate a trend.";
-}
-
-function trendSourceLabel(source: "practice" | "mock") {
-  return source === "mock" ? "Mock exam" : "Practice";
-}
-
-function trendQuestionTypeLabel(type: string | undefined) {
-  if (type === "map-click") return "Map-click";
-  if (type === "route") return "Route";
-  if (type === "knowledge") return "Knowledge";
-  return "Mixed questions";
+function percentOf(part: number, total: number) {
+  return total === 0 ? 0 : Math.round((part / total) * 100);
 }
 
 export function ProgressDashboard() {
@@ -201,15 +195,31 @@ export function ProgressDashboard() {
       }),
     [state.mockAttempts, state.practiceAttempts]
   );
+  const allAttempts = useMemo(
+    () => [...state.practiceAttempts, ...state.mockAttempts],
+    [state.mockAttempts, state.practiceAttempts]
+  );
+  const recentScoredAttempts = useMemo(
+    () => getRecentScoredAttempts(allAttempts, 9),
+    [allAttempts]
+  );
+  const recentTrend = useMemo(
+    () => calculateRecentTrend(allAttempts),
+    [allAttempts]
+  );
+  const accuracySummary = useMemo(
+    () => calculateAccuracySummary(allAttempts),
+    [allAttempts]
+  );
+  const longestStreak = useMemo(() => getLongestStreak(allAttempts), [allAttempts]);
+  const scoredActivityCount = useMemo(
+    () => getRecentActivityCount(allAttempts, 7),
+    [allAttempts]
+  );
   const practiceRecommendations = getPracticeRecommendations({
     practiceAttempts: state.practiceAttempts,
     mockAttempts: state.mockAttempts
   });
-  const streak = calculateLearningStreak(
-    state.practiceAttempts,
-    state.mockAttempts
-  );
-  const recentTrendPoints = insights.trendPoints.slice(-10);
 
   if (state.loading) {
     return (
@@ -249,6 +259,163 @@ export function ProgressDashboard() {
           Progress loaded with a repository warning: {state.error}
         </section>
       )}
+
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-road">
+                Recent trend
+              </p>
+              <h2 className="mt-2 text-3xl font-bold text-ink">
+                {recentTrend.label}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                {recentTrend.description}
+              </p>
+            </div>
+            <span
+              className={`w-fit rounded-md border px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${trendStatusClasses(recentTrend.status)}`}
+            >
+              {recentTrend.status === "not-enough-data"
+                ? "More data needed"
+                : recentTrend.status}
+            </span>
+          </div>
+
+          <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Longest streak
+              </dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
+                {longestStreak} day{longestStreak === 1 ? "" : "s"}
+              </dd>
+            </div>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Recent activity
+              </dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
+                {scoredActivityCount}
+              </dd>
+              <p className="mt-1 text-xs text-slate-600">
+                Scored attempt{scoredActivityCount === 1 ? "" : "s"} in the
+                last 7 days
+              </p>
+            </div>
+          </dl>
+
+          <RecentScoresChart
+            scores={recentScoredAttempts.map((attempt) => attempt.percentage)}
+          />
+        </article>
+
+        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-bold uppercase tracking-wide text-road">
+            Correct vs wrong
+          </p>
+          <h2 className="mt-2 text-xl font-bold text-ink">
+            Accuracy and answer summary
+          </h2>
+          <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
+            <AccuracyDonutChart
+              accuracyPercent={accuracySummary.accuracyPercent}
+              correct={accuracySummary.correct}
+              wrong={accuracySummary.wrong}
+            />
+            <div className="min-w-0 flex-1 space-y-4">
+              <div className="rounded-md border border-green-200 bg-green-50 p-4">
+                <p className="flex items-center gap-2 text-sm font-bold text-green-900">
+                  <span className="size-3 rounded-full bg-green-600" />
+                  Correct: {accuracySummary.correct} (
+                  {percentOf(
+                    accuracySummary.correct,
+                    accuracySummary.totalQuestions
+                  )}
+                  %)
+                </p>
+              </div>
+              <div className="rounded-md border border-red-200 bg-red-50 p-4">
+                <p className="flex items-center gap-2 text-sm font-bold text-red-900">
+                  <span className="size-3 rounded-full bg-red-600" />
+                  Wrong: {accuracySummary.wrong} (
+                  {percentOf(
+                    accuracySummary.wrong,
+                    accuracySummary.totalQuestions
+                  )}
+                  %)
+                </p>
+              </div>
+            </div>
+          </div>
+          <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Total attempts
+              </dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
+                {accuracySummary.totalAttempts}
+              </dd>
+              <p className="mt-1 text-xs text-slate-600">
+                Across all question types
+              </p>
+            </div>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                Scored answers
+              </dt>
+              <dd className="mt-1 text-2xl font-bold text-ink">
+                {accuracySummary.totalQuestions}
+              </dd>
+              <p className="mt-1 text-xs text-slate-600">
+                Correct plus wrong answers
+              </p>
+            </div>
+          </dl>
+        </article>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-xl font-bold text-ink">Recent saved attempts</h2>
+        {hasAttempts ? (
+          <div className="mt-4 divide-y divide-slate-200">
+            {recentActivity.map((attempt, index) => (
+              <article
+                className="grid gap-2 py-4 text-sm sm:grid-cols-[1fr_auto]"
+                key={`${questionId(attempt)}-${attemptDate(attempt)}-${index}`}
+              >
+                <div>
+                  <p className="font-bold text-ink">
+                    {questionType(attempt) === "mock-test"
+                      ? "Mock exam"
+                      : questionId(attempt)}
+                  </p>
+                  <p className="mt-1 text-slate-600">
+                    {questionType(attempt)} - {formatDate(attemptDate(attempt))}
+                    {" - "}
+                    {attemptPassed(attempt) ? "Passed" : "Needs review"}
+                  </p>
+                </div>
+                <p
+                  className={`w-fit rounded-md px-3 py-1.5 text-xs font-bold uppercase ${
+                    attemptPassed(attempt)
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {formatPercent(attemptPercentage(attempt))}
+                </p>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
+            No recent attempts yet. Start a practice session or mock exam to
+            populate this list.
+          </p>
+        )}
+      </section>
 
       <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
@@ -460,7 +627,7 @@ export function ProgressDashboard() {
         </article>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <section>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-bold uppercase tracking-wide text-road">
             Study insights
@@ -521,74 +688,6 @@ export function ProgressDashboard() {
               ({insights.mistakeSummary.mostRepeatedMistake.type}).
             </p>
           )}
-        </article>
-
-        <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-sm font-bold uppercase tracking-wide text-road">
-            Recent trend
-          </p>
-          <h2 className="mt-2 text-xl font-bold text-ink">
-            {trendLabel(insights.trendDirection)}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            {trendHelper(insights.trendDirection)} Longest streak:{" "}
-            {streak.longest} day{streak.longest === 1 ? "" : "s"}. Recent
-            activity in the last 7 days: {insights.recentActivityCount}.
-          </p>
-          {recentTrendPoints.length > 0 ? (
-            <div className="mt-5 flex min-h-40 items-end gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              {recentTrendPoints.map((point, index) => (
-                <div
-                  className="flex min-w-0 flex-1 flex-col items-center gap-2"
-                  key={`${point.attemptId}-${point.date}-${index}`}
-                >
-                  <div
-                    className="w-full rounded-t-md bg-road"
-                    style={{ height: `${Math.max(point.score, 6)}%` }}
-                    title={`${point.score}% ${trendSourceLabel(point.source)}`}
-                  />
-                  <span className="text-xs font-semibold text-slate-600">
-                    {point.score}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-4 rounded-md bg-slate-50 p-3 text-sm text-slate-600">
-              Complete a practice question or mock exam to start building a
-              score trend.
-            </p>
-          )}
-          {recentTrendPoints.length > 0 && (
-            <div className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
-              {recentTrendPoints
-                .slice()
-                .reverse()
-                .map((point) => (
-                  <div
-                    className="grid gap-2 p-3 text-sm sm:grid-cols-[1fr_auto]"
-                    key={`${point.attemptId}-${point.date}-detail`}
-                  >
-                    <div>
-                      <p className="font-semibold text-ink">
-                        {trendSourceLabel(point.source)} -{" "}
-                        {trendQuestionTypeLabel(point.questionType)}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {formatDate(point.date)}
-                      </p>
-                    </div>
-                    <span className="w-fit rounded-md bg-blue-50 px-3 py-1.5 text-xs font-bold text-road">
-                      {point.score}%
-                    </span>
-                  </div>
-                ))}
-            </div>
-          )}
-          <p className="mt-3 text-xs text-slate-500">
-            Last {recentTrendPoints.length} scored attempt
-            {recentTrendPoints.length === 1 ? "" : "s"} shown.
-          </p>
         </article>
       </section>
 
@@ -700,44 +799,6 @@ export function ProgressDashboard() {
             >
               Start mock test
             </Link>
-          </div>
-        </section>
-      )}
-
-      {hasAttempts && (
-        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-bold text-ink">
-            Recent saved attempts
-          </h2>
-          <div className="mt-4 divide-y divide-slate-200">
-            {recentActivity.map((attempt, index) => (
-              <article
-                className="grid gap-2 py-4 text-sm sm:grid-cols-[1fr_auto]"
-                key={`${questionId(attempt)}-${attemptDate(attempt)}-${index}`}
-              >
-                <div>
-                  <p className="font-bold text-ink">
-                    {questionType(attempt) === "mock-test"
-                      ? "Mock exam"
-                      : questionId(attempt)}
-                  </p>
-                  <p className="mt-1 text-slate-600">
-                    {questionType(attempt)} - {formatDate(attemptDate(attempt))}
-                    {" - "}
-                    {attemptPassed(attempt) ? "Passed" : "Needs review"}
-                  </p>
-                </div>
-                <p
-                  className={`w-fit rounded-md px-3 py-1.5 text-xs font-bold uppercase ${
-                    attemptPassed(attempt)
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {formatPercent(attemptPercentage(attempt))}
-                </p>
-              </article>
-            ))}
           </div>
         </section>
       )}
