@@ -6,6 +6,7 @@ import {
   advancedSentenceCompletionQuestions,
   sentenceCompletionQuestions
 } from "@/lib/seruEnglishQuestions";
+import { SERU_MOCK_CONFIG } from "@/lib/seruMockTest";
 import { SERU_READING_UNDERSTANDING_QUESTIONS } from "@/lib/seruReadingQuestions";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
@@ -22,8 +23,21 @@ const handbookDisclaimer =
 const activePhvQuestionCount = phvHandbookQuestions.filter(
   (question) => question.isActive
 ).length;
+const seruMockQuestionCount = Object.values(SERU_MOCK_CONFIG.questionCounts).reduce(
+  (total, count) => total + count,
+  0
+);
 
 const practiceCards = [
+  {
+    title: "SERU Mock Test",
+    description:
+      "Take a mixed SERU mock with PHV handbook, sentence completion, advanced English, and reading-understanding questions.",
+    href: "/practice/seru/mock-test",
+    count: `${seruMockQuestionCount} questions`,
+    badge: "Mixed mock",
+    emphasis: true
+  },
   {
     title: "PHV Driver Handbook Practice",
     description:
@@ -170,6 +184,14 @@ export default function SeruPracticePage() {
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <TrackedLink
                 className="inline-flex min-h-11 items-center justify-center rounded-md bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
+                eventName="practice_start_click"
+                eventProperties={{ location: "seru-menu", practice: "seru-mock-test" }}
+                href="/practice/seru/mock-test"
+              >
+                Start SERU Mock Test
+              </TrackedLink>
+              <TrackedLink
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:border-orange-500 hover:text-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
                 eventName="practice_start_click"
                 eventProperties={{ location: "seru-menu", practice: "phv-handbook" }}
                 href="/practice/seru/phv-handbook"

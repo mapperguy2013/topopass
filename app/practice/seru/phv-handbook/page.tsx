@@ -5,7 +5,6 @@ import {
   phvHandbookQuestions,
   phvHandbookSections
 } from "@/lib/seruPhvQuestions";
-import { KnowledgePracticeFlow } from "@/src/components/practice/KnowledgePracticeFlow";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
@@ -14,13 +13,6 @@ export const metadata = buildPageMetadata({
     "Choose PHV Driver Handbook sections and practise original SERU-style private hire knowledge questions.",
   path: "/practice/seru/phv-handbook"
 });
-
-type PhvHandbookPageProps = {
-  searchParams?: Promise<{
-    difficulty?: string;
-    topic?: string;
-  }>;
-};
 
 const handbookDisclaimer =
   "These are original practice questions based on TfL PHV/SERU guidance. They are not official TfL questions. Always read the latest TfL PHV Driver's Handbook before your assessment.";
@@ -31,15 +23,10 @@ function topicCount(topic: string) {
   ).length;
 }
 
-export default async function PhvHandbookPracticePage({
-  searchParams
-}: PhvHandbookPageProps) {
-  const resolvedSearchParams = await searchParams;
+export default function PhvHandbookPracticePage() {
   const activePhvQuestions = phvHandbookQuestions.filter(
     (question) => question.isActive
   );
-  const selectedTopic = resolvedSearchParams?.topic;
-  const hasStarted = Boolean(selectedTopic);
 
   return (
     <AppShell title="PHV Driver Handbook Practice">
@@ -63,7 +50,7 @@ export default async function PhvHandbookPracticePage({
               className="inline-flex min-h-11 items-center justify-center rounded-md bg-orange-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
               eventName="practice_start_click"
               eventProperties={{ location: "seru-phv-handbook", practice: "all" }}
-              href="/practice/seru/phv-handbook?topic=all#phv-practice"
+              href="/practice/seru/phv-handbook/all"
             >
               Practice all PHV Handbook questions
             </TrackedLink>
@@ -94,7 +81,7 @@ export default async function PhvHandbookPracticePage({
             {phvHandbookSections.map((section) => (
               <Link
                 className="rounded-lg border border-slate-200 bg-slate-50 p-4 transition hover:border-orange-300 hover:bg-orange-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
-                href={`/practice/seru/phv-handbook?topic=${encodeURIComponent(section.name)}#phv-practice`}
+                href={`/practice/seru/phv-handbook/${section.id}`}
                 key={section.id}
               >
                 <h3 className="text-base font-bold text-ink">{section.name}</h3>
@@ -107,26 +94,6 @@ export default async function PhvHandbookPracticePage({
               </Link>
             ))}
           </div>
-        </section>
-
-        <section id="phv-practice">
-          {hasStarted ? (
-            <KnowledgePracticeFlow
-              baseHref="/practice/seru/phv-handbook"
-              emptyQuestionTypeLabel="PHV Handbook"
-              initialDifficulty={resolvedSearchParams?.difficulty}
-              initialTopic={selectedTopic}
-              practiceFamily="seru"
-              questionTypeLabel="PHV Handbook"
-              questions={activePhvQuestions}
-              title="PHV Driver Handbook practice"
-            />
-          ) : (
-            <div className="rounded-lg border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600 shadow-sm">
-              Choose a section above or use Practice all PHV Handbook questions
-              to start.
-            </div>
-          )}
         </section>
       </div>
     </AppShell>

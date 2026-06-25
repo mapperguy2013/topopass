@@ -35,6 +35,22 @@ const seruPhvHandbookSource = readFileSync(
   path.join(projectRoot, "app/practice/seru/phv-handbook/page.tsx"),
   "utf8"
 );
+const seruPhvHandbookAllSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/phv-handbook/all/page.tsx"),
+  "utf8"
+);
+const seruPhvHandbookSectionSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/phv-handbook/[sectionId]/page.tsx"),
+  "utf8"
+);
+const seruMockTestSource = readFileSync(
+  path.join(projectRoot, "app/practice/seru/mock-test/page.tsx"),
+  "utf8"
+);
+const seruMockFlowSource = readFileSync(
+  path.join(projectRoot, "src/components/practice/SeruMockTestFlow.tsx"),
+  "utf8"
+);
 const seruEnglishSingleSource = readFileSync(
   path.join(projectRoot, "app/practice/seru/english-complete-sentence/page.tsx"),
   "utf8"
@@ -246,10 +262,12 @@ test("SERU practice keeps safe wording and separate practice controls", () => {
     seruPracticeSource,
     /Choose a focused SERU practice area/
   );
+  assert.match(seruPracticeSource, /SERU Mock Test/);
   assert.match(seruPracticeSource, /PHV Driver Handbook Practice/);
   assert.match(seruPracticeSource, /SERU English - Complete the Sentence/);
   assert.match(seruPracticeSource, /SERU English - Advanced Sentence Completion/);
   assert.match(seruPracticeSource, /SERU Reading and Understanding/);
+  assert.match(seruPracticeSource, /\/practice\/seru\/mock-test/);
   assert.match(seruPracticeSource, /\/practice\/seru\/phv-handbook/);
   assert.match(seruPracticeSource, /\/practice\/seru\/english-complete-sentence/);
   assert.match(seruPracticeSource, /\/practice\/seru\/english-advanced/);
@@ -264,8 +282,21 @@ test("SERU practice keeps safe wording and separate practice controls", () => {
 test("SERU dedicated practice routes render the active flows separately", () => {
   assert.match(seruPhvHandbookSource, /phvHandbookSections/);
   assert.match(seruPhvHandbookSource, /Practice all PHV Handbook questions/);
-  assert.match(seruPhvHandbookSource, /KnowledgePracticeFlow/);
-  assert.match(seruPhvHandbookSource, /topic=/);
+  assert.match(seruPhvHandbookSource, /\/practice\/seru\/phv-handbook\/all/);
+  assert.match(seruPhvHandbookSource, /section\.id/);
+  assert.doesNotMatch(seruPhvHandbookSource, /KnowledgePracticeFlow/);
+  assert.doesNotMatch(seruPhvHandbookSource, /topic=/);
+  assert.match(seruPhvHandbookAllSource, /KnowledgePracticeFlow/);
+  assert.match(seruPhvHandbookAllSource, /phvHandbookQuestions/);
+  assert.match(seruPhvHandbookSectionSource, /generateStaticParams/);
+  assert.match(seruPhvHandbookSectionSource, /notFound\(\)/);
+  assert.match(seruPhvHandbookSectionSource, /question\.sectionId === section\.id/);
+  assert.match(seruPhvHandbookSectionSource, /KnowledgePracticeFlow/);
+  assert.match(seruMockTestSource, /SeruMockTestFlow/);
+  assert.match(seruMockFlowSource, /buildSeruMockQuestions/);
+  assert.match(seruMockFlowSource, /scoreSeruMockAnswers/);
+  assert.match(seruMockFlowSource, /savePracticeAttempt/);
+  assert.match(seruMockFlowSource, /SERU Mock Test: Question/);
 
   assert.match(seruEnglishSingleSource, /sentenceCompletionQuestions/);
   assert.match(seruEnglishSingleSource, /mode="single"/);
