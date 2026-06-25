@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { getMapboxPublicConfig } from "@/lib/mapbox/config";
+import {
+  isMapClickMobileViewport,
+  mapClickInitialZoomForViewport
+} from "@/lib/mapClickZoom";
 import { EXAM_MAP_ZOOM_LIMITS } from "@/lib/topographicalAtlasStyle";
 import type { Coordinates } from "@/lib/distance";
 import {
@@ -14,6 +18,14 @@ import {
 
 const SAFE_MAPBOX_STYLE = "mapbox://styles/mapbox/streets-v12";
 const mapboxConfig = getMapboxPublicConfig();
+
+function currentViewportWidth() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return window.innerWidth;
+}
 
 export type MapClickQuestionProps = {
   title: string;
@@ -95,6 +107,9 @@ export function MapClickQuestion({
   const [result, setResult] = useState<MapClickScoreResult | null>(
     initialAnswer ?? null
   );
+  const [viewportWidth, setViewportWidth] = useState<number | undefined>(
+    currentViewportWidth
+  );
   const hasToken = Boolean(mapboxConfig);
   const canSubmit = canSubmitMapClickAnswer(selectedCoordinates);
   const selectionStatusId = "map-click-selection-status";
@@ -111,11 +126,32 @@ export function MapClickQuestion({
   }, [target.lat, target.lng, title]);
 
   useEffect(() => {
+    function updateViewportWidth() {
+      const nextViewportWidth = currentViewportWidth();
+
+      setViewportWidth((currentWidth) =>
+        isMapClickMobileViewport(currentWidth) ===
+        isMapClickMobileViewport(nextViewportWidth)
+          ? currentWidth
+          : nextViewportWidth
+      );
+    }
+
+    updateViewportWidth();
+    window.addEventListener("resize", updateViewportWidth);
+
+    return () => {
+      window.removeEventListener("resize", updateViewportWidth);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!mapContainer.current || !mapboxConfig) {
       return;
     }
 
     const center = initialCenter ?? target;
+    const mapViewportWidth = viewportWidth ?? currentViewportWidth();
 
     mapboxgl.accessToken = mapboxConfig.accessToken;
 
@@ -123,7 +159,10 @@ export function MapClickQuestion({
       container: mapContainer.current,
       style: SAFE_MAPBOX_STYLE,
       center: [center.lng, center.lat],
-      zoom: clampExamZoom(initialZoom),
+      zoom: mapClickInitialZoomForViewport({
+        baseZoom: clampExamZoom(initialZoom),
+        viewportWidth: mapViewportWidth
+      }),
       minZoom: EXAM_MAP_ZOOM_LIMITS.minZoom,
       maxZoom: EXAM_MAP_ZOOM_LIMITS.maxZoom,
       bearing: 0,
@@ -184,7 +223,14 @@ export function MapClickQuestion({
       clickedMarker.current = null;
       map.remove();
     };
-  }, [initialCenter, initialZoom, passRadiusMetres, submitMode, target]);
+  }, [
+    initialCenter,
+    initialZoom,
+    passRadiusMetres,
+    submitMode,
+    target,
+    viewportWidth
+  ]);
 
   function submitAnswer() {
     const answerResult = scoreMapClickAnswer({

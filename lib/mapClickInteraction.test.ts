@@ -7,9 +7,14 @@ import {
   scoreMapClickAnswer
 } from "./mapClickInteraction.ts";
 import {
+  mapClickInitialZoomForViewport,
+  MAP_CLICK_ZOOM_OFFSETS
+} from "./mapClickZoom.ts";
+import {
   getMapboxPublicConfig,
   hasMapboxPublicConfig
 } from "./mapbox/config.ts";
+import { EXAM_MAP_ZOOM_LIMITS } from "./topographicalAtlasStyle.ts";
 
 test("canSubmitMapClickAnswer requires a finite selected coordinate", () => {
   assert.equal(canSubmitMapClickAnswer(null), false);
@@ -85,4 +90,31 @@ test("Mapbox public config normalizes configured and missing tokens", () => {
   );
   assert.equal(hasMapboxPublicConfig({ NEXT_PUBLIC_MAPBOX_TOKEN: "" }), false);
   assert.equal(getMapboxPublicConfig({}), null);
+});
+
+test("map-click initial zoom shows wider context on desktop and mobile", () => {
+  const baseZoom = 15;
+  const desktopZoom = mapClickInitialZoomForViewport({
+    baseZoom,
+    viewportWidth: 1280
+  });
+  const mobileZoom = mapClickInitialZoomForViewport({
+    baseZoom,
+    viewportWidth: 390
+  });
+
+  assert.equal(desktopZoom, baseZoom - MAP_CLICK_ZOOM_OFFSETS.desktop);
+  assert.equal(mobileZoom, baseZoom - MAP_CLICK_ZOOM_OFFSETS.mobile);
+  assert.ok(desktopZoom < baseZoom);
+  assert.ok(mobileZoom < desktopZoom);
+});
+
+test("map-click responsive zoom remains clamped to a safe minimum", () => {
+  assert.equal(
+    mapClickInitialZoomForViewport({
+      baseZoom: EXAM_MAP_ZOOM_LIMITS.minZoom,
+      viewportWidth: 390
+    }),
+    EXAM_MAP_ZOOM_LIMITS.minZoom
+  );
 });
