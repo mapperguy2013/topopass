@@ -78,6 +78,31 @@ test("configured Supabase env enables production auth route forms", () => {
   }
 });
 
+test("Supabase browser config uses build-time constants by default", () => {
+  const publicConfig = readProjectFile("lib/supabase/config.ts");
+  const browserClient = readProjectFile("lib/supabase/browser.ts");
+  const sharedClient = readProjectFile("lib/supabaseClient.ts");
+
+  assert.match(publicConfig, /publicSupabaseConfig/);
+  assert.match(publicConfig, /process\.env\.NEXT_PUBLIC_SUPABASE_URL/);
+  assert.match(publicConfig, /process\.env\.NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.doesNotMatch(
+    publicConfig,
+    /env:\s*SupabasePublicEnv\s*=\s*process\.env/
+  );
+  assert.doesNotMatch(publicConfig, /getSupabasePublicConfig\(env =/);
+
+  assert.match(browserClient, /createBrowserClient/);
+  assert.match(browserClient, /cachedBrowserClient/);
+  assert.doesNotMatch(browserClient, /process\.env/);
+
+  assert.match(sharedClient, /getSupabasePublicConfig\(\)/);
+  assert.doesNotMatch(
+    sharedClient,
+    /if\s*\(!hasSupabaseConfig\(\)\)\s*return null/
+  );
+});
+
 test("navbar exposes signed-out and signed-in account actions", () => {
   const navbar = readProjectFile("components/layout/Navbar.tsx");
 

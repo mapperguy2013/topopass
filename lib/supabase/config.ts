@@ -1,21 +1,41 @@
 export type SupabasePublicEnv = Record<string, string | undefined>;
 
-export function getSupabasePublicConfig(env: SupabasePublicEnv = process.env) {
-  const url = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+export const publicSupabaseConfig = {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "",
+  anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? ""
+};
 
-  if (!url || !anonKey) {
+function normalizeSupabasePublicConfig(
+  url: string | undefined,
+  anonKey: string | undefined
+) {
+  const normalizedUrl = url?.trim() ?? "";
+  const normalizedAnonKey = anonKey?.trim() ?? "";
+
+  if (!normalizedUrl || !normalizedAnonKey) {
     return null;
   }
 
   return {
-    url,
-    anonKey
+    url: normalizedUrl,
+    anonKey: normalizedAnonKey
   };
 }
 
-export function hasSupabasePublicConfig(
-  env: SupabasePublicEnv = process.env
-) {
+export function getSupabasePublicConfig(env?: SupabasePublicEnv) {
+  if (env) {
+    return normalizeSupabasePublicConfig(
+      env.NEXT_PUBLIC_SUPABASE_URL,
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+  }
+
+  return normalizeSupabasePublicConfig(
+    publicSupabaseConfig.url,
+    publicSupabaseConfig.anonKey
+  );
+}
+
+export function hasSupabasePublicConfig(env?: SupabasePublicEnv) {
   return Boolean(getSupabasePublicConfig(env));
 }

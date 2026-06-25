@@ -1,28 +1,24 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import {
+  getSupabasePublicConfig,
+  hasSupabasePublicConfig,
+  type SupabasePublicEnv
+} from "./supabase/config.ts";
 import type { Database } from "./supabase/types.ts";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-type SupabaseEnv = Record<string, string | undefined>;
 
 let cachedClient: SupabaseClient<Database> | null = null;
 
-export function hasSupabaseConfig(env: SupabaseEnv = process.env) {
-  return Boolean(
-    env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim()
-  );
+export function hasSupabaseConfig(env?: SupabasePublicEnv) {
+  return hasSupabasePublicConfig(env);
 }
 
 export function getSupabaseClient() {
-  if (!hasSupabaseConfig()) return null;
+  const config = getSupabasePublicConfig();
+
+  if (!config) return null;
   if (cachedClient) return cachedClient;
 
-  cachedClient = createClient<Database>(
-    supabaseUrl as string,
-    supabaseAnonKey as string
-  );
+  cachedClient = createClient<Database>(config.url, config.anonKey);
 
   return cachedClient;
 }
