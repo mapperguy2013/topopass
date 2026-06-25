@@ -54,6 +54,14 @@ export function MockModeSelection({ message, onStart }: MockModeSelectionProps) 
             </dd>
           </div>
         </dl>
+        <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950">
+          This mock uses {DEFAULT_MOCK_EXAM_CONFIG.questionCounts.knowledge}{" "}
+          knowledge questions,{" "}
+          {DEFAULT_MOCK_EXAM_CONFIG.questionCounts["map-click"]} map-click
+          questions, and{" "}
+          {DEFAULT_MOCK_EXAM_CONFIG.questionCounts["route-drawing"]}{" "}
+          route-drawing questions.
+        </p>
       </div>
 
       {message && (

@@ -33,6 +33,11 @@ export type BuildMockExamModeResult = {
 };
 
 const routePracticeType = "route-drawing";
+const mockQuestionTypeOrder: Record<MockQuestionType, number> = {
+  knowledge: 0,
+  "map-click": 1,
+  "route-drawing": 2
+};
 
 function shuffled<T>(items: T[], random: () => number) {
   const result = [...items];
@@ -53,6 +58,12 @@ function totalQuestions(config: MockExamConfig) {
   );
 }
 
+function orderQuestionsByType(questions: MockExamQuestion[]) {
+  return [...questions].sort(
+    (a, b) => mockQuestionTypeOrder[a.type] - mockQuestionTypeOrder[b.type]
+  );
+}
+
 function configForWeakType(
   weakType: ProgressInsightQuestionType,
   config: MockExamConfig
@@ -62,7 +73,7 @@ function configForWeakType(
   if (weakType === "knowledge") {
     counts.knowledge += 2;
     counts["map-click"] = Math.max(4, counts["map-click"] - 1);
-    counts["route-drawing"] = Math.max(3, counts["route-drawing"] - 1);
+    counts["route-drawing"] = Math.max(2, counts["route-drawing"] - 1);
   } else if (weakType === "map-click") {
     counts["map-click"] += 2;
     counts.knowledge = Math.max(8, counts.knowledge - 2);
@@ -155,7 +166,7 @@ function fillWithMixedQuestions({
     });
   }
 
-  return selected.slice(0, requiredTotal);
+  return orderQuestionsByType(selected.slice(0, requiredTotal));
 }
 
 function buildStandardMock({
@@ -249,7 +260,7 @@ function buildMistakesMock({
   if (selectedFailedQuestions.length >= requiredTotal) {
     return {
       mode: "mistakes",
-      questions: selectedFailedQuestions
+      questions: orderQuestionsByType(selectedFailedQuestions)
     };
   }
 

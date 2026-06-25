@@ -110,15 +110,39 @@ function selectFromBank<T>(
   return shuffled(bank, random).slice(0, count);
 }
 
+function assertEnoughQuestions(
+  type: MockQuestionType,
+  available: number,
+  requested: number
+) {
+  if (available < requested) {
+    throw new Error(
+      `Mock exam needs ${requested} ${type} questions but only ${available} are available.`
+    );
+  }
+}
+
 export function selectMockExamQuestions(
   config: MockExamConfig = DEFAULT_MOCK_EXAM_CONFIG,
   random: () => number = Math.random
 ) {
-  const requestedTotal =
-    config.questionCounts.knowledge +
-    config.questionCounts["map-click"] +
-    config.questionCounts["route-drawing"];
-  const selected: MockExamQuestion[] = [
+  assertEnoughQuestions(
+    "knowledge",
+    knowledgeMockQuestionBank.length,
+    config.questionCounts.knowledge
+  );
+  assertEnoughQuestions(
+    "map-click",
+    mapClickMockQuestionBank.length,
+    config.questionCounts["map-click"]
+  );
+  assertEnoughQuestions(
+    "route-drawing",
+    routeDrawingMockQuestionBank.length,
+    config.questionCounts["route-drawing"]
+  );
+
+  return [
     ...selectFromBank(
       knowledgeMockQuestionBank,
       config.questionCounts.knowledge,
@@ -135,18 +159,6 @@ export function selectMockExamQuestions(
       random
     )
   ];
-  const seen = new Set(selected.map((question) => question.id));
-
-  if (selected.length < requestedTotal) {
-    shuffled(mockQuestionBank, random).forEach((question) => {
-      if (selected.length >= requestedTotal) return;
-      if (seen.has(question.id)) return;
-      selected.push(question);
-      seen.add(question.id);
-    });
-  }
-
-  return shuffled(selected, random).slice(0, requestedTotal);
 }
 
 export function getMockExamQuestionsById(ids: string[]) {

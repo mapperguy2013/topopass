@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { DEFAULT_MOCK_EXAM_CONFIG } from "./mockExamConfig.ts";
+import {
+  DEFAULT_MOCK_EXAM_CONFIG,
+  getMockExamQuestionTotal
+} from "./mockExamConfig.ts";
 import {
   selectMockExamQuestions,
   knowledgeMockQuestionBank,
@@ -48,6 +51,15 @@ test("topographical mock question banks do not include SERU questions", () => {
   assert.ok(mockQuestionBank.every((question) => !question.id.startsWith("seru-")));
 });
 
+test("mock exam config defines the required 20 question mix", () => {
+  assert.equal(getMockExamQuestionTotal(DEFAULT_MOCK_EXAM_CONFIG), 20);
+  assert.deepEqual(DEFAULT_MOCK_EXAM_CONFIG.questionCounts, {
+    knowledge: 12,
+    "map-click": 5,
+    "route-drawing": 3
+  });
+});
+
 test("question selector returns configured mixed counts without duplicates", () => {
   const questions = selectMockExamQuestions(
     DEFAULT_MOCK_EXAM_CONFIG,
@@ -59,37 +71,49 @@ test("question selector returns configured mixed counts without duplicates", () 
   assert.equal(new Set(ids).size, ids.length);
   assert.equal(
     questions.filter((question) => question.type === "knowledge").length,
-    10
+    12
   );
   assert.equal(
     questions.filter((question) => question.type === "map-click").length,
-    6
+    5
   );
   assert.equal(
     questions.filter((question) => question.type === "route-drawing").length,
-    4
+    3
   );
 });
 
-test("question selector fills from other scored types if one category is short", () => {
+test("question selector keeps knowledge, map-click, and route blocks in order", () => {
   const questions = selectMockExamQuestions(
-    {
-      ...DEFAULT_MOCK_EXAM_CONFIG,
-      questionCounts: {
-        knowledge: 4,
-        "map-click": 1,
-        "route-drawing": 15
-      }
-    },
-    seededRandom(21)
+    DEFAULT_MOCK_EXAM_CONFIG,
+    seededRandom(22)
   );
-  const ids = questions.map((question) => question.id);
 
-  assert.equal(questions.length, 20);
-  assert.equal(new Set(ids).size, ids.length);
-  assert.equal(
-    questions.filter((question) => question.type === "route-drawing").length,
-    routeDrawingMockQuestionBank.length
+  assert.deepEqual(
+    questions.map((question) => question.type),
+    [
+      ...Array(12).fill("knowledge"),
+      ...Array(5).fill("map-click"),
+      ...Array(3).fill("route-drawing")
+    ]
+  );
+});
+
+test("question selector fails clearly if one category is short", () => {
+  assert.throws(
+    () =>
+      selectMockExamQuestions(
+        {
+          ...DEFAULT_MOCK_EXAM_CONFIG,
+          questionCounts: {
+            knowledge: 4,
+            "map-click": 1,
+            "route-drawing": 15
+          }
+        },
+        seededRandom(21)
+      ),
+    /Mock exam needs 15 route-drawing questions/
   );
 });
 

@@ -29,11 +29,19 @@ test("Practice Mock returns a valid mixed mock", () => {
 
   assert.equal(result.mode, "practice");
   assert.equal(result.questions.length, expectedTotal());
-  assert.equal(result.questions.filter((q) => q.type === "knowledge").length, 10);
-  assert.equal(result.questions.filter((q) => q.type === "map-click").length, 6);
+  assert.equal(result.questions.filter((q) => q.type === "knowledge").length, 12);
+  assert.equal(result.questions.filter((q) => q.type === "map-click").length, 5);
   assert.equal(
     result.questions.filter((q) => q.type === "route-drawing").length,
-    4
+    3
+  );
+  assert.deepEqual(
+    result.questions.map((question) => question.type),
+    [
+      ...Array(12).fill("knowledge"),
+      ...Array(5).fill("map-click"),
+      ...Array(3).fill("route-drawing")
+    ]
   );
 });
 
@@ -46,6 +54,14 @@ test("Exam Simulation returns a valid mock and marks the selected mode", () => {
   assert.equal(result.mode, "exam-simulation");
   assert.equal(result.questions.length, expectedTotal());
   assert.equal(result.emptyStateReason, undefined);
+  assert.deepEqual(
+    result.questions.map((question) => question.type),
+    [
+      ...Array(12).fill("knowledge"),
+      ...Array(5).fill("map-click"),
+      ...Array(3).fill("route-drawing")
+    ]
+  );
 });
 
 test("Weak Areas Mock prioritises weak route performance", () => {
@@ -88,7 +104,15 @@ test("Weak Areas Mock prioritises weak route performance", () => {
   assert.equal(
     result.questions.filter((question) => question.type === "route-drawing")
       .length,
-    6
+    5
+  );
+  assert.deepEqual(
+    result.questions.map((question) => question.type),
+    [
+      ...Array(11).fill("knowledge"),
+      ...Array(4).fill("map-click"),
+      ...Array(5).fill("route-drawing")
+    ]
   );
   assert.match(result.fallbackMessage ?? "", /route/i);
 });
@@ -157,6 +181,13 @@ test("Mistakes Mock uses failed questions when available", () => {
   assert.ok(ids.includes("knowledge-cardinal-direction"));
   assert.ok(ids.includes("mock-kings-cross-station"));
   assert.ok(ids.includes("mock-route-kings-cross-to-euston"));
+  assert.deepEqual(
+    result.questions.map((question) => question.type),
+    [...result.questions.map((question) => question.type)].sort((a, b) => {
+      const order = { knowledge: 0, "map-click": 1, "route-drawing": 2 };
+      return order[a] - order[b];
+    })
+  );
   assert.match(result.fallbackMessage ?? "", /not enough saved mistakes/i);
 });
 

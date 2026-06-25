@@ -26,3 +26,15 @@ body {
 a {
   text-decoration: none;
 }
+
+body.mock-exam-focused [data-app-sidebar] {
+  display: none;
+}
+
+body.mock-exam-focused [data-app-shell-frame] {
+  max-width: 1320px;
+}
+
+body.mock-exam-focused [data-app-shell-heading] {
+  margin-bottom: 1rem;
+}

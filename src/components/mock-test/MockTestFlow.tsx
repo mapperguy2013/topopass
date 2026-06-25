@@ -449,6 +449,16 @@ export function MockTestFlow() {
     return () => window.clearInterval(timer);
   }, [expiresAt, mode]);
 
+  useEffect(() => {
+    const focused = mode !== "selection";
+
+    document.body.classList.toggle("mock-exam-focused", focused);
+
+    return () => {
+      document.body.classList.remove("mock-exam-focused");
+    };
+  }, [mode]);
+
   function submitExam() {
     setSubmissionReason("submitted");
     setShowSubmitConfirmation(false);
