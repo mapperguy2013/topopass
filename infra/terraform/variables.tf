@@ -184,6 +184,23 @@ variable "enable_budget_kill_switch" {
   default     = false
 }
 
+variable "enable_runtime_secrets_manager" {
+  description = "Whether to create Secrets Manager metadata for the production runtime app env secret and grant the EC2 role read access."
+  type        = bool
+  default     = true
+}
+
+variable "runtime_secret_name" {
+  description = "AWS Secrets Manager secret name for the production runtime dotenv content. Terraform creates metadata only, not the secret value."
+  type        = string
+  default     = "topopass/production/app-env"
+
+  validation {
+    condition     = length(trim(var.runtime_secret_name, " ")) > 0
+    error_message = "runtime_secret_name must not be empty."
+  }
+}
+
 variable "common_tags" {
   description = "Additional tags applied to all supported resources."
   type        = map(string)

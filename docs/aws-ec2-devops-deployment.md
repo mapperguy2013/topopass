@@ -149,12 +149,16 @@ ECR:
 
 Secrets Manager and runtime secrets:
 
-- Steps 41-45 do not currently wire application runtime to AWS Secrets Manager.
-  Runtime env files are expected to be created manually on EC2.
-- If Secrets Manager is used before launch, keep values out of Terraform state
-  and sync them to host env files without printing them.
-- Recommended secret names, if adopted later:
-  - `topopass/production/app-env`
+- Terraform creates the production runtime app env secret metadata when
+  `enable_runtime_secrets_manager = true`.
+- Terraform does not create a secret value or store dotenv content in state.
+- The default secret name is `topopass/production/app-env`.
+- The EC2 instance role can read only that runtime app env secret ARN.
+- Enter or update the secret value manually in the AWS Console after Terraform
+  creates the empty secret.
+- `infra/deploy/fetch-runtime-env.sh` fetches the secret on EC2 and writes
+  `/srv/topopass/env/app.env` without printing values.
+- Additional secret names can be introduced later if needed:
   - `topopass/production/proxy-env`
   - `topopass/production/supabase-env`
   - `topopass/production/postgres-password`
@@ -335,14 +339,59 @@ Create host env files from the examples without committing them:
 
 ```bash
 sudo mkdir -p /srv/topopass/env /srv/topopass/logs/caddy /srv/topopass/logs/deploy
-sudo cp /srv/topopass/deploy/env/app.env.example /srv/topopass/env/app.env
 sudo cp /srv/topopass/deploy/env/proxy.env.example /srv/topopass/env/proxy.env
-sudo nano /srv/topopass/env/app.env
 sudo nano /srv/topopass/env/proxy.env
 ```
 
 For the first IP-only smoke test, keep `APP_DOMAIN=:80` in `proxy.env` and set
 `NEXT_PUBLIC_SITE_URL=http://<EC2_PUBLIC_IP>` in `app.env`.
+
+## Runtime Env From AWS Secrets Manager
+
+Terraform creates only the Secrets Manager secret metadata. It does not create
+or store a secret value. After Terraform apply:
+
+1. Open AWS Secrets Manager in `eu-west-2`.
+2. Open the secret named by the Terraform `runtime_secret_name` output.
+3. Choose **Retrieve secret value** / **Edit**.
+4. Paste plain dotenv text as the secret value.
+5. Save the secret value without copying it into Git, Terraform variables,
+   GitHub Actions logs, shell history, or documentation.
+
+Example shape:
+
+```dotenv
+NEXT_PUBLIC_SITE_URL=http://YOUR_EC2_PUBLIC_IP
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+```
+
+`NEXT_PUBLIC_*` values are browser-visible by design. They are safe only when
+the backend enforces RLS and does not expose privileged keys.
+
+Server-only values must not use the `NEXT_PUBLIC_` prefix. A Supabase
+service-role key, if a future server-only workflow ever needs one, belongs only
+in server-side runtime env and must never be exposed to browser bundles,
+GitHub Actions logs, Terraform variables, Compose output, or commits.
+
+Fetch the secret onto the EC2 host:
+
+```bash
+cd /srv/topopass
+sudo bash infra/deploy/fetch-runtime-env.sh
+sudo ls -l /srv/topopass/env/app.env
+```
+
+The fetch script:
+
+- calls `aws secretsmanager get-secret-value` using the EC2 instance role
+- writes `/srv/topopass/env/app.env`
+- sets root ownership and `0600` permissions
+- fails if the secret is missing, empty, or not dotenv-like
+- does not print the secret value
+
+Because `app.env` is root-readable only, run the production deploy script with
+`sudo`:
 
 Authenticate Docker to ECR using the EC2 instance role:
 
@@ -357,7 +406,7 @@ health check:
 
 ```bash
 cd /srv/topopass
-bash infra/deploy/deploy-ec2-compose.sh
+sudo bash infra/deploy/deploy-ec2-compose.sh
 ```
 
 Manual equivalent:
@@ -367,10 +416,10 @@ cd /srv/topopass
 export TOPOPASS_IMAGE=006419716542.dkr.ecr.eu-west-2.amazonaws.com/topopass-web:latest
 export TOPOPASS_APP_ENV_FILE=/srv/topopass/env/app.env
 export TOPOPASS_PROXY_ENV_FILE=/srv/topopass/env/proxy.env
-docker compose -f deploy/docker-compose.prod.yml config
-docker compose -f deploy/docker-compose.prod.yml pull
-docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
-docker compose -f deploy/docker-compose.prod.yml ps
+sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE docker compose -f deploy/docker-compose.prod.yml config
+sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE docker compose -f deploy/docker-compose.prod.yml pull
+sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
+sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE docker compose -f deploy/docker-compose.prod.yml ps
 ```
 
 IP smoke tests:
@@ -393,8 +442,9 @@ docker compose -f deploy/docker-compose.prod.yml down
 
 When DNS is ready, update `/srv/topopass/env/proxy.env` with real
 `APP_DOMAIN`, `WWW_DOMAIN`, `SUPABASE_DOMAIN`, and `ACME_EMAIL` values, update
-`NEXT_PUBLIC_SITE_URL` in `/srv/topopass/env/app.env`, then rerun
-`bash infra/deploy/deploy-ec2-compose.sh`.
+`NEXT_PUBLIC_SITE_URL` in the Secrets Manager runtime secret, rerun
+`sudo bash infra/deploy/fetch-runtime-env.sh`, then rerun
+`sudo bash infra/deploy/deploy-ec2-compose.sh`.
 
 Do not commit `/srv/topopass/env/app.env`, `/srv/topopass/env/proxy.env`,
 Terraform state, `terraform.tfvars`, AWS credentials, Docker output, logs,

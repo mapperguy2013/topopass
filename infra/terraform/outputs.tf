@@ -83,6 +83,16 @@ output "budget_kill_switch_lambda_name" {
   value       = try(aws_lambda_function.budget_kill_switch[0].function_name, null)
 }
 
+output "runtime_secret_name" {
+  description = "Secrets Manager runtime app env secret name if enabled."
+  value       = try(aws_secretsmanager_secret.runtime_app_env[0].name, null)
+}
+
+output "runtime_secret_arn" {
+  description = "Secrets Manager runtime app env secret ARN if enabled."
+  value       = try(aws_secretsmanager_secret.runtime_app_env[0].arn, null)
+}
+
 output "ssh_info" {
   description = "SSH status. SSH ingress is disabled unless ssh_cidr_blocks is set."
   value       = length(var.ssh_cidr_blocks) == 0 ? "SSH disabled. Use SSM Session Manager." : "SSH enabled only for configured ssh_cidr_blocks. Prefer SSM Session Manager."

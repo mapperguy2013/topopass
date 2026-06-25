@@ -21,6 +21,7 @@ It creates:
 - private S3 backup bucket for logical Postgres/storage backups
 - CloudWatch log groups, alarms, and SNS alert topic
 - AWS Budget alerts and an optional EC2 stop kill switch for cost protection
+- optional AWS Secrets Manager runtime app env secret metadata
 
 It does not deploy the application containers and it does not write production
 secrets.
@@ -34,7 +35,7 @@ secrets.
 - Do not commit Terraform state.
 - Terraform state must not contain application secrets.
 - Production env files should be created manually on the EC2 instance or later
-  supplied through SSM Parameter Store.
+  supplied through AWS Secrets Manager or SSM Parameter Store.
 
 ## Prepare Variables
 
@@ -59,6 +60,8 @@ Important defaults:
 - CloudWatch log retention: `14` days by default
 - Monthly AWS Budget: `20 USD` by default
 - Budget kill switch: disabled by default
+- Runtime Secrets Manager secret metadata: enabled by default
+- Runtime secret name: `topopass/production/app-env`
 
 Optional domain defaults:
 
@@ -134,6 +137,68 @@ AWS Budgets notifications are not instant and are not a hard spending cap. Treat
 the kill switch as a last-resort safety net. You should still monitor the AWS
 Billing console, use small instance sizes, and review cost explorer regularly.
 
+## Runtime Env With AWS Secrets Manager
+
+Terraform can create the production runtime app env secret metadata without
+putting secret values in state.
+
+Variables:
+
+- `enable_runtime_secrets_manager = true`
+- `runtime_secret_name = "topopass/production/app-env"`
+
+Resources:
+
+- `aws_secretsmanager_secret.runtime_app_env`
+- an inline EC2 role policy allowing only `secretsmanager:GetSecretValue` for
+  that secret ARN
+
+Terraform does not create `aws_secretsmanager_secret_version`, does not accept a
+secret string variable, and does not store runtime dotenv content in state.
+
+Outputs:
+
+```powershell
+terraform -chdir=infra/terraform output runtime_secret_name
+terraform -chdir=infra/terraform output runtime_secret_arn
+```
+
+After apply:
+
+1. Open AWS Secrets Manager in `eu-west-2`.
+2. Open the secret from `runtime_secret_name`.
+3. Edit the secret value manually.
+4. Store plain dotenv text only.
+5. Do not paste the value into Terraform variables, GitHub Actions logs,
+   commits, pull requests, screenshots, or support messages.
+
+Example shape:
+
+```dotenv
+NEXT_PUBLIC_SITE_URL=http://YOUR_EC2_PUBLIC_IP
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
+```
+
+`NEXT_PUBLIC_*` values are visible in browser bundles. Server-only values must
+not use the `NEXT_PUBLIC_` prefix. Privileged backend keys, if ever needed,
+must remain server-only and must not be logged, committed, or printed.
+
+Fetch the runtime env on the EC2 host:
+
+```bash
+cd /srv/topopass
+sudo bash infra/deploy/fetch-runtime-env.sh
+sudo ls -l /srv/topopass/env/app.env
+```
+
+The file is written as root-owned with `0600` permissions. Run deployment with
+`sudo` when this file is used:
+
+```bash
+sudo bash infra/deploy/deploy-ec2-compose.sh
+```
+
 ## S3 Logical Backups
 
 Terraform creates a private S3 backup bucket with:
@@ -193,16 +258,16 @@ The persistent EBS data volume is mounted at `/srv/topopass-data` and added to
 
 ## Add Runtime Env Manually
 
-After the instance exists, create runtime env files manually on the host, for
-example:
+After the instance exists, fetch `app.env` from Secrets Manager or create
+runtime env files manually on the host:
 
 ```bash
 sudo mkdir -p /srv/topopass/env
-sudo nano /srv/topopass/env/app.env
 sudo nano /srv/topopass/env/proxy.env
 ```
 
-Do not put these values in Terraform state. Do not commit them to Git.
+If Secrets Manager is disabled, create `/srv/topopass/env/app.env` manually on
+the host. Do not put these values in Terraform state. Do not commit them to Git.
 
 `proxy.env` should contain placeholder-derived production values only on the
 host:
@@ -229,7 +294,8 @@ After the host exists and the app image has been pushed to ECR:
 
 ```bash
 cd /srv/topopass
-bash infra/deploy/deploy-ec2-compose.sh
+sudo bash infra/deploy/fetch-runtime-env.sh
+sudo bash infra/deploy/deploy-ec2-compose.sh
 ```
 
 The script logs in to ECR with the EC2 instance role, pulls the latest app

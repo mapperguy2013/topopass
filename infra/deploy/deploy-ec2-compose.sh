@@ -25,6 +25,7 @@ require_command() {
 
 require_file() {
   [ -f "$1" ] || fail "Required file is missing: $1"
+  [ -r "$1" ] || fail "Required file is not readable: $1. If it was fetched from Secrets Manager, run this deploy script with sudo."
 }
 
 log "Starting $APP_NAME EC2 Docker Compose deployment"

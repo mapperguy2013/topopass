@@ -44,6 +44,9 @@ budget_limit_unit         = "USD"
 budget_alert_email        = ""
 enable_budget_kill_switch = false
 
+enable_runtime_secrets_manager = true
+runtime_secret_name            = "topopass/production/app-env"
+
 common_tags = {
   Owner = "topopass"
 }
