@@ -40,6 +40,15 @@ export type RecentTrendSummary = {
   newerAverage: number | null;
 };
 
+export type LatestPerformanceSummary = {
+  latestScore: number;
+  latestSource: "practice" | "mock";
+  latestDate: string;
+  bestScore: number;
+  averageScore: number;
+  recommendation: string;
+};
+
 export const PROGRESS_PASS_THRESHOLD_PERCENT = 60;
 
 function attemptDate(attempt: ProgressSummaryAttempt) {
@@ -141,6 +150,57 @@ export function getRecentScoredAttempts(
   limit = 9
 ) {
   return scoredAttemptsOldestFirst(attempts).slice(-limit);
+}
+
+function performanceRecommendation(
+  latestScore: number,
+  averageScore: number,
+  latestSource: ScoredProgressAttempt["source"]
+) {
+  if (latestScore < PROGRESS_PASS_THRESHOLD_PERCENT) {
+    return "Review recent mistakes before starting another full mock.";
+  }
+
+  if (averageScore < 70) {
+    return "Focus on weaker topics with a short practice session next.";
+  }
+
+  if (latestSource === "mock" && latestScore >= 80) {
+    return "Keep the momentum with targeted review before your next mock.";
+  }
+
+  if (latestScore >= 80 && averageScore >= 80) {
+    return "Try an exam-style mock to check your readiness.";
+  }
+
+  return "Continue with mixed practice to build a steadier score.";
+}
+
+export function calculateLatestPerformanceSummary(
+  attempts: ProgressSummaryAttempt[]
+): LatestPerformanceSummary | null {
+  const scoredAttempts = scoredAttemptsOldestFirst(attempts);
+
+  if (scoredAttempts.length === 0) return null;
+
+  const latestAttempt = scoredAttempts[scoredAttempts.length - 1];
+  const bestScore = Math.max(
+    ...scoredAttempts.map((attempt) => attempt.percentage)
+  );
+  const averageScoreValue = averageScore(scoredAttempts) ?? 0;
+
+  return {
+    latestScore: latestAttempt.percentage,
+    latestSource: latestAttempt.source,
+    latestDate: latestAttempt.date,
+    bestScore,
+    averageScore: averageScoreValue,
+    recommendation: performanceRecommendation(
+      latestAttempt.percentage,
+      averageScoreValue,
+      latestAttempt.source
+    )
+  };
 }
 
 export function calculateAccuracySummary(

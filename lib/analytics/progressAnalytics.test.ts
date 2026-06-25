@@ -10,6 +10,7 @@ import { getProgressTrend, getRecentTrendSummary } from "./progressTrends.ts";
 import { calculateLearningStreak } from "./streakCalculator.ts";
 import {
   calculateAccuracySummary,
+  calculateLatestPerformanceSummary,
   calculateRecentTrend,
   getLongestStreak,
   getRecentActivityCount,
@@ -217,6 +218,7 @@ test("progressSummary returns zero summary and not-enough-data trend with no att
     olderAverage: null,
     newerAverage: null
   });
+  assert.equal(calculateLatestPerformanceSummary([]), null);
 });
 
 test("progressSummary requires at least three scored attempts for trend", () => {
@@ -295,6 +297,38 @@ test("progressSummary calculates correct and wrong totals with accuracy percent"
     wrong: 2,
     totalQuestions: 5,
     accuracyPercent: 60
+  });
+});
+
+test("progressSummary calculates latest performance for the accuracy card", () => {
+  const summary = calculateLatestPerformanceSummary([
+    scoredPracticeAttempt({
+      id: "p1",
+      percentage: 100,
+      passed: true,
+      createdAt: "2026-06-20T09:00:00.000Z"
+    }),
+    scoredPracticeAttempt({
+      id: "p2",
+      percentage: 20,
+      passed: false,
+      createdAt: "2026-06-21T09:00:00.000Z"
+    }),
+    scoredMockAttempt({
+      id: "m1",
+      percentage: 67,
+      submittedAt: "2026-06-22T09:00:00.000Z",
+      questionPercentages: [100, 80, 20]
+    })
+  ]);
+
+  assert.deepEqual(summary, {
+    latestScore: 67,
+    latestSource: "mock",
+    latestDate: "2026-06-22T09:00:00.000Z",
+    bestScore: 100,
+    averageScore: 62,
+    recommendation: "Focus on weaker topics with a short practice session next."
   });
 });
 

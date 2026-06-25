@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   calculateAccuracySummary,
+  calculateLatestPerformanceSummary,
   calculateRecentTrend,
   getLongestStreak,
   getRecentActivityCount,
@@ -77,6 +78,10 @@ function attemptPassed(attempt: NormalizedPracticeAttempt | NormalizedMockAttemp
 
 function sourceLabel(source: ProgressState["source"]) {
   return source === "supabase" ? "Account data" : "Local data";
+}
+
+function performanceSourceLabel(source: "practice" | "mock") {
+  return source === "mock" ? "Mock exam" : "Practice";
 }
 
 function trendStatusClasses(status: string) {
@@ -166,6 +171,10 @@ export function ProgressDashboard() {
     () => calculateAccuracySummary(allAttempts),
     [allAttempts]
   );
+  const latestPerformance = useMemo(
+    () => calculateLatestPerformanceSummary(allAttempts),
+    [allAttempts]
+  );
   const longestStreak = useMemo(() => getLongestStreak(allAttempts), [allAttempts]);
   const scoredActivityCount = useMemo(
     () => getRecentActivityCount(allAttempts, 7),
@@ -236,6 +245,50 @@ export function ProgressDashboard() {
                 </div>
               </dl>
             </div>
+          </div>
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-road">
+              Recent performance
+            </h2>
+            {latestPerformance ? (
+              <>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                  <div className="rounded-md bg-slate-50 p-3">
+                    <dt className="text-slate-500">Latest score</dt>
+                    <dd className="mt-1 text-xl font-bold text-ink">
+                      {formatPercent(latestPerformance.latestScore)}
+                    </dd>
+                  </div>
+                  <div className="rounded-md bg-slate-50 p-3">
+                    <dt className="text-slate-500">Best score</dt>
+                    <dd className="mt-1 text-xl font-bold text-ink">
+                      {formatPercent(latestPerformance.bestScore)}
+                    </dd>
+                  </div>
+                  <div className="rounded-md bg-slate-50 p-3">
+                    <dt className="text-slate-500">Average</dt>
+                    <dd className="mt-1 text-xl font-bold text-ink">
+                      {formatPercent(latestPerformance.averageScore)}
+                    </dd>
+                  </div>
+                </dl>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  Last activity:{" "}
+                  <span className="font-semibold text-slate-800">
+                    {performanceSourceLabel(latestPerformance.latestSource)}
+                  </span>
+                  , {formatDate(latestPerformance.latestDate)}
+                </p>
+                <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold leading-6 text-blue-950">
+                  {latestPerformance.recommendation}
+                </p>
+              </>
+            ) : (
+              <p className="mt-3 rounded-md bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                Complete a practice question or mock exam to see your recent
+                performance here.
+              </p>
+            )}
           </div>
         </article>
 
