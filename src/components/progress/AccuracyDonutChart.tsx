@@ -19,12 +19,12 @@ export function AccuracyDonutChart({
   return (
     <div
       aria-label={`Accuracy ${accuracyPercent} percent, ${correct} correct and ${wrong} wrong`}
-      className="relative flex size-40 shrink-0 items-center justify-center rounded-full"
+      className="relative flex size-32 shrink-0 items-center justify-center rounded-full"
       role="img"
       style={{ background }}
     >
-      <div className="flex size-28 flex-col items-center justify-center rounded-full bg-white text-center shadow-inner">
-        <span className="text-3xl font-bold text-ink">{accuracyPercent}%</span>
+      <div className="flex size-24 flex-col items-center justify-center rounded-full bg-white text-center shadow-inner">
+        <span className="text-2xl font-bold text-ink">{accuracyPercent}%</span>
         <span className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">
           Accuracy
         </span>

@@ -2,13 +2,13 @@ type RecentScoresChartProps = {
   scores: number[];
 };
 
-const chartWidth = 360;
-const chartHeight = 220;
+const chartWidth = 320;
+const chartHeight = 150;
 const padding = {
-  top: 18,
-  right: 18,
-  bottom: 38,
-  left: 42
+  top: 16,
+  right: 14,
+  bottom: 26,
+  left: 38
 };
 const gridValues = [100, 75, 50, 25, 0] as const;
 
@@ -31,7 +31,7 @@ function pointForScore(score: number, index: number, total: number) {
 export function RecentScoresChart({ scores }: RecentScoresChartProps) {
   if (scores.length === 0) {
     return (
-      <div className="mt-5 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+      <div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
         Complete a scored practice attempt or mock exam to start building a
         recent score trend.
       </div>
@@ -51,10 +51,10 @@ export function RecentScoresChart({ scores }: RecentScoresChartProps) {
           .join(" ");
 
   return (
-    <div className="mt-5 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
+    <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 p-3">
       <svg
         aria-label="Recent score line chart"
-        className="h-auto min-w-[320px] max-w-full"
+        className="h-auto min-w-[280px] max-w-full"
         role="img"
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
       >
