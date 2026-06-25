@@ -1,0 +1,16 @@
+[Unit]
+Description=TopoPass production Docker Compose stack
+Requires=docker.service
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/topopass
+ExecStart=/usr/bin/docker compose -f /srv/topopass/deploy/docker-compose.prod.yml up -d
+ExecStop=/usr/bin/docker compose -f /srv/topopass/deploy/docker-compose.prod.yml down
+RemainAfterExit=yes
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

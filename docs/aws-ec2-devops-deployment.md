@@ -444,6 +444,35 @@ docker compose -f deploy/docker-compose.prod.yml restart caddy
 docker compose -f deploy/docker-compose.prod.yml down
 ```
 
+## Auto-start Compose On EC2 Boot
+
+Install the systemd unit after the stack has been deployed successfully once:
+
+```bash
+cd /srv/topopass
+sudo cp infra/deploy/systemd/topopass-compose.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now topopass-compose.service
+sudo systemctl status topopass-compose.service
+```
+
+The service runs:
+
+```bash
+docker compose -f /srv/topopass/deploy/docker-compose.prod.yml up -d
+```
+
+and stops with:
+
+```bash
+docker compose -f /srv/topopass/deploy/docker-compose.prod.yml down
+```
+
+The service depends on `docker.service`, starts after `docker.service` and
+`network-online.target`, and uses `RemainAfterExit=yes`. The Docker containers
+also keep their own `restart: unless-stopped` policies, so Docker can restart
+individual containers if they exit after the stack has been started.
+
 When DNS is ready, update `/srv/topopass/env/proxy.env` with real
 `APP_DOMAIN`, `WWW_DOMAIN`, `SUPABASE_DOMAIN`, and `ACME_EMAIL` values, update
 `NEXT_PUBLIC_SITE_URL` in the Secrets Manager runtime secret, rerun

@@ -319,6 +319,21 @@ docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans
 docker compose -f deploy/docker-compose.prod.yml logs --tail 100 caddy
 ```
 
+After one successful manual deployment, install the boot-time Compose service:
+
+```bash
+cd /srv/topopass
+sudo cp infra/deploy/systemd/topopass-compose.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now topopass-compose.service
+sudo systemctl status topopass-compose.service
+```
+
+The unit starts after Docker and `network-online.target`, runs
+`docker compose -f /srv/topopass/deploy/docker-compose.prod.yml up -d`, and
+stops with `docker compose -f /srv/topopass/deploy/docker-compose.prod.yml down`.
+The Compose containers also keep their own `restart: unless-stopped` policies.
+
 Production containers are not started automatically by Terraform.
 
 The production Compose template publishes only Caddy on ports `80` and `443`.

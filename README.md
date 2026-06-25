@@ -337,6 +337,9 @@ EC2-oriented Docker notes:
 - Run `docker compose -f deploy/docker-compose.prod.yml config`.
 - Run `bash infra/deploy/deploy-ec2-compose.sh` or
   `docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans`.
+- After one successful manual deployment, install the boot-time service with
+  `sudo cp infra/deploy/systemd/topopass-compose.service /etc/systemd/system/`
+  and `sudo systemctl enable --now topopass-compose.service`.
 - Check Caddy logs with
   `docker compose -f deploy/docker-compose.prod.yml logs -f caddy`.
 - Do not commit runtime env files, real secrets, `.next`, `node_modules`, build
