@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   getInitialAnswerVisibility,
@@ -59,4 +60,21 @@ test("mistake sorting remains newest first", () => {
     sorted.map((item) => item.id),
     ["new", "middle", "old"]
   );
+});
+
+test("mistake review uses responsive master detail layout", () => {
+  const source = readFileSync(
+    new URL("./MistakeReview.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(source, /xl:grid-cols-\[minmax\(320px,430px\)_minmax\(0,1fr\)\]/);
+  assert.match(source, /xl:max-h-\[calc\(100vh-11rem\)\]/);
+  assert.match(source, /xl:overflow-y-auto/);
+  assert.match(source, /xl:hidden/);
+  assert.match(source, /hidden xl:block/);
+  assert.match(source, /sticky top-4/);
+  assert.match(source, /border-road bg-blue-50 ring-1 ring-road\/20/);
+  assert.match(source, /formatAnswerStatus\(mistake\.userAnswer\)/);
+  assert.match(source, /MistakeDetailPanel/);
 });
