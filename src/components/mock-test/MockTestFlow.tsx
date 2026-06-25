@@ -170,6 +170,31 @@ function RouteMockQuestion({
   );
 }
 
+function FlagIcon({ active = false }: { active?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-4"
+      fill="none"
+      viewBox="0 0 24 24"
+    >
+      <path
+        d="M6 4v16"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth={2}
+      />
+      <path
+        d="M7 5h10l-2.5 4L17 13H7z"
+        fill={active ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth={2}
+      />
+    </svg>
+  );
+}
+
 function questionTypeLabel(question: MockExamQuestion) {
   if (question.type === "knowledge") return "Knowledge";
   if (question.type === "map-click") return "Map click";
@@ -441,32 +466,6 @@ export function MockTestFlow() {
     startNewExam(selectedMode);
   }
 
-  function returnToModeSelection() {
-    if (
-      mode === "exam" &&
-      questions.length > 0 &&
-      !window.confirm("Clear this active mock attempt and choose another mode?")
-    ) {
-      return;
-    }
-
-    clearActiveMockExam();
-    setQuestions([]);
-    setAnswers({});
-    setFlaggedQuestionIds([]);
-    setCurrentQuestionIndex(0);
-    setAttemptId(null);
-    setStartedAt(null);
-    setExpiresAt(null);
-    setPersistedAttemptId(null);
-    setPersistenceStatus("idle");
-    setShowSubmitConfirmation(false);
-    setSubmissionReason("submitted");
-    setNavigationMessage(null);
-    setRemainingSeconds(DEFAULT_MOCK_EXAM_CONFIG.durationMinutes * 60);
-    setMode("selection");
-  }
-
   function goToQuestion(index: number) {
     setNavigationMessage(null);
     setCurrentQuestionIndex(index);
@@ -569,9 +568,9 @@ export function MockTestFlow() {
 
   return (
     <div className="space-y-5">
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-start">
-          <div>
+      <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <p className="text-sm font-bold text-ink">
               {selectedModeMetadata.label}: Question {currentQuestionIndex + 1}{" "}
               of {questions.length}
@@ -585,46 +584,18 @@ export function MockTestFlow() {
                 : ""}
             </p>
           </div>
-          <div className="flex flex-col items-stretch gap-2 sm:items-end">
-            <button
-              aria-pressed={currentQuestionFlagged}
-              className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
-                currentQuestionFlagged
-                  ? "border-amber-300 bg-amber-100 text-amber-950 hover:bg-amber-200"
-                  : "border-slate-300 bg-white text-slate-700 hover:border-amber-400 hover:text-amber-900"
-              }`}
-              onClick={() => toggleQuestionFlag(currentQuestion.id)}
-              type="button"
-            >
-              {currentQuestionFlagged ? "Flagged" : "Flag question"}
-            </button>
-            <p
-              aria-live="polite"
-              className={`rounded-md border px-4 py-2 text-center font-mono text-lg font-bold ${
-                timerLevel === "one-minute-warning"
-                  ? "border-red-300 bg-red-50 text-red-800"
-                  : timerLevel === "five-minute-warning"
-                    ? "border-amber-300 bg-amber-50 text-amber-900"
-                    : "border-slate-200 bg-slate-50 text-ink"
-              }`}
-            >
-              {formatExamTime(remainingSeconds)}
-            </p>
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-semibold text-slate-600 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-              onClick={restartExam}
-              type="button"
-            >
-              Restart exam
-            </button>
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md px-3 text-sm font-semibold text-slate-600 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-              onClick={returnToModeSelection}
-              type="button"
-            >
-              Change mode
-            </button>
-          </div>
+          <p
+            aria-live="polite"
+            className={`w-fit rounded-md border px-3 py-1.5 text-center font-mono text-base font-bold sm:shrink-0 ${
+              timerLevel === "one-minute-warning"
+                ? "border-red-300 bg-red-50 text-red-800"
+                : timerLevel === "five-minute-warning"
+                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                  : "border-slate-200 bg-slate-50 text-ink"
+            }`}
+          >
+            {formatExamTime(remainingSeconds)}
+          </p>
         </div>
 
         {modeMessage && (
@@ -634,7 +605,7 @@ export function MockTestFlow() {
         )}
 
         {selectedModeMetadata.examStyle && (
-          <p className="mt-3 rounded-md border border-slate-300 bg-slate-50 p-3 text-sm font-semibold text-slate-800">
+          <p className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-700">
             Exam Simulation is running under exam-style conditions. Feedback,
             answers, explanations, and tips appear only after final submission.
           </p>
@@ -652,7 +623,7 @@ export function MockTestFlow() {
           </p>
         )}
 
-        <div className="mt-4 h-2 overflow-hidden rounded bg-slate-100">
+        <div className="mt-3 h-2 overflow-hidden rounded bg-slate-100">
           <div
             className="h-full bg-road transition-[width]"
             style={{
@@ -660,44 +631,67 @@ export function MockTestFlow() {
             }}
           />
         </div>
+        <div className="mt-2 flex justify-end">
+          <button
+            className="inline-flex min-h-9 items-center justify-center rounded-md px-2 text-xs font-semibold text-slate-500 hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            onClick={restartExam}
+            type="button"
+          >
+            Restart exam
+          </button>
+        </div>
 
-        <nav aria-label="Question navigator" className="mt-4">
-          <div className="flex flex-wrap gap-2">
-            {questions.map((question, index) => {
-              const isCurrent = index === currentQuestionIndex;
-              const isAnswered = Boolean(answers[question.id]);
-              const isFlagged = isMockQuestionFlagged(
-                flaggedQuestionIds,
-                question.id
-              );
-              return (
-                <button
-                  aria-current={isCurrent ? "step" : undefined}
-                  aria-label={`Question ${index + 1}: ${isAnswered ? "answered" : "unanswered"}${isFlagged ? ", flagged" : ""}`}
-                  className={`relative flex size-11 items-center justify-center rounded-md border text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
-                    isCurrent
-                      ? "border-road bg-road text-white"
-                      : isAnswered
-                        ? "border-ink bg-ink text-white"
-                        : "border-slate-300 bg-white text-slate-600 hover:border-road"
-                  }`}
-                  key={question.id}
-                  onClick={() => goToQuestion(index)}
-                  type="button"
-                >
-                  {index + 1}
-                  {isFlagged && (
-                    <span className="absolute -right-1 -top-1 size-3 rounded-full border border-white bg-amber-500" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-600">
-            <span>Outlined: unanswered</span>
-            <span>Dark: answered</span>
-            <span>Blue: current</span>
-            <span>Amber dot: flagged</span>
+        <nav aria-label="Question navigator" className="mt-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {questions.map((question, index) => {
+                const isCurrent = index === currentQuestionIndex;
+                const isAnswered = Boolean(answers[question.id]);
+                const isFlagged = isMockQuestionFlagged(
+                  flaggedQuestionIds,
+                  question.id
+                );
+                return (
+                  <button
+                    aria-current={isCurrent ? "step" : undefined}
+                    aria-label={`Question ${index + 1}: ${isAnswered ? "answered" : "unanswered"}${isFlagged ? ", flagged" : ""}`}
+                    className={`relative flex size-11 items-center justify-center rounded-md border text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
+                      isCurrent
+                        ? "border-road bg-road text-white"
+                        : isAnswered
+                          ? "border-ink bg-ink text-white"
+                          : "border-slate-300 bg-white text-slate-600 hover:border-road"
+                    }`}
+                    key={question.id}
+                    onClick={() => goToQuestion(index)}
+                    type="button"
+                  >
+                    {index + 1}
+                    {isFlagged && (
+                      <span className="absolute -right-1 -top-1 size-3 rounded-full border border-white bg-amber-500" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              aria-label={
+                currentQuestionFlagged
+                  ? "Remove flag from this question"
+                  : "Flag this question"
+              }
+              aria-pressed={currentQuestionFlagged}
+              className={`inline-flex min-h-10 w-fit shrink-0 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
+                currentQuestionFlagged
+                  ? "border-amber-300 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                  : "border-slate-300 bg-white text-slate-700 hover:border-amber-400 hover:text-amber-900"
+              }`}
+              onClick={() => toggleQuestionFlag(currentQuestion.id)}
+              type="button"
+            >
+              <FlagIcon active={currentQuestionFlagged} />
+              {currentQuestionFlagged ? "Flagged" : "Flag"}
+            </button>
           </div>
         </nav>
       </section>
