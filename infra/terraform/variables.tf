@@ -190,6 +190,45 @@ variable "enable_runtime_secrets_manager" {
   default     = true
 }
 
+variable "enable_ec2_schedule" {
+  description = "Whether to create EventBridge Scheduler rules that stop and start the EC2 host daily for cost saving."
+  type        = bool
+  default     = true
+}
+
+variable "ec2_stop_time" {
+  description = "Daily EC2 stop time in HH:MM format, evaluated in ec2_schedule_timezone."
+  type        = string
+  default     = "02:00"
+
+  validation {
+    condition     = can(regex("^([01][0-9]|2[0-3]):[0-5][0-9]$", var.ec2_stop_time))
+    error_message = "ec2_stop_time must use 24-hour HH:MM format."
+  }
+}
+
+variable "ec2_start_time" {
+  description = "Daily EC2 start time in HH:MM format, evaluated in ec2_schedule_timezone."
+  type        = string
+  default     = "09:00"
+
+  validation {
+    condition     = can(regex("^([01][0-9]|2[0-3]):[0-5][0-9]$", var.ec2_start_time))
+    error_message = "ec2_start_time must use 24-hour HH:MM format."
+  }
+}
+
+variable "ec2_schedule_timezone" {
+  description = "IANA timezone used by EventBridge Scheduler for EC2 stop/start schedules."
+  type        = string
+  default     = "Europe/London"
+
+  validation {
+    condition     = length(trim(var.ec2_schedule_timezone, " ")) > 0
+    error_message = "ec2_schedule_timezone must not be empty."
+  }
+}
+
 variable "runtime_secret_name" {
   description = "AWS Secrets Manager secret name for the production runtime dotenv content. Terraform creates metadata only, not the secret value."
   type        = string

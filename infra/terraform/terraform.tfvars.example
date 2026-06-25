@@ -47,6 +47,11 @@ enable_budget_kill_switch = false
 enable_runtime_secrets_manager = true
 runtime_secret_name            = "topopass/production/app-env"
 
+enable_ec2_schedule   = true
+ec2_stop_time         = "02:00"
+ec2_start_time        = "09:00"
+ec2_schedule_timezone = "Europe/London"
+
 common_tags = {
   Owner = "topopass"
 }

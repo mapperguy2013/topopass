@@ -473,6 +473,38 @@ The service depends on `docker.service`, starts after `docker.service` and
 also keep their own `restart: unless-stopped` policies, so Docker can restart
 individual containers if they exit after the stack has been started.
 
+## Scheduled EC2 Start And Stop
+
+Step 47.6 adds optional daily EC2 stop/start schedules through Amazon
+EventBridge Scheduler:
+
+- `topopass-production-stop-ec2` stops the EC2 host at `02:00 Europe/London`.
+- `topopass-production-start-ec2` starts the EC2 host at `09:00 Europe/London`.
+
+The scheduler role can only call `ec2:StopInstances` and `ec2:StartInstances`
+for the TopoPass EC2 instance ARN. It does not delete EC2, EBS volumes,
+snapshots, Elastic IPs, Route 53 records, ECR repositories, S3 buckets, or
+Secrets Manager entries.
+
+Stopping the EC2 instance preserves the persistent EBS data volume and Docker
+volumes. Starting the instance relies on `topopass-compose.service` to bring the
+production Compose stack back online after Docker and the network are ready.
+
+To disable the schedule temporarily, set this in the untracked Terraform vars
+file and apply the plan:
+
+```hcl
+enable_ec2_schedule = false
+```
+
+```powershell
+terraform -chdir=infra/terraform plan
+terraform -chdir=infra/terraform apply
+```
+
+This removes the schedules and scheduler IAM role only. Manual console changes
+can create Terraform drift, so prefer the variable unless there is an emergency.
+
 When DNS is ready, update `/srv/topopass/env/proxy.env` with real
 `APP_DOMAIN`, `WWW_DOMAIN`, `SUPABASE_DOMAIN`, and `ACME_EMAIL` values, update
 `NEXT_PUBLIC_SITE_URL` in the Secrets Manager runtime secret, rerun

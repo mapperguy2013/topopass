@@ -262,6 +262,17 @@ Step 45 monitoring/backups status:
 | Restore runbook | Added |
 | Real secrets/backups | Not added |
 
+Step 47.6 scheduled EC2 start/stop status:
+
+| Item | Status |
+| --- | --- |
+| EventBridge Scheduler daily EC2 stop | Configured for `02:00 Europe/London` |
+| EventBridge Scheduler daily EC2 start | Configured for `09:00 Europe/London` |
+| Scheduler IAM role | Start/stop only for the TopoPass EC2 instance ARN |
+| Persistent EBS data volume | Preserved when EC2 stops |
+| Compose app restart after boot | Handled by `topopass-compose.service` |
+| Schedule disable path | `enable_ec2_schedule = false` |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -280,6 +291,7 @@ Phase 4 checklist:
 - [x] Backup scripts and restore runbook exist.
 - [x] CloudWatch log groups, alarms, and SNS alerting are defined.
 - [x] AWS Budget cost monitor and optional EC2 stop kill switch are defined.
+- [x] EventBridge Scheduler daily EC2 start/stop cost-saving schedules are defined.
 - [ ] Create the private ECR repository in AWS.
 - [ ] Create the GitHub OIDC IAM role in AWS.
 - [ ] Add required GitHub Actions variables/secrets.

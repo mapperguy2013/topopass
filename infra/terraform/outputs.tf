@@ -93,6 +93,21 @@ output "runtime_secret_arn" {
   value       = try(aws_secretsmanager_secret.runtime_app_env[0].arn, null)
 }
 
+output "ec2_schedule_enabled" {
+  description = "Whether daily EC2 start/stop schedules are enabled."
+  value       = var.enable_ec2_schedule
+}
+
+output "ec2_stop_schedule_name" {
+  description = "EventBridge Scheduler stop schedule name if enabled."
+  value       = try(aws_scheduler_schedule.stop_ec2[0].name, null)
+}
+
+output "ec2_start_schedule_name" {
+  description = "EventBridge Scheduler start schedule name if enabled."
+  value       = try(aws_scheduler_schedule.start_ec2[0].name, null)
+}
+
 output "ssh_info" {
   description = "SSH status. SSH ingress is disabled unless ssh_cidr_blocks is set."
   value       = length(var.ssh_cidr_blocks) == 0 ? "SSH disabled. Use SSM Session Manager." : "SSH enabled only for configured ssh_cidr_blocks. Prefer SSM Session Manager."

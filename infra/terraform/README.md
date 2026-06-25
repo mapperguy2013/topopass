@@ -22,6 +22,7 @@ It creates:
 - CloudWatch log groups, alarms, and SNS alert topic
 - AWS Budget alerts and an optional EC2 stop kill switch for cost protection
 - optional AWS Secrets Manager runtime app env secret metadata
+- optional EventBridge Scheduler daily EC2 stop/start schedules for cost saving
 
 It does not deploy the application containers and it does not write production
 secrets.
@@ -62,6 +63,9 @@ Important defaults:
 - Budget kill switch: disabled by default
 - Runtime Secrets Manager secret metadata: enabled by default
 - Runtime secret name: `topopass/production/app-env`
+- EC2 cost-saving schedule: enabled by default
+- EC2 stop time: `02:00 Europe/London`
+- EC2 start time: `09:00 Europe/London`
 
 Optional domain defaults:
 
@@ -136,6 +140,51 @@ Secrets Manager values.
 AWS Budgets notifications are not instant and are not a hard spending cap. Treat
 the kill switch as a last-resort safety net. You should still monitor the AWS
 Billing console, use small instance sizes, and review cost explorer regularly.
+
+## Scheduled EC2 Start And Stop
+
+Terraform can create two Amazon EventBridge Scheduler schedules for daily
+cost-saving:
+
+- `topopass-production-stop-ec2`: stops the EC2 host at `02:00 Europe/London`
+- `topopass-production-start-ec2`: starts the EC2 host at `09:00 Europe/London`
+
+Variables:
+
+```hcl
+enable_ec2_schedule   = true
+ec2_stop_time         = "02:00"
+ec2_start_time        = "09:00"
+ec2_schedule_timezone = "Europe/London"
+```
+
+The scheduler IAM role can only call `ec2:StopInstances` and
+`ec2:StartInstances` for the TopoPass EC2 instance ARN. It cannot terminate the
+instance, delete EBS volumes, delete snapshots, delete the Elastic IP, change
+Route 53, delete ECR repositories, read Secrets Manager values, or modify S3.
+
+Stopping the instance preserves the persistent EBS data volume, Docker volumes,
+Elastic IP, snapshots, ECR images, Route 53 records, and Secrets Manager secret
+metadata. When the instance starts again, the `topopass-compose.service`
+systemd unit should bring the Docker Compose stack back online.
+
+To disable the schedule temporarily through Terraform:
+
+```hcl
+enable_ec2_schedule = false
+```
+
+Then run:
+
+```powershell
+terraform -chdir=infra/terraform plan
+terraform -chdir=infra/terraform apply
+```
+
+This removes the schedules and scheduler IAM role only. It does not destroy the
+EC2 instance, EBS data volume, snapshots, DNS records, ECR repository, S3 backup
+bucket, or Secrets Manager metadata. Manual changes in the AWS console can
+create drift; prefer the Terraform variable when possible.
 
 ## Runtime Env With AWS Secrets Manager
 
