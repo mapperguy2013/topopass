@@ -13,13 +13,14 @@ test("health endpoint returns a minimal safe app status", () => {
   assert.doesNotMatch(source, /process\.env|SUPABASE|DATABASE|PASSWORD|SECRET/i);
 });
 
-test("production compose checks health without exposing app or database ports", () => {
+test("production compose checks health and exposes only HTTP in temporary IP mode", () => {
   const compose = read("deploy/docker-compose.prod.yml");
 
   assert.match(compose, /\/api\/health/);
   assert.match(compose, /caddy:2\.8-alpine/);
   assert.match(compose, /"80:80"/);
-  assert.match(compose, /"443:443"/);
+  assert.doesNotMatch(compose, /^\s*-\s*"443:443"/m);
+  assert.doesNotMatch(compose, /^\s*-\s*"443:443\/udp"/m);
   assert.match(compose, /expose:\s*\n\s*-\s*"3000"/);
   assert.doesNotMatch(compose, /"3000:3000"|"5432:5432"|"8000:8000"|"54321:54321"|"54322:54322"/);
 });

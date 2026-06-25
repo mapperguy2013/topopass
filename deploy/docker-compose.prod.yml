@@ -12,8 +12,10 @@ services:
       - ${TOPOPASS_PROXY_ENV_FILE:-/srv/topopass/env/proxy.env}
     ports:
       - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      # Domain/HTTPS is paused for the temporary Elastic IP smoke test.
+      # Re-enable these mappings when Route 53 and Caddy HTTPS are configured.
+      # - "443:443"
+      # - "443:443/udp"
     healthcheck:
       test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
       interval: 1m

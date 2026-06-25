@@ -12,8 +12,8 @@ Current production direction:
   Docker network when those containers are added.
 - GitHub Actions will later build the Docker image and push it to AWS ECR.
 - One EC2 instance will pull and run the app through Docker Compose.
-- Caddy terminates TLS and reverse proxies to internal containers.
-- Route 53 will point the production domain at the EC2 instance.
+- Caddy reverse proxies temporary public-IP HTTP traffic to internal containers.
+- Route 53 and Caddy TLS will be added later for the production domain.
 - CloudWatch will collect host/app logs and basic metrics.
 - S3 stores logical Postgres backups and optional Supabase Storage archives.
 
@@ -28,11 +28,12 @@ flowchart LR
   github --> actions[GitHub Actions<br/>lint test build docker build]
   actions --> ecr[AWS ECR<br/>TopoPass app image]
 
-  users[Learners and admins] --> route53[Route 53 DNS]
-  route53 --> ec2[EC2 instance]
+  users[Learners and admins] --> eip[Elastic IP<br/>temporary HTTP]
+  eip --> ec2[EC2 instance]
+  route53[Route 53 DNS<br/>later] -.-> ec2
 
   subgraph host[Single EC2 Docker host]
-    proxy[Caddy<br/>80/443 public]
+    proxy[Caddy<br/>80 public now<br/>443 later]
     compose[Docker Compose]
     app[Next.js app container<br/>app:3000 internal]
     kong[Supabase Kong gateway<br/>kong:8000 internal]
@@ -194,12 +195,13 @@ EC2 access:
 
 Security group rules:
 
-- Public ingress should be ports `80` and `443` only.
+- Public ingress should allow HTTP port `80` for the temporary IP smoke test.
+- Port `443` is reserved for the later domain/HTTPS stage.
 - SSH should remain disabled unless explicitly needed.
 - Postgres must not be public.
 - Supabase Studio must not be public.
 - The app port `3000` must stay internal behind Caddy in production Compose.
-- The Supabase gateway should be reached through Caddy over HTTPS, not by
+- The Supabase gateway should later be reached through Caddy over HTTPS, not by
   publishing internal Docker ports directly.
 
 Backup plan:
@@ -257,7 +259,10 @@ runs:
 
 `deploy/docker-compose.prod.yml` is the stricter production-oriented template:
 
-- Caddy is the only service publishing host ports `80` and `443`.
+- Caddy is the only service publishing host port `80` for the temporary
+  Elastic IP smoke test.
+- Port `443` is commented out and reserved for the later Route 53/domain/HTTPS
+  step.
 - Caddy loads `deploy/Caddyfile`.
 - Caddy keeps persistent `caddy_data` and `caddy_config` volumes.
 - App image defaults to
@@ -280,7 +285,8 @@ the app must not publish direct public host ports.
 `deploy/Caddyfile` supports the current IP-only smoke test and future real
 domain mode through runtime environment variables.
 
-Current no-domain smoke test values:
+Current no-domain smoke test values for the Elastic IP
+`13.134.170.158`:
 
 ```bash
 APP_DOMAIN=:80
@@ -290,7 +296,18 @@ ACME_EMAIL=admin@example.com
 ```
 
 With `APP_DOMAIN=:80`, Caddy serves the app over plain HTTP on the EC2 public
-IP. It does not request certificates for placeholder domains.
+IP. It does not request certificates for placeholder domains and does not force
+HTTPS redirects.
+
+Temporary public-IP URL:
+
+```text
+http://13.134.170.158
+```
+
+This is only for smoke testing. Do not treat public-IP HTTP as final launch
+infrastructure, do not use it for payments, and avoid asking real learners to
+sign in until the production domain and HTTPS are enabled.
 
 Future domain values:
 
@@ -344,7 +361,7 @@ sudo nano /srv/topopass/env/proxy.env
 ```
 
 For the first IP-only smoke test, keep `APP_DOMAIN=:80` in `proxy.env` and set
-`NEXT_PUBLIC_SITE_URL=http://<EC2_PUBLIC_IP>` in `app.env`.
+`NEXT_PUBLIC_SITE_URL=http://13.134.170.158` in `app.env`.
 
 ## Runtime Env From AWS Secrets Manager
 
@@ -365,10 +382,35 @@ Unix LF before Docker Compose reads it.
 Example shape:
 
 ```dotenv
-NEXT_PUBLIC_SITE_URL=http://YOUR_EC2_PUBLIC_IP
+NEXT_PUBLIC_SITE_URL=http://13.134.170.158
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
 ```
+
+To update the current runtime secret without printing values, fetch it to a
+temporary root-only file, edit only the `NEXT_PUBLIC_SITE_URL` line, then write
+the full dotenv payload back:
+
+```bash
+sudo install -m 600 -o root -g root /dev/null /tmp/topopass-app-env
+sudo sh -c 'aws secretsmanager get-secret-value \
+  --region eu-west-2 \
+  --secret-id topopass/production/app-env \
+  --query SecretString \
+  --output text > /tmp/topopass-app-env'
+sudo sed -i 's#^NEXT_PUBLIC_SITE_URL=.*#NEXT_PUBLIC_SITE_URL=http://13.134.170.158#' /tmp/topopass-app-env
+sudo aws secretsmanager update-secret \
+  --region eu-west-2 \
+  --secret-id topopass/production/app-env \
+  --secret-string file:///tmp/topopass-app-env
+sudo rm -f /tmp/topopass-app-env
+```
+
+If your manually managed AWS secret is JSON from an earlier experiment, do not
+replace it with a one-key payload. Preserve the full JSON object and only change
+`NEXT_PUBLIC_SITE_URL`. The current `fetch-runtime-env.sh` script expects plain
+dotenv text, so JSON secrets should be converted to dotenv before using that
+script.
 
 `NEXT_PUBLIC_*` values are browser-visible by design. They are safe only when
 the backend enforces RLS and does not expose privileged keys.
@@ -426,12 +468,27 @@ sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE
 sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE docker compose -f deploy/docker-compose.prod.yml ps
 ```
 
-IP smoke tests:
+Temporary public-IP deployment commands:
+
+```bash
+cd /srv/topopass
+docker compose -f deploy/docker-compose.prod.yml pull
+docker compose -f deploy/docker-compose.prod.yml up -d --force-recreate
+docker compose -f deploy/docker-compose.prod.yml ps
+docker compose -f deploy/docker-compose.prod.yml logs -f caddy
+curl -I http://13.134.170.158
+```
+
+Expected result: `curl` returns `200`, a valid `301`/`302` to a working app
+route, or another valid app response. There should be no HTTPS redirect loop and
+no domain or Route 53 dependency.
+
+Local and public smoke tests:
 
 ```bash
 curl -I http://127.0.0.1
 curl -fsS http://127.0.0.1/api/health
-curl -I http://<EC2_PUBLIC_IP>
+curl -I http://13.134.170.158
 ```
 
 Logs and operations:
@@ -570,7 +627,8 @@ Recommended host layout:
 
 Recommended network exposure:
 
-- Public: 80 and 443 only through Caddy.
+- Public now: port 80 only through Caddy.
+- Later domain/HTTPS: re-enable port 443 through Caddy.
 - Temporary beta SSH: restricted to the owner IP only.
 - Preferred later access: AWS Systems Manager Session Manager.
 - App container: internal Docker network port 3000 only.
@@ -720,13 +778,15 @@ The workflow does not deploy to EC2. A later deployment workflow should:
 - [ ] Copy `.env.docker.example` to an untracked `.env.docker` for local
       Compose tests.
 - [ ] Create production runtime env file directly on EC2.
-- [ ] Confirm production Supabase auth redirect URLs use the HTTPS app domain.
+- [ ] For Step 48A, confirm `NEXT_PUBLIC_SITE_URL=http://13.134.170.158`.
+- [ ] Later, confirm production Supabase auth redirect URLs use the HTTPS app domain.
 - [ ] Confirm Supabase RLS still protects learner data.
 - [ ] Push image to ECR from CI.
 - [ ] Pull image from EC2.
 - [ ] Run Docker Compose on EC2.
 - [ ] Start Caddy reverse proxy.
-- [ ] Open only ports 80 and 443 publicly.
+- [ ] Open port 80 publicly for the temporary IP smoke test.
+- [ ] Keep port 443 reserved until domain/HTTPS setup resumes.
 - [ ] Restrict SSH to owner IP or replace with SSM.
 - [ ] Configure Route 53 DNS.
 - [ ] Configure CloudWatch logs and alarms.

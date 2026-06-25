@@ -76,8 +76,9 @@ and beta-ready information/legal pages.
 Phase 4 has started with low-cost AWS deployment preparation. The current
 deployment target is a Dockerised Next.js app on one EC2 instance, pushed via
 GitHub Actions/ECR, exposed through Caddy, and prepared for app plus Supabase
-gateway HTTPS domains.
-No AWS resources are deployed yet.
+gateway HTTPS domains. Step 48A temporarily pauses domain, Route 53, and HTTPS
+work so the EC2 deployment can be smoke-tested over plain HTTP at
+`http://13.134.170.158`.
 
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
@@ -160,8 +161,9 @@ Current target architecture:
 - AWS ECR stores the TopoPass Next.js app image.
 - One EC2 instance runs Docker Compose.
 - The app container runs on internal port `3000`.
-- Caddy exposes only ports `80` and `443`.
-- Route 53 will point the production domain to the EC2 host.
+- Caddy exposes port `80` for the temporary public-IP HTTP smoke test.
+- Port `443`, Route 53, and the production domain are reserved for the later
+  HTTPS launch path.
 - CloudWatch will collect logs and basic host/app metrics.
 - Self-hosted Supabase gateway routing is prepared through the same reverse
   proxy. The app logic and signed-out/signed-in progress behaviour are
@@ -234,7 +236,7 @@ Step 44 domain/HTTPS reverse proxy status:
 | App domain HTTPS route | Configured through `APP_DOMAIN` |
 | WWW redirect | Configured through `WWW_DOMAIN` |
 | Supabase gateway HTTPS route | Configured through `SUPABASE_DOMAIN` |
-| Production Compose public ports | Caddy only on `80` and `443` |
+| Production Compose public ports | Caddy on `80`; `443` reserved for later HTTPS |
 | App direct public port | Removed from production template |
 | Supabase Studio public exposure | Not added |
 | Route 53 apex/www/Supabase records | Configured in Terraform, disabled by default |
@@ -273,6 +275,17 @@ Step 47.6 scheduled EC2 start/stop status:
 | Compose app restart after boot | Handled by `topopass-compose.service` |
 | Schedule disable path | `enable_ec2_schedule = false` |
 
+Step 48A public-IP HTTP deployment status:
+
+| Item | Status |
+| --- | --- |
+| Temporary public URL | `http://13.134.170.158` |
+| Domain / Route 53 | Paused |
+| HTTPS / certificates | Paused |
+| Active public Compose port | `80` only |
+| App direct public port | Still not published |
+| `NEXT_PUBLIC_SITE_URL` for smoke test | `http://13.134.170.158` |
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -292,6 +305,7 @@ Phase 4 checklist:
 - [x] CloudWatch log groups, alarms, and SNS alerting are defined.
 - [x] AWS Budget cost monitor and optional EC2 stop kill switch are defined.
 - [x] EventBridge Scheduler daily EC2 start/stop cost-saving schedules are defined.
+- [x] Temporary public-IP HTTP smoke-test path is documented.
 - [ ] Create the private ECR repository in AWS.
 - [ ] Create the GitHub OIDC IAM role in AWS.
 - [ ] Add required GitHub Actions variables/secrets.
@@ -340,15 +354,17 @@ EC2-oriented Docker notes:
 - Create the runtime env file on the server, for example `.env.docker` for the
   root compose file or `/srv/topopass/env/app.env` for the production deploy
   template.
-- Create `/srv/topopass/env/proxy.env` with `APP_DOMAIN`, `WWW_DOMAIN`,
-  `SUPABASE_DOMAIN`, and `ACME_EMAIL`.
-- Fill Supabase public URL values with the production HTTPS Supabase gateway
-  domain on the server only.
+- For the temporary public-IP smoke test, create `/srv/topopass/env/proxy.env`
+  with `APP_DOMAIN=:80` and placeholder-only `WWW_DOMAIN`/`SUPABASE_DOMAIN`
+  values.
+- Set `NEXT_PUBLIC_SITE_URL=http://13.134.170.158` in the runtime app env.
+- Keep Supabase public URL values pointed at the existing managed Supabase
+  project until the later self-hosted/domain stage.
 - Set `TOPOPASS_APP_ENV_FILE=/srv/topopass/env/app.env` and
   `TOPOPASS_PROXY_ENV_FILE=/srv/topopass/env/proxy.env` on the host.
 - Run `docker compose -f deploy/docker-compose.prod.yml config`.
-- Run `bash infra/deploy/deploy-ec2-compose.sh` or
-  `docker compose -f deploy/docker-compose.prod.yml up -d --remove-orphans`.
+- Run `bash infra/deploy/deploy-ec2-compose.sh` or the public-IP smoke-test
+  commands documented in `docs/aws-ec2-devops-deployment.md`.
 - After one successful manual deployment, install the boot-time service with
   `sudo cp infra/deploy/systemd/topopass-compose.service /etc/systemd/system/`
   and `sudo systemctl enable --now topopass-compose.service`.
@@ -400,7 +416,8 @@ Step 44 domain/HTTPS setup:
 
 - Production Caddy configuration lives in `deploy/Caddyfile`.
 - Production Compose lives in `deploy/docker-compose.prod.yml`.
-- Caddy is the only production service publishing ports `80` and `443`.
+- Caddy is the only production service publishing port `80` during Step 48A.
+- Port `443` is paused until Route 53/domain/HTTPS work resumes.
 - The app is available only inside the Docker network as `app:3000`.
 - The Supabase gateway is expected inside the Docker network as `kong:8000`
   when the self-hosted Supabase stack is attached.
@@ -1671,7 +1688,9 @@ Docker/Caddy result:
   redirect, security headers, and Supabase gateway proxying.
 - `deploy/docker-compose.prod.yml` now includes Caddy with persistent
   `caddy_data` and `caddy_config` volumes.
-- Caddy is the only production service publishing ports `80` and `443`.
+- Caddy is the only production service publishing port `80` during the Step 48A
+  temporary public-IP smoke test. Port `443` is reserved for later
+  domain/HTTPS setup.
 - The Next.js app is internal as `app:3000`.
 - The Supabase gateway route expects an internal `kong:8000` service.
 - Supabase Studio and Postgres are not exposed publicly.
