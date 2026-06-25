@@ -167,6 +167,27 @@ test("account page is protected by the reusable user requirement", () => {
   assert.match(accountPage, /requireUser\("\/account"\)/);
   assert.match(accountPage, /ensureProfileForUser/);
   assert.match(accountPage, /signOutAction/);
+  assert.match(accountPage, /AccountProgressSummary/);
+  assert.doesNotMatch(
+    accountPage,
+    /These figures come from Supabase account records/
+  );
+});
+
+test("account progress summary supports local browser fallback copy", () => {
+  const accountProgress = readProjectFile(
+    "src/components/account/AccountProgressSummary.tsx"
+  );
+  const accountProgressHelper = readProjectFile("lib/account/accountProgress.ts");
+
+  assert.match(accountProgress, /local progress has not yet been synced/i);
+  assert.match(accountProgress, /familyBreakdown/);
+  assert.match(accountProgress, /listLocalPracticeAttempts/);
+  assert.match(accountProgress, /listLocalMockAttempts/);
+  assert.match(accountProgressHelper, /Local browser progress/);
+  assert.match(accountProgressHelper, /Account sync is still being finalised/);
+  assert.match(accountProgressHelper, /chooseAccountProgressDisplay/);
+  assert.match(accountProgressHelper, /hasVisibleProgress/);
 });
 
 test("account page shows current free plan without active billing", () => {
