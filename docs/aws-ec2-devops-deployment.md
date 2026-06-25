@@ -537,6 +537,28 @@ cd /srv/topopass
 sudo bash infra/deploy/deploy-ec2-compose.sh
 ```
 
+Install the shorter repeatable update helper after the repo is present on the
+EC2 host:
+
+```bash
+cd /srv/topopass
+sudo cp infra/deploy/update /usr/local/bin/update
+sudo chmod +x /usr/local/bin/update
+```
+
+Future deploys can then run:
+
+```bash
+update
+```
+
+The helper changes into `/srv/topopass`, runs `git pull --ff-only`, logs in to
+ECR in `eu-west-2` through the EC2 instance role, pulls
+`deploy/docker-compose.prod.yml` images, recreates the Compose stack, shows
+`docker compose ps`, and checks `http://127.0.0.1/api/health`. It does not
+contain secrets or print env values. If the host Docker setup or root-readable
+env files require elevated access, run `sudo update`.
+
 Manual equivalent:
 
 ```bash

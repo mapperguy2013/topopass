@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR=/srv/topopass
+AWS_REGION=eu-west-2
+ECR_REGISTRY=006419716542.dkr.ecr.eu-west-2.amazonaws.com
+COMPOSE_FILE=deploy/docker-compose.prod.yml
+HEALTH_URL=http://127.0.0.1/api/health
+
+log() {
+  printf '[%s] %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "$*"
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'ERROR: %s is required on this host\n' "$1" >&2
+    exit 1
+  }
+}
+
+require_command aws
+require_command curl
+require_command docker
+require_command git
+
+if ! docker compose version >/dev/null 2>&1; then
+  printf 'ERROR: Docker Compose plugin is required on this host\n' >&2
+  exit 1
+fi
+
+log "Changing directory to $APP_DIR"
+cd "$APP_DIR"
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+  printf 'ERROR: Compose file not found: %s/%s\n' "$APP_DIR" "$COMPOSE_FILE" >&2
+  exit 1
+fi
+
+log "Pulling latest repository changes"
+git pull --ff-only
+
+log "Authenticating Docker to ECR in $AWS_REGION"
+aws ecr get-login-password --region "$AWS_REGION" |
+  docker login --username AWS --password-stdin "$ECR_REGISTRY" >/dev/null
+
+log "Pulling Docker Compose images"
+docker compose -f "$COMPOSE_FILE" pull
+
+log "Recreating production stack"
+docker compose -f "$COMPOSE_FILE" up -d --force-recreate
+
+log "Container status"
+docker compose -f "$COMPOSE_FILE" ps
+
+log "Checking local health endpoint"
+curl -fsS --max-time 15 "$HEALTH_URL" >/dev/null
+log "Health check passed: $HEALTH_URL"
