@@ -25,6 +25,7 @@ export type MockExamReviewItem = {
   acceptedAnswer: string;
   passed: boolean;
   answered: boolean;
+  flagged: boolean;
   scoreLabel: string;
   percentage: number;
   explanation?: string | null;
@@ -136,6 +137,7 @@ export function formatMockExamReviewItems(
       acceptedAnswer: questionResult.acceptedAnswerSummary,
       passed: questionResult.passed,
       answered: questionResult.answered,
+      flagged: questionResult.flagged,
       scoreLabel: `${questionResult.score}/${questionResult.maxScore}`,
       percentage: questionResult.percentage,
       explanation: explanationForResult(question, questionResult)

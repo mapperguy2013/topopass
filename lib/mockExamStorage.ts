@@ -9,6 +9,7 @@ export type StoredMockExamAttempt = {
   questionIds: string[];
   currentQuestionIndex: number;
   answers: MockExamAnswers;
+  flaggedQuestionIds?: string[];
   startedAt?: number;
   expiresAt: number;
   mode?: MockExamModeId;

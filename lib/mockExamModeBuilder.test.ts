@@ -29,11 +29,11 @@ test("Practice Mock returns a valid mixed mock", () => {
 
   assert.equal(result.mode, "practice");
   assert.equal(result.questions.length, expectedTotal());
-  assert.equal(result.questions.filter((q) => q.type === "knowledge").length, 3);
-  assert.equal(result.questions.filter((q) => q.type === "map-click").length, 3);
+  assert.equal(result.questions.filter((q) => q.type === "knowledge").length, 10);
+  assert.equal(result.questions.filter((q) => q.type === "map-click").length, 6);
   assert.equal(
     result.questions.filter((q) => q.type === "route-drawing").length,
-    2
+    4
   );
 });
 
@@ -88,7 +88,7 @@ test("Weak Areas Mock prioritises weak route performance", () => {
   assert.equal(
     result.questions.filter((question) => question.type === "route-drawing")
       .length,
-    4
+    6
   );
   assert.match(result.fallbackMessage ?? "", /route/i);
 });

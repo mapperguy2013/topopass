@@ -7,6 +7,12 @@ import {
   scoreMockExamQuestion,
   type MockExamAnswers
 } from "./mockExamEngine.ts";
+import {
+  isMockQuestionFlagged,
+  normalizeFlaggedQuestionIds,
+  toggleMockQuestionFlag
+} from "./mockExamFlags.ts";
+import { calculateMockScoreRingSummary } from "./mockExamScoreSummary.ts";
 import type {
   KnowledgeMockQuestion,
   MapClickMockQuestion,
@@ -176,11 +182,16 @@ test("mixed final result calculates totals and per-type breakdown", () => {
       routePoints: acceptedGeometry.map(([x, y]) => ({ x, y }))
     }
   };
-  const result = calculateMockExamResult(questions, answers, 70);
+  const result = calculateMockExamResult(questions, answers, 70, [
+    mapQuestion.id
+  ]);
 
   assert.equal(result.totalQuestions, 3);
   assert.equal(result.answeredQuestions, 3);
   assert.equal(result.passedQuestions, 3);
+  assert.equal(result.flaggedQuestions, 1);
+  assert.deepEqual(result.flaggedQuestionIds, [mapQuestion.id]);
+  assert.equal(result.questionResults[1].flagged, true);
   assert.equal(result.percentage, 100);
   assert.equal(result.passed, true);
   assert.equal(result.breakdown.knowledge.passed, 1);
@@ -199,6 +210,88 @@ test("final result reports answered and unanswered counts", () => {
 
   assert.equal(result.answeredQuestions, 1);
   assert.equal(result.totalQuestions - result.answeredQuestions, 1);
+});
+
+test("mock question flags toggle and normalize safely", () => {
+  const flagged = toggleMockQuestionFlag([], knowledgeQuestion.id);
+  const unflagged = toggleMockQuestionFlag(flagged, knowledgeQuestion.id);
+
+  assert.equal(isMockQuestionFlagged(flagged, knowledgeQuestion.id), true);
+  assert.deepEqual(unflagged, []);
+  assert.deepEqual(
+    normalizeFlaggedQuestionIds(
+      [knowledgeQuestion.id, knowledgeQuestion.id, "unknown", 123],
+      [knowledgeQuestion.id]
+    ),
+    [knowledgeQuestion.id]
+  );
+});
+
+test("score ring summary calculates correct, wrong, percentage, and zero case", () => {
+  const result = calculateMockExamResult(
+    [knowledgeQuestion, mapQuestion],
+    {
+      [knowledgeQuestion.id]: {
+        type: "knowledge",
+        selectedAnswer: "South"
+      }
+    },
+    70
+  );
+  const summary = calculateMockScoreRingSummary(result);
+  const zeroSummary = calculateMockScoreRingSummary(
+    calculateMockExamResult([], {}, 70)
+  );
+
+  assert.equal(summary.correct, 1);
+  assert.equal(summary.wrong, 1);
+  assert.equal(summary.percentage, 50);
+  assert.equal(summary.resultLabel, "Below pass mark");
+  assert.equal(zeroSummary.correct, 0);
+  assert.equal(zeroSummary.wrong, 0);
+  assert.equal(zeroSummary.percentage, 0);
+});
+
+test("map-click review data carries user point and correct point", () => {
+  const reviewData = {
+    questionId: mapQuestion.id,
+    prompt: mapQuestion.prompt,
+    userCoordinates: { lat: 51.49, lng: -0.11 },
+    correctCoordinates: mapQuestion.target,
+    distanceMeters: 400,
+    score: 0,
+    isCorrect: false
+  };
+  const result = scoreMockExamQuestion(mapQuestion, {
+    type: "map-click",
+    coordinates: { latitude: 51.49, longitude: -0.11 },
+    reviewData
+  });
+
+  assert.equal(result.details.type, "map-click");
+  assert.deepEqual(result.details.reviewData?.userCoordinates, {
+    lat: 51.49,
+    lng: -0.11
+  });
+  assert.deepEqual(result.details.reviewData?.correctCoordinates, mapQuestion.target);
+});
+
+test("route review data carries user route and accepted route", () => {
+  const userRoutePoints = acceptedGeometry.map(([x, y]) => ({ x, y }));
+  const reviewData = {
+    questionId: routeQuestion.routeQuestion.id,
+    userRouteMapPoints: userRoutePoints,
+    referenceRouteMapPoints: userRoutePoints
+  };
+  const result = scoreMockExamQuestion(routeQuestion, {
+    type: "route-drawing",
+    routePoints: userRoutePoints,
+    reviewData
+  });
+
+  assert.equal(result.details.type, "route-drawing");
+  assert.equal(result.details.reviewData?.userRouteMapPoints?.length, 6);
+  assert.equal(result.details.reviewData?.referenceRouteMapPoints?.length, 6);
 });
 
 test("review generation includes unanswered and accepted-answer summaries", () => {

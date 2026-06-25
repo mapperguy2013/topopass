@@ -15,6 +15,7 @@ export type RouteAnswerReviewProps = {
   } | null;
   suggestedSteps?: string[];
   scoreLabel: string;
+  passed?: boolean | null;
   explanation?: string | null;
   tip?: string | null;
   idealRouteDescription?: string | null;
@@ -75,6 +76,7 @@ export function RouteAnswerReview({
   routeScore,
   suggestedSteps,
   scoreLabel,
+  passed,
   explanation,
   tip,
   idealRouteDescription,
@@ -105,14 +107,20 @@ export function RouteAnswerReview({
           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Score
           </dt>
-          <dd className="mt-1 text-2xl font-bold text-red-700">{scoreLabel}</dd>
+          <dd
+            className={`mt-1 text-2xl font-bold ${
+              passed ? "text-green-700" : "text-red-700"
+            }`}
+          >
+            {scoreLabel}
+          </dd>
         </div>
         <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">
           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Result
           </dt>
           <dd className="mt-1 text-base font-bold text-slate-800">
-            Below pass
+            {passed ? "Passed" : "Below pass"}
           </dd>
         </div>
         <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-4">

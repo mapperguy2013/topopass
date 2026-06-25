@@ -80,6 +80,7 @@ function fallbackQuestionResults(
         questionId,
         type: answer.type,
         answered: true,
+        flagged: false,
         passed: false,
         score: 0,
         maxScore: 1,

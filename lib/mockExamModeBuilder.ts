@@ -60,15 +60,16 @@ function configForWeakType(
   const counts = { ...config.questionCounts };
 
   if (weakType === "knowledge") {
-    counts.knowledge = Math.min(4, counts.knowledge + 1);
-    counts["map-click"] = Math.max(2, counts["map-click"] - 1);
+    counts.knowledge += 2;
+    counts["map-click"] = Math.max(4, counts["map-click"] - 1);
+    counts["route-drawing"] = Math.max(3, counts["route-drawing"] - 1);
   } else if (weakType === "map-click") {
-    counts["map-click"] = Math.min(4, counts["map-click"] + 1);
-    counts.knowledge = Math.max(2, counts.knowledge - 1);
+    counts["map-click"] += 2;
+    counts.knowledge = Math.max(8, counts.knowledge - 2);
   } else {
-    counts["route-drawing"] = Math.min(4, counts["route-drawing"] + 2);
-    counts.knowledge = Math.max(2, counts.knowledge - 1);
-    counts["map-click"] = Math.max(2, counts["map-click"] - 1);
+    counts["route-drawing"] += 2;
+    counts.knowledge = Math.max(8, counts.knowledge - 1);
+    counts["map-click"] = Math.max(4, counts["map-click"] - 1);
   }
 
   return {

@@ -66,6 +66,7 @@ export type MockQuestionScoreResult = {
   questionId: string;
   type: MockQuestionType;
   answered: boolean;
+  flagged: boolean;
   passed: boolean;
   score: number;
   maxScore: number;
@@ -92,6 +93,8 @@ export type MockExamResult = {
   totalQuestions: number;
   answeredQuestions: number;
   passedQuestions: number;
+  flaggedQuestionIds: string[];
+  flaggedQuestions: number;
   score: number;
   maxScore: number;
   percentage: number;
@@ -121,12 +124,14 @@ export function removeMockExamAnswer(
 function unansweredResult(
   question: MockExamQuestion,
   acceptedAnswerSummary: string,
-  details: MockQuestionScoreResult["details"]
+  details: MockQuestionScoreResult["details"],
+  flagged = false
 ): MockQuestionScoreResult {
   return {
     questionId: question.id,
     type: question.type,
     answered: false,
+    flagged,
     passed: false,
     score: 0,
     maxScore: question.maxScore,
@@ -139,18 +144,24 @@ function unansweredResult(
 
 export function scoreMockExamQuestion(
   question: MockExamQuestion,
-  answer?: MockExamAnswer
+  answer?: MockExamAnswer,
+  flagged = false
 ): MockQuestionScoreResult {
   if (question.type === "knowledge") {
     const acceptedSummary = question.correctAnswer;
     if (!answer || answer.type !== "knowledge") {
-      return unansweredResult(question, acceptedSummary, {
+      return unansweredResult(
+        question,
+        acceptedSummary,
+        {
           type: "knowledge",
           selectedAnswer: null,
           correctAnswer: question.correctAnswer,
           explanation: question.explanation,
           tip: question.tip
-        });
+        },
+        flagged
+      );
     }
 
     const passed = answer.selectedAnswer === question.correctAnswer;
@@ -158,6 +169,7 @@ export function scoreMockExamQuestion(
       questionId: question.id,
       type: question.type,
       answered: true,
+      flagged,
       passed,
       score: passed ? question.maxScore : 0,
       maxScore: question.maxScore,
@@ -177,16 +189,21 @@ export function scoreMockExamQuestion(
   if (question.type === "map-click") {
     const acceptedSummary = `${question.target.lat.toFixed(5)}, ${question.target.lng.toFixed(5)} within ${question.toleranceMeters}m`;
     if (!answer || answer.type !== "map-click") {
-      return unansweredResult(question, acceptedSummary, {
-        type: "map-click",
-        clickedCoordinates: null,
+      return unansweredResult(
+        question,
+        acceptedSummary,
+        {
+          type: "map-click",
+          clickedCoordinates: null,
           target: question.target,
           distanceMeters: Number.POSITIVE_INFINITY,
           toleranceMeters: question.toleranceMeters,
           explanation: question.explanation,
           tip: question.tip,
           acceptedAreaDescription: question.acceptedAreaDescription
-        });
+        },
+        flagged
+      );
     }
 
     const distanceMeters = distanceInMetres(answer.coordinates, {
@@ -198,6 +215,7 @@ export function scoreMockExamQuestion(
       questionId: question.id,
       type: question.type,
       answered: true,
+      flagged,
       passed,
       score: passed ? question.maxScore : 0,
       maxScore: question.maxScore,
@@ -222,14 +240,19 @@ export function scoreMockExamQuestion(
   const acceptedPoints = acceptedGeometry.map(([x, y]) => ({ x, y }));
   const acceptedSummary = `${question.routeQuestion.fromLabel} to ${question.routeQuestion.toLabel}`;
   if (!answer || answer.type !== "route-drawing") {
-    return unansweredResult(question, acceptedSummary, {
-      type: "route-drawing",
-      routePointCount: 0,
-      routeScore: null,
-      explanation: question.routeQuestion.explanation,
-      tip: question.routeQuestion.tip,
-      idealRouteDescription: question.routeQuestion.idealRouteDescription
-    });
+    return unansweredResult(
+      question,
+      acceptedSummary,
+      {
+        type: "route-drawing",
+        routePointCount: 0,
+        routeScore: null,
+        explanation: question.routeQuestion.explanation,
+        tip: question.routeQuestion.tip,
+        idealRouteDescription: question.routeQuestion.idealRouteDescription
+      },
+      flagged
+    );
   }
 
   const routeScore = scoreDrawnRoute(answer.routePoints, acceptedPoints, {
@@ -243,6 +266,7 @@ export function scoreMockExamQuestion(
     questionId: question.id,
     type: question.type,
     answered: true,
+    flagged,
     passed: routeScore.passed,
     score,
     maxScore: question.maxScore,
@@ -263,10 +287,17 @@ export function scoreMockExamQuestion(
 
 export function generateMockExamReview(
   questions: MockExamQuestion[],
-  answers: MockExamAnswers
+  answers: MockExamAnswers,
+  flaggedQuestionIds: string[] = []
 ) {
+  const flaggedQuestionIdSet = new Set(flaggedQuestionIds);
+
   return questions.map((question) =>
-    scoreMockExamQuestion(question, answers[question.id])
+    scoreMockExamQuestion(
+      question,
+      answers[question.id],
+      flaggedQuestionIdSet.has(question.id)
+    )
   );
 }
 
@@ -285,9 +316,22 @@ function emptyBreakdown(type: MockQuestionType): MockTypeBreakdown {
 export function calculateMockExamResult(
   questions: MockExamQuestion[],
   answers: MockExamAnswers,
-  passPercentage = 70
+  passPercentage = 70,
+  flaggedQuestionIds: string[] = []
 ): MockExamResult {
-  const questionResults = generateMockExamReview(questions, answers);
+  const validQuestionIds = new Set(questions.map((question) => question.id));
+  const seenFlaggedQuestionIds = new Set<string>();
+  const normalizedFlaggedQuestionIds = flaggedQuestionIds.filter((questionId) => {
+    if (!validQuestionIds.has(questionId)) return false;
+    if (seenFlaggedQuestionIds.has(questionId)) return false;
+    seenFlaggedQuestionIds.add(questionId);
+    return true;
+  });
+  const questionResults = generateMockExamReview(
+    questions,
+    answers,
+    normalizedFlaggedQuestionIds
+  );
   const breakdown: Record<MockQuestionType, MockTypeBreakdown> = {
     knowledge: emptyBreakdown("knowledge"),
     "map-click": emptyBreakdown("map-click"),
@@ -326,6 +370,8 @@ export function calculateMockExamResult(
     answeredQuestions: questionResults.filter((result) => result.answered)
       .length,
     passedQuestions: questionResults.filter((result) => result.passed).length,
+    flaggedQuestionIds: normalizedFlaggedQuestionIds,
+    flaggedQuestions: normalizedFlaggedQuestionIds.length,
     score,
     maxScore,
     percentage,

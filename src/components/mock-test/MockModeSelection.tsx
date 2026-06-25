@@ -90,6 +90,7 @@ export function MockModeSelection({ message, onStart }: MockModeSelectionProps) 
             </p>
             <ul className="mt-4 space-y-2 text-sm text-slate-600">
               <li>Timer visible during the mock</li>
+              <li>Flag questions to revisit in the final review</li>
               <li>Feedback and explanations shown after final submission</li>
               {mode.id === "weak-areas" && (
                 <li>Falls back to a mixed mock if progress data is limited</li>

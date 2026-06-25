@@ -14,9 +14,9 @@ export const DEFAULT_MOCK_EXAM_CONFIG: MockExamConfig = {
   durationMinutes: 30,
   passPercentage: 70,
   questionCounts: {
-    knowledge: 3,
-    "map-click": 3,
-    "route-drawing": 2
+    knowledge: 10,
+    "map-click": 6,
+    "route-drawing": 4
   }
 };
 

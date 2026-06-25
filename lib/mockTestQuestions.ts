@@ -105,15 +105,8 @@ function shuffled<T>(items: T[], random: () => number) {
 function selectFromBank<T>(
   bank: T[],
   count: number,
-  type: MockQuestionType,
   random: () => number
 ) {
-  if (count > bank.length) {
-    throw new Error(
-      `Mock exam requests ${count} ${type} questions, but only ${bank.length} are available.`
-    );
-  }
-
   return shuffled(bank, random).slice(0, count);
 }
 
@@ -121,28 +114,39 @@ export function selectMockExamQuestions(
   config: MockExamConfig = DEFAULT_MOCK_EXAM_CONFIG,
   random: () => number = Math.random
 ) {
+  const requestedTotal =
+    config.questionCounts.knowledge +
+    config.questionCounts["map-click"] +
+    config.questionCounts["route-drawing"];
   const selected: MockExamQuestion[] = [
     ...selectFromBank(
       knowledgeMockQuestionBank,
       config.questionCounts.knowledge,
-      "knowledge",
       random
     ),
     ...selectFromBank(
       mapClickMockQuestionBank,
       config.questionCounts["map-click"],
-      "map-click",
       random
     ),
     ...selectFromBank(
       routeDrawingMockQuestionBank,
       config.questionCounts["route-drawing"],
-      "route-drawing",
       random
     )
   ];
+  const seen = new Set(selected.map((question) => question.id));
 
-  return shuffled(selected, random);
+  if (selected.length < requestedTotal) {
+    shuffled(mockQuestionBank, random).forEach((question) => {
+      if (selected.length >= requestedTotal) return;
+      if (seen.has(question.id)) return;
+      selected.push(question);
+      seen.add(question.id);
+    });
+  }
+
+  return shuffled(selected, random).slice(0, requestedTotal);
 }
 
 export function getMockExamQuestionsById(ids: string[]) {

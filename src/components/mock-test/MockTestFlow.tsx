@@ -14,6 +14,11 @@ import {
   type MockExamAnswer,
   type MockExamAnswers
 } from "@/lib/mockExamEngine";
+import {
+  isMockQuestionFlagged,
+  normalizeFlaggedQuestionIds,
+  toggleMockQuestionFlag
+} from "@/lib/mockExamFlags";
 import { validateMockExamQuestionForNext } from "@/lib/mockExamNavigation";
 import {
   listLocalMockAttempts,
@@ -175,6 +180,7 @@ export function MockTestFlow() {
   const [questions, setQuestions] = useState<MockExamQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<MockExamAnswers>({});
+  const [flaggedQuestionIds, setFlaggedQuestionIds] = useState<string[]>([]);
   const [mode, setMode] = useState<MockExamScreen>("selection");
   const [selectedMode, setSelectedMode] =
     useState<MockExamModeId>("practice");
@@ -201,16 +207,21 @@ export function MockTestFlow() {
   const currentAnswer = currentQuestion
     ? answers[currentQuestion.id]
     : undefined;
+  const currentQuestionFlagged = currentQuestion
+    ? isMockQuestionFlagged(flaggedQuestionIds, currentQuestion.id)
+    : false;
   const answeredCount = questions.filter((question) => answers[question.id]).length;
   const unansweredCount = questions.length - answeredCount;
+  const flaggedCount = flaggedQuestionIds.length;
   const result = useMemo(
     () =>
       calculateMockExamResult(
         questions,
         answers,
-        DEFAULT_MOCK_EXAM_CONFIG.passPercentage
+        DEFAULT_MOCK_EXAM_CONFIG.passPercentage,
+        flaggedQuestionIds
       ),
-    [answers, questions]
+    [answers, flaggedQuestionIds, questions]
   );
   const selectedModeMetadata = getMockExamModeMetadata(selectedMode);
 
@@ -225,6 +236,13 @@ export function MockTestFlow() {
   const resetAnswer = useCallback((questionId: string) => {
     setNavigationMessage(null);
     setAnswers((current) => removeMockExamAnswer(current, questionId));
+  }, []);
+
+  const toggleQuestionFlag = useCallback((questionId: string) => {
+    setNavigationMessage(null);
+    setFlaggedQuestionIds((current) =>
+      toggleMockQuestionFlag(current, questionId)
+    );
   }, []);
 
   const startNewExam = useCallback((mockMode: MockExamModeId = selectedMode) => {
@@ -254,6 +272,7 @@ export function MockTestFlow() {
     setModeMessage(builtExam.fallbackMessage ?? null);
     setQuestions(selectedQuestions);
     setAnswers({});
+    setFlaggedQuestionIds([]);
     setCurrentQuestionIndex(0);
     setAttemptId(nextAttemptId);
     setStartedAt(nextStartedAt);
@@ -279,6 +298,12 @@ export function MockTestFlow() {
 
     setQuestions(storedQuestions);
     setAnswers(storedAttempt.answers);
+    setFlaggedQuestionIds(
+      normalizeFlaggedQuestionIds(
+        storedAttempt.flaggedQuestionIds,
+        storedQuestions.map((question) => question.id)
+      )
+    );
     setSelectedMode(normalizeMockExamMode(storedAttempt.mode));
     setAttemptId(storedAttempt.attemptId ?? createAttemptId());
     setStartedAt(
@@ -314,6 +339,7 @@ export function MockTestFlow() {
       questionIds: questions.map((question) => question.id),
       currentQuestionIndex,
       answers,
+      flaggedQuestionIds,
       startedAt: startedAt ?? undefined,
       expiresAt,
       mode: selectedMode
@@ -323,6 +349,7 @@ export function MockTestFlow() {
     attemptId,
     currentQuestionIndex,
     expiresAt,
+    flaggedQuestionIds,
     mode,
     questions,
     selectedMode,
@@ -426,6 +453,7 @@ export function MockTestFlow() {
     clearActiveMockExam();
     setQuestions([]);
     setAnswers({});
+    setFlaggedQuestionIds([]);
     setCurrentQuestionIndex(0);
     setAttemptId(null);
     setStartedAt(null);
@@ -550,6 +578,7 @@ export function MockTestFlow() {
             </p>
             <p className="mt-1 text-sm text-slate-500">
               {answeredCount} answered - {unansweredCount} unanswered -{" "}
+              {flaggedCount} flagged -{" "}
               {questionTypeLabel(currentQuestion)}
               {currentQuestion.category
                 ? ` - ${currentQuestion.category}`
@@ -557,6 +586,18 @@ export function MockTestFlow() {
             </p>
           </div>
           <div className="flex flex-col items-stretch gap-2 sm:items-end">
+            <button
+              aria-pressed={currentQuestionFlagged}
+              className={`inline-flex min-h-11 items-center justify-center rounded-md border px-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
+                currentQuestionFlagged
+                  ? "border-amber-300 bg-amber-100 text-amber-950 hover:bg-amber-200"
+                  : "border-slate-300 bg-white text-slate-700 hover:border-amber-400 hover:text-amber-900"
+              }`}
+              onClick={() => toggleQuestionFlag(currentQuestion.id)}
+              type="button"
+            >
+              {currentQuestionFlagged ? "Flagged" : "Flag question"}
+            </button>
             <p
               aria-live="polite"
               className={`rounded-md border px-4 py-2 text-center font-mono text-lg font-bold ${
@@ -625,11 +666,15 @@ export function MockTestFlow() {
             {questions.map((question, index) => {
               const isCurrent = index === currentQuestionIndex;
               const isAnswered = Boolean(answers[question.id]);
+              const isFlagged = isMockQuestionFlagged(
+                flaggedQuestionIds,
+                question.id
+              );
               return (
                 <button
                   aria-current={isCurrent ? "step" : undefined}
-                  aria-label={`Question ${index + 1}: ${isAnswered ? "answered" : "unanswered"}`}
-                  className={`flex size-11 items-center justify-center rounded-md border text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
+                  aria-label={`Question ${index + 1}: ${isAnswered ? "answered" : "unanswered"}${isFlagged ? ", flagged" : ""}`}
+                  className={`relative flex size-11 items-center justify-center rounded-md border text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
                     isCurrent
                       ? "border-road bg-road text-white"
                       : isAnswered
@@ -641,6 +686,9 @@ export function MockTestFlow() {
                   type="button"
                 >
                   {index + 1}
+                  {isFlagged && (
+                    <span className="absolute -right-1 -top-1 size-3 rounded-full border border-white bg-amber-500" />
+                  )}
                 </button>
               );
             })}
@@ -649,6 +697,7 @@ export function MockTestFlow() {
             <span>Outlined: unanswered</span>
             <span>Dark: answered</span>
             <span>Blue: current</span>
+            <span>Amber dot: flagged</span>
           </div>
         </nav>
       </section>

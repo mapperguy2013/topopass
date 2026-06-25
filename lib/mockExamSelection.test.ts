@@ -55,19 +55,41 @@ test("question selector returns configured mixed counts without duplicates", () 
   );
   const ids = questions.map((question) => question.id);
 
-  assert.equal(questions.length, 8);
+  assert.equal(questions.length, 20);
   assert.equal(new Set(ids).size, ids.length);
   assert.equal(
     questions.filter((question) => question.type === "knowledge").length,
-    3
+    10
   );
   assert.equal(
     questions.filter((question) => question.type === "map-click").length,
-    3
+    6
   );
   assert.equal(
     questions.filter((question) => question.type === "route-drawing").length,
-    2
+    4
+  );
+});
+
+test("question selector fills from other scored types if one category is short", () => {
+  const questions = selectMockExamQuestions(
+    {
+      ...DEFAULT_MOCK_EXAM_CONFIG,
+      questionCounts: {
+        knowledge: 4,
+        "map-click": 1,
+        "route-drawing": 15
+      }
+    },
+    seededRandom(21)
+  );
+  const ids = questions.map((question) => question.id);
+
+  assert.equal(questions.length, 20);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(
+    questions.filter((question) => question.type === "route-drawing").length,
+    routeDrawingMockQuestionBank.length
   );
 });
 

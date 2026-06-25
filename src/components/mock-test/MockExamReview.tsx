@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type {
   MockExamResult,
   MockQuestionScoreResult
@@ -5,6 +8,8 @@ import type {
 import type { MockExamModeMetadata } from "@/lib/mockExamModes";
 import type { MockExamQuestion } from "@/lib/mockTestQuestions";
 import { formatMockExamReviewItems } from "@/lib/mockExamReview";
+import { MapClickAnswerReview } from "@/src/components/progress/MapClickAnswerReview";
+import { RouteAnswerReview } from "@/src/components/progress/RouteAnswerReview";
 import { QuestionExplanation } from "@/src/components/questions/QuestionExplanation";
 
 type MockExamReviewProps = {
@@ -14,6 +19,8 @@ type MockExamReviewProps = {
   onBack: () => void;
   onRestart: () => void;
 };
+
+type ReviewFilter = "all" | "incorrect" | "flagged";
 
 const typeLabels = {
   knowledge: "Knowledge",
@@ -73,26 +80,6 @@ function ScoreDetails({ result }: { result: MockQuestionScoreResult }) {
             <dd className="mt-1 text-slate-800">{routeScore.percentage}%</dd>
           </div>
         </dl>
-        {routeScore.penalties.length > 0 && (
-          <div className="mt-3 text-xs text-red-800">
-            <p className="font-bold">Penalties</p>
-            <ul className="mt-1 space-y-1">
-              {routeScore.penalties.map((penalty) => (
-                <li key={penalty}>{penalty}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {routeScore.warnings.length > 0 && (
-          <div className="mt-3 text-xs text-amber-900">
-            <p className="font-bold">Warnings</p>
-            <ul className="mt-1 space-y-1">
-              {routeScore.warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        )}
         {routeScore.feedback.length > 0 && (
           <div className="mt-3 text-xs text-slate-700">
             <p className="font-bold">Feedback</p>
@@ -111,16 +98,6 @@ function ScoreDetails({ result }: { result: MockQuestionScoreResult }) {
 }
 
 function ReviewExplanation({ question }: { question: MockExamQuestion }) {
-  if (question.type === "map-click") {
-    return (
-      <QuestionExplanation
-        acceptedAreaDescription={question.acceptedAreaDescription}
-        explanation={question.explanation}
-        tip={question.tip}
-      />
-    );
-  }
-
   if (question.type === "route-drawing") {
     return (
       <QuestionExplanation
@@ -139,6 +116,91 @@ function ReviewExplanation({ question }: { question: MockExamQuestion }) {
   );
 }
 
+function VisualReview({
+  question,
+  questionResult,
+  scoreLabel
+}: {
+  question?: MockExamQuestion;
+  questionResult: MockQuestionScoreResult;
+  scoreLabel: string;
+}) {
+  if (questionResult.details.type === "map-click") {
+    return (
+      <div className="mt-4">
+        <MapClickAnswerReview
+          acceptedAreaDescription={
+            questionResult.details.acceptedAreaDescription
+          }
+          correctCoordinates={questionResult.details.target}
+          distanceMeters={questionResult.details.distanceMeters}
+          explanation={questionResult.details.explanation}
+          scoreLabel={scoreLabel}
+          showAnswer
+          tip={questionResult.details.tip}
+          userCoordinates={questionResult.details.clickedCoordinates}
+        />
+      </div>
+    );
+  }
+
+  if (questionResult.details.type === "route-drawing") {
+    const routeScore = questionResult.details.routeScore;
+    const routeQuestion = question?.type === "route-drawing"
+      ? question.routeQuestion
+      : null;
+    const acceptedRoutePoints =
+      routeQuestion?.acceptedRoute?.geometry.map(([x, y]) => ({ x, y })) ??
+      questionResult.details.reviewData?.referenceRouteMapPoints ??
+      [];
+    const userRoutePoints =
+      questionResult.details.reviewData?.userRouteMapPoints ?? [];
+
+    return (
+      <div className="mt-4">
+        <RouteAnswerReview
+          acceptedRoutePoints={acceptedRoutePoints}
+          explanation={questionResult.details.explanation}
+          fromLabel={
+            routeQuestion?.fromLabel ??
+            questionResult.details.reviewData?.start?.label
+          }
+          idealRouteDescription={questionResult.details.idealRouteDescription}
+          routeScore={
+            routeScore
+              ? {
+                  acceptedLengthMeters: routeScore.acceptedLengthMeters,
+                  drawnLengthMeters: routeScore.drawnLengthMeters,
+                  feedback: routeScore.feedback,
+                  penalties: routeScore.penalties,
+                  warnings: routeScore.warnings
+                }
+              : null
+          }
+          passed={questionResult.passed}
+          scoreLabel={scoreLabel}
+          showAnswer
+          suggestedSteps={questionResult.details.reviewData?.routeSteps}
+          tip={questionResult.details.tip}
+          toLabel={
+            routeQuestion?.toLabel ??
+            questionResult.details.reviewData?.destination?.label
+          }
+          userRoutePoints={userRoutePoints}
+        />
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function filterLabel(filter: ReviewFilter) {
+  if (filter === "incorrect") return "Incorrect";
+  if (filter === "flagged") return "Flagged";
+  return "All";
+}
+
 export function MockExamReview({
   questions,
   result,
@@ -146,30 +208,89 @@ export function MockExamReview({
   onBack,
   onRestart
 }: MockExamReviewProps) {
-  const reviewItems = formatMockExamReviewItems(questions, result);
+  const [filter, setFilter] = useState<ReviewFilter>("all");
+  const reviewItems = useMemo(
+    () => formatMockExamReviewItems(questions, result),
+    [questions, result]
+  );
+  const reviewRows = result.questionResults.map((questionResult, index) => ({
+    question: questions[index],
+    questionResult,
+    reviewItem: reviewItems[index],
+    index
+  }));
+  const incorrectCount = result.questionResults.filter(
+    (item) => !item.passed
+  ).length;
+  const filteredRows = reviewRows.filter(({ questionResult }) => {
+    if (filter === "incorrect") return !questionResult.passed;
+    if (filter === "flagged") return questionResult.flagged;
+    return true;
+  });
 
   return (
     <section className="space-y-5">
-      <div className="flex flex-col gap-3 border-y border-slate-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-road">
-            {mode.label} answer review
-          </p>
-          <h2 className="mt-1 text-2xl font-bold text-ink">
-            Review all questions
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">{mode.resultSummary}</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              {mode.label} answer review
+            </p>
+            <h2 className="mt-1 text-2xl font-bold text-ink">
+              Review answers
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {mode.resultSummary}
+            </p>
+          </div>
+          <dl className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <dt className="text-slate-500">Score</dt>
+              <dd className="mt-1 font-bold text-ink">{result.percentage}%</dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Incorrect</dt>
+              <dd className="mt-1 font-bold text-ink">
+                {incorrectCount}/{result.totalQuestions}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Flagged</dt>
+              <dd className="mt-1 font-bold text-ink">
+                {result.flaggedQuestions}
+              </dd>
+            </div>
+          </dl>
         </div>
-        <p className="text-sm font-semibold text-slate-600">
-          Final score: {result.percentage}%
-        </p>
+
+        <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Review filter">
+          {(["all", "incorrect", "flagged"] as ReviewFilter[]).map((item) => (
+            <button
+              aria-pressed={filter === item}
+              className={`inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road ${
+                filter === item
+                  ? "border-road bg-road text-white"
+                  : "border-slate-300 bg-white text-slate-700 hover:border-road hover:text-road"
+              }`}
+              key={item}
+              onClick={() => setFilter(item)}
+              type="button"
+            >
+              {filterLabel(item)}
+              {item === "incorrect" ? ` (${incorrectCount})` : ""}
+              {item === "flagged" ? ` (${result.flaggedQuestions})` : ""}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {result.questionResults.map((questionResult, index) => {
-          const question = questions[index];
-          const reviewItem = reviewItems[index];
-          return (
+      {filteredRows.length === 0 ? (
+        <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+          No questions match this review filter.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {filteredRows.map(({ questionResult, question, reviewItem, index }) => (
             <article
               className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
               key={questionResult.questionId}
@@ -189,6 +310,11 @@ export function MockExamReview({
                     <span className="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-bold uppercase text-slate-600">
                       {reviewItem.difficulty}
                     </span>
+                    {questionResult.flagged && (
+                      <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900">
+                        flagged
+                      </span>
+                    )}
                     {!reviewItem.answered && (
                       <span className="rounded-md bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900">
                         unanswered
@@ -227,20 +353,25 @@ export function MockExamReview({
                 Score: {reviewItem.scoreLabel} ({reviewItem.percentage}%)
               </p>
               <ScoreDetails result={questionResult} />
+              <VisualReview
+                question={question}
+                questionResult={questionResult}
+                scoreLabel={reviewItem.scoreLabel}
+              />
               <div className="mt-4">
-                {question ? (
+                {question && question.type === "knowledge" ? (
                   <ReviewExplanation question={question} />
-                ) : (
+                ) : !question ? (
                   <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                     Full question metadata is unavailable for this older saved
                     attempt.
                   </p>
-                )}
+                ) : null}
               </div>
             </article>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <button

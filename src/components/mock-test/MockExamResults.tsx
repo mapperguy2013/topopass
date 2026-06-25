@@ -1,10 +1,12 @@
 import type { MockExamResult } from "@/lib/mockExamEngine";
+import { calculateMockScoreRingSummary } from "@/lib/mockExamScoreSummary";
 import type { MockExamModeMetadata } from "@/lib/mockExamModes";
 import type { MockExamQuestion } from "@/lib/mockTestQuestions";
 import {
   getMockExamNextStep,
   getMockExamTopicBreakdown
 } from "@/lib/mockExamReview";
+import { MockScoreRing } from "./MockScoreRing";
 
 type MockExamResultsProps = {
   result: MockExamResult;
@@ -33,16 +35,11 @@ export function MockExamResults({
 }: MockExamResultsProps) {
   const topicBreakdown = getMockExamTopicBreakdown(questions, result);
   const nextStep = getMockExamNextStep(result, topicBreakdown);
+  const scoreSummary = calculateMockScoreRingSummary(result);
 
   return (
     <section className="space-y-6">
-      <div
-        className={`border-y px-5 py-7 ${
-          result.passed
-            ? "border-green-200 bg-green-50"
-            : "border-red-200 bg-red-50"
-        }`}
-      >
+      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-bold uppercase tracking-wide text-slate-600">
           {mode.label} complete
         </p>
@@ -63,44 +60,45 @@ export function MockExamResults({
               "Result could not be saved in this browser."}
           </p>
         )}
-        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2
-              className={`text-4xl font-bold ${result.passed ? "text-green-800" : "text-red-800"}`}
-            >
-              {result.percentage}%
-            </h2>
-            <p className="mt-2 text-lg font-bold text-ink">
-              {result.passed ? "Pass-level result" : "Below pass mark"}
-            </p>
-            <p className="mt-1 text-sm text-slate-600">
-              Pass mark: {result.passPercentage}%
-            </p>
+        <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+            <MockScoreRing summary={scoreSummary} />
+            <div>
+              <h2 className="text-2xl font-bold text-ink">
+                {scoreSummary.resultLabel}
+              </h2>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                {nextStep}
+              </p>
+            </div>
           </div>
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-3">
+          <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4 lg:min-w-[520px]">
             <div>
               <dt className="font-semibold text-slate-500">Score</dt>
               <dd className="mt-1 font-bold text-ink">
-                {result.score}/{result.maxScore}
+                {scoreSummary.score}/{scoreSummary.maxScore}
               </dd>
             </div>
             <div>
               <dt className="font-semibold text-slate-500">Answered</dt>
               <dd className="mt-1 font-bold text-ink">
-                {result.answeredQuestions}/{result.totalQuestions}
+                {scoreSummary.answeredQuestions}/{scoreSummary.totalQuestions}
               </dd>
             </div>
             <div>
               <dt className="font-semibold text-slate-500">Passed questions</dt>
               <dd className="mt-1 font-bold text-ink">
-                {result.passedQuestions}/{result.totalQuestions}
+                {scoreSummary.correct}/{scoreSummary.totalQuestions}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-500">Pass mark</dt>
+              <dd className="mt-1 font-bold text-ink">
+                {scoreSummary.passPercentage}%
               </dd>
             </div>
           </dl>
         </div>
-        <p className="mt-4 rounded-md border border-white/70 bg-white/70 p-3 text-sm font-semibold text-slate-800">
-          {nextStep}
-        </p>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

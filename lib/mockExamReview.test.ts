@@ -38,6 +38,8 @@ const result: MockExamResult = {
   totalQuestions: 2,
   answeredQuestions: 2,
   passedQuestions: 1,
+  flaggedQuestionIds: [mapQuestion.id],
+  flaggedQuestions: 1,
   score: 100,
   maxScore: 200,
   percentage: 50,
@@ -77,6 +79,7 @@ const result: MockExamResult = {
       questionId: knowledgeQuestion.id,
       type: "knowledge",
       answered: true,
+      flagged: false,
       passed: true,
       score: 100,
       maxScore: 100,
@@ -94,6 +97,7 @@ const result: MockExamResult = {
       questionId: mapQuestion.id,
       type: "map-click",
       answered: true,
+      flagged: true,
       passed: false,
       score: 0,
       maxScore: 100,
@@ -149,5 +153,6 @@ test("mock exam review formatting includes learner answer, accepted answer, topi
   assert.equal(items[0].learnerAnswer, "South");
   assert.equal(items[0].acceptedAnswer, "South");
   assert.equal(items[1].passed, false);
+  assert.equal(items[1].flagged, true);
   assert.equal(items[1].explanation, "The target is the station.");
 });
