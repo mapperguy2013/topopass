@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { signOutAction } from "@/app/auth/actions";
-import { ensureProfileForUser, requireUser } from "@/lib/auth/session";
+import { getOrCreateProfileForUser, requireUser } from "@/lib/auth/session";
 import { listMockAttempts } from "@/lib/db/mockAttemptRepository";
 import { listPracticeAttempts } from "@/lib/db/practiceAttemptRepository";
 import { getUserProgressSummary } from "@/lib/db/progressRepository";
@@ -24,7 +24,7 @@ function formatDate(value?: string | null) {
 
 export default async function AccountPage() {
   const user = await requireUser("/account");
-  const { profile, error } = await ensureProfileForUser(user);
+  const { profile, error } = await getOrCreateProfileForUser(user);
   const supabase = await createSupabaseServerClient();
   const [progressSummary, practiceResult, mockResult] = await Promise.all([
     getUserProgressSummary(user.id, {
@@ -63,7 +63,7 @@ export default async function AccountPage() {
     });
   }
   const displayName = profile?.display_name || "Not set";
-  const email = profile?.email || user.email || "Not available";
+  const email = user.email || profile?.email || "Not available";
   const currentPlanId = getCurrentLearnerPlan();
   const currentPlan = getPlanDefinition(currentPlanId);
   const planEntitlements = getPlanEntitlements(currentPlanId);
@@ -96,9 +96,9 @@ export default async function AccountPage() {
         </div>
 
         {error && (
-          <p className="mt-5 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-            Profile details could not be fully loaded yet. You can still use
-            local practice and mock tests.
+          <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-600">
+            Some profile details are still syncing. Your signed-in account
+            details and local progress remain available below.
           </p>
         )}
 
@@ -124,7 +124,7 @@ export default async function AccountPage() {
               Account created
             </dt>
             <dd className="mt-2 text-sm font-semibold text-ink">
-              {formatDate(profile?.created_at || user.created_at)}
+              {formatDate(user.created_at || profile?.created_at)}
             </dd>
           </div>
         </dl>

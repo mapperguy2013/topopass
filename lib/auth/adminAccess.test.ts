@@ -41,7 +41,7 @@ test("signed-out admin access redirects to learner login", () => {
 test("signed-in non-admin users are blocked by profile role", () => {
   const helper = readProjectFile("lib/auth/admin.ts");
 
-  assert.match(helper, /getCurrentProfile\(user\.id\)/);
+  assert.match(helper, /getOrCreateProfileForUser\(user\)/);
   assert.match(helper, /isAdminProfile\(profile\)/);
   assert.match(helper, /status: "forbidden"/);
 });

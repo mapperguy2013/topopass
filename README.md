@@ -630,6 +630,9 @@ MAX_BACKUP_AGE_HOURS=36
   Preparation where saved answers contain SERU question IDs/topics
 - Local data export/import/reset tools for learner progress
 - Optional learner account sign-up, log-in, sign-out, and account page
+- Missing learner profile rows are repaired automatically for the authenticated
+  user; `/account` falls back to auth email, `Not set` display name, and the
+  Free plan while profile metadata syncs.
 - Signed-in practice/mock completion saves to Supabase account tables
 - Authenticated progress reads are scoped by the current Supabase user id
 - Basic account progress summary from Supabase records

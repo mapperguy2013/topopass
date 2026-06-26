@@ -17,6 +17,27 @@ type ProfileResult = {
   error: string | null;
 };
 
+function buildProfileInsert(
+  user: NonNullable<AuthUser>,
+  displayName?: string | null
+): Database["public"]["Tables"]["profiles"]["Insert"] {
+  const metadataDisplayName =
+    typeof user.user_metadata?.display_name === "string"
+      ? user.user_metadata.display_name
+      : null;
+  const resolvedDisplayName = displayName?.trim() || metadataDisplayName || null;
+  const profileInsert: Database["public"]["Tables"]["profiles"]["Insert"] = {
+    id: user.id,
+    email: user.email ?? null
+  };
+
+  if (resolvedDisplayName) {
+    profileInsert.display_name = resolvedDisplayName;
+  }
+
+  return profileInsert;
+}
+
 export async function getCurrentUser() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
@@ -57,23 +78,9 @@ export async function ensureProfileForUser(
     };
   }
 
-  const metadataDisplayName =
-    typeof user.user_metadata?.display_name === "string"
-      ? user.user_metadata.display_name
-      : null;
-  const resolvedDisplayName = displayName?.trim() || metadataDisplayName || null;
-  const profileInsert: Database["public"]["Tables"]["profiles"]["Insert"] = {
-    id: user.id,
-    email: user.email ?? null
-  };
-
-  if (resolvedDisplayName) {
-    profileInsert.display_name = resolvedDisplayName;
-  }
-
   const { data, error } = await supabase
     .from("profiles")
-    .upsert(profileInsert, { onConflict: "id" })
+    .upsert(buildProfileInsert(user, displayName), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -83,13 +90,46 @@ export async function ensureProfileForUser(
   };
 }
 
+export async function getOrCreateProfileForUser(
+  user: NonNullable<AuthUser>,
+  displayName?: string | null
+): Promise<ProfileResult> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    return {
+      profile: null,
+      error: "Supabase is not configured for this environment."
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (data) {
+    return {
+      profile: data as Profile,
+      error: null
+    };
+  }
+
+  const ensuredProfile = await ensureProfileForUser(user, displayName);
+
+  return {
+    profile: ensuredProfile.profile,
+    error: ensuredProfile.error ?? error?.message ?? null
+  };
+}
+
 export async function getCurrentAuthState() {
   const user = await getCurrentUser();
-  const profile = user ? await getCurrentProfile(user.id) : null;
+  const profileResult = user ? await getOrCreateProfileForUser(user) : null;
 
   return {
     user,
-    profile
+    profile: profileResult?.profile ?? null
   };
 }
 

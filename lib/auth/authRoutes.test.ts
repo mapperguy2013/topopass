@@ -165,13 +165,28 @@ test("account page is protected by the reusable user requirement", () => {
   const accountPage = readProjectFile("app/account/page.tsx");
 
   assert.match(accountPage, /requireUser\("\/account"\)/);
-  assert.match(accountPage, /ensureProfileForUser/);
+  assert.match(accountPage, /getOrCreateProfileForUser/);
   assert.match(accountPage, /signOutAction/);
   assert.match(accountPage, /AccountProgressSummary/);
   assert.doesNotMatch(
     accountPage,
     /These figures come from Supabase account records/
   );
+});
+
+test("account page uses quiet profile fallbacks when profile metadata is unavailable", () => {
+  const accountPage = readProjectFile("app/account/page.tsx");
+
+  assert.match(accountPage, /user\.email \|\| profile\?\.email/);
+  assert.match(accountPage, /profile\?\.display_name \|\| "Not set"/);
+  assert.match(accountPage, /user\.created_at \|\| profile\?\.created_at/);
+  assert.match(accountPage, /Some profile details are still syncing/);
+  assert.match(accountPage, /Free plan/);
+  assert.doesNotMatch(
+    accountPage,
+    /Profile details could not be fully loaded yet/
+  );
+  assert.doesNotMatch(accountPage, /border-amber-200 bg-amber-50/);
 });
 
 test("account progress summary supports local browser fallback copy", () => {
@@ -225,6 +240,10 @@ test("profile helper creates profiles only for the authenticated user id", () =>
   assert.match(sessionHelper, /upsert\(/);
   assert.match(sessionHelper, /id: user\.id/);
   assert.match(sessionHelper, /email: user\.email/);
+  assert.match(sessionHelper, /getOrCreateProfileForUser/);
+  assert.match(sessionHelper, /\.maybeSingle\(\)/);
+  assert.match(sessionHelper, /ensureProfileForUser\(user, displayName\)/);
+  assert.match(sessionHelper, /profileResult\?\.profile/);
   assert.match(sessionHelper, /redirect\(`\/auth\/log-in\?next=/);
 });
 

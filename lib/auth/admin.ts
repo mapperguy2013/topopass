@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import {
-  getCurrentProfile,
   getCurrentUser,
+  getOrCreateProfileForUser,
   type AuthUser,
   type Profile
 } from "@/lib/auth/session";
@@ -30,7 +30,7 @@ export async function getAdminAccessState(): Promise<AdminAccessState> {
     };
   }
 
-  const profile = await getCurrentProfile(user.id);
+  const { profile } = await getOrCreateProfileForUser(user);
 
   if (!profile) {
     return {
