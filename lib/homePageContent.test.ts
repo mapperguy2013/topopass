@@ -51,6 +51,10 @@ const seruMockFlowSource = readFileSync(
   path.join(projectRoot, "src/components/practice/SeruMockTestFlow.tsx"),
   "utf8"
 );
+const knowledgePracticeFlowSource = readFileSync(
+  path.join(projectRoot, "src/components/practice/KnowledgePracticeFlow.tsx"),
+  "utf8"
+);
 const seruEnglishSingleSource = readFileSync(
   path.join(projectRoot, "app/practice/seru/english-complete-sentence/page.tsx"),
   "utf8"
@@ -292,6 +296,19 @@ test("SERU dedicated practice routes render the active flows separately", () => 
   assert.match(seruPhvHandbookSectionSource, /notFound\(\)/);
   assert.match(seruPhvHandbookSectionSource, /question\.sectionId === section\.id/);
   assert.match(seruPhvHandbookSectionSource, /KnowledgePracticeFlow/);
+  assert.match(seruPhvHandbookSectionSource, /showSessionIntro=\{false\}/);
+  assert.match(
+    seruPhvHandbookSectionSource,
+    /backLabel="Back to PHV Handbook sections"/
+  );
+  assert.doesNotMatch(
+    seruPhvHandbookSectionSource,
+    /Focused Practice Session|All difficulty|Available/
+  );
+  assert.match(knowledgePracticeFlowSource, /showSessionIntro = true/);
+  assert.match(knowledgePracticeFlowSource, /\{showSessionIntro && \(/);
+  assert.match(knowledgePracticeFlowSource, /backHref = "\/practice"/);
+  assert.match(knowledgePracticeFlowSource, /backLabel = "Back to Practice"/);
   assert.match(seruMockTestSource, /SeruMockTestFlow/);
   assert.match(seruMockFlowSource, /buildSeruMockQuestions/);
   assert.match(seruMockFlowSource, /scoreSeruMockAnswers/);

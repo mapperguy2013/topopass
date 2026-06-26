@@ -36,9 +36,14 @@ type KnowledgePracticeFlowProps = {
   emptyQuestionTypeLabel?: string;
   retryQueueType?: "knowledge";
   practiceFamily?: "topographical" | "seru";
+  showSessionIntro?: boolean;
+  backHref?: string;
+  backLabel?: string;
 };
 
 export function KnowledgePracticeFlow({
+  backHref = "/practice",
+  backLabel = "Back to Practice",
   baseHref = "/practice/knowledge",
   emptyQuestionTypeLabel = "knowledge",
   practiceFamily = "topographical",
@@ -47,6 +52,7 @@ export function KnowledgePracticeFlow({
   initialTopic,
   initialDifficulty,
   retryQueueType = "knowledge",
+  showSessionIntro = true,
   title = "Knowledge practice"
 }: KnowledgePracticeFlowProps) {
   const filter = useMemo(
@@ -159,13 +165,15 @@ export function KnowledgePracticeFlow({
 
   return (
     <div className="space-y-5">
-      <PracticeSessionIntro
-        baseHref={baseHref}
-        filter={filter}
-        questionCount={practiceQuestions.length}
-        questionType={questionTypeLabel}
-        title={title}
-      />
+      {showSessionIntro && (
+        <PracticeSessionIntro
+          baseHref={baseHref}
+          filter={filter}
+          questionCount={practiceQuestions.length}
+          questionType={questionTypeLabel}
+          title={title}
+        />
+      )}
 
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <p className="text-sm font-semibold text-road">
@@ -290,9 +298,9 @@ export function KnowledgePracticeFlow({
       <nav className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
         <Link
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-          href="/practice"
+          href={backHref}
         >
-          Back to Practice
+          {backLabel}
         </Link>
         <button
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road disabled:cursor-not-allowed disabled:text-slate-300"
