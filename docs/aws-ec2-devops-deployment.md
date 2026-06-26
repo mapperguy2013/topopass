@@ -298,14 +298,13 @@ Current no-domain smoke test values for the Elastic IP
 
 ```bash
 APP_DOMAIN=:80
-WWW_DOMAIN=http://www.topopass.invalid
-SUPABASE_DOMAIN=http://supabase.topopass.invalid
 ACME_EMAIL=admin@example.com
 ```
 
 With `APP_DOMAIN=:80`, Caddy serves the app over plain HTTP on the EC2 public
-IP. It does not request certificates for placeholder domains and does not force
-HTTPS redirects.
+IP. The active Step 48A `deploy/Caddyfile` does not define a `www` redirect or
+Supabase gateway route, so there is no HTTPS redirect and no dependency on a
+domain name, Route 53, or certificates.
 
 Temporary public-IP URL:
 
@@ -321,16 +320,15 @@ Future domain values:
 
 ```bash
 APP_DOMAIN=example.com
-WWW_DOMAIN=www.example.com
-SUPABASE_DOMAIN=supabase.example.com
 ACME_EMAIL=admin@example.com
 ```
 
-Caddy handles automatic HTTPS, redirects `www` to the apex app domain, proxies
-the app domain to `app:3000`, and prepares the Supabase domain proxy to
-`kong:8000` for the later self-hosted Supabase stack. Supabase Studio is not
-exposed publicly by default. If Studio access is needed, use SSM tunnelling or
-add a separately protected option later.
+When domain/HTTPS work resumes, reintroduce the `www` redirect and Supabase
+subdomain proxy deliberately. The app domain should proxy to `app:3000`, and
+the future Supabase gateway should stay internal until it is exposed through a
+protected Caddy route. Supabase Studio is not exposed publicly by default. If
+Studio access is needed, use SSM tunnelling or add a separately protected option
+later.
 
 The legacy `infra/caddy/Caddyfile` remains for historical reference, but the
 production Compose stack uses `deploy/Caddyfile`.
@@ -605,6 +603,102 @@ docker compose -f deploy/docker-compose.prod.yml restart caddy
 docker compose -f deploy/docker-compose.prod.yml down
 ```
 
+## Stage 48A Public-IP Hardening Checklist
+
+Current temporary production URL:
+
+```text
+http://13.134.170.158
+```
+
+Domain, Route 53, HTTPS, Certbot, Let's Encrypt, CloudFront, ALB, and paid DNS
+resources remain paused for this stage.
+
+Server checks:
+
+- EC2 instance is running in `eu-west-2`.
+- Elastic IP `13.134.170.158` is attached to the production instance.
+- Security group exposes port `80` publicly for temporary HTTP only.
+- Security group does not expose port `443` until domain/HTTPS work resumes.
+- SSH port `22` is disabled by default or restricted to the owner CIDR only.
+- Ports `3000`, `5432`, `8000`, Supabase Studio ports, and local Supabase dev
+  ports are not public.
+
+Docker checks:
+
+```bash
+cd /srv/topopass
+docker compose -f deploy/docker-compose.prod.yml ps
+docker compose -f deploy/docker-compose.prod.yml logs --tail 100 app
+docker compose -f deploy/docker-compose.prod.yml logs --tail 100 caddy
+```
+
+- `topopass-web` and `topopass-caddy` are running or healthy.
+- Both services use `restart: unless-stopped`.
+- Caddy is the only container publishing host port `80`.
+- The app exposes only Docker-network port `3000`.
+
+HTTP checks:
+
+```bash
+curl -I http://13.134.170.158
+curl -fsS http://13.134.170.158/api/health
+curl -fsS http://127.0.0.1/api/health
+```
+
+Expected health response shape:
+
+```json
+{
+  "ok": true,
+  "service": "topopass",
+  "timestamp": "2026-06-26T00:00:00.000Z"
+}
+```
+
+The timestamp value changes on each request. The endpoint must not return
+environment variables, Supabase keys, database connection strings, passwords,
+or stack traces.
+
+Backup checks:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh --dry-run
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/verify-latest-backup.sh
+```
+
+- Backups upload to the configured private S3 backup bucket and prefix.
+- Temporary local dump files are removed after upload.
+- Backup logs live under `/var/log/topopass/backups/`.
+- Backup files, dumps, tar archives, and logs must not be committed to Git.
+- Restore steps are documented in `infra/backups/restore-postgres.md`.
+
+Update checks:
+
+```bash
+update
+docker compose -f /srv/topopass/deploy/docker-compose.prod.yml ps
+curl -fsS http://127.0.0.1/api/health
+curl -I http://13.134.170.158
+```
+
+The `/usr/local/bin/update` helper changes into `/srv/topopass`, runs
+`git pull --ff-only`, logs in to ECR through the EC2 instance role, pulls
+Compose images, recreates the stack, shows `docker compose ps`, and runs the
+local health check. It contains no secrets and does not print env file values.
+
+Daily operations:
+
+```bash
+aws ssm start-session --target <instance-id> --region eu-west-2
+cd /srv/topopass
+docker compose -f deploy/docker-compose.prod.yml ps
+docker compose -f deploy/docker-compose.prod.yml logs -f caddy
+curl -I http://13.134.170.158
+curl -fsS http://13.134.170.158/api/health
+```
+
 ## Auto-start Compose On EC2 Boot
 
 Install the systemd unit after the stack has been deployed successfully once:
@@ -666,18 +760,19 @@ terraform -chdir=infra/terraform apply
 This removes the schedules and scheduler IAM role only. Manual console changes
 can create Terraform drift, so prefer the variable unless there is an emergency.
 
-When DNS is ready, update `/srv/topopass/env/proxy.env` with real
-`APP_DOMAIN`, `WWW_DOMAIN`, `SUPABASE_DOMAIN`, and `ACME_EMAIL` values, update
-`NEXT_PUBLIC_SITE_URL` in the Secrets Manager runtime secret, rerun
-`sudo bash infra/deploy/fetch-runtime-env.sh`, then rerun
-`sudo bash infra/deploy/deploy-ec2-compose.sh`.
+When DNS is ready, update `/srv/topopass/env/proxy.env` with real `APP_DOMAIN`
+and `ACME_EMAIL` values, update `NEXT_PUBLIC_SITE_URL` in the Secrets Manager
+runtime secret, rerun `sudo bash infra/deploy/fetch-runtime-env.sh`, then rerun
+`sudo bash infra/deploy/deploy-ec2-compose.sh`. Add `www` redirect and Supabase
+subdomain proxy blocks back to `deploy/Caddyfile` only when the domain/HTTPS
+stage resumes.
 
 Do not commit `/srv/topopass/env/app.env`, `/srv/topopass/env/proxy.env`,
 Terraform state, `terraform.tfvars`, AWS credentials, Docker output, logs,
 `.next`, or `node_modules`.
 
 Legacy notes from the earlier reverse-proxy stage used these runtime
-environment variables:
+environment variables, but they are not active during Step 48A:
 
 - `APP_DOMAIN=example.com`
 - `WWW_DOMAIN=www.example.com`
@@ -745,7 +840,8 @@ Recommended network exposure:
 
 Step 45 adds lean CloudWatch monitoring:
 
-- `app/api/health/route.ts` returns a minimal JSON status for app health.
+- `app/api/health/route.ts` returns minimal JSON with `ok: true`, `service`,
+  and `timestamp` for app health.
 - Production Compose checks `http://127.0.0.1:3000/api/health`.
 - Caddy validates its Caddyfile as a lightweight container health check.
 - `infra/monitoring/cloudwatch-agent.json` collects disk, memory, CPU, swap,
@@ -892,9 +988,9 @@ The workflow does not deploy to EC2. A later deployment workflow should:
 - [ ] Run Docker Compose on EC2.
 - [ ] Start Caddy reverse proxy.
 - [ ] Open port 80 publicly for the temporary IP smoke test.
-- [ ] Keep port 443 reserved until domain/HTTPS setup resumes.
+- [ ] Keep port 443 closed until domain/HTTPS setup resumes.
 - [ ] Restrict SSH to owner IP or replace with SSM.
-- [ ] Configure Route 53 DNS.
+- [ ] Leave Route 53 DNS paused until the domain/HTTPS stage resumes.
 - [ ] Configure CloudWatch logs and alarms.
 - [ ] Confirm SNS email subscription if `alert_email` is set.
 - [ ] Run a manual Postgres backup dry run.

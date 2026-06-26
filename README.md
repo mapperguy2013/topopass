@@ -218,7 +218,7 @@ Stage 43 Terraform EC2 infrastructure status:
 | Docker and Docker Compose install through `user_data` | Configured |
 | Persistent EBS data volume | Configured |
 | Elastic IP | Configured |
-| HTTP/HTTPS security group | Configured |
+| HTTP security group | Configured for port `80`; port `443` paused |
 | SSH disabled by default | Configured |
 | SSM Session Manager IAM access | Configured |
 | ECR pull IAM permission | Configured |
@@ -233,9 +233,9 @@ Step 44 domain/HTTPS reverse proxy status:
 | --- | --- |
 | Caddy production reverse proxy | Added |
 | Caddyfile | Added at `deploy/Caddyfile` |
-| App domain HTTPS route | Configured through `APP_DOMAIN` |
-| WWW redirect | Configured through `WWW_DOMAIN` |
-| Supabase gateway HTTPS route | Configured through `SUPABASE_DOMAIN` |
+| App HTTP route | Configured through `APP_DOMAIN=:80` for the public IP |
+| WWW redirect | Paused until Route 53/domain/HTTPS resumes |
+| Supabase gateway HTTPS route | Paused until self-hosted Supabase/domain work resumes |
 | Production Compose public ports | Caddy on `80`; `443` reserved for later HTTPS |
 | App direct public port | Removed from production template |
 | Supabase Studio public exposure | Not added |
@@ -283,8 +283,10 @@ Step 48A public-IP HTTP deployment status:
 | Domain / Route 53 | Paused |
 | HTTPS / certificates | Paused |
 | Active public Compose port | `80` only |
+| Terraform public ingress | Port `80`; optional restricted SSH only |
 | App direct public port | Still not published |
 | `NEXT_PUBLIC_SITE_URL` for smoke test | `http://13.134.170.158` |
+| Health endpoint | `/api/health` returns `ok`, `service`, and `timestamp` |
 
 Phase 4 checklist:
 
@@ -338,6 +340,65 @@ Phase 4 guardrails:
 - Keep signed-in Supabase progress working.
 - Keep Topographical and SERU product areas separate.
 
+Stage 48A public EC2 hardening checklist:
+
+- Temporary public URL: `http://13.134.170.158`
+- Domain, Route 53, HTTPS, Certbot, Let's Encrypt, CloudFront, ALB, and paid
+  DNS resources remain paused.
+- Security group should expose only port `80` publicly. Port `443` stays
+  closed until the domain/HTTPS stage resumes.
+- SSH stays disabled by default or restricted to the owner CIDR only.
+- Public ports `3000`, `5432`, `8000`, Supabase Studio ports, and local
+  Supabase dev ports must stay closed.
+- Caddy is the only public container and reverse proxies to `app:3000` on the
+  Docker network.
+- Production containers use `restart: unless-stopped`; the optional systemd
+  service restarts the Compose stack after EC2 boot.
+- Health check:
+
+```bash
+curl -fsS http://13.134.170.158/api/health
+```
+
+Expected shape:
+
+```json
+{"ok":true,"service":"topopass","timestamp":"2026-06-26T00:00:00.000Z"}
+```
+
+- Server smoke-test commands:
+
+```bash
+cd /srv/topopass
+docker compose -f deploy/docker-compose.prod.yml ps
+docker compose -f deploy/docker-compose.prod.yml logs --tail 100 caddy
+curl -I http://13.134.170.158
+curl -fsS http://13.134.170.158/api/health
+```
+
+- Update command:
+
+```bash
+update
+```
+
+`update` is installed from `infra/deploy/update`. It pulls Git changes, logs in
+to ECR through the EC2 instance role, pulls Compose images, recreates the stack,
+shows container status, and checks `http://127.0.0.1/api/health` without
+printing secrets.
+
+- Backup commands:
+
+```bash
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh --dry-run
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh
+BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/verify-latest-backup.sh
+```
+
+Do not commit backup files, dump files, tar archives, logs, `.env` files,
+Terraform state, Caddy data/certificates, `node_modules`, `.next`, or build
+outputs.
+
 Local Docker commands:
 
 ```powershell
@@ -355,8 +416,7 @@ EC2-oriented Docker notes:
   root compose file or `/srv/topopass/env/app.env` for the production deploy
   template.
 - For the temporary public-IP smoke test, create `/srv/topopass/env/proxy.env`
-  with `APP_DOMAIN=:80` and placeholder-only `WWW_DOMAIN`/`SUPABASE_DOMAIN`
-  values.
+  with `APP_DOMAIN=:80`.
 - Set `NEXT_PUBLIC_SITE_URL=http://13.134.170.158` in the runtime app env.
 - Keep Supabase public URL values pointed at the existing managed Supabase
   project until the later self-hosted/domain stage.
@@ -492,23 +552,29 @@ terraform -chdir=infra/terraform plan
 - Do not put Supabase secrets, database passwords, JWT secrets, API keys, or app
   env values in Terraform.
 
-Step 44 domain/HTTPS setup:
+Step 44/48A reverse proxy setup:
 
 - Production Caddy configuration lives in `deploy/Caddyfile`.
 - Production Compose lives in `deploy/docker-compose.prod.yml`.
 - Caddy is the only production service publishing port `80` during Step 48A.
-- Port `443` is paused until Route 53/domain/HTTPS work resumes.
+- Port `443` is closed/paused until Route 53/domain/HTTPS work resumes.
 - The app is available only inside the Docker network as `app:3000`.
 - The Supabase gateway is expected inside the Docker network as `kong:8000`
-  when the self-hosted Supabase stack is attached.
+  when the self-hosted Supabase stack is attached later.
 - Supabase Studio, Postgres, app port `3000`, Kong port `8000`, and local
   Supabase dev ports must not be opened publicly.
-- Configure domain values in untracked runtime env files on the EC2 host:
+- Current Step 48A proxy env on the EC2 host:
+
+```bash
+APP_DOMAIN=:80
+ACME_EMAIL=admin@example.com
+```
+
+- Future domain values should be added only when the domain/HTTPS stage
+  resumes:
 
 ```bash
 APP_DOMAIN=example.com
-WWW_DOMAIN=www.example.com
-SUPABASE_DOMAIN=supabase.example.com
 ACME_EMAIL=admin@example.com
 NEXT_PUBLIC_SITE_URL=https://example.com
 NEXT_PUBLIC_SUPABASE_URL=https://supabase.example.com
@@ -518,7 +584,7 @@ SITE_URL=https://example.com
 ADDITIONAL_REDIRECT_URLS=https://example.com,https://www.example.com
 ```
 
-- HTTPS manual checks:
+- Future HTTPS manual checks:
   - `http://example.com` redirects to `https://example.com`.
   - `https://example.com` loads the Next.js app.
   - `https://www.example.com` redirects to `https://example.com`.
@@ -1778,18 +1844,17 @@ Docker/Caddy result:
 - `deploy/docker-compose.prod.yml` now includes Caddy with persistent
   `caddy_data` and `caddy_config` volumes.
 - Caddy is the only production service publishing port `80` during the Step 48A
-  temporary public-IP smoke test. Port `443` is reserved for later
+  temporary public-IP smoke test. Port `443` is closed/reserved for later
   domain/HTTPS setup.
 - The Next.js app is internal as `app:3000`.
-- The Supabase gateway route expects an internal `kong:8000` service.
+- The future Supabase gateway route expects an internal `kong:8000` service.
 - Supabase Studio and Postgres are not exposed publicly.
 
 Environment result:
 
-- `.env.production.example` now documents `APP_DOMAIN`, `WWW_DOMAIN`,
-  `SUPABASE_DOMAIN`, `ACME_EMAIL`, `NEXT_PUBLIC_SITE_URL`,
-  `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`,
-  `SITE_URL`, and `ADDITIONAL_REDIRECT_URLS`.
+- `.env.production.example` documents placeholder future domain variables, but
+  the active Step 48A production proxy env uses only `APP_DOMAIN=:80` and
+  `ACME_EMAIL`.
 - All values are placeholders. No real domain, certificate, password, database
   secret, JWT secret, Supabase service-role key, or private key was added.
 
@@ -1822,7 +1887,7 @@ secrets, upload env files, or change learner/admin product behaviour.
 
 Health and Compose result:
 
-- `/api/health` returns minimal JSON with `status`, `service`, and `timestamp`.
+- `/api/health` returns minimal JSON with `ok`, `service`, and `timestamp`.
 - The endpoint does not read or expose env vars, Supabase keys, database
   connection strings, or secrets.
 - Production Compose checks the app through `/api/health`.
@@ -2403,10 +2468,10 @@ Manual production checks still required:
 - Analytics is structured and typed, but no third-party provider is connected.
 - External production observability services are not implemented; logging is
   currently local/server-console only.
-- AWS deployment is not live yet; Phase 4 currently provides Docker,
-  Docker Compose, env template, and EC2 deployment documentation only.
-- Caddy/Nginx reverse proxy, ECR publishing, GitHub Actions deploy workflow,
-  Route 53, and CloudWatch production wiring remain future Phase 4 tasks.
+- AWS EC2 public-IP HTTP deployment is live for smoke testing only. Domain,
+  Route 53, and HTTPS remain paused.
+- GitHub Actions deploy-to-EC2 workflow, Route 53, and HTTPS production launch
+  remain future Phase 4 tasks.
 - Route scoring still needs calibration against more reviewed real-world
   learner attempts.
 - The generated driver-training atlas asset is a review artifact and is not the

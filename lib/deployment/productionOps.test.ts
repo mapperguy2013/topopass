@@ -7,7 +7,7 @@ const read = (path: string) => readFileSync(path, "utf8");
 test("health endpoint returns a minimal safe app status", () => {
   const source = read("app/api/health/route.ts");
 
-  assert.match(source, /status:\s*"ok"/);
+  assert.match(source, /ok:\s*true/);
   assert.match(source, /service:\s*"topopass"/);
   assert.match(source, /timestamp:/);
   assert.doesNotMatch(source, /process\.env|SUPABASE|DATABASE|PASSWORD|SECRET/i);
@@ -15,6 +15,9 @@ test("health endpoint returns a minimal safe app status", () => {
 
 test("production compose checks health and exposes only HTTP in temporary IP mode", () => {
   const compose = read("deploy/docker-compose.prod.yml");
+  const caddyfile = read("deploy/Caddyfile");
+  const proxyEnvExample = read("deploy/env/proxy.env.example");
+  const securityGroup = read("infra/terraform/security.tf");
 
   assert.match(compose, /\/api\/health/);
   assert.match(compose, /caddy:2\.8-alpine/);
@@ -23,6 +26,13 @@ test("production compose checks health and exposes only HTTP in temporary IP mod
   assert.doesNotMatch(compose, /^\s*-\s*"443:443\/udp"/m);
   assert.match(compose, /expose:\s*\n\s*-\s*"3000"/);
   assert.doesNotMatch(compose, /"3000:3000"|"5432:5432"|"8000:8000"|"54321:54321"|"54322:54322"/);
+  assert.match(caddyfile, /\{\$APP_DOMAIN::80\}/);
+  assert.match(caddyfile, /reverse_proxy app:3000/);
+  assert.doesNotMatch(caddyfile, /redir https|reverse_proxy kong:8000/);
+  assert.match(proxyEnvExample, /APP_DOMAIN=:80/);
+  assert.doesNotMatch(proxyEnvExample, /^WWW_DOMAIN=|^SUPABASE_DOMAIN=/m);
+  assert.match(securityGroup, /from_port\s+=\s+80/);
+  assert.doesNotMatch(securityGroup, /from_port\s+=\s+443/);
 });
 
 test("backup scripts use S3 and do not print database passwords", () => {

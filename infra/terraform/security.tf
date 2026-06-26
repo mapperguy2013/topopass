@@ -23,26 +23,6 @@ resource "aws_security_group" "app" {
     }
   }
 
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.allowed_http_cidr_blocks
-  }
-
-  dynamic "ingress" {
-    for_each = length(var.allowed_http_ipv6_cidr_blocks) > 0 ? [1] : []
-
-    content {
-      description      = "HTTPS IPv6"
-      from_port        = 443
-      to_port          = 443
-      protocol         = "tcp"
-      ipv6_cidr_blocks = var.allowed_http_ipv6_cidr_blocks
-    }
-  }
-
   dynamic "ingress" {
     for_each = toset(var.ssh_cidr_blocks)
 

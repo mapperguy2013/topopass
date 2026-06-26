@@ -2,6 +2,9 @@
 	email {$ACME_EMAIL:admin@example.com}
 }
 
+# Temporary Step 48A public-IP mode:
+# APP_DOMAIN defaults to :80, so Caddy serves plain HTTP on the EC2 Elastic IP.
+# Do not add HTTPS redirects here until Route 53/domain work resumes.
 {$APP_DOMAIN::80} {
 	encode zstd gzip
 
@@ -17,23 +20,4 @@
 	}
 
 	reverse_proxy app:3000
-}
-
-{$WWW_DOMAIN:http://www.topopass.invalid} {
-	redir https://{$APP_DOMAIN}{uri} permanent
-}
-
-{$SUPABASE_DOMAIN:http://supabase.topopass.invalid} {
-	encode zstd gzip
-
-	log {
-		output file /var/log/caddy/supabase-access.log
-		format json
-	}
-
-	reverse_proxy kong:8000 {
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Forwarded-Host {host}
-		header_up X-Real-IP {remote_host}
-	}
 }

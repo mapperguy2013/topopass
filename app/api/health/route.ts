@@ -4,8 +4,8 @@ export const dynamic = "force-dynamic";
 
 export function GET() {
   return NextResponse.json({
-    status: "ok",
+    ok: true,
     service: "topopass",
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   });
 }

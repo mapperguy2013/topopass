@@ -9,7 +9,7 @@ It creates:
 - Docker and Docker Compose plugin through `user_data`
 - persistent EBS data volume
 - Elastic IP
-- HTTP/HTTPS security group
+- HTTP security group for temporary public-IP access
 - SSH disabled by default
 - optional SSH ingress only when `ssh_cidr_blocks` is set
 - IAM role for SSM Session Manager
@@ -345,13 +345,12 @@ host:
 
 ```bash
 APP_DOMAIN=:80
-WWW_DOMAIN=http://www.topopass.invalid
-SUPABASE_DOMAIN=http://supabase.topopass.invalid
 ACME_EMAIL=admin@example.com
 ```
 
-For real DNS later, change those values to the apex domain, `www` domain, and
-Supabase gateway subdomain.
+For real DNS later, change `APP_DOMAIN` to the apex domain and deliberately add
+back any `www` redirect or Supabase gateway subdomain config when the
+domain/HTTPS stage resumes.
 
 ## Deploy With Docker Compose Later
 
@@ -403,10 +402,12 @@ The Compose containers also keep their own `restart: unless-stopped` policies.
 
 Production containers are not started automatically by Terraform.
 
-The production Compose template publishes only Caddy on ports `80` and `443`.
-The Next.js app stays internal on `app:3000`, and the Supabase gateway is
-expected to be internal on `kong:8000` when the self-hosted Supabase stack is
-added. Do not publish Postgres, Kong, Studio, or app ports directly.
+The production Compose template currently publishes only Caddy on port `80`
+for the temporary public-IP HTTP smoke test. Port `443` stays closed in the
+Terraform security group until the domain/HTTPS stage resumes. The Next.js app
+stays internal on `app:3000`, and the Supabase gateway is expected to be
+internal on `kong:8000` when the self-hosted Supabase stack is added. Do not
+publish Postgres, Kong, Studio, or app ports directly.
 
 ## HTTPS Checks
 
@@ -418,14 +419,16 @@ curl -fsS http://127.0.0.1/api/health
 curl -I http://<EC2_PUBLIC_IP>
 ```
 
-After DNS has propagated and Caddy has started:
+After DNS has propagated, the 443 ingress rule has been deliberately restored,
+and Caddy has started:
 
 - `http://example.com` should redirect to `https://example.com`.
 - `https://example.com` should load the Next.js app.
 - `https://www.example.com` should redirect to `https://example.com`.
 - `https://supabase.example.com` should reach the Supabase gateway.
 - Browser console should show no mixed-content errors.
-- Public scans should show only ports `80` and `443` open.
+- Public scans should show only ports `80` and `443` open after HTTPS is
+  enabled. During Step 48A they should show port `80` only.
 - Caddy logs should show successful certificate issuance.
 
 ## Enable Backup Timer
