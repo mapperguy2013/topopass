@@ -18,6 +18,7 @@ test("production compose checks health and exposes only HTTP in temporary IP mod
   const caddyfile = read("deploy/Caddyfile");
   const proxyEnvExample = read("deploy/env/proxy.env.example");
   const securityGroup = read("infra/terraform/security.tf");
+  const ec2 = read("infra/terraform/ec2.tf");
 
   assert.match(compose, /\/api\/health/);
   assert.match(compose, /caddy:2\.8-alpine/);
@@ -33,6 +34,7 @@ test("production compose checks health and exposes only HTTP in temporary IP mod
   assert.doesNotMatch(proxyEnvExample, /^WWW_DOMAIN=|^SUPABASE_DOMAIN=/m);
   assert.match(securityGroup, /from_port\s+=\s+80/);
   assert.doesNotMatch(securityGroup, /from_port\s+=\s+443/);
+  assert.match(ec2, /ignore_changes\s+=\s+\[ami\]/);
 });
 
 test("backup scripts use S3 and do not print database passwords", () => {

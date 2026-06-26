@@ -9,6 +9,19 @@ outputs
 work
 .agents
 .codex
+.terraform
+**/.terraform
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+supabase/.temp
+logs
+*.log
+*.dump
+*.sql.gz
+*.tar
+*.tar.gz
 
 .env
 .env.*

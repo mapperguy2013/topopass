@@ -73,12 +73,12 @@ processing intentionally inactive. The additional Stage 40 footer pass adds a
 full public footer, Supabase-backed newsletter signup, placeholder social icons,
 and beta-ready information/legal pages.
 
-Phase 4 has started with low-cost AWS deployment preparation. The current
-deployment target is a Dockerised Next.js app on one EC2 instance, pushed via
-GitHub Actions/ECR, exposed through Caddy, and prepared for app plus Supabase
-gateway HTTPS domains. Step 48A temporarily pauses domain, Route 53, and HTTPS
-work so the EC2 deployment can be smoke-tested over plain HTTP at
-`http://13.134.170.158`.
+Phase 4 is complete for IP-based launch readiness. The current deployment
+target is a Dockerised Next.js app on one EC2 instance, pushed via GitHub
+Actions/ECR, exposed through Caddy, and connected to the existing managed
+Supabase project through runtime env configuration. Domain, Route 53, and real
+HTTPS work are paused so the EC2 deployment can be smoke-tested over plain HTTP
+at `http://13.134.170.158`.
 
 The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
@@ -153,11 +153,18 @@ Phase 3 guardrails:
 
 ## Phase 4: Low-Cost AWS DevOps Deployment
 
-Phase 4 starts with deployment preparation, not a live deployment.
+Phase 4 is complete for IP-based launch readiness. The project now has the
+Docker, GitHub Actions, Terraform, EC2 Compose, Caddy, runtime secret fetch,
+health check, update helper, and operations documentation needed to run the
+current app on a single EC2 host for controlled smoke testing.
+
+This is not the final public launch configuration. Domain, Route 53, and real
+HTTPS domain setup are deferred. Do not use the temporary HTTP public-IP
+deployment for payments or broad learner onboarding.
 
 Current target architecture:
 
-- GitHub Actions builds, tests, and later publishes Docker images.
+- GitHub Actions builds and publishes Docker images to ECR.
 - AWS ECR stores the TopoPass Next.js app image.
 - One EC2 instance runs Docker Compose.
 - The app container runs on internal port `3000`.
@@ -165,9 +172,10 @@ Current target architecture:
 - Port `443`, Route 53, and the production domain are reserved for the later
   HTTPS launch path.
 - CloudWatch will collect logs and basic host/app metrics.
-- Self-hosted Supabase gateway routing is prepared through the same reverse
-  proxy. The app logic and signed-out/signed-in progress behaviour are
-  unchanged by the deployment scaffolding.
+- Managed Supabase remains the current backend through the existing
+  `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` runtime
+  configuration. Self-hosted Supabase containers are not included in the
+  production Compose stack yet.
 
 Stage 40 deployment-prep status:
 
@@ -288,6 +296,91 @@ Step 48A public-IP HTTP deployment status:
 | `NEXT_PUBLIC_SITE_URL` for smoke test | `http://13.134.170.158` |
 | Health endpoint | `/api/health` returns `ok`, `service`, and `timestamp` |
 
+Phase 4 final status:
+
+| Area | Status |
+| --- | --- |
+| IP-based EC2 smoke-test readiness | Complete |
+| Production app image publishing | GitHub Actions to private ECR |
+| Production runtime | EC2 Docker Compose with Caddy on port `80` |
+| App health endpoint | `/api/health` |
+| Runtime env handling | AWS Secrets Manager fetches to host-only env files |
+| Public app port | Caddy on `80`; app port `3000` remains Docker-internal |
+| Backend | Existing managed Supabase project |
+| Self-hosted Supabase | Deferred |
+| Domain / Route 53 / real HTTPS | Deferred |
+| Payments / monetisation | Deferred |
+
+Production operations checklist:
+
+```bash
+npm.cmd run lint
+npm.cmd test
+npm.cmd run build
+git diff --check
+docker compose config
+docker build -t topopass-web:phase4-final .
+terraform -chdir=infra/terraform fmt -recursive
+terraform -chdir=infra/terraform validate
+```
+
+EC2 update command:
+
+```bash
+update
+```
+
+EC2 smoke-test routes:
+
+```bash
+curl -I http://13.134.170.158
+curl -I http://13.134.170.158/practice
+curl -I http://13.134.170.158/practice/seru/phv-handbook
+curl -fsS http://13.134.170.158/api/health
+```
+
+Rollback and recovery notes:
+
+- Git-tracked deploy scripts, Compose files, Caddy config, and Terraform can be
+  restored from the repository.
+- The production image can be repointed to a known-good ECR tag with
+  `TOPOPASS_IMAGE`, then the Compose stack can be recreated with `update` or
+  `docker compose -f deploy/docker-compose.prod.yml up -d --force-recreate`.
+- Runtime env values should be restored from AWS Secrets Manager with
+  `sudo bash infra/deploy/fetch-runtime-env.sh`.
+- A fresh EC2 rebuild flow is documented in the EC2 rebuild recovery section
+  below.
+
+Final Phase 4 verification on 2026-06-26:
+
+| Check | Result |
+| --- | --- |
+| `npm.cmd run lint` | Passed |
+| `npm.cmd test` | Passed, including `lib/deployment/productionOps.test.ts` |
+| `npm.cmd run build` | Passed |
+| `git diff --check` | Passed |
+| `docker compose config` | Passed |
+| `docker compose -f deploy/docker-compose.prod.yml config` | Passed with example env files |
+| `docker build -t topopass-web:phase4-final .` | Passed |
+| Local container smoke test | `/api/health` and `/` returned HTTP `200` |
+| `terraform -chdir=infra/terraform fmt -recursive` | Passed |
+| `terraform -chdir=infra/terraform validate` | Passed |
+| `terraform -chdir=infra/terraform plan -no-color` | Passed with no changes; no EC2 replacement |
+| `curl -I http://13.134.170.158` | HTTP `200` |
+| `curl -I http://13.134.170.158/practice` | HTTP `200` |
+| `curl -I http://13.134.170.158/practice/seru/phv-handbook` | HTTP `200` |
+| `curl -fsS http://13.134.170.158/api/health` | Returned safe health JSON |
+
+Terraform apply was not run during this final verification pass.
+
+Next phase:
+
+- Add a real custom domain, Route 53 records, and HTTPS.
+- Add payment and monetisation plumbing.
+- Complete final content QA across Topographical and SERU practice.
+- Improve production analytics and monitoring after real usage begins.
+- Run structured real-user testing before broad launch.
+
 Phase 4 checklist:
 
 - [x] Docker build support exists.
@@ -308,23 +401,25 @@ Phase 4 checklist:
 - [x] AWS Budget cost monitor and optional EC2 stop kill switch are defined.
 - [x] EventBridge Scheduler daily EC2 start/stop cost-saving schedules are defined.
 - [x] Temporary public-IP HTTP smoke-test path is documented.
-- [ ] Create the private ECR repository in AWS.
-- [ ] Create the GitHub OIDC IAM role in AWS.
-- [ ] Add required GitHub Actions variables/secrets.
-- [ ] Run Terraform plan/apply for EC2 host provisioning.
-- [ ] Create production runtime env files on EC2.
-- [ ] Start the production Caddy/App Compose stack on EC2.
-- [ ] Add or attach the self-hosted Supabase stack to the `topopass-prod`
-      Docker network.
-- [ ] Verify Route 53 DNS points to the EC2 Elastic IP.
+- [x] Private ECR image target is documented and used by the production
+      Compose template.
+- [x] GitHub OIDC/ECR publishing workflow is documented.
+- [x] Terraform EC2 host provisioning files exist.
+- [x] Production runtime env fetch from AWS Secrets Manager is documented.
+- [x] Production Caddy/App Compose stack is documented.
+- [ ] Add or attach a self-hosted Supabase stack to the `topopass-prod`
+      Docker network if the future self-hosted backend path is chosen.
+- [ ] Verify Route 53 DNS points to the EC2 Elastic IP when domain work resumes.
 - [ ] Confirm CloudWatch agent logs and metrics arrive after deployment.
 - [ ] Confirm SNS email subscription if `alert_email` is set.
 - [ ] Confirm AWS Budget email subscription if `budget_alert_email` is set.
 - [ ] Keep `enable_budget_kill_switch = false` until the budget alert path is tested.
-- [ ] Run and verify first Postgres backup.
-- [ ] Enable the Postgres backup systemd timer.
-- [ ] Complete a restore drill before launch.
-- [ ] Production smoke test on the deployed host.
+- [ ] Run and verify the first Postgres backup before any self-hosted database
+      launch.
+- [ ] Enable the Postgres backup systemd timer only after a successful manual
+      backup.
+- [ ] Complete a restore drill before any self-hosted database launch.
+- [x] Production smoke test on the deployed host.
 
 Phase 4 guardrails:
 
@@ -394,6 +489,10 @@ BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup
 BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/backup-postgres.sh
 BACKUP_ENV_FILE=/opt/topopass/.env.production /srv/topopass/infra/backups/verify-latest-backup.sh
 ```
+
+These backup commands are for the future self-hosted Postgres/Supabase path.
+The current app still points at managed Supabase, so provider/project backup
+settings must be reviewed there separately.
 
 Do not commit backup files, dump files, tar archives, logs, `.env` files,
 Terraform state, Caddy data/certificates, `node_modules`, `.next`, or build
@@ -2470,8 +2569,8 @@ Manual production checks still required:
   currently local/server-console only.
 - AWS EC2 public-IP HTTP deployment is live for smoke testing only. Domain,
   Route 53, and HTTPS remain paused.
-- GitHub Actions deploy-to-EC2 workflow, Route 53, and HTTPS production launch
-  remain future Phase 4 tasks.
+- GitHub Actions deploy-to-EC2 automation, Route 53, and HTTPS production launch
+  remain deferred post-Phase-4 work.
 - Route scoring still needs calibration against more reviewed real-world
   learner attempts.
 - The generated driver-training atlas asset is a review artifact and is not the

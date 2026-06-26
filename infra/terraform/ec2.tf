@@ -46,6 +46,10 @@ resource "aws_instance" "app" {
     http_put_response_hop_limit = 2
   }
 
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
   tags = {
     Name = "${local.name_prefix}-app"
   }
