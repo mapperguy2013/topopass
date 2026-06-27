@@ -48,6 +48,7 @@ export {
   toRunRouteExerciseDraftInput,
   toUserRouteSelectionInput
 } from "./routeSelectionState.ts";
+export { matchSnappedRouteToSelection } from "./routeMatching.ts";
 export { snapDrawnRouteToRoads } from "./routeSnapping.ts";
 export { scoreRouteAttempt } from "./scoringEngine.ts";
 export { findShortestLegalRoute } from "./shortestRoute.ts";
@@ -86,6 +87,16 @@ export type {
   Vec2
 } from "./geometry.ts";
 export type { DraftRouteSelectionState, RunRouteExerciseDraftInput } from "./routeSelectionState.ts";
+export type {
+  MatchedRouteMovement,
+  MatchSnappedRouteToSelectionInput,
+  RouteMatchingDiagnostic,
+  RouteMatchingDiagnosticCode,
+  RouteMatchingDiagnosticSeverity,
+  RouteMatchingOptions,
+  RouteMatchingResult,
+  RouteMatchingStatus
+} from "./routeMatching.ts";
 export type {
   CandidateRoadMatch,
   RouteSnappingDiagnostic,

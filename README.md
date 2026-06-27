@@ -1000,6 +1000,26 @@ MAX_BACKUP_AGE_HOURS=36
 - Stage 63 route matching, drawn-route scoring, replay, production feedback UI,
   persistence, analytics, and real map imports remain intentionally deferred.
 
+## Stage 63 Core Route Matching Engine
+
+- Added a pure deterministic route matcher that consumes Stage 62 snapped route
+  points and prepares an ordered route selection for the existing route exercise
+  pipeline.
+- The matcher collapses consecutive duplicate road IDs while preserving
+  non-consecutive repeats, infers transition nodes for connected road chains,
+  and returns ordered road IDs, transition node IDs, node IDs, directed edge IDs
+  where legal, attempted movements, and a `UserRouteSelectionInput`.
+- Empty and insufficient snapped inputs return stable non-throwing statuses.
+- Unknown roads, unmatched points, disconnected road sequences, ambiguous
+  transitions, and unresolved or wrong-way directed edges are reported through
+  deterministic diagnostics.
+- Marlowe District fixture tests confirm a matched snapped route can be passed
+  into the existing `runRouteExercise` flow without changing scoring.
+- Stage 63 does not implement advanced HMM/probabilistic map matching, new
+  snapping, drawn-route scoring, production UI, backend persistence, analytics,
+  London/OSM imports, or changes to scoring, legality, shortest-route, fixtures,
+  or route-runner behavior.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
