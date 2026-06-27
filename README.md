@@ -900,6 +900,106 @@ MAX_BACKUP_AGE_HOURS=36
 - No real maps, external routing, Supabase, backend, auth, scoring-engine
   changes, or production navigation changes were added.
 
+## Stage 57 Draft Route Selection State
+
+- Added a pure TypeScript state utility for in-progress route exercise drafts.
+- The draft state tracks a selected exercise ID plus ordered draft node IDs and
+  road IDs.
+- Helper actions create an empty state, select or clear an exercise, add/remove
+  nodes, clear nodes, add/remove roads, clear roads, and clear the draft route.
+- All helpers are pure and immutable, preserve insertion order, and allow
+  repeated node or road IDs for routes that revisit the same place or road.
+- Changing to a different exercise clears existing draft selections so stale
+  route attempts are not carried across exercises; re-selecting the same
+  exercise preserves the current draft.
+- Derived helpers convert the draft into the Stage 55 `UserRouteSelectionInput`
+  shape and into a runnable `{ exerciseId, selection }` draft only when an
+  exercise is selected.
+- Added tests for empty state, exercise switching, repeated IDs, safe no-op
+  removals/clears, node and road independence, derived route selections, and
+  defensive array copies.
+- No UI, drawing, snapping, real map data, external routing, Supabase, backend,
+  scoring, legality, shortest-route, or route-runner behavior changes were
+  added.
+
+## Stage 58 Route Draft Validation / Attempt Preview
+
+- Added a pure frontend-safe draft validation and preview helper for route
+  exercise attempts.
+- The validator checks whether the selected exercise exists, whether the draft
+  route is empty, whether selected node and road IDs are known, whether selected
+  nodes or roads form connected movements, and whether the draft starts at the
+  required start.
+- The preview reports selected nodes, selected roads, the current node, required
+  stop node IDs, required-stop progress, the next required stop, destination
+  status, and selected-route distance.
+- Required stops are checked in order, so skipped or out-of-order stops are
+  surfaced before a draft is submitted.
+- Complete structurally valid drafts are marked ready to submit and include the
+  Stage 55 normalised attempt generated through `runRouteExercise`.
+- Added `canSubmitDraftRoute` as a small convenience helper for UI code.
+- Added tests for unknown exercises, empty drafts, unknown node/road IDs,
+  disconnected routes, wrong starts, missing destinations, missed required
+  stops, out-of-order stops, ready-to-submit drafts, defensive preview copies,
+  and submit readiness.
+- No drawing UI, snapping, real map data, external routing, Supabase, backend,
+  scoring formula, legality, shortest-route, or route-runner behavior changes
+  were added.
+
+## Stage 59 Manual Route Input UI
+
+- Extended the `/dev/route-runner` developer page so manual node/road route
+  attempts show a clearer route-engine result summary.
+- The result panel now separates pass/fail status, score percentage, shortest
+  legal distance, user route distance, extra distance, failure reasons,
+  violations, normalised node and road sequences, attempted movements, and raw
+  JSON for debugging.
+- Manual route scoring still flows through the existing Stage 55
+  `runRouteExercise` API.
+- No drawing-based scoring, route matching, backend, storage, analytics, or
+  scoring/legality changes were added.
+
+## Stage 60 Drawing Capture Foundation
+
+- Added a pure drawn-route trace utility for raw route drawing state.
+- Added browser canvas drawing support to `/dev/route-runner` using pointer
+  events so mouse, touch, and stylus share the same capture path where the
+  browser supports it.
+- Captured drawn points are stored in map coordinates with screen-to-map and
+  map-to-screen conversion helpers.
+- Added clear/reset handling and simple trace simplification helpers.
+- The drawn trace is a preview-only development input and is not submitted to
+  route scoring.
+
+## Stage 61 Geometry and Spatial Index Foundation
+
+- Added map-engine geometry helpers for point-to-segment projection,
+  point-to-polyline projection, point-to-road-centreline distance, polyline
+  length, heading calculation, bounding boxes, trace simplification, and road
+  candidate lookup.
+- Added a lightweight deterministic road spatial index based on expanded road
+  bounding boxes, which is sufficient for the fictional Marlowe District
+  fixture.
+- Added tests for horizontal, vertical, diagonal, and polyline projection,
+  heading/distance calculations, bounding boxes, trace simplification, and
+  Marlowe road candidate lookup.
+- No external routing dependency, real map import, OSM import, or route
+  matching was added.
+
+## Stage 62 Basic Route Snapping
+
+- Added a basic snapping module that converts raw drawn points into snapped road
+  candidates for the fake map-engine data.
+- Snapped points include original point, snapped point, road ID when in
+  tolerance, optional directed edge ID, distance from road, confidence, and
+  candidate matches.
+- Off-road points are diagnosed, repeated points are safe, very short traces
+  return a clear diagnostic, and results are deterministic.
+- `/dev/route-runner` shows a snap preview over the canvas, but snapped traces
+  are not converted into route attempts or scored yet.
+- Stage 63 route matching, drawn-route scoring, replay, production feedback UI,
+  persistence, analytics, and real map imports remain intentionally deferred.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

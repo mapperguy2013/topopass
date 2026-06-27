@@ -1,6 +1,31 @@
 export { buildDirectedEdges } from "./edges.ts";
+export { canSubmitDraftRoute, validateDraftRouteSelection } from "./draftRouteValidation.ts";
+export {
+  appendDrawnRoutePoint,
+  clearDrawnRouteTrace,
+  createDrawnRouteTrace,
+  mapToScreenPoint,
+  screenToMapPoint,
+  simplifyDrawnRouteTrace
+} from "./drawingTrace.ts";
 export { runRouteExercise } from "./exerciseRunner.ts";
 export { marloweDistrictFixture, marloweDistrictMap, marloweDistrictRouteExercises, tinyMap } from "./fixtures/index.ts";
+export {
+  boundingBoxForPoints,
+  boundingBoxesIntersect,
+  buildRoadSpatialIndex,
+  calculateHeadingDegrees,
+  distanceBetweenPoints,
+  distanceFromPointToRoadCentreline,
+  expandBoundingBox,
+  findCandidateRoadsForPoint,
+  polylineLength,
+  projectPointToPolyline,
+  projectPointToSegment,
+  roadGeometryFromMapRoad,
+  roadPolylineFromMapRoad,
+  simplifyRouteTrace
+} from "./geometry.ts";
 export { buildMapGraph } from "./graph.ts";
 export { checkRouteLegality, ILLEGAL_MOVEMENT_TYPES } from "./legalityEngine.ts";
 export {
@@ -9,6 +34,21 @@ export {
   getLegalNextMovements,
   getLegalOutgoingMovements
 } from "./legalMovementGraph.ts";
+export {
+  addDraftSelectedNode,
+  addDraftSelectedRoad,
+  clearDraftRouteSelection,
+  clearDraftSelectedExercise,
+  clearDraftSelectedNodes,
+  clearDraftSelectedRoads,
+  createDraftRouteSelectionState,
+  removeLastDraftSelectedNode,
+  removeLastDraftSelectedRoad,
+  setDraftSelectedExercise,
+  toRunRouteExerciseDraftInput,
+  toUserRouteSelectionInput
+} from "./routeSelectionState.ts";
+export { snapDrawnRouteToRoads } from "./routeSnapping.ts";
 export { scoreRouteAttempt } from "./scoringEngine.ts";
 export { findShortestLegalRoute } from "./shortestRoute.ts";
 export { validateMapDefinition, validateRouteExercise } from "./validation.ts";
@@ -19,6 +59,15 @@ export type {
   UserRouteSelectionInput
 } from "./exerciseRunner.ts";
 export type {
+  DraftRouteProgressPreview,
+  DraftRouteValidationIssue,
+  DraftRouteValidationIssueCode,
+  DraftRouteValidationIssueSeverity,
+  DraftRouteValidationResult,
+  ValidateDraftRouteSelectionInput
+} from "./draftRouteValidation.ts";
+export type { DrawnRouteTrace, ScreenMapViewport } from "./drawingTrace.ts";
+export type {
   AttemptedRouteMovement,
   IllegalMovement,
   IllegalMovementType,
@@ -26,6 +75,25 @@ export type {
   LegalityCheckResult
 } from "./legalityEngine.ts";
 export type { LegalMovementGraph, LegalMovementPosition, LegalTransition } from "./legalMovementGraph.ts";
+export type {
+  BoundingBox,
+  FindCandidateRoadsInput,
+  PolylineProjection,
+  RoadCandidate,
+  RoadGeometry,
+  RoadSpatialIndex,
+  SegmentProjection,
+  Vec2
+} from "./geometry.ts";
+export type { DraftRouteSelectionState, RunRouteExerciseDraftInput } from "./routeSelectionState.ts";
+export type {
+  CandidateRoadMatch,
+  RouteSnappingDiagnostic,
+  RouteSnappingDiagnosticCode,
+  SnapDrawnRouteToRoadsInput,
+  SnappedRoutePoint,
+  SnappedRouteTraceResult
+} from "./routeSnapping.ts";
 export type {
   RoutePassStatus,
   RouteScoringFailureReason,
