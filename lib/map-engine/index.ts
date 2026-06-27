@@ -4,10 +4,14 @@ export {
   appendDrawnRoutePoint,
   clearDrawnRouteTrace,
   createDrawnRouteTrace,
+  drawnRouteTraceDistance,
+  isMeaningfulDrawnGesture,
   mapToScreenPoint,
   screenToMapPoint,
-  simplifyDrawnRouteTrace
+  simplifyDrawnRouteTrace,
+  validateDrawnRouteGesture
 } from "./drawingTrace.ts";
+export { createInsufficientDrawnGesturePipelineResult, runDrawnRoutePipeline } from "./drawnRoutePipeline.ts";
 export { runRouteExercise } from "./exerciseRunner.ts";
 export { marloweDistrictFixture, marloweDistrictMap, marloweDistrictRouteExercises, tinyMap } from "./fixtures/index.ts";
 export {
@@ -67,7 +71,22 @@ export type {
   DraftRouteValidationResult,
   ValidateDraftRouteSelectionInput
 } from "./draftRouteValidation.ts";
-export type { DrawnRouteTrace, ScreenMapViewport } from "./drawingTrace.ts";
+export type {
+  DrawnRouteGestureFailureReason,
+  DrawnRouteGestureValidation,
+  DrawnRouteGestureValidationOptions,
+  DrawnRouteTrace,
+  ScreenMapViewport
+} from "./drawingTrace.ts";
+export type {
+  DrawnRoutePipelineResult,
+  DrawnRoutePipelineStatus,
+  DrawnRoutePipelineWarning,
+  DrawnRoutePipelineWarningSeverity,
+  DrawnRoutePipelineWarningSource,
+  RunDrawnRoutePipelineInput,
+  RunDrawnRoutePipelineOptions
+} from "./drawnRoutePipeline.ts";
 export type {
   AttemptedRouteMovement,
   IllegalMovement,
@@ -99,8 +118,12 @@ export type {
 } from "./routeMatching.ts";
 export type {
   CandidateRoadMatch,
+  RouteSnappingCandidateDiagnostic,
+  RouteSnappingConnectivity,
+  RouteSnappingConnectivityDiagnostics,
   RouteSnappingDiagnostic,
   RouteSnappingDiagnosticCode,
+  RouteSnappingDisconnectedTransition,
   SnapDrawnRouteToRoadsInput,
   SnappedRoutePoint,
   SnappedRouteTraceResult

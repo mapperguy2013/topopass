@@ -4,9 +4,12 @@ import {
   appendDrawnRoutePoint,
   clearDrawnRouteTrace,
   createDrawnRouteTrace,
+  drawnRouteTraceDistance,
+  isMeaningfulDrawnGesture,
   mapToScreenPoint,
   screenToMapPoint,
   simplifyDrawnRouteTrace,
+  validateDrawnRouteGesture,
   type ScreenMapViewport
 } from "./index.ts";
 
@@ -46,6 +49,53 @@ test("can ignore points that are too close to the previous point", () => {
 
 test("clears a drawn route trace", () => {
   assert.deepEqual(clearDrawnRouteTrace(), { points: [] });
+});
+
+test("calculates drawn route trace distance from consecutive points", () => {
+  const trace = createDrawnRouteTrace([
+    { x: 0, y: 0 },
+    { x: 3, y: 4 },
+    { x: 6, y: 8 }
+  ]);
+
+  assert.equal(drawnRouteTraceDistance(trace), 10);
+});
+
+test("drawn gesture validation rejects tap-like point counts", () => {
+  const trace = createDrawnRouteTrace([
+    { x: 10, y: 10 },
+    { x: 30, y: 10 }
+  ]);
+  const validation = validateDrawnRouteGesture(trace);
+
+  assert.equal(validation.isMeaningful, false);
+  assert.equal(validation.failureReason, "not_enough_points");
+  assert.equal(validation.rawPointCount, 2);
+  assert.equal(validation.totalDistance, 20);
+});
+
+test("drawn gesture validation rejects tiny movement below threshold", () => {
+  const trace = createDrawnRouteTrace([
+    { x: 0, y: 0 },
+    { x: 3, y: 0 },
+    { x: 6, y: 0 }
+  ]);
+  const validation = validateDrawnRouteGesture(trace);
+
+  assert.equal(validation.isMeaningful, false);
+  assert.equal(validation.failureReason, "not_enough_movement");
+  assert.equal(validation.rawPointCount, 3);
+  assert.equal(validation.totalDistance, 6);
+});
+
+test("drawn gesture validation accepts routes with enough points and movement", () => {
+  const trace = createDrawnRouteTrace([
+    { x: 0, y: 0 },
+    { x: 6, y: 0 },
+    { x: 12, y: 0 }
+  ]);
+
+  assert.equal(isMeaningfulDrawnGesture(trace), true);
 });
 
 test("converts screen coordinates to map coordinates", () => {

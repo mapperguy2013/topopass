@@ -103,6 +103,22 @@ test("runRouteExercise throws a clear error for an unknown user route road id", 
   );
 });
 
+test("runRouteExercise keeps empty manual route errors in the manual runner path", () => {
+  assert.throws(
+    () =>
+      runRouteExercise({
+        map: marloweDistrictMap,
+        exercises: marloweDistrictRouteExercises,
+        exerciseId: "ex-library-market-museum",
+        userRoute: {
+          nodeIds: [],
+          roadIds: []
+        }
+      }),
+    /User route must include nodeIds or roadIds/
+  );
+});
+
 test("runRouteExercise throws a clear error for disconnected node sequences", () => {
   assert.throws(
     () =>

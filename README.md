@@ -1020,6 +1020,114 @@ MAX_BACKUP_AGE_HOURS=36
   London/OSM imports, or changes to scoring, legality, shortest-route, fixtures,
   or route-runner behavior.
 
+## Stage 63.5 Drawn Route Matching Pipeline
+
+- Added a pure dev-only drawn route pipeline that connects raw drawn traces,
+  conservative trace simplification, Stage 62 snapping, Stage 63 route matching,
+  and the existing Stage 55 `runRouteExercise` scorer.
+- The pipeline returns stable statuses for empty, insufficient, snapping-failed,
+  matching-failed, exercise-failed, and scored drawn attempts without throwing
+  for expected in-progress drawing states.
+- `/dev/route-runner` now shows a drawn route pipeline panel with simplified
+  point count, snapped point count, matched road IDs, matched node IDs, directed
+  edge IDs, matcher/pipeline warnings, and exercise scoring output when a drawn
+  route is scoreable.
+- Tests cover clean Marlowe drawn routes, disconnected drawn routes, wrong-way
+  one-way routes, prohibited-turn routes, duplicate road collapse, and
+  compatibility with the existing manual route runner flow.
+- Stage 63.5 remains deterministic and development-only. It does not add
+  advanced HMM/probabilistic map matching, new snapping, real London/OSM map
+  imports, backend persistence, analytics, production drawing UI, or changes to
+  scoring, legality, shortest-route, fixture, or runner algorithms.
+
+## Stage 64 Drawn Route UX Hardening
+
+- Hardened the `/dev/route-runner` drawn-route experience with clearer drawing
+  instructions, active drawing state, selected-exercise attempt status, reset
+  behaviour, stage badges, and grouped warning/scoring notes.
+- The dev canvas now overlays raw drawing, snapped preview points, matched
+  route movements, matched nodes, ordered stops, movement arrows, and unresolved
+  direction highlights for debugging.
+- Clearing the drawing resets the raw trace, simplified trace, snapped result,
+  matched result, warning display, score output, overlays, and status badges
+  through the existing derived pipeline state.
+- Starting a new drawing hides stale drawn-route score output until the pointer
+  is released, and changing the selected exercise resets the drawn attempt.
+- Added pure display-helper tests for drawn pipeline statuses, stage badges,
+  and human-readable warning/scoring messages.
+- Stage 64 does not add new route intelligence, scoring integration changes,
+  matcher changes, backend persistence, analytics, production drawing UI,
+  London/OSM imports, or Supabase/auth work.
+
+## Stage 64.5 Drawn Route Scoring Integration
+
+- Completed the first end-to-end development browser flow for drawn route
+  attempts: select an exercise, draw a route, simplify the trace, snap it,
+  match roads/nodes/directed edges, run `runRouteExercise`, and show the score.
+- The `/dev/route-runner` drawn result panel now clearly distinguishes routes
+  blocked before scoring, routes scored and failed, and routes scored and
+  passed.
+- The score display shows pass/fail status, score percentage, shortest legal
+  distance, user route distance, extra distance, failure reasons, illegal
+  movement violations, and ordered required-stop progress.
+- Multi-stop exercises show each ordered start/checkpoint/destination node as
+  visited or missing/out of order using the existing exercise/scoring result.
+- Tests cover clean drawn route scoring, long legal drawn routes failing below
+  the pass mark, illegal drawn routes failing automatically, multi-stop
+  required-stop output, blocked pre-scoring routes, stale-score hiding while
+  drawing, and manual route-runner compatibility.
+- Stage 64.5 does not add advanced matcher improvements, new routing
+  intelligence, production storage, analytics, London/OSM imports, backend
+  changes, Supabase changes, or auth changes.
+
+## Stage 65 Connectivity-Aware Candidate Matching
+
+- Improved drawn-route snapping candidate selection so nearby road candidates
+  are evaluated as a connected sequence instead of choosing each point's
+  nearest road independently.
+- Snapping now strongly penalizes transitions between roads that do not share
+  a real map node, while still preferring same-road continuity and connected
+  road changes at junctions.
+- Snapping results include selected-candidate flags, candidate counts,
+  collapsed road IDs, total path cost, and disconnected transition diagnostics
+  for dev-route-runner debugging.
+- This reduces road flicker such as disconnected road jumps inside an otherwise
+  clean drawn trace before the Stage 63 matcher validates the final sequence.
+- Genuine disconnected drawings are still left disconnected and remain blocked
+  by the existing matcher before scoring.
+- Stage 65 does not change scoring, legality, shortest-route behavior,
+  production UI, backend persistence, London/OSM imports, or real map data.
+
+## Stage 66 Restriction / No-Entry Visual Overlay
+
+- Added dev-route-runner road restriction overlays so existing map-engine
+  one-way, no-entry, and road-closed restrictions are visible before drawing.
+- The `/dev/route-runner` canvas now draws red barred no-entry markings, amber
+  restricted-road markings, and blue dashed one-way markings using the existing
+  Marlowe District fixture data.
+- Added a pure `buildRoadRestrictionOverlays` display helper with deterministic
+  tests for one-way, no-entry, road-closed, and turn-only restriction handling.
+- Turn-level prohibited-turn restrictions remain enforced by the existing
+  legality engine but are not drawn as junction arrows yet.
+- Stage 66 is visual-only and does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend persistence,
+  or exercise semantics.
+
+## Stage 67 Illegal Route Feedback Overlay
+
+- Added dev-route-runner failure overlays that highlight illegal or broken
+  parts of a drawn route after snapping, matching, and scoring.
+- The `/dev/route-runner` canvas now marks wrong-way, no-entry, prohibited
+  turn, U-turn, illegal movement, and disconnected-road transition diagnostics
+  from the existing pipeline/scoring result.
+- Passing routes do not show route-issue overlays, keeping successful attempts
+  visually clean.
+- Added a compact route-issue message panel so the visible marker has a
+  readable explanation without requiring raw JSON diagnostics.
+- Stage 67 is display-only and does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend persistence,
+  or exercise semantics.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
