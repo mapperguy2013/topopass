@@ -735,6 +735,171 @@ MAX_BACKUP_AGE_HOURS=36
   - Enable the systemd timer only after a manual backup succeeds.
   - Run a restore drill using `restore-postgres.md`.
 
+## Stage 49 Map Engine Architecture
+
+- Added a shared TypeScript domain model for custom fictional maps.
+- Added map nodes, roads, directed edges, restrictions, landmarks, route
+  exercises, route attempts, and route score result types.
+- Added directed edge generation from one-way and two-way roads.
+- Added lightweight map and route exercise validation.
+- Added a tiny fictional map fixture and tests.
+- No UI, drawing, scoring, routefinding, OSM import, Google, Mapbox, or
+  real-world map data was added.
+
+## Stage 50 Fake Development Map Fixture
+
+- Added Marlowe District as the canonical fake development map for route-engine
+  tests.
+- The fixture is fictional and does not use real map, OSM, Google, Mapbox, OS,
+  or A-Z data.
+- It includes 24 junctions, 38 roads, one-way roads, explicit no-entry rules,
+  prohibited turns, landmarks, and route exercises.
+- It is designed for controlled route-engine development only.
+- No UI, drawing, scoring, routefinding, snapping, renderer, or import logic was
+  added.
+
+## Stage 51 Graph Builder
+
+- Added a routing-ready graph builder for the custom map engine.
+- Converts roads into directed edges using the existing directed-edge helper.
+- Two-way roads become two directed edges; one-way roads become one directed
+  edge.
+- Adds graph indexes for nodes, roads, edges, outgoing edges, and incoming
+  edges.
+- Validates map definitions before graph construction and throws on invalid
+  references.
+- Added tests for the tiny fixture, Marlowe District fixture, and invalid map
+  rejection.
+- No UI, drawing, snapping, scoring, routefinding, renderer, or backend changes
+  were added.
+
+## Stage 51.5 Shortest Legal Route Engine
+
+- Added a pure Dijkstra-based shortest route engine for the custom map engine.
+- Calculates the shortest valid route between two map nodes by distance in
+  metres.
+- Uses the Stage 51 directed graph indexes and outgoing-edge lookup.
+- Respects one-way roads through the graph's directed edges.
+- Supports no-entry restrictions by blocking matching directed movements.
+- Supports prohibited-turn restrictions with transition-aware search state that
+  tracks the previous edge.
+- Returns route distance, edge sequence, road sequence, and node sequence.
+- Handles invalid start/end nodes, no-route cases, and zero-distance routes.
+- No UI, drawing, snapping, scoring, Supabase, backend, deployment, or website
+  page changes were added.
+
+## Stage 52 Legal Movement Graph
+
+- Added a legal movement graph for the custom map engine.
+- One-way roads, no-entry restrictions, and prohibited turns are represented as
+  legal directed movements and transitions.
+- No-entry restrictions remove only blocked directed edges, unless the
+  restriction is road-wide.
+- Prohibited turns block only the matching transition at the relevant node.
+- Added helpers for legal outgoing movements from a node, legal next movements
+  after an edge, and legal movements from a current position.
+- Added validation for no-entry endpoint references and prohibited-turn
+  connectivity.
+- Added tests for one-way, no-entry, prohibited-turn, position validation, and
+  Marlowe District fixture behaviour.
+- No UI, drawing, snapping, scoring, shortest-path routing, renderer, Supabase,
+  or deployment code was added.
+
+## Stage 53 Legality Engine
+
+- Added a dedicated route-attempt legality checker for the custom map engine.
+- Checks attempted road movements against the map definition and reports exact
+  illegal movement reasons.
+- Detects wrong-way one-way use, no-entry movements, prohibited turns, immediate
+  U-turns, disconnected road jumps, unknown roads, and unknown nodes.
+- Includes the reserved `off_road` illegal movement type for later snapped
+  geometry checks without faking geometric detection now.
+- Any illegal movement returns `automaticFail: true`; legal movement lists return
+  `isLegal: true`.
+- Added deterministic tests for legal movement, each illegal movement type,
+  multiple violations, and unknown movement references.
+- No UI, drawing, snapping, scoring integration, Supabase, backend, deployment,
+  or website page changes were added.
+
+## Stage 54 Route Comparison / Efficiency & Scoring Engine
+
+- Added a pure route scoring engine for custom map-engine route attempts.
+- Scores legal user routes as `shortestLegalRouteDistance / userRouteDistance`.
+- Uses Stage 53 legality checks so illegal movements automatically fail.
+- Uses Stage 51.5 shortest legal route calculation rather than hardcoded
+  shortest distances.
+- Calculates user route distance from attempted road movements and map road
+  distances.
+- Scores ordered required-stop routes using `requiredStopNodeIds`, so A to B
+  must start at A and end at B, and A to B to C to D must visit B, C, and D in
+  order.
+- Calculates multi-stop shortest legal distance as the sum of each required
+  shortest leg, such as A to B plus B to C plus C to D.
+- Fails wrong starts, wrong destinations, missing required stops, and stops
+  visited out of order.
+- Applies the 80% pass threshold; exactly 80% passes and anything below fails.
+- Safely handles zero or invalid route distances without divide-by-zero.
+- Added tests for exact shortest routes, efficient and inefficient routes,
+  threshold boundaries, ordered required stops, multi-stop shortest leg sums,
+  illegal route auto-fail, disconnected jumps, and Marlowe no-entry/prohibited
+  turn failures.
+- No UI, drawing, snapping integration, Supabase, backend, deployment, or real
+  map data changes were added.
+
+## Stage 54.5 Route Comparison / Efficiency Scoring Checkpoint
+
+- Confirmed the scoring engine supports ordered required stops.
+- A route from A to B must start at A and end at B.
+- Multi-stop routes such as A to B to C to D must visit B, C, and D in order.
+- Required stops visited out of order do not count, and missing intermediate
+  stops fail deterministically.
+- Multi-stop shortest legal distance is calculated as the sum of each shortest
+  legal leg, while the user route distance remains the full attempted movement
+  distance.
+- Added tests for wrong starts, wrong destinations, missing intermediate stops,
+  out-of-order stops, ordered-stop passes, and multi-stop shortest-leg sums.
+- No UI, drawing, snapping, Supabase, backend, deployment, or real map data work
+  was added.
+
+## Stage 55 Route Attempt Normalisation / Exercise Runner
+
+- Added a pure exercise runner that bridges route exercises and the map-engine
+  scoring stack.
+- Accepts a map, a route exercise list, an exercise ID, and a deterministic
+  manual user route made from node IDs and/or road IDs.
+- Resolves exercise landmark stops to required route node IDs.
+- Normalises user route selections into selected nodes, selected roads, directed
+  edge IDs where available, and attempted road movements.
+- Validates unknown exercises, landmarks, nodes, roads, disconnected node
+  sequences, and disconnected road sequences with clear deterministic errors.
+- Reuses the existing scoring engine, which in turn reuses legality checks and
+  shortest legal route calculation.
+- Keeps the future drawing flow clean: drawn route to snapped route to node/road
+  sequence to normalised route attempt to scoring.
+- Added tests for Marlowe District end-to-end execution, route normalisation
+  errors, wrong starts, missed/out-of-order destinations, illegal movement
+  pass-through, and longer-than-shortest legal scoring.
+- No UI, hand-drawn snapping, external routing, real map data, Supabase,
+  backend, or deployment work was added.
+
+## Stage 56 Route Exercise Developer Runner UI
+
+- Added a developer/debug page at `/dev/route-runner`.
+- The page uses the fictional Marlowe District fixture and the Stage 55
+  `runRouteExercise` API inside the app.
+- It lets a developer choose a route exercise, inspect the start and required
+  stop landmarks, enter manual comma-separated node IDs and road IDs, then run
+  the attempt.
+- The result panel shows the normalised attempt and scoring result as readable
+  JSON, including selected nodes, selected roads, directed edge IDs, score,
+  pass/fail status, and failure reasons.
+- Added a small parser helper for comma-separated route IDs and unit tests for
+  whitespace, empty input, and duplicate comma handling.
+- This is not the final drawing or snapping layer. The intended future flow is:
+  drawing UI to snapped node/road sequence to Stage 55 runner to score.
+- No real maps, external routing, Supabase, backend, auth, scoring-engine
+  changes, or production navigation changes were added.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
