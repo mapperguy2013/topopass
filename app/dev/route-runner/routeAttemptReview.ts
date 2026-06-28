@@ -29,6 +29,7 @@ export type RouteAttemptReview = {
   illegalMovements: RouteAttemptReviewItem[];
   missedRestrictions: RouteAttemptReviewItem[];
   suggestedFailureReason: string | null;
+  correctionHints: string[];
 };
 
 export type BuildRouteAttemptReviewInput = {
@@ -270,11 +271,115 @@ function dedupeItems(items: RouteAttemptReviewItem[]): RouteAttemptReviewItem[] 
   });
 }
 
+function reviewItemIncludes(item: RouteAttemptReviewItem, text: string): boolean {
+  const haystack = `${item.label} ${item.detail ?? ""}`.toLowerCase();
+
+  return haystack.includes(text.toLowerCase());
+}
+
+function hasReviewItem(items: readonly RouteAttemptReviewItem[], text: string): boolean {
+  return items.some((item) => reviewItemIncludes(item, text));
+}
+
+function addHint(hints: string[], hint: string): void {
+  if (!hints.includes(hint)) {
+    hints.push(hint);
+  }
+}
+
+export function buildStudentCorrectionHints(review: Omit<RouteAttemptReview, "correctionHints">): string[] {
+  const hints: string[] = [];
+
+  if (review.status === "pending") {
+    return ["Draw and score a route to see what to improve next."];
+  }
+
+  if (review.status === "blocked") {
+    if (hasReviewItem(review.missedRestrictions, "Disconnected matched roads")) {
+      addHint(hints, "Redraw the route as one continuous path, avoiding jumps between roads that do not meet.");
+    }
+
+    if (hasReviewItem(review.missedRestrictions, "Insufficient drawing") || hasReviewItem(review.missedRestrictions, "No route drawn")) {
+      addHint(hints, "Draw a longer route that follows the roads from the start point to the destination.");
+    }
+
+    if (
+      hasReviewItem(review.missedRestrictions, "Could not snap to roads") ||
+      hasReviewItem(review.missedRestrictions, "Unresolved road direction")
+    ) {
+      addHint(hints, "Keep the drawn line close to road centrelines so it can snap and match cleanly.");
+    }
+
+    if (hints.length === 0) {
+      addHint(hints, "Fix the drawing, snapping, or matching issue first, then try scoring the route again.");
+    }
+
+    return hints;
+  }
+
+  if (review.status === "pass") {
+    return ["Good route. Keep those legal choices and look for any shorter legal alternative."];
+  }
+
+  if (hasReviewItem(review.illegalMovements, "Prohibited turn")) {
+    addHint(hints, "Avoid the prohibited turn shown in the review; continue to the next legal junction before changing roads.");
+  }
+
+  if (hasReviewItem(review.illegalMovements, "No-entry road")) {
+    addHint(hints, "Do not enter no-entry roads; approach the destination from a road direction that is allowed.");
+  }
+
+  if (hasReviewItem(review.illegalMovements, "Wrong way on one-way road")) {
+    addHint(hints, "Follow the one-way arrows and choose roads that allow travel in your direction.");
+  }
+
+  if (hasReviewItem(review.illegalMovements, "Restricted road")) {
+    addHint(hints, "Avoid restricted or closed roads and choose the nearest legal alternative.");
+  }
+
+  if (hasReviewItem(review.missedRestrictions, "Wrong start")) {
+    addHint(hints, "Start from the required start point before drawing the route.");
+  }
+
+  if (hasReviewItem(review.missedRestrictions, "Missed required stop")) {
+    addHint(hints, "Visit every required checkpoint in order before finishing at the destination.");
+  }
+
+  if (hasReviewItem(review.missedRestrictions, "Wrong destination")) {
+    addHint(hints, "Finish at the required destination, not just near a connected road.");
+  }
+
+  if (hasReviewItem(review.missedRestrictions, "Route too long")) {
+    addHint(hints, "Your route was legal but too long; compare it with the shortest legal route and remove unnecessary detours.");
+  }
+
+  if (hasReviewItem(review.missedRestrictions, "No shortest legal route")) {
+    addHint(hints, "This exercise needs a valid legal comparison route before it can be scored fairly.");
+  }
+
+  if (hasReviewItem(review.missedRestrictions, "Illegal route") && review.illegalMovements.length === 0) {
+    addHint(hints, "Use only legal road movements, then retry the same exercise.");
+  }
+
+  if (hints.length === 0) {
+    addHint(hints, "Try the route again and compare each road choice with the shortest legal path.");
+  }
+
+  return hints;
+}
+
+function withCorrectionHints(review: Omit<RouteAttemptReview, "correctionHints">): RouteAttemptReview {
+  return {
+    ...review,
+    correctionHints: buildStudentCorrectionHints(review)
+  };
+}
+
 export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): RouteAttemptReview {
   const result = input.pipelineResult;
 
   if (input.isDrawing) {
-    return {
+    return withCorrectionHints({
       status: "pending",
       title: "Finish drawing to review this route",
       scoreLabel: "n/a",
@@ -283,7 +388,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
       illegalMovements: [],
       missedRestrictions: [],
       suggestedFailureReason: null
-    };
+    });
   }
 
   if (!result.exerciseResult) {
@@ -294,7 +399,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
         .filter((item): item is RouteAttemptReviewItem => Boolean(item))
     );
 
-    return {
+    return withCorrectionHints({
       status: blocked ? "blocked" : "pending",
       title: blocked ? "Route was not scored" : "Draw a route to get feedback",
       scoreLabel: "n/a",
@@ -307,7 +412,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
         illegalMovements: input.illegalMovements,
         blocked
       })
-    };
+    });
   }
 
   const score = result.exerciseResult.score;
@@ -342,7 +447,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
       .filter((item): item is RouteAttemptReviewItem => Boolean(item))
   );
 
-  return {
+  return withCorrectionHints({
     status: score.passed ? "pass" : "fail",
     title: score.passed ? "Route passed" : "Route failed",
     scoreLabel: `${score.scorePercent.toFixed(1)}% (${score.passed ? "pass" : "fail"})`,
@@ -357,5 +462,5 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
       illegalMovements: input.illegalMovements,
       blocked: false
     })
-  };
+  });
 }

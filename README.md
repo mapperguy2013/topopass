@@ -1214,6 +1214,20 @@ MAX_BACKUP_AGE_HOURS=36
   behavior, snapping, matching, fixtures, backend persistence, route drawing, or
   exercise semantics.
 
+## Stage 71 Student-Friendly Correction Hints
+
+- Added a pure correction-hint helper for `/dev/route-runner` that turns the
+  Stage 70 review result into short learner-facing next-step guidance.
+- Hints explain common outcomes such as prohibited turns, no-entry roads,
+  wrong-way one-way use, missed checkpoints, wrong destinations, disconnected
+  matched routes, and legal routes that are too long.
+- The route runner review panel now shows a compact "Try next" section after a
+  drawn route is reviewed, while keeping the existing raw diagnostics available
+  for development.
+- Stage 71 is display/review formatting only and does not change scoring,
+  legality, shortest-route behavior, snapping, matching, fixtures, backend
+  persistence, route drawing, or exercise semantics.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

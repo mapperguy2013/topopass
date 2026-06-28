@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { DrawnRoutePipelineResult, IllegalDrawnMovement, RunRouteExerciseResult } from "../../../lib/map-engine/index.ts";
-import { buildRouteAttemptReview } from "./routeAttemptReview.ts";
+import { buildRouteAttemptReview, buildStudentCorrectionHints } from "./routeAttemptReview.ts";
 
 function pipelineResult(value: Partial<DrawnRoutePipelineResult>): DrawnRoutePipelineResult {
   return {
@@ -63,6 +63,7 @@ test("buildRouteAttemptReview returns a pending review before drawing", () => {
   assert.equal(review.title, "Draw a route to get feedback");
   assert.equal(review.scoreLabel, "n/a");
   assert.equal(review.suggestedFailureReason, null);
+  assert.deepEqual(review.correctionHints, ["Draw and score a route to see what to improve next."]);
 });
 
 test("buildRouteAttemptReview summarizes a passing scored route", () => {
@@ -97,6 +98,9 @@ test("buildRouteAttemptReview summarizes a passing scored route", () => {
   ]);
   assert.deepEqual(review.illegalMovements, []);
   assert.deepEqual(review.missedRestrictions, []);
+  assert.deepEqual(review.correctionHints, [
+    "Good route. Keep those legal choices and look for any shorter legal alternative."
+  ]);
 });
 
 test("buildRouteAttemptReview formats kilometre distance breakdowns", () => {
@@ -162,6 +166,7 @@ test("buildRouteAttemptReview explains a legal route that is too long", () => {
   assert.equal(review.scoreLabel, "66.7% (fail)");
   assert.equal(review.missedRestrictions[0].label, "Route too long");
   assert.match(review.suggestedFailureReason ?? "", /too long/);
+  assert.ok(review.correctionHints.some((hint) => hint.includes("too long")));
 });
 
 test("buildRouteAttemptReview explains illegal movements from Stage 69 highlights", () => {
@@ -204,6 +209,7 @@ test("buildRouteAttemptReview explains illegal movements from Stage 69 highlight
   assert.equal(review.illegalMovements[0].label, "No-entry road used on road-bc");
   assert.equal(review.missedRestrictions.length, 0);
   assert.equal(review.suggestedFailureReason, illegalMovement.message);
+  assert.ok(review.correctionHints.some((hint) => hint.includes("Do not enter no-entry roads")));
 });
 
 test("buildRouteAttemptReview lists multiple illegal movements with display-friendly labels", () => {
@@ -261,6 +267,8 @@ test("buildRouteAttemptReview lists multiple illegal movements with display-frie
   );
   assert.equal(review.missedRestrictions.length, 0);
   assert.equal(review.suggestedFailureReason, illegalMovements[0].message);
+  assert.ok(review.correctionHints.some((hint) => hint.includes("Avoid the prohibited turn")));
+  assert.ok(review.correctionHints.some((hint) => hint.includes("Follow the one-way arrows")));
 });
 
 test("buildRouteAttemptReview explains blocked pre-scoring matching failures", () => {
@@ -285,4 +293,29 @@ test("buildRouteAttemptReview explains blocked pre-scoring matching failures", (
   assert.equal(review.scoreLabel, "n/a");
   assert.equal(review.missedRestrictions[0].label, "Disconnected matched roads");
   assert.match(review.suggestedFailureReason ?? "", /matched roads do not connect/);
+  assert.ok(review.correctionHints.some((hint) => hint.includes("one continuous path")));
+});
+
+test("buildStudentCorrectionHints explains missed required stops and wrong destinations", () => {
+  const review = buildRouteAttemptReview({
+    pipelineResult: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          status: "fail",
+          scorePercent: 0,
+          efficiencyRatio: 0,
+          scoreRatio: 0,
+          failureReasons: ["wrong_destination", "missed_required_stop"]
+        }
+      })
+    }),
+    illegalMovements: []
+  });
+  const hints = buildStudentCorrectionHints(review);
+
+  assert.ok(hints.some((hint) => hint.includes("required checkpoint")));
+  assert.ok(hints.some((hint) => hint.includes("required destination")));
 });

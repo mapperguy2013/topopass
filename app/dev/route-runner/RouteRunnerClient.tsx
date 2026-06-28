@@ -1445,6 +1445,22 @@ export function RouteRunnerClient() {
                 </div>
               ) : null}
 
+              {drawnAttemptReview.correctionHints.length > 0 ? (
+                <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Try next</p>
+                  <ul className="mt-2 space-y-2 text-xs leading-5">
+                    {drawnAttemptReview.correctionHints.map((hint, index) => (
+                      <li key={`${index}-${hint}`} className="flex gap-2">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current/20 text-[10px] font-semibold">
+                          {index + 1}
+                        </span>
+                        <span>{hint}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <div>
                   <h4 className="text-sm font-semibold">Illegal movements</h4>
