@@ -207,7 +207,7 @@ export const marloweDistrictMap: MapDefinition = {
       fromNodeId: "n17",
       toNodeId: "n18",
       distanceMeters: 161,
-      isOneWay: true,
+      isOneWay: false,
       name: "Theatre Street"
     },
     {

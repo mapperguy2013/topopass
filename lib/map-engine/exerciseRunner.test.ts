@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildMapGraph,
+  findShortestLegalRoute,
   marloweDistrictMap,
   marloweDistrictRouteExercises,
   runRouteExercise,
@@ -11,6 +13,11 @@ import {
 const libraryMarketMuseumRoute = {
   nodeIds: ["n02", "n03", "n12", "n17"],
   roadIds: ["r02", "r37", "r24"]
+};
+
+const stationHospitalLegalRoute = {
+  nodeIds: ["n14", "n18", "n17", "n12", "n04", "n05", "n09"],
+  roadIds: ["r26", "r22", "r24", "r16", "r04", "r15"]
 };
 
 test("runRouteExercise runs a Marlowe District exercise end to end", () => {
@@ -33,6 +40,53 @@ test("runRouteExercise runs a Marlowe District exercise end to end", () => {
   assert.equal(result.score.automaticFail, false);
   assert.equal(result.score.shortestLegalRouteDistanceMeters, 433);
   assert.equal(result.score.userRouteDistanceMeters, 443);
+});
+
+test("Fox Lane Station to Northgate Hospital has a shortest legal route", () => {
+  const graph = buildMapGraph(marloweDistrictMap);
+  const route = findShortestLegalRoute({
+    graph,
+    startNodeId: "n14",
+    endNodeId: "n09",
+    restrictions: marloweDistrictMap.restrictions
+  });
+
+  assert.equal(route.found, true);
+  assert.equal(route.nodeIds[0], "n14");
+  assert.equal(route.nodeIds.at(-1), "n09");
+  assert(route.distanceMeters > 0);
+});
+
+test("runRouteExercise passes the known legal Fox Lane Station to Northgate Hospital route", () => {
+  const result = runRouteExercise({
+    map: marloweDistrictMap,
+    exercises: marloweDistrictRouteExercises,
+    exerciseId: "ex-station-to-hospital",
+    userRoute: stationHospitalLegalRoute
+  });
+
+  assert.equal(result.score.passed, true);
+  assert.equal(result.score.automaticFail, false);
+  assert.equal(result.score.failureReasons.length, 0);
+  assert.deepEqual(result.normalisedAttempt.requiredNodeIds, ["n14", "n09"]);
+  assert.deepEqual(result.normalisedAttempt.selectedNodeIds, stationHospitalLegalRoute.nodeIds);
+});
+
+test("runRouteExercise still fails an illegal no-entry station route", () => {
+  const result = runRouteExercise({
+    map: marloweDistrictMap,
+    exercises: marloweDistrictRouteExercises,
+    exerciseId: "ex-station-to-hospital",
+    userRoute: {
+      nodeIds: ["n14", "n13", "n14", "n18", "n17", "n12", "n04", "n05", "n09"],
+      roadIds: ["r14", "r14", "r26", "r22", "r24", "r16", "r04", "r15"]
+    }
+  });
+
+  assert.equal(result.score.passed, false);
+  assert.equal(result.score.automaticFail, true);
+  assert(result.score.failureReasons.includes("illegal_route"));
+  assert(result.score.legality.illegalMovements.some((movement) => movement.type === "no_entry"));
 });
 
 test("runRouteExercise throws a clear error for an unknown exercise id", () => {

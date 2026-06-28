@@ -31,6 +31,7 @@ export {
   simplifyRouteTrace
 } from "./geometry.ts";
 export { buildMapGraph } from "./graph.ts";
+export { buildIllegalDrawnMovementHighlights } from "./illegalMovementHighlighting.ts";
 export { checkRouteLegality, ILLEGAL_MOVEMENT_TYPES } from "./legalityEngine.ts";
 export {
   buildLegalMovementGraph,
@@ -53,6 +54,12 @@ export {
   toUserRouteSelectionInput
 } from "./routeSelectionState.ts";
 export { matchSnappedRouteToSelection } from "./routeMatching.ts";
+export {
+  classifyTurnRestrictionMovement,
+  turnRestrictionIconRotationRadians,
+  getTurnRestrictionVisuals,
+  turnRestrictionSignedAngleDegrees
+} from "./restrictionVisuals.ts";
 export { snapDrawnRouteToRoads } from "./routeSnapping.ts";
 export { scoreRouteAttempt } from "./scoringEngine.ts";
 export { findShortestLegalRoute } from "./shortestRoute.ts";
@@ -94,6 +101,11 @@ export type {
   LegalityCheckInput,
   LegalityCheckResult
 } from "./legalityEngine.ts";
+export type {
+  BuildIllegalDrawnMovementHighlightsInput,
+  IllegalDrawnMovement,
+  IllegalDrawnMovementKind
+} from "./illegalMovementHighlighting.ts";
 export type { LegalMovementGraph, LegalMovementPosition, LegalTransition } from "./legalMovementGraph.ts";
 export type {
   BoundingBox,
@@ -116,6 +128,12 @@ export type {
   RouteMatchingResult,
   RouteMatchingStatus
 } from "./routeMatching.ts";
+export type {
+  TurnRestrictionMovementClass,
+  TurnRestrictionVisual,
+  TurnRestrictionVisualKind,
+  TurnRestrictionVisualReason
+} from "./restrictionVisuals.ts";
 export type {
   CandidateRoadMatch,
   RouteSnappingCandidateDiagnostic,

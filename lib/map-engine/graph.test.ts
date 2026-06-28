@@ -74,11 +74,12 @@ test("buildMapGraph converts Marlowe District into a graph", () => {
 
   assert.equal(Object.keys(graph.nodesById).length, marloweDistrictMap.nodes.length);
   assert.equal(Object.keys(graph.roadsById).length, marloweDistrictMap.roads.length);
-  assert.equal(graph.edges.length, 63);
+  assert.equal(graph.edges.length, 64);
   assert(graph.edgesById["r04:forward"]);
   assert(!graph.edgesById["r04:reverse"]);
   assert(graph.edgesById["r12:forward"]);
   assert(graph.edgesById["r12:reverse"]);
+  assert(graph.edgesById["r22:reverse"]);
 });
 
 test("buildMapGraph populates Marlowe District incoming and outgoing indexes", () => {

@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   appendDrawnRoutePoint,
   boundingBoxForPoints,
+  buildIllegalDrawnMovementHighlights,
   createInsufficientDrawnGesturePipelineResult,
   createDrawnRouteTrace,
   expandBoundingBox,
+  getTurnRestrictionVisuals,
   mapToScreenPoint,
   marloweDistrictMap,
   marloweDistrictRouteExercises,
@@ -23,6 +25,7 @@ import {
   type RunRouteExerciseResult,
   type ScreenMapViewport,
   type SnappedRouteTraceResult,
+  type TurnRestrictionVisual,
   type Vec2
 } from "@/lib/map-engine";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
@@ -33,13 +36,21 @@ import {
   getDrawnRouteScoreDisplay,
   getPipelineIssueGroups,
   getPipelineStageBadges,
+  getRouteIssueLineStyle,
   getRequiredStopVisitStatuses,
+  getTurnRestrictionDisplayItems,
+  getVisualTurnRestrictionTurnKind,
   type DrawnPipelineDisplayStatus,
   type DrawnRouteScoreDisplayState,
   type PipelineStageState,
   type RoadRestrictionOverlay,
   type RouteIssueOverlay
 } from "./routeRunnerDisplay";
+import {
+  buildRouteAttemptReview,
+  type RouteAttemptReview,
+  type RouteAttemptReviewItemSeverity
+} from "./routeAttemptReview";
 
 const CANVAS_WIDTH = 820;
 const CANVAS_HEIGHT = 660;
@@ -47,6 +58,7 @@ const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
 const ROAD_RESTRICTION_OVERLAYS = buildRoadRestrictionOverlays(marloweDistrictMap);
+const TURN_RESTRICTION_VISUALS = getTurnRestrictionVisuals(marloweDistrictMap);
 
 function emptySnapPreview(): SnappedRouteTraceResult {
   return {
@@ -191,6 +203,34 @@ function scoreStateClass(state: DrawnRouteScoreDisplayState): string {
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function reviewStateClass(status: RouteAttemptReview["status"]): string {
+  if (status === "pass") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (status === "fail") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (status === "blocked") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function reviewItemClass(severity: RouteAttemptReviewItemSeverity): string {
+  if (severity === "error") {
+    return "border-red-100 bg-white text-red-950";
+  }
+
+  if (severity === "warning") {
+    return "border-amber-100 bg-white text-amber-950";
+  }
+
+  return "border-blue-100 bg-white text-blue-950";
+}
+
 function stopVisitClass(visited: boolean): string {
   return visited ? "border-green-200 bg-green-50 text-green-900" : "border-red-200 bg-red-50 text-red-900";
 }
@@ -230,7 +270,6 @@ function drawArrowHead(context: CanvasRenderingContext2D, fromPoint: Vec2, toPoi
 function drawNodeMarker(input: {
   context: CanvasRenderingContext2D;
   point: Vec2;
-  label: string;
   fillStyle: string;
   radius: number;
 }): void {
@@ -238,11 +277,6 @@ function drawNodeMarker(input: {
   input.context.beginPath();
   input.context.arc(input.point.x, input.point.y, input.radius, 0, Math.PI * 2);
   input.context.fill();
-  input.context.fillStyle = "#ffffff";
-  input.context.font = "bold 10px sans-serif";
-  input.context.textAlign = "center";
-  input.context.textBaseline = "middle";
-  input.context.fillText(input.label, input.point.x, input.point.y + 0.5);
 }
 
 function scoreSummary(result: RunRouteExerciseResult | null): string {
@@ -288,30 +322,17 @@ function restrictionOverlayColour(kind: RoadRestrictionOverlay["kind"]): string 
   return "#2563eb";
 }
 
-function restrictionOverlayShortLabel(kind: RoadRestrictionOverlay["kind"]): string {
-  if (kind === "no-entry") {
-    return "NO";
-  }
-
-  if (kind === "restricted") {
-    return "!";
-  }
-
-  return "1W";
-}
-
 function drawRestrictionBadge(context: CanvasRenderingContext2D, point: Vec2, overlay: RoadRestrictionOverlay): void {
   const colour = restrictionOverlayColour(overlay.kind);
 
-  context.fillStyle = "#ffffff";
-  context.strokeStyle = colour;
-  context.lineWidth = 2;
-  context.beginPath();
-  context.arc(point.x, point.y, overlay.kind === "restricted" ? 9 : 11, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-
   if (overlay.kind === "no-entry") {
+    context.fillStyle = "#ffffff";
+    context.strokeStyle = colour;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(point.x, point.y, 11, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
     context.strokeStyle = colour;
     context.lineWidth = 3;
     context.beginPath();
@@ -321,11 +342,57 @@ function drawRestrictionBadge(context: CanvasRenderingContext2D, point: Vec2, ov
     return;
   }
 
-  context.fillStyle = colour;
-  context.font = "bold 9px sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(restrictionOverlayShortLabel(overlay.kind), point.x, point.y + 0.5);
+  if (overlay.kind === "restricted") {
+    context.fillStyle = "#fef3c7";
+    context.strokeStyle = colour;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(point.x, point.y - 10);
+    context.lineTo(point.x + 10, point.y);
+    context.lineTo(point.x, point.y + 10);
+    context.lineTo(point.x - 10, point.y);
+    context.closePath();
+    context.fill();
+    context.stroke();
+    context.strokeStyle = colour;
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(point.x, point.y - 5);
+    context.lineTo(point.x, point.y + 2);
+    context.stroke();
+    context.fillStyle = colour;
+    context.beginPath();
+    context.arc(point.x, point.y + 6, 1.6, 0, Math.PI * 2);
+    context.fill();
+    return;
+  }
+
+  return;
+}
+
+function drawOneWayArrowhead(context: CanvasRenderingContext2D, fromPoint: Vec2, toPoint: Vec2): void {
+  const angle = Math.atan2(toPoint.y - fromPoint.y, toPoint.x - fromPoint.x);
+  const midpoint = {
+    x: (fromPoint.x + toPoint.x) / 2,
+    y: (fromPoint.y + toPoint.y) / 2
+  };
+  const length = 11;
+  const rear = {
+    x: midpoint.x - 6 * Math.cos(angle),
+    y: midpoint.y - 6 * Math.sin(angle)
+  };
+  const normal = {
+    x: 6 * Math.cos(angle + Math.PI / 2),
+    y: 6 * Math.sin(angle + Math.PI / 2)
+  };
+
+  context.fillStyle = "#2563eb";
+  context.beginPath();
+  context.moveTo(midpoint.x + length * Math.cos(angle), midpoint.y + length * Math.sin(angle));
+  context.lineTo(rear.x - normal.x, rear.y - normal.y);
+  context.lineTo(rear.x + normal.x, rear.y + normal.y);
+  context.closePath();
+  context.fill();
 }
 
 function drawRoadRestrictionOverlay(
@@ -344,9 +411,9 @@ function drawRoadRestrictionOverlay(
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
-  context.globalAlpha = overlay.kind === "one-way" ? 0.8 : 0.9;
-  context.lineWidth = overlay.kind === "one-way" ? 3 : 5;
-  context.setLineDash(overlay.kind === "one-way" ? [10, 6] : []);
+  context.globalAlpha = overlay.kind === "one-way" ? 0.65 : 0.9;
+  context.lineWidth = overlay.kind === "one-way" ? 2 : 5;
+  context.setLineDash([]);
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -359,57 +426,85 @@ function drawRoadRestrictionOverlay(
   context.globalAlpha = 1;
 
   if (overlay.direction) {
-    drawArrowHead(
-      context,
-      mapToScreenPoint(overlay.direction.from, viewport),
-      mapToScreenPoint(overlay.direction.to, viewport)
-    );
+    const from = mapToScreenPoint(overlay.direction.from, viewport);
+    const to = mapToScreenPoint(overlay.direction.to, viewport);
+
+    if (overlay.kind === "one-way") {
+      drawOneWayArrowhead(context, from, to);
+    } else {
+      drawArrowHead(context, from, to);
+    }
   }
 
   drawRestrictionBadge(context, midpoint, overlay);
+  context.restore();
+}
 
-  context.fillStyle = colour;
-  context.font = "bold 10px sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "bottom";
-  context.fillText(overlay.kind === "one-way" ? overlay.roadId : overlay.label, midpoint.x, midpoint.y - 12);
+function drawTurnArrowSymbol(context: CanvasRenderingContext2D, turnKind: TurnRestrictionVisual["turnKind"]): void {
+  context.strokeStyle = "#111827";
+  context.lineWidth = 2.5;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+
+  if (turnKind === "no-u-turn") {
+    context.beginPath();
+    context.arc(0, 2, 7, Math.PI * 0.1, Math.PI * 1.35, true);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(-8, -1);
+    context.lineTo(-3, -3);
+    context.lineTo(-4, 3);
+    context.stroke();
+    return;
+  }
+
+  const direction = turnKind === "no-left-turn" ? -1 : 1;
+
+  context.beginPath();
+  context.moveTo(-6 * direction, 6);
+  context.lineTo(-6 * direction, 0);
+  context.quadraticCurveTo(-6 * direction, -6, 0, -6);
+  context.lineTo(7 * direction, -6);
+  context.stroke();
+  context.beginPath();
+  context.moveTo(4 * direction, -10);
+  context.lineTo(8 * direction, -6);
+  context.lineTo(4 * direction, -2);
+  context.stroke();
+}
+
+function drawTurnRestrictionVisual(
+  context: CanvasRenderingContext2D,
+  visual: TurnRestrictionVisual,
+  viewport: ScreenMapViewport
+): void {
+  const signPoint = mapToScreenPoint(visual.signPosition, viewport);
+
+  context.save();
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = "#be123c";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.arc(signPoint.x, signPoint.y, 13, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.translate(signPoint.x, signPoint.y);
+  drawTurnArrowSymbol(context, getVisualTurnRestrictionTurnKind(visual));
+  context.strokeStyle = "#be123c";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(-8, 8);
+  context.lineTo(8, -8);
+  context.stroke();
   context.restore();
 }
 
 function routeIssueOverlayColour(kind: RouteIssueOverlay["kind"]): string {
-  if (kind === "disconnected") {
-    return "#f97316";
-  }
-
   if (kind === "prohibited-turn" || kind === "no-u-turn") {
     return "#be123c";
   }
 
   return "#dc2626";
-}
-
-function routeIssueOverlayShortLabel(kind: RouteIssueOverlay["kind"]): string {
-  if (kind === "wrong-way") {
-    return "WW";
-  }
-
-  if (kind === "no-entry") {
-    return "NO";
-  }
-
-  if (kind === "prohibited-turn") {
-    return "TURN";
-  }
-
-  if (kind === "no-u-turn") {
-    return "U";
-  }
-
-  if (kind === "disconnected") {
-    return "GAP";
-  }
-
-  return "!";
 }
 
 function drawRouteIssueBadge(context: CanvasRenderingContext2D, point: Vec2, overlay: RouteIssueOverlay): void {
@@ -423,11 +518,41 @@ function drawRouteIssueBadge(context: CanvasRenderingContext2D, point: Vec2, ove
   context.fill();
   context.stroke();
 
-  context.fillStyle = colour;
-  context.font = "bold 9px sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillText(routeIssueOverlayShortLabel(overlay.kind), point.x, point.y + 0.5);
+  if (overlay.kind === "disconnected") {
+    context.strokeStyle = colour;
+    context.lineWidth = 3;
+    context.setLineDash([4, 3]);
+    context.beginPath();
+    context.moveTo(point.x - 8, point.y);
+    context.lineTo(point.x + 8, point.y);
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = colour;
+    context.beginPath();
+    context.arc(point.x - 8, point.y, 3, 0, Math.PI * 2);
+    context.arc(point.x + 8, point.y, 3, 0, Math.PI * 2);
+    context.fill();
+    return;
+  }
+
+  if (overlay.kind === "no-entry") {
+    context.strokeStyle = colour;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.moveTo(point.x - 8, point.y);
+    context.lineTo(point.x + 8, point.y);
+    context.stroke();
+    return;
+  }
+
+  context.strokeStyle = colour;
+  context.lineWidth = 4;
+  context.beginPath();
+  context.moveTo(point.x - 7, point.y - 7);
+  context.lineTo(point.x + 7, point.y + 7);
+  context.moveTo(point.x + 7, point.y - 7);
+  context.lineTo(point.x - 7, point.y + 7);
+  context.stroke();
 }
 
 function drawRouteIssueOverlay(
@@ -436,34 +561,37 @@ function drawRouteIssueOverlay(
   viewport: ScreenMapViewport
 ): void {
   const colour = routeIssueOverlayColour(overlay.kind);
+  const lineStyle = getRouteIssueLineStyle(overlay.kind);
 
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
   context.lineWidth = overlay.kind === "disconnected" ? 4 : 8;
   context.globalAlpha = 0.82;
-  context.setLineDash(overlay.kind === "disconnected" ? [8, 6] : []);
+  context.setLineDash(lineStyle === "dashed-red" ? [8, 6] : []);
 
-  for (const roadId of overlay.roadIds) {
-    const road = marloweDistrictMap.roads.find((candidate) => candidate.id === roadId);
+  if (overlay.kind !== "prohibited-turn" && overlay.kind !== "no-u-turn") {
+    for (const roadId of overlay.roadIds) {
+      const road = marloweDistrictMap.roads.find((candidate) => candidate.id === roadId);
 
-    if (!road) {
-      continue;
+      if (!road) {
+        continue;
+      }
+
+      const { from, to } = roadEndpoints(road);
+
+      if (!from || !to) {
+        continue;
+      }
+
+      const fromPoint = mapToScreenPoint(from, viewport);
+      const toPoint = mapToScreenPoint(to, viewport);
+
+      context.beginPath();
+      context.moveTo(fromPoint.x, fromPoint.y);
+      context.lineTo(toPoint.x, toPoint.y);
+      context.stroke();
     }
-
-    const { from, to } = roadEndpoints(road);
-
-    if (!from || !to) {
-      continue;
-    }
-
-    const fromPoint = mapToScreenPoint(from, viewport);
-    const toPoint = mapToScreenPoint(to, viewport);
-
-    context.beginPath();
-    context.moveTo(fromPoint.x, fromPoint.y);
-    context.lineTo(toPoint.x, toPoint.y);
-    context.stroke();
   }
 
   if (overlay.points.length >= 2) {
@@ -494,11 +622,6 @@ function drawRouteIssueOverlay(
   const midpoint = mapToScreenPoint(overlay.midpoint, viewport);
   drawRouteIssueBadge(context, midpoint, overlay);
 
-  context.font = "bold 11px sans-serif";
-  context.textAlign = "center";
-  context.textBaseline = "bottom";
-  context.fillStyle = colour;
-  context.fillText(overlay.label, midpoint.x, midpoint.y - 16);
   context.restore();
 }
 
@@ -509,6 +632,8 @@ function drawRouteCanvas(input: {
   trace: DrawnRouteTrace;
   snapPreview: SnappedRouteTraceResult;
   pipelineResult: DrawnRoutePipelineResult;
+  roadRestrictionOverlays: RoadRestrictionOverlay[];
+  turnRestrictionVisuals: TurnRestrictionVisual[];
   routeIssueOverlays: RouteIssueOverlay[];
 }) {
   const context = input.canvas.getContext("2d");
@@ -542,11 +667,11 @@ function drawRouteCanvas(input: {
     context.stroke();
   }
 
-  for (const overlay of ROAD_RESTRICTION_OVERLAYS) {
+  for (const overlay of input.roadRestrictionOverlays) {
     drawRoadRestrictionOverlay(context, overlay, input.viewport);
   }
 
-  input.pipelineResult.matchResult?.attemptedMovements.forEach((movement, index) => {
+  input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
     const from = nodeById(movement.fromNodeId);
     const to = nodeById(movement.toNodeId);
 
@@ -579,12 +704,11 @@ function drawRouteCanvas(input: {
     context.arc(midPoint.x, midPoint.y, 9, 0, Math.PI * 2);
     context.fill();
     context.stroke();
-    context.fillStyle = movement.directedEdgeId ? "#5b21b6" : "#b91c1c";
-    context.font = "bold 10px sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(String(index + 1), midPoint.x, midPoint.y + 0.5);
   });
+
+  for (const visual of input.turnRestrictionVisuals) {
+    drawTurnRestrictionVisual(context, visual, input.viewport);
+  }
 
   for (const overlay of input.routeIssueOverlays) {
     drawRouteIssueOverlay(context, overlay, input.viewport);
@@ -612,7 +736,6 @@ function drawRouteCanvas(input: {
     drawNodeMarker({
       context,
       point: mapToScreenPoint(node, input.viewport),
-      label: String(index + 1),
       fillStyle: index === 0 ? "#2563eb" : "#7c3aed",
       radius: 7
     });
@@ -631,7 +754,6 @@ function drawRouteCanvas(input: {
       drawNodeMarker({
         context,
         point,
-        label: String(index + 1),
         fillStyle: index === 0 ? "#2563eb" : "#f97316",
         radius: 8
       });
@@ -705,8 +827,19 @@ export function RouteRunnerClient() {
   const [error, setError] = useState<string | null>(null);
   const [drawnTrace, setDrawnTrace] = useState<DrawnRouteTrace>(() => createDrawnRouteTrace());
   const [isDrawing, setIsDrawing] = useState(false);
+  const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
+  const [showTurnRestrictions, setShowTurnRestrictions] = useState(true);
 
   const viewport = useMemo(() => createViewport(), []);
+  const visibleRoadRestrictionOverlays = useMemo(
+    () => (showRoadRestrictions ? ROAD_RESTRICTION_OVERLAYS : []),
+    [showRoadRestrictions]
+  );
+  const visibleTurnRestrictionVisuals = useMemo(
+    () => (showTurnRestrictions ? TURN_RESTRICTION_VISUALS : []),
+    [showTurnRestrictions]
+  );
+  const turnRestrictionDisplayItems = useMemo(() => getTurnRestrictionDisplayItems(TURN_RESTRICTION_VISUALS), []);
   const selectedExercise = useMemo<RouteExercise | undefined>(
     () => marloweDistrictRouteExercises.find((exercise) => exercise.id === exerciseId),
     [exerciseId]
@@ -751,6 +884,26 @@ export function RouteRunnerClient() {
     () => (isDrawing ? [] : buildRouteIssueOverlays(marloweDistrictMap, drawnPipelineResult)),
     [drawnPipelineResult, isDrawing]
   );
+  const illegalDrawnMovements = useMemo(
+    () =>
+      isDrawing
+        ? []
+        : buildIllegalDrawnMovementHighlights({
+            map: marloweDistrictMap,
+            illegalMovements: drawnPipelineResult.exerciseResult?.score.legality.illegalMovements ?? [],
+            scored: Boolean(drawnPipelineResult.exerciseResult)
+          }),
+    [drawnPipelineResult, isDrawing]
+  );
+  const drawnAttemptReview = useMemo(
+    () =>
+      buildRouteAttemptReview({
+        pipelineResult: drawnPipelineResult,
+        illegalMovements: illegalDrawnMovements,
+        isDrawing
+      }),
+    [drawnPipelineResult, illegalDrawnMovements, isDrawing]
+  );
   const hasUsableDrawnMatch =
     drawnPipelineResult.matchResult?.status === "matched" &&
     drawnPipelineResult.matchResult.isReadyForRunRouteExercise;
@@ -778,9 +931,20 @@ export function RouteRunnerClient() {
       trace: drawnTrace,
       snapPreview,
       pipelineResult: drawnPipelineResult,
+      roadRestrictionOverlays: visibleRoadRestrictionOverlays,
+      turnRestrictionVisuals: visibleTurnRestrictionVisuals,
       routeIssueOverlays
     });
-  }, [drawnPipelineResult, drawnTrace, routeIssueOverlays, selectedExercise, snapPreview, viewport]);
+  }, [
+    drawnPipelineResult,
+    drawnTrace,
+    routeIssueOverlays,
+    selectedExercise,
+    snapPreview,
+    viewport,
+    visibleRoadRestrictionOverlays,
+    visibleTurnRestrictionVisuals
+  ]);
 
   function pointerToMapPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: number): Vec2 | null {
     if (!canvas) {
@@ -1022,21 +1186,25 @@ export function RouteRunnerClient() {
                   candidates. The panel below shows the dev-only pipeline result.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
+              <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+                <span
+                  className={`min-w-[9.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold ${pipelineStatusClass(
+                    drawnDisplayStatus
+                  )}`}
+                >
                   {displayStatusText(drawnDisplayStatus)}
                 </span>
                 <button
                   type="button"
                   onClick={clearDrawnAttempt}
-                  className="inline-flex items-center justify-center rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   Clear drawing
                 </button>
               </div>
             </div>
 
-            <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
+            <div className="mt-4 flex min-h-[76px] items-center rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
               {isDrawing ? (
                 <p className="font-medium">Drawing active. Release the pointer to score the captured route.</p>
               ) : drawnDisplayStatus === "no drawing" ? (
@@ -1052,7 +1220,31 @@ export function RouteRunnerClient() {
               )}
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+            <div className="mt-4 flex flex-wrap gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
+              <label className="inline-flex items-center gap-2 font-medium">
+                <input
+                  type="checkbox"
+                  checked={showRoadRestrictions}
+                  onChange={(event) => setShowRoadRestrictions(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
+                />
+                Show road restrictions
+              </label>
+              <label className="inline-flex items-center gap-2 font-medium">
+                <input
+                  type="checkbox"
+                  checked={showTurnRestrictions}
+                  onChange={(event) => setShowTurnRestrictions(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
+                />
+                Show turn restrictions
+              </label>
+            </div>
+
+            <div
+              className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+              style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
+            >
               <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
@@ -1061,7 +1253,7 @@ export function RouteRunnerClient() {
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerEnd}
                 onPointerCancel={handlePointerEnd}
-                className="block h-auto w-full touch-none"
+                className="block h-full w-full touch-none"
                 aria-label="Marlowe District drawing capture canvas"
               />
             </div>
@@ -1115,17 +1307,34 @@ export function RouteRunnerClient() {
             <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-950">
               <p className="font-semibold">Restriction overlays</p>
               <p className="mt-1 text-xs leading-5">
-                Road-level no-entry, road-closed, and one-way restrictions are drawn from the existing map-engine
-                fixture data. Turn-only prohibited turns are still enforced by the engine but are not drawn as junction
-                arrows yet.
+                Road-level no-entry, road-closed, one-way, and junction-level banned-turn restrictions are drawn from
+                the existing map-engine fixture data. The canvas uses symbol-only markers; detailed road and turn IDs
+                stay in this panel and the raw diagnostics. These overlays are visual/debug hints only; the legality
+                engine remains the source of truth.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
                 {ROAD_RESTRICTION_OVERLAYS.map((overlay, index) => (
                   <span
                     key={`${overlay.kind}-${overlay.roadId}-${index}`}
-                    className="rounded-full border border-red-200 bg-white px-3 py-1 text-red-900"
+                    className={`rounded-full border px-3 py-1 ${
+                      showRoadRestrictions
+                        ? "border-red-200 bg-white text-red-900"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
                   >
                     {overlay.roadId}: {overlay.kind}
+                  </span>
+                ))}
+                {turnRestrictionDisplayItems.map((item) => (
+                  <span
+                    key={item.id}
+                    className={`rounded-full border px-3 py-1 ${
+                      showTurnRestrictions
+                        ? "border-rose-200 bg-white text-rose-900"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
+                  >
+                    {item.label}
                   </span>
                 ))}
               </div>
@@ -1135,17 +1344,27 @@ export function RouteRunnerClient() {
               <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1">Orange: raw route</span>
               <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1">Green: snapped points</span>
               <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1">Purple: matched route</span>
-              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">Red: unresolved direction</span>
-              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">Red barred: no-entry</span>
               <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">
-                Red issue: illegal section
+                Red barred circle: no entry
               </span>
-              <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1">
-                Orange issue: disconnected gap
+              <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
+                No left/right/U-turn sign: turn restriction
               </span>
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">Amber: restricted</span>
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1">Blue dashed: one-way</span>
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1">Numbered: stops/nodes</span>
+              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">
+                Solid red route section: illegal route section
+              </span>
+              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">
+                Dashed red section: disconnected snapped transition
+              </span>
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
+                Amber diamond: restricted
+              </span>
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1">
+                Blue arrow: one-way
+              </span>
+              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1">
+                Blue/orange circles: route stops
+              </span>
             </div>
           </section>
 
@@ -1188,6 +1407,74 @@ export function RouteRunnerClient() {
               <p className="mt-2">{drawnScoreDisplay.summary}</p>
             </div>
 
+            <div className={`mt-4 rounded-lg border p-4 text-sm ${reviewStateClass(drawnAttemptReview.status)}`}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide">Route attempt review</p>
+                  <h3 className="mt-1 text-base font-semibold">{drawnAttemptReview.title}</h3>
+                </div>
+                <span className="rounded-full border border-current/20 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+                  {drawnAttemptReview.status}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Score</p>
+                  <p className="mt-1 font-semibold">{drawnAttemptReview.scoreLabel}</p>
+                </div>
+                <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Distance</p>
+                  <p className="mt-1 leading-5">{drawnAttemptReview.distanceLabel}</p>
+                </div>
+              </div>
+
+              {drawnAttemptReview.suggestedFailureReason ? (
+                <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Suggested reason</p>
+                  <p className="mt-1 leading-5">{drawnAttemptReview.suggestedFailureReason}</p>
+                </div>
+              ) : null}
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                <div>
+                  <h4 className="text-sm font-semibold">Illegal movements</h4>
+                  {drawnAttemptReview.illegalMovements.length > 0 ? (
+                    <ul className="mt-2 space-y-2">
+                      {drawnAttemptReview.illegalMovements.map((item) => (
+                        <li key={item.id} className={`rounded-md border p-3 ${reviewItemClass(item.severity)}`}>
+                          <p className="font-semibold">{item.label}</p>
+                          {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
+                      No illegal movement was reported for this attempt.
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold">Route requirements</h4>
+                  {drawnAttemptReview.missedRestrictions.length > 0 ? (
+                    <ul className="mt-2 space-y-2">
+                      {drawnAttemptReview.missedRestrictions.map((item) => (
+                        <li key={item.id} className={`rounded-md border p-3 ${reviewItemClass(item.severity)}`}>
+                          <p className="font-semibold">{item.label}</p>
+                          {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
+                      No missed checkpoint, route requirement, or restriction issue is listed.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {routeIssueOverlays.length > 0 ? (
               <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-950">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -1197,8 +1484,8 @@ export function RouteRunnerClient() {
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-5">
-                  The highlighted red/orange marker on the map points to the failed movement, illegal section, or
-                  disconnected transition reported by the existing pipeline diagnostics.
+                  The highlighted red marker on the map points to the failed movement, illegal section, or disconnected
+                  transition reported by the existing pipeline diagnostics.
                 </p>
                 <ul className="mt-3 space-y-2">
                   {routeIssueOverlays.map((overlay, index) => (

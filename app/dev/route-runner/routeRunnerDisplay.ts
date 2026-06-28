@@ -1,11 +1,14 @@
 import type {
   DrawnRoutePipelineResult,
-  IllegalMovement,
+  IllegalDrawnMovement,
   MapDefinition,
   MapRoad,
   RunRouteExerciseResult,
+  TurnRestrictionVisual,
+  TurnRestrictionVisualKind,
   Vec2
 } from "../../../lib/map-engine/index.ts";
+import { buildIllegalDrawnMovementHighlights } from "../../../lib/map-engine/index.ts";
 
 export type DrawnPipelineDisplayStatus =
   | "no drawing"
@@ -63,6 +66,7 @@ export type RoadRestrictionOverlay = {
 export type RouteIssueOverlayKind =
   | "wrong-way"
   | "no-entry"
+  | "restricted"
   | "prohibited-turn"
   | "no-u-turn"
   | "disconnected"
@@ -81,6 +85,73 @@ export type RouteIssueOverlay = {
     to: Vec2;
   };
 };
+
+export type TurnRestrictionDisplayItem = {
+  id: string;
+  label: string;
+  turnKind: TurnRestrictionVisualKind;
+  visualTurnKind: TurnRestrictionVisualKind;
+  fromRoadId: string;
+  toRoadId: string;
+  viaNodeId: string;
+  signFaceRotationRadians: number;
+};
+
+export type RouteIssueLineStyle = "solid-red" | "dashed-red";
+
+export type CanvasOverlayDisplayOptions = {
+  showTextLabels: boolean;
+};
+
+export function getDefaultCanvasOverlayDisplayOptions(): CanvasOverlayDisplayOptions {
+  return {
+    showTextLabels: false
+  };
+}
+
+export function getRoadRestrictionSignFaceRotationRadians(overlay: RoadRestrictionOverlay): number {
+  void overlay;
+
+  return 0;
+}
+
+export function getRoadRestrictionDirectionAngleRadians(overlay: RoadRestrictionOverlay): number | null {
+  if (!overlay.direction) {
+    return null;
+  }
+
+  return Math.atan2(
+    overlay.direction.to.y - overlay.direction.from.y,
+    overlay.direction.to.x - overlay.direction.from.x
+  );
+}
+
+function oppositeTurnKind(turnKind: TurnRestrictionVisualKind): TurnRestrictionVisualKind {
+  if (turnKind === "no-left-turn") {
+    return "no-right-turn";
+  }
+
+  if (turnKind === "no-right-turn") {
+    return "no-left-turn";
+  }
+
+  return turnKind;
+}
+
+export function getVisualTurnRestrictionTurnKind(visual: TurnRestrictionVisual): TurnRestrictionVisualKind {
+  if (visual.turnKind === "no-u-turn") {
+    return visual.turnKind;
+  }
+
+  const approachVector = {
+    x: visual.junction.x - visual.incomingRoadPoint.x,
+    y: visual.junction.y - visual.incomingRoadPoint.y
+  };
+  const isMostlyVertical = Math.abs(approachVector.y) >= Math.abs(approachVector.x);
+  const isDownward = approachVector.y > 0;
+
+  return isMostlyVertical && isDownward ? oppositeTurnKind(visual.turnKind) : visual.turnKind;
+}
 
 function roadNodes(map: MapDefinition, road: MapRoad): { from?: Vec2; to?: Vec2 } {
   return {
@@ -225,25 +296,21 @@ function roadMidpointById(map: MapDefinition, roadId: string): Vec2 | undefined 
   return points.length === 2 ? roadMidpoint(points[0], points[1]) : undefined;
 }
 
-function routeIssueKindForIllegalMovement(type: IllegalMovement["type"]): RouteIssueOverlayKind {
-  if (type === "wrong_way_one_way") {
+function routeIssueKindForIllegalDrawnMovement(kind: IllegalDrawnMovement["kind"]): RouteIssueOverlayKind {
+  if (kind === "one-way-wrong-direction") {
     return "wrong-way";
   }
 
-  if (type === "no_entry") {
+  if (kind === "no-entry-road") {
     return "no-entry";
   }
 
-  if (type === "prohibited_turn") {
+  if (kind === "closed-road" || kind === "restricted-road") {
+    return "restricted";
+  }
+
+  if (kind === "prohibited-turn") {
     return "prohibited-turn";
-  }
-
-  if (type === "no_u_turn") {
-    return "no-u-turn";
-  }
-
-  if (type === "disconnected_road_jump") {
-    return "disconnected";
   }
 
   return "illegal";
@@ -256,6 +323,10 @@ function routeIssueLabelForKind(kind: RouteIssueOverlayKind): string {
 
   if (kind === "no-entry") {
     return "No entry";
+  }
+
+  if (kind === "restricted") {
+    return "Restricted road";
   }
 
   if (kind === "prohibited-turn") {
@@ -273,13 +344,17 @@ function routeIssueLabelForKind(kind: RouteIssueOverlayKind): string {
   return "Illegal movement";
 }
 
-function overlayFromRoadMovement(map: MapDefinition, movement: IllegalMovement, kind: RouteIssueOverlayKind): RouteIssueOverlay | null {
-  if (!movement.roadId || !movement.fromNodeId || !movement.toNodeId) {
+function overlayFromIllegalRoadHighlight(
+  map: MapDefinition,
+  highlight: IllegalDrawnMovement,
+  kind: RouteIssueOverlayKind
+): RouteIssueOverlay | null {
+  if (!highlight.roadId || !highlight.fromNodeId || !highlight.toNodeId) {
     return null;
   }
 
-  const from = mapNodeById(map, movement.fromNodeId);
-  const to = mapNodeById(map, movement.toNodeId);
+  const from = mapNodeById(map, highlight.fromNodeId);
+  const to = mapNodeById(map, highlight.toNodeId);
 
   if (!from || !to) {
     return null;
@@ -290,11 +365,11 @@ function overlayFromRoadMovement(map: MapDefinition, movement: IllegalMovement, 
   return {
     kind,
     label: routeIssueLabelForKind(kind),
-    message: movement.message,
+    message: highlight.message,
     points,
     midpoint: roadMidpoint(from, to),
-    roadIds: [movement.roadId],
-    movementIndex: movement.movementIndex,
+    roadIds: [highlight.roadId],
+    movementIndex: highlight.movementIndex,
     direction: { from, to }
   };
 }
@@ -337,21 +412,21 @@ function overlayFromRoadTransition(input: {
   };
 }
 
-function overlayFromIllegalMovement(map: MapDefinition, movement: IllegalMovement): RouteIssueOverlay | null {
-  const kind = routeIssueKindForIllegalMovement(movement.type);
+function overlayFromIllegalDrawnMovement(map: MapDefinition, highlight: IllegalDrawnMovement): RouteIssueOverlay | null {
+  const kind = routeIssueKindForIllegalDrawnMovement(highlight.kind);
 
-  if (movement.previousRoadId || movement.nextRoadId) {
+  if (highlight.kind === "prohibited-turn") {
     return overlayFromRoadTransition({
       map,
       kind,
-      message: movement.message,
-      previousRoadId: movement.previousRoadId,
-      nextRoadId: movement.nextRoadId,
-      movementIndex: movement.movementIndex
+      message: highlight.message,
+      previousRoadId: highlight.incomingRoadId,
+      nextRoadId: highlight.outgoingRoadId,
+      movementIndex: highlight.movementIndex
     });
   }
 
-  return overlayFromRoadMovement(map, movement, kind);
+  return overlayFromIllegalRoadHighlight(map, highlight, kind);
 }
 
 function routeIssueKey(overlay: RouteIssueOverlay): string {
@@ -406,8 +481,14 @@ export function buildRouteIssueOverlays(map: MapDefinition, result: DrawnRoutePi
     }
   }
 
-  for (const illegalMovement of result.exerciseResult?.score.legality.illegalMovements ?? []) {
-    const overlay = overlayFromIllegalMovement(map, illegalMovement);
+  const illegalHighlights = buildIllegalDrawnMovementHighlights({
+    map,
+    illegalMovements: result.exerciseResult?.score.legality.illegalMovements ?? [],
+    scored: Boolean(result.exerciseResult)
+  });
+
+  for (const illegalHighlight of illegalHighlights) {
+    const overlay = overlayFromIllegalDrawnMovement(map, illegalHighlight);
 
     if (overlay) {
       overlays.push(overlay);
@@ -415,6 +496,25 @@ export function buildRouteIssueOverlays(map: MapDefinition, result: DrawnRoutePi
   }
 
   return dedupeRouteIssueOverlays(overlays);
+}
+
+export function getRouteIssueLineStyle(kind: RouteIssueOverlayKind): RouteIssueLineStyle {
+  return kind === "disconnected" ? "dashed-red" : "solid-red";
+}
+
+export function getTurnRestrictionDisplayItems(
+  visuals: readonly TurnRestrictionVisual[]
+): TurnRestrictionDisplayItem[] {
+  return visuals.map((visual) => ({
+    id: visual.id,
+    label: `${visual.label}: ${visual.fromRoadId} -> ${visual.toRoadId} at ${visual.viaNodeId}`,
+    turnKind: visual.turnKind,
+    visualTurnKind: getVisualTurnRestrictionTurnKind(visual),
+    fromRoadId: visual.fromRoadId,
+    toRoadId: visual.toRoadId,
+    viaNodeId: visual.viaNodeId,
+    signFaceRotationRadians: 0
+  }));
 }
 
 export function getDrawnPipelineDisplayStatus(

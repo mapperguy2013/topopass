@@ -1103,15 +1103,30 @@ MAX_BACKUP_AGE_HOURS=36
 - Added dev-route-runner road restriction overlays so existing map-engine
   one-way, no-entry, and road-closed restrictions are visible before drawing.
 - The `/dev/route-runner` canvas now draws red barred no-entry markings, amber
-  restricted-road markings, and blue dashed one-way markings using the existing
+  restricted-road markings, and blue one-way arrowheads using the existing
   Marlowe District fixture data.
 - Added a pure `buildRoadRestrictionOverlays` display helper with deterministic
   tests for one-way, no-entry, road-closed, and turn-only restriction handling.
-- Turn-level prohibited-turn restrictions remain enforced by the existing
-  legality engine but are not drawn as junction arrows yet.
+- Stage 66 focused on road-level overlays; the later Stage 68 section documents
+  the separate turn-level junction overlay.
 - Stage 66 is visual-only and does not change scoring, legality,
   shortest-route behavior, snapping, matching, fixtures, backend persistence,
   or exercise semantics.
+
+## Stage 66.5 Route Runner Overlay UX + Legal Fixture Path Fix
+
+- Stabilised the `/dev/route-runner` drawing area so status changes, drawing
+  start/end messages, and clear-button layout do not shift the canvas viewport.
+- Road-level restriction overlays now keep symbol markers on the canvas but no
+  longer paint long `No entry...` labels directly over the map.
+- Updated the Marlowe District fixture with a minimal road-direction adjustment
+  so the current `Fox Lane Station to Northgate Hospital` dev exercise has at
+  least one fully legal route.
+- Added route-runner tests proving the station-to-hospital exercise has a
+  shortest legal route, the known legal route passes, and an intentional
+  no-entry attempt still fails.
+- Stage 66.5 does not change scoring, legality, shortest-route behavior,
+  snapping, matching, backend persistence, or exercise-runner semantics.
 
 ## Stage 67 Illegal Route Feedback Overlay
 
@@ -1119,14 +1134,82 @@ MAX_BACKUP_AGE_HOURS=36
   parts of a drawn route after snapping, matching, and scoring.
 - The `/dev/route-runner` canvas now marks wrong-way, no-entry, prohibited
   turn, U-turn, illegal movement, and disconnected-road transition diagnostics
-  from the existing pipeline/scoring result.
+  from the existing pipeline/scoring result with symbol-only highlights.
+- Road-level route issues take precedence in the visual language: no-entry and
+  one-way violations are shown as road-level issues instead of duplicating them
+  with turn-restriction signs.
+- Route-issue red line semantics are consistent: solid red marks an illegal or
+  blocked route section, while dashed red marks a disconnected snapped
+  transition.
 - Passing routes do not show route-issue overlays, keeping successful attempts
   visually clean.
 - Added a compact route-issue message panel so the visible marker has a
-  readable explanation without requiring raw JSON diagnostics.
+  readable explanation without requiring raw JSON diagnostics or inline canvas
+  text labels.
 - Stage 67 is display-only and does not change scoring, legality,
   shortest-route behavior, snapping, matching, fixtures, backend persistence,
   or exercise semantics.
+
+## Stage 68 Turn-Level Restriction Visuals
+
+- Added pure map-engine turn restriction visuals for existing
+  `prohibited_turn` fixture restrictions.
+- Each visual includes the blocked `fromRoadId`, `toRoadId`, `viaNodeId`,
+  junction coordinate, incoming road coordinate, outgoing road coordinate, and
+  deterministic marker angles for UI rendering.
+- The `/dev/route-runner` canvas now shows banned turn movements as compact
+  no-left-turn, no-right-turn, or no-U-turn signs on the incoming approach road
+  before the restricted junction, distinct from road-level no-entry/one-way
+  restriction overlays and without painting turn-pair IDs on the map.
+- Turn signs are only shown for genuine transition-level bans where both road
+  directions are otherwise usable; redundant turns into no-entry, one-way, or
+  closed road movements and visually straight movements are suppressed from the
+  default canvas overlay.
+- Turn sign type is geometry-derived from the incoming approach vector and
+  outgoing road vector using the screen-coordinate signed angle; because SVG
+  and canvas coordinates increase downward on the y-axis, a positive signed
+  angle is a right turn and a negative signed angle is a left turn.
+- Turn signs use driver-relative geometry classification with screen-upright
+  sign faces; the red border, red slash, and internal black turn arrow are
+  drawn upright in screen coordinates instead of being angled with the road.
+  For mostly downward approaches, the displayed no-left/no-right glyph is
+  swapped to match the driver's screen direction while the semantic restriction
+  remains unchanged.
+- Added dev checkboxes for `Show road restrictions` and
+  `Show turn restrictions`; both default on for debugging and only affect the
+  visual overlay.
+- Stage 68 is visual/debug-only and does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend persistence,
+  or exercise semantics.
+
+## Stage 69 Illegal Drawn Movement Highlighting
+
+- Added a pure map-engine illegal movement highlighting helper that converts
+  scored legality failures into deterministic post-attempt route highlights.
+- The helper groups failures by attempted movement and applies visual priority:
+  restricted or closed road, no-entry road, wrong-way one-way movement, then
+  explicit prohibited turn. This prevents duplicate no-entry plus no-turn
+  warnings for the same drawn movement.
+- The `/dev/route-runner` canvas keeps the normal drawn and snapped route
+  visible underneath, then uses a stronger red overlay only for the offending
+  movement after scoring. Road-level violations highlight the affected road
+  movement; prohibited turns use a local transition marker instead of repainting
+  whole roads.
+- Stage 69 is post-attempt diagnostic display only and does not change scoring,
+  legality, shortest-route behavior, snapping, matching, fixtures, backend
+  persistence, or exercise semantics.
+
+## Stage 70 Route Attempt Review Panel
+
+- Added a pure route attempt review helper for `/dev/route-runner` that turns
+  scored route results and Stage 69 illegal movement highlights into
+  student-friendly pass/fail, score, distance, illegal movement, route
+  requirement, and suggested failure reason copy.
+- The dev route runner now shows a written post-attempt review alongside the
+  existing score panel, visible issue overlays, and raw debug JSON.
+- Stage 70 is display-only and does not change scoring, legality, shortest-route
+  behavior, snapping, matching, fixtures, backend persistence, route drawing, or
+  exercise semantics.
 
 ## Current Feature Set
 

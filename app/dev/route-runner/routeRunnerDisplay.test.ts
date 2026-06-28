@@ -1,14 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DrawnRoutePipelineResult, MapDefinition, RunRouteExerciseResult } from "../../../lib/map-engine/index.ts";
+import {
+  getTurnRestrictionVisuals,
+  marloweDistrictMap,
+  type DrawnRoutePipelineResult,
+  type MapDefinition,
+  type RunRouteExerciseResult,
+  type TurnRestrictionVisual
+} from "../../../lib/map-engine/index.ts";
 import {
   buildRoadRestrictionOverlays,
   buildRouteIssueOverlays,
+  getDefaultCanvasOverlayDisplayOptions,
   getDrawnPipelineDisplayStatus,
   getDrawnRouteScoreDisplay,
   getPipelineIssueGroups,
   getPipelineStageBadges,
-  getRequiredStopVisitStatuses
+  getRoadRestrictionDirectionAngleRadians,
+  getRoadRestrictionSignFaceRotationRadians,
+  getRouteIssueLineStyle,
+  getRequiredStopVisitStatuses,
+  getTurnRestrictionDisplayItems,
+  getVisualTurnRestrictionTurnKind
 } from "./routeRunnerDisplay.ts";
 
 const restrictionOverlayMap: MapDefinition = {
@@ -127,6 +140,28 @@ function exerciseResult(value: Partial<RunRouteExerciseResult> = {}): RunRouteEx
   };
 }
 
+function turnRestrictionVisual(value: Pick<TurnRestrictionVisual, "turnKind" | "incomingRoadPoint" | "junction">): TurnRestrictionVisual {
+  return {
+    id: "visual-turn",
+    reason: "prohibited_turn",
+    turnClass:
+      value.turnKind === "no-left-turn" ? "left" : value.turnKind === "no-right-turn" ? "right" : "u_turn",
+    fromRoadId: "from-road",
+    toRoadId: "to-road",
+    viaNodeId: "junction",
+    label: "No turn",
+    message: "No turn",
+    outgoingRoadPoint: { x: value.junction.x + 100, y: value.junction.y },
+    signPosition: { x: value.junction.x, y: value.junction.y },
+    iconRotationRadians: 0,
+    angleDegrees: 0,
+    incomingAngleRadians: 0,
+    outgoingAngleRadians: 0,
+    markerAngleRadians: 0,
+    ...value
+  };
+}
+
 test("restriction overlays include one-way road direction", () => {
   const overlays = buildRoadRestrictionOverlays(restrictionOverlayMap);
   const oneWayOverlay = overlays.find((overlay) => overlay.roadId === "one-way-road" && overlay.kind === "one-way");
@@ -178,6 +213,23 @@ test("restriction overlays include no-entry and closed road overlays", () => {
   });
 });
 
+test("road restriction sign faces stay screen upright while direction arrows follow roads", () => {
+  const overlays = buildRoadRestrictionOverlays(restrictionOverlayMap);
+  const oneWayOverlay = overlays.find((overlay) => overlay.roadId === "one-way-road" && overlay.kind === "one-way");
+  const noEntryOverlay = overlays.find((overlay) => overlay.roadId === "no-entry-road");
+  const closedOverlay = overlays.find((overlay) => overlay.roadId === "closed-road");
+
+  assert.ok(oneWayOverlay);
+  assert.ok(noEntryOverlay);
+  assert.ok(closedOverlay);
+  assert.equal(getRoadRestrictionSignFaceRotationRadians(oneWayOverlay), 0);
+  assert.equal(getRoadRestrictionSignFaceRotationRadians(noEntryOverlay), 0);
+  assert.equal(getRoadRestrictionSignFaceRotationRadians(closedOverlay), 0);
+  assert.equal(getRoadRestrictionDirectionAngleRadians(oneWayOverlay), 0);
+  assert.equal(getRoadRestrictionDirectionAngleRadians(noEntryOverlay), Math.PI / 2);
+  assert.equal(getRoadRestrictionDirectionAngleRadians(closedOverlay), null);
+});
+
 test("restriction overlays do not draw turn-only restrictions as road overlays", () => {
   const overlays = buildRoadRestrictionOverlays(restrictionOverlayMap);
 
@@ -186,6 +238,12 @@ test("restriction overlays do not draw turn-only restrictions as road overlays",
     overlays.map((overlay) => `${overlay.kind}:${overlay.roadId}`),
     ["one-way:one-way-road", "no-entry:no-entry-road", "restricted:closed-road"]
   );
+});
+
+test("default canvas overlay display uses symbol-only markers without text labels", () => {
+  assert.deepEqual(getDefaultCanvasOverlayDisplayOptions(), {
+    showTextLabels: false
+  });
 });
 
 test("route issue overlays are hidden for passing scored routes", () => {
@@ -327,6 +385,212 @@ test("route issue overlays highlight disconnected matching transitions before sc
       roadIds: ["one-way-road", "closed-road"]
     }
   ]);
+});
+
+test("route issue overlays highlight explicit prohibited turns after scoring", () => {
+  const overlays = buildRouteIssueOverlays(
+    restrictionOverlayMap,
+    pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          automaticFail: true,
+          status: "fail",
+          isLegal: false,
+          scorePercent: 0,
+          failureReasons: ["illegal_route"],
+          legality: {
+            isLegal: false,
+            automaticFail: true,
+            illegalMovements: [
+              {
+                type: "prohibited_turn",
+                movementIndex: 1,
+                roadId: "one-way-road",
+                fromNodeId: "a",
+                toNodeId: "b",
+                previousRoadId: "turn-only-road",
+                nextRoadId: "one-way-road",
+                viaNodeId: "a",
+                message: "Movement 1 makes a prohibited turn from road turn-only-road to road one-way-road at node a."
+              }
+            ]
+          }
+        }
+      })
+    })
+  );
+
+  assert.equal(overlays.length, 1);
+  assert.equal(overlays[0].kind, "prohibited-turn");
+  assert.equal(overlays[0].label, "Prohibited turn");
+  assert.deepEqual(overlays[0].roadIds, ["turn-only-road", "one-way-road"]);
+});
+
+test("route issue overlays prefer no-entry over redundant prohibited turn on the same movement", () => {
+  const overlays = buildRouteIssueOverlays(
+    restrictionOverlayMap,
+    pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          automaticFail: true,
+          status: "fail",
+          isLegal: false,
+          scorePercent: 0,
+          failureReasons: ["illegal_route"],
+          legality: {
+            isLegal: false,
+            automaticFail: true,
+            illegalMovements: [
+              {
+                type: "prohibited_turn",
+                movementIndex: 2,
+                roadId: "no-entry-road",
+                fromNodeId: "b",
+                toNodeId: "c",
+                previousRoadId: "one-way-road",
+                nextRoadId: "no-entry-road",
+                viaNodeId: "b",
+                message: "Movement 2 makes a prohibited turn from road one-way-road to road no-entry-road at node b."
+              },
+              {
+                type: "no_entry",
+                movementIndex: 2,
+                roadId: "no-entry-road",
+                fromNodeId: "b",
+                toNodeId: "c",
+                message: "Movement 2 uses no-entry road no-entry-road from b to c."
+              }
+            ]
+          }
+        }
+      })
+    })
+  );
+
+  assert.equal(overlays.length, 1);
+  assert.equal(overlays[0].kind, "no-entry");
+  assert.equal(overlays[0].label, "No entry");
+  assert.deepEqual(overlays[0].roadIds, ["no-entry-road"]);
+});
+
+test("route issue line styles keep red semantics stable", () => {
+  assert.equal(getRouteIssueLineStyle("no-entry"), "solid-red");
+  assert.equal(getRouteIssueLineStyle("wrong-way"), "solid-red");
+  assert.equal(getRouteIssueLineStyle("prohibited-turn"), "solid-red");
+  assert.equal(getRouteIssueLineStyle("disconnected"), "dashed-red");
+});
+
+test("turn restriction display items keep sign faces screen upright", () => {
+  assert.deepEqual(
+    getTurnRestrictionDisplayItems([
+      {
+        id: "no-turn-ab-bc",
+        reason: "prohibited_turn",
+        turnKind: "no-left-turn",
+        turnClass: "left",
+        fromRoadId: "r-ab",
+        toRoadId: "r-bc",
+        viaNodeId: "b",
+        label: "No left turn",
+        message: "No turn from A into C",
+        junction: { x: 100, y: 0 },
+        incomingRoadPoint: { x: 0, y: 0 },
+        outgoingRoadPoint: { x: 100, y: 100 },
+        signPosition: { x: 70, y: 0 },
+        iconRotationRadians: Math.PI,
+        angleDegrees: -90,
+        incomingAngleRadians: Math.PI,
+        outgoingAngleRadians: Math.PI / 2,
+        markerAngleRadians: (Math.PI * 3) / 4
+      }
+    ]),
+    [
+      {
+        id: "no-turn-ab-bc",
+        label: "No left turn: r-ab -> r-bc at b",
+        turnKind: "no-left-turn",
+        visualTurnKind: "no-left-turn",
+        fromRoadId: "r-ab",
+        toRoadId: "r-bc",
+        viaNodeId: "b",
+        signFaceRotationRadians: 0
+      }
+    ]
+  );
+});
+
+test("visual turn restriction glyph keeps semantic direction for upward approaches", () => {
+  const upwardNoLeft = turnRestrictionVisual({
+    turnKind: "no-left-turn",
+    incomingRoadPoint: { x: 0, y: 100 },
+    junction: { x: 0, y: 0 }
+  });
+  const upwardNoRight = turnRestrictionVisual({
+    turnKind: "no-right-turn",
+    incomingRoadPoint: { x: 0, y: 100 },
+    junction: { x: 0, y: 0 }
+  });
+
+  assert.equal(getVisualTurnRestrictionTurnKind(upwardNoLeft), "no-left-turn");
+  assert.equal(getVisualTurnRestrictionTurnKind(upwardNoRight), "no-right-turn");
+});
+
+test("visual turn restriction glyph swaps left and right for downward approaches", () => {
+  const downwardNoLeft = turnRestrictionVisual({
+    turnKind: "no-left-turn",
+    incomingRoadPoint: { x: 0, y: -100 },
+    junction: { x: 0, y: 0 }
+  });
+  const downwardNoRight = turnRestrictionVisual({
+    turnKind: "no-right-turn",
+    incomingRoadPoint: { x: 0, y: -100 },
+    junction: { x: 0, y: 0 }
+  });
+
+  assert.equal(getVisualTurnRestrictionTurnKind(downwardNoLeft), "no-right-turn");
+  assert.equal(getVisualTurnRestrictionTurnKind(downwardNoRight), "no-left-turn");
+});
+
+test("visual turn restriction glyph only swaps mostly vertical downward approaches", () => {
+  assert.equal(
+    getVisualTurnRestrictionTurnKind(
+      turnRestrictionVisual({
+        turnKind: "no-left-turn",
+        incomingRoadPoint: { x: 0, y: 0 },
+        junction: { x: 100, y: 20 }
+      })
+    ),
+    "no-left-turn"
+  );
+  assert.equal(
+    getVisualTurnRestrictionTurnKind(
+      turnRestrictionVisual({
+        turnKind: "no-left-turn",
+        incomingRoadPoint: { x: 0, y: 0 },
+        junction: { x: 20, y: 100 }
+      })
+    ),
+    "no-right-turn"
+  );
+});
+
+test("Marlowe downward no-left turn signs display opposite glyphs without changing semantics", () => {
+  const visuals = getTurnRestrictionVisuals(marloweDistrictMap);
+  const fixtureIds = ["pt-baker-court-to-market-lane-east", "pt-museum-cut-to-theatre-street"];
+
+  for (const fixtureId of fixtureIds) {
+    const visual = visuals.find((candidate) => candidate.id === fixtureId);
+
+    assert.ok(visual, `Expected ${fixtureId} to render a turn restriction visual`);
+    assert.equal(visual.turnKind, "no-left-turn");
+    assert.equal(getVisualTurnRestrictionTurnKind(visual), "no-right-turn");
+  }
 });
 
 test("drawn pipeline display status distinguishes no drawing, drawing, and scored states", () => {
