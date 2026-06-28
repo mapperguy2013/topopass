@@ -56,7 +56,7 @@ function formatExtraDistance(distanceMeters: number): string {
 }
 
 function illegalMovementLabel(movement: IllegalDrawnMovement): string {
-  const roadId = movement.roadId ? ` on ${movement.roadId}` : "";
+  const roadId = movement.roadId ?? "";
 
   if (movement.kind === "prohibited-turn") {
     const roads =
@@ -67,17 +67,16 @@ function illegalMovementLabel(movement: IllegalDrawnMovement): string {
     return `Prohibited turn${roads}`;
   }
 
-  if (kind === "closed-road" || kind === "restricted-road") {
   if (movement.kind === "closed-road" || movement.kind === "restricted-road") {
-    return `Restricted road used${roadId}`;
+    return roadId ? `Restricted road used on ${roadId}` : "Restricted road used";
   }
 
   if (movement.kind === "no-entry-road") {
-    return `No-entry road used${roadId}`;
+    return roadId ? `No-entry road used on ${roadId}` : "No-entry road used";
   }
 
   if (movement.kind === "one-way-wrong-direction") {
-    return `Wrong way on one-way road${roadId}`;
+    return roadId ? `Wrong way on one-way road ${roadId}` : "Wrong way on one-way road";
   }
 
   return "Illegal movement";

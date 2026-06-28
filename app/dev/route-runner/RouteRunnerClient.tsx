@@ -1418,15 +1418,24 @@ export function RouteRunnerClient() {
                 </span>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Score</p>
                   <p className="mt-1 font-semibold">{drawnAttemptReview.scoreLabel}</p>
                 </div>
-                <div className="rounded-md border border-current/10 bg-white/70 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Distance</p>
-                  <p className="mt-1 leading-5">{drawnAttemptReview.distanceLabel}</p>
-                </div>
+                {drawnAttemptReview.distanceMetrics.length > 0 ? (
+                  drawnAttemptReview.distanceMetrics.map((metric) => (
+                    <div key={metric.id} className="rounded-md border border-current/10 bg-white/70 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">{metric.label}</p>
+                      <p className="mt-1 font-semibold">{metric.value}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-md border border-current/10 bg-white/70 p-3 sm:col-span-2 lg:col-span-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Distance</p>
+                    <p className="mt-1 leading-5">{drawnAttemptReview.distanceLabel}</p>
+                  </div>
+                )}
               </div>
 
               {drawnAttemptReview.suggestedFailureReason ? (
@@ -1456,7 +1465,7 @@ export function RouteRunnerClient() {
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-semibold">Route requirements</h4>
+                  <h4 className="text-sm font-semibold">Missed restrictions</h4>
                   {drawnAttemptReview.missedRestrictions.length > 0 ? (
                     <ul className="mt-2 space-y-2">
                       {drawnAttemptReview.missedRestrictions.map((item) => (

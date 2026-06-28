@@ -77,9 +77,62 @@ test("buildRouteAttemptReview summarizes a passing scored route", () => {
   assert.equal(review.status, "pass");
   assert.equal(review.title, "Route passed");
   assert.equal(review.scoreLabel, "100.0% (pass)");
-  assert.equal(review.distanceLabel, "Your route: 100m. Shortest legal route: 100m. Extra distance: 0m.");
+  assert.equal(review.distanceLabel, "Your route: 100 m. Shortest legal route: 100 m. Extra distance: +0 m.");
+  assert.deepEqual(review.distanceMetrics, [
+    {
+      id: "student-route-distance",
+      label: "Your route",
+      value: "100 m"
+    },
+    {
+      id: "shortest-legal-distance",
+      label: "Shortest legal route",
+      value: "100 m"
+    },
+    {
+      id: "extra-distance",
+      label: "Extra distance",
+      value: "+0 m"
+    }
+  ]);
   assert.deepEqual(review.illegalMovements, []);
   assert.deepEqual(review.missedRestrictions, []);
+});
+
+test("buildRouteAttemptReview formats kilometre distance breakdowns", () => {
+  const review = buildRouteAttemptReview({
+    pipelineResult: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          userRouteDistanceMeters: 1420,
+          shortestLegalRouteDistanceMeters: 1080,
+          userDistanceMeters: 1420,
+          shortestLegalDistanceMeters: 1080
+        }
+      })
+    }),
+    illegalMovements: []
+  });
+
+  assert.deepEqual(review.distanceMetrics, [
+    {
+      id: "student-route-distance",
+      label: "Your route",
+      value: "1.42 km"
+    },
+    {
+      id: "shortest-legal-distance",
+      label: "Shortest legal route",
+      value: "1.08 km"
+    },
+    {
+      id: "extra-distance",
+      label: "Extra distance",
+      value: "+340 m"
+    }
+  ]);
 });
 
 test("buildRouteAttemptReview explains a legal route that is too long", () => {
@@ -148,9 +201,66 @@ test("buildRouteAttemptReview explains illegal movements from Stage 69 highlight
 
   assert.equal(review.status, "fail");
   assert.equal(review.illegalMovements.length, 1);
-  assert.equal(review.illegalMovements[0].label, "No-entry road used");
+  assert.equal(review.illegalMovements[0].label, "No-entry road used on road-bc");
   assert.equal(review.missedRestrictions.length, 0);
   assert.equal(review.suggestedFailureReason, illegalMovement.message);
+});
+
+test("buildRouteAttemptReview lists multiple illegal movements with display-friendly labels", () => {
+  const illegalMovements: IllegalDrawnMovement[] = [
+    {
+      id: "1:prohibited-turn:r24:r22",
+      kind: "prohibited-turn",
+      movementIndex: 1,
+      roadId: "r22",
+      fromNodeId: "n17",
+      toNodeId: "n18",
+      viaNodeId: "n17",
+      incomingRoadId: "r24",
+      outgoingRoadId: "r22",
+      message: "Movement 1 makes a prohibited turn from road r24 to road r22 at node n17."
+    },
+    {
+      id: "2:one-way-wrong-direction:r18:n07",
+      kind: "one-way-wrong-direction",
+      movementIndex: 2,
+      roadId: "r18",
+      fromNodeId: "n03",
+      toNodeId: "n07",
+      message: "Movement 2 travels the wrong way on one-way road r18."
+    }
+  ];
+  const review = buildRouteAttemptReview({
+    pipelineResult: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          automaticFail: true,
+          status: "fail",
+          isLegal: false,
+          scorePercent: 0,
+          efficiencyRatio: 0,
+          scoreRatio: 0,
+          failureReasons: ["illegal_route"],
+          legality: {
+            isLegal: false,
+            automaticFail: true,
+            illegalMovements: []
+          }
+        }
+      })
+    }),
+    illegalMovements
+  });
+
+  assert.deepEqual(
+    review.illegalMovements.map((movement) => movement.label),
+    ["Prohibited turn: r24 -> r22", "Wrong way on one-way road r18"]
+  );
+  assert.equal(review.missedRestrictions.length, 0);
+  assert.equal(review.suggestedFailureReason, illegalMovements[0].message);
 });
 
 test("buildRouteAttemptReview explains blocked pre-scoring matching failures", () => {

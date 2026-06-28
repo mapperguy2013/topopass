@@ -1205,6 +1205,9 @@ MAX_BACKUP_AGE_HOURS=36
   scored route results and Stage 69 illegal movement highlights into
   student-friendly pass/fail, score, distance, illegal movement, route
   requirement, and suggested failure reason copy.
+- The review panel shows the student's route distance, shortest legal route
+  distance, extra distance, illegal movement list, missed route requirements,
+  and a plain-English likely failure reason.
 - The dev route runner now shows a written post-attempt review alongside the
   existing score panel, visible issue overlays, and raw debug JSON.
 - Stage 70 is display-only and does not change scoring, legality, shortest-route
