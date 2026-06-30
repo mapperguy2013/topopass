@@ -119,7 +119,9 @@ test("medium converted OSM map uses a more comfortable first-load fit", () => {
 
 test("converted OSM labels and road classes use preserved OSM metadata", () => {
   const visuals = buildSyntheticRoadVisuals(tinyLondonOsmRouteMap);
-  const labels = buildSyntheticMapLabels(tinyLondonOsmRouteMap, tinyLondonOsmRouteExercises[0]);
+  const labels = buildSyntheticMapLabels(tinyLondonOsmRouteMap, tinyLondonOsmRouteExercises[0], {
+    includeOsmRoadLabels: true
+  });
   const primaryRoad = tinyLondonOsmRouteMap.roads.find((road) => road.name === "King's Cross Road");
   const serviceRoad = tinyLondonOsmRouteMap.roads.find((road) => road.name === "Stable Yard Lane");
 
@@ -194,7 +196,9 @@ test("medium converted OSM map exposes drawable and snappable road geometry", ()
 
 test("medium converted OSM labels and road classes use preserved OSM metadata", () => {
   const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
-  const labels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0]);
+  const labels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0], {
+    includeOsmRoadLabels: true
+  });
   const eustonRoad = mediumLondonOsmRouteMap.roads.find((road) => road.name === "Euston Road");
   const storeStreet = mediumLondonOsmRouteMap.roads.find((road) => road.name === "Store Street");
 

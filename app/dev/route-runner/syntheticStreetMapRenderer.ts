@@ -55,10 +55,28 @@ export type SyntheticRoadStyle = {
   dash?: number[];
 };
 
+export type OsmRoadVisualHierarchy =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "residential"
+  | "service"
+  | "unknown";
+
+export type OsmRoadRenderMetadata = {
+  source: "osm";
+  highway: string | null;
+  hierarchy: OsmRoadVisualHierarchy;
+  osmWayId: string | null;
+};
+
 export type SyntheticRoadVisual = {
   roadId: string;
   name: string;
   roadClass: SyntheticRoadClass;
+  source: "synthetic" | "osm";
+  osmHighway?: string;
+  osmHierarchy?: OsmRoadVisualHierarchy;
   points: Vec2[];
   midpoint: Vec2;
   labelAngleRadians: number;
@@ -130,28 +148,85 @@ export type SyntheticStreetMapLegendItem = {
   tone: SyntheticLegendTone;
 };
 
+export type BuildSyntheticMapLabelOptions = {
+  includeOsmRoadLabels?: boolean;
+};
+
 type RoadWithOptionalOsmMetadata = MapRoad & {
   metadata?: {
+    source?: string;
     highway?: string;
+    osmWayId?: string | number;
   };
 };
 
-function roadClassFromOsmHighway(road: MapRoad): SyntheticRoadClass | null {
-  const highway = (road as RoadWithOptionalOsmMetadata).metadata?.highway;
+function osmRoadMetadata(road: MapRoad): RoadWithOptionalOsmMetadata["metadata"] | null {
+  const metadata = (road as RoadWithOptionalOsmMetadata).metadata;
+
+  return metadata?.source === "osm" ? metadata : null;
+}
+
+export function deriveOsmRoadVisualHierarchy(road: MapRoad): OsmRoadVisualHierarchy | null {
+  const highway = osmRoadMetadata(road)?.highway;
 
   if (!highway) {
-    return null;
+    return osmRoadMetadata(road) ? "unknown" : null;
   }
 
   if (highway === "primary" || highway === "primary_link") {
-    return "major";
+    return "primary";
   }
 
-  if (highway === "secondary" || highway === "secondary_link" || highway === "tertiary" || highway === "tertiary_link") {
+  if (highway === "secondary" || highway === "secondary_link") {
     return "secondary";
   }
 
+  if (highway === "tertiary" || highway === "tertiary_link") {
+    return "tertiary";
+  }
+
   if (highway === "service") {
+    return "service";
+  }
+
+  if (highway === "residential" || highway === "living_street" || highway === "unclassified") {
+    return "residential";
+  }
+
+  return "unknown";
+}
+
+export function deriveOsmRoadRenderMetadata(road: MapRoad): OsmRoadRenderMetadata | null {
+  const metadata = osmRoadMetadata(road);
+
+  if (!metadata) {
+    return null;
+  }
+
+  return {
+    source: "osm",
+    highway: metadata.highway ?? null,
+    hierarchy: deriveOsmRoadVisualHierarchy(road) ?? "unknown",
+    osmWayId: typeof metadata.osmWayId === "string" || typeof metadata.osmWayId === "number" ? String(metadata.osmWayId) : null
+  };
+}
+
+function roadClassFromOsmHighway(road: MapRoad): SyntheticRoadClass | null {
+  const hierarchy = deriveOsmRoadVisualHierarchy(road);
+
+  if (!hierarchy) {
+    return null;
+  }
+
+  if (hierarchy === "primary") {
+    return "major";
+  }
+
+  if (hierarchy === "secondary" || hierarchy === "tertiary") {
+    return "secondary";
+  }
+
+  if (hierarchy === "service") {
     return "service";
   }
 
@@ -167,14 +242,14 @@ export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): Syn
     return "no-entry";
   }
 
-  if (road.isOneWay) {
-    return "one-way";
-  }
-
   const osmRoadClass = roadClassFromOsmHighway(road);
 
   if (osmRoadClass) {
     return osmRoadClass;
+  }
+
+  if (road.isOneWay) {
+    return "one-way";
   }
 
   if (road.distanceMeters >= 155) {
@@ -190,6 +265,51 @@ export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): Syn
   }
 
   return "local";
+}
+
+export function roadStyleForOsmHierarchy(hierarchy: OsmRoadVisualHierarchy): SyntheticRoadStyle {
+  if (hierarchy === "primary") {
+    return {
+      casingColor: "#fff7ed",
+      strokeColor: "#f5c84c",
+      casingWidth: 14,
+      strokeWidth: 8
+    };
+  }
+
+  if (hierarchy === "secondary" || hierarchy === "tertiary") {
+    return {
+      casingColor: "#ffffff",
+      strokeColor: "#f4d27c",
+      casingWidth: 11,
+      strokeWidth: 6
+    };
+  }
+
+  if (hierarchy === "service") {
+    return {
+      casingColor: "#ffffff",
+      strokeColor: "#d8e0ea",
+      casingWidth: 6,
+      strokeWidth: 2.5
+    };
+  }
+
+  if (hierarchy === "residential") {
+    return {
+      casingColor: "#ffffff",
+      strokeColor: "#cbd5e1",
+      casingWidth: 8,
+      strokeWidth: 4
+    };
+  }
+
+  return {
+    casingColor: "#ffffff",
+    strokeColor: "#cbd5e1",
+    casingWidth: 7,
+    strokeWidth: 3.5
+  };
 }
 
 export function roadStyleForSyntheticClass(roadClass: SyntheticRoadClass): SyntheticRoadStyle {
@@ -266,19 +386,24 @@ export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisu
 
     const roadClass = deriveSyntheticRoadClass(map, road);
     const label = deriveRoadLabelPosition(map, road);
+    const osmMetadata = deriveOsmRoadRenderMetadata(road);
+    const style = osmMetadata ? roadStyleForOsmHierarchy(osmMetadata.hierarchy) : roadStyleForSyntheticClass(roadClass);
 
     return [
       {
         roadId: road.id,
         name: road.name ?? road.id,
         roadClass,
+        source: osmMetadata ? "osm" : "synthetic",
+        ...(osmMetadata?.highway ? { osmHighway: osmMetadata.highway } : {}),
+        ...(osmMetadata ? { osmHierarchy: osmMetadata.hierarchy } : {}),
         points: [endpoints.from, endpoints.to],
         midpoint: midpoint(endpoints.from, endpoints.to),
         labelAngleRadians: label?.angleRadians ?? 0,
         isOneWay: road.isOneWay,
         hasNoEntryRestriction: hasNoEntryRestriction(map, road.id),
         hasRoadClosedRestriction: hasRoadClosedRestriction(map, road.id),
-        style: roadStyleForSyntheticClass(roadClass)
+        style
       }
     ];
   });
@@ -300,10 +425,19 @@ export function deriveRoadLabelPosition(
   };
 }
 
-export function buildSyntheticMapLabels(map: MapDefinition, exercise?: RouteExercise): SyntheticMapLabel[] {
+export function buildSyntheticMapLabels(
+  map: MapDefinition,
+  exercise?: RouteExercise,
+  options: BuildSyntheticMapLabelOptions = {}
+): SyntheticMapLabel[] {
   const labels: SyntheticMapLabel[] = [];
+  const roadVisuals = buildSyntheticRoadVisuals(map);
 
-  for (const visual of buildSyntheticRoadVisuals(map)) {
+  for (const visual of roadVisuals) {
+    if (visual.source === "osm") {
+      continue;
+    }
+
     if (visual.roadClass === "service") {
       continue;
     }
@@ -316,6 +450,10 @@ export function buildSyntheticMapLabels(map: MapDefinition, exercise?: RouteExer
       angleRadians: visual.labelAngleRadians,
       priority: roadLabelPriority(visual.roadClass)
     });
+  }
+
+  if (options.includeOsmRoadLabels) {
+    labels.push(...buildOsmRoadLabels(roadVisuals));
   }
 
   for (const feature of buildSyntheticBackgroundFeatures(map)) {
@@ -366,6 +504,67 @@ export function buildSyntheticMapLabels(map: MapDefinition, exercise?: RouteExer
   }
 
   return labels.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticMapLabel[] {
+  const labelsByName = new Map<string, SyntheticRoadVisual[]>();
+
+  for (const visual of roadVisuals) {
+    if (visual.source !== "osm" || visual.name === visual.roadId || visual.name.trim().length === 0) {
+      continue;
+    }
+
+    const group = labelsByName.get(visual.name) ?? [];
+
+    group.push(visual);
+    labelsByName.set(visual.name, group);
+  }
+
+  return [...labelsByName.entries()].map(([name, visuals]) => {
+    const selectedVisual = selectOsmRoadLabelVisual(visuals);
+
+    return {
+      id: `road-label-osm-${slugifyLabelId(name)}`,
+      kind: "road",
+      text: name,
+      point: { ...selectedVisual.midpoint },
+      angleRadians: selectedVisual.labelAngleRadians,
+      priority: roadLabelPriority(selectedVisual.roadClass)
+    };
+  });
+}
+
+function selectOsmRoadLabelVisual(visuals: readonly SyntheticRoadVisual[]): SyntheticRoadVisual {
+  return [...visuals].sort((left, right) => {
+    const classPriority = roadLabelPriority(left.roadClass) - roadLabelPriority(right.roadClass);
+
+    if (classPriority !== 0) {
+      return classPriority;
+    }
+
+    const lengthDifference = roadVisualLength(right) - roadVisualLength(left);
+
+    if (lengthDifference !== 0) {
+      return lengthDifference;
+    }
+
+    return left.roadId.localeCompare(right.roadId);
+  })[0];
+}
+
+function roadVisualLength(visual: SyntheticRoadVisual): number {
+  if (visual.points.length < 2) {
+    return 0;
+  }
+
+  const from = visual.points[0];
+  const to = visual.points[visual.points.length - 1];
+
+  return Math.hypot(to.x - from.x, to.y - from.y);
+}
+
+function slugifyLabelId(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unnamed";
 }
 
 export function buildSyntheticLinearFeatures(map: MapDefinition): SyntheticLinearFeature[] {

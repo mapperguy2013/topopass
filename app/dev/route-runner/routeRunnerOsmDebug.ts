@@ -64,6 +64,9 @@ export type OsmDebugDirectedEdgeVisual = {
   id: string;
   roadId: string;
   roadName: string;
+  osmWayId: string | null;
+  osmHighway: string | null;
+  originalDirection: "both" | "forward" | "reverse" | "unknown";
   fromNodeId: string;
   toNodeId: string;
   direction: DirectedEdge["direction"];
@@ -206,6 +209,9 @@ export function buildOsmDebugOverlayModel(input: {
           id: edge.id,
           roadId: edge.roadId,
           roadName: road.name ?? edge.roadId,
+          osmWayId: osmRoadMetadata(road).osmWayId,
+          osmHighway: osmRoadMetadata(road).highway,
+          originalDirection: osmRoadMetadata(road).originalDirection,
           fromNodeId: edge.fromNodeId,
           toNodeId: edge.toNodeId,
           direction: edge.direction,
@@ -282,5 +288,31 @@ function osmMapMetadata(map: MapDefinition): {
   return {
     source: metadata?.source === "osm" ? "osm" : "unknown",
     blockedOsmWayIds: Array.isArray(metadata?.blockedOsmWayIds) ? metadata.blockedOsmWayIds : []
+  };
+}
+
+function osmRoadMetadata(road: unknown): {
+  osmWayId: string | null;
+  highway: string | null;
+  originalDirection: "both" | "forward" | "reverse" | "unknown";
+} {
+  const metadata = (road as { metadata?: unknown }).metadata as
+    | {
+        osmWayId?: unknown;
+        highway?: unknown;
+        originalDirection?: unknown;
+      }
+    | undefined;
+  const originalDirection =
+    metadata?.originalDirection === "both" ||
+    metadata?.originalDirection === "forward" ||
+    metadata?.originalDirection === "reverse"
+      ? metadata.originalDirection
+      : "unknown";
+
+  return {
+    osmWayId: typeof metadata?.osmWayId === "string" || typeof metadata?.osmWayId === "number" ? String(metadata.osmWayId) : null,
+    highway: typeof metadata?.highway === "string" ? metadata.highway : null,
+    originalDirection
   };
 }

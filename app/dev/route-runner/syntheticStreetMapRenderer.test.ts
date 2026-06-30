@@ -8,8 +8,11 @@ import {
   buildSyntheticRoadVisuals,
   buildSyntheticRouteOverlayVisuals,
   buildSyntheticStreetMapLegendItems,
+  deriveOsmRoadRenderMetadata,
+  deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
   deriveSyntheticRoadClass,
+  roadStyleForOsmHierarchy,
   roadStyleForSyntheticClass
 } from "./syntheticStreetMapRenderer.ts";
 import {
@@ -17,6 +20,7 @@ import {
   marloweDistrictRouteExercises,
   type MapDefinition
 } from "../../../lib/map-engine/index.ts";
+import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
 
 test("deriveSyntheticRoadClass applies hierarchy and restriction-safe classes", () => {
   const oneWayRoad = marloweDistrictMap.roads.find((road) => road.id === "r04");
@@ -131,6 +135,89 @@ test("synthetic road styling keeps a clear London-inspired hierarchy", () => {
   assert.ok(majorStyle.casingWidth > localStyle.casingWidth);
   assert.ok(localStyle.strokeWidth > serviceStyle.strokeWidth);
   assert.equal(oneWayStyle.strokeColor, "#bfdbfe");
+});
+
+test("converted OSM road visuals expose deterministic hierarchy metadata", () => {
+  const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
+  const eustonRoad = visuals.find((visual) => visual.name === "Euston Road");
+  const storeStreet = visuals.find((visual) => visual.name === "Store Street");
+
+  assert.ok(eustonRoad);
+  assert.ok(storeStreet);
+  assert.equal(eustonRoad.source, "osm");
+  assert.equal(eustonRoad.osmHighway, "primary");
+  assert.equal(eustonRoad.osmHierarchy, "primary");
+  assert.equal(eustonRoad.roadClass, "major");
+  assert.equal(storeStreet.osmHighway, "service");
+  assert.equal(storeStreet.osmHierarchy, "service");
+  assert.ok(eustonRoad.style.strokeWidth > storeStreet.style.strokeWidth);
+});
+
+test("converted OSM hierarchy maps to expected road style widths", () => {
+  assert.ok(roadStyleForOsmHierarchy("primary").strokeWidth > roadStyleForOsmHierarchy("secondary").strokeWidth);
+  assert.ok(roadStyleForOsmHierarchy("secondary").strokeWidth > roadStyleForOsmHierarchy("residential").strokeWidth);
+  assert.ok(roadStyleForOsmHierarchy("residential").strokeWidth > roadStyleForOsmHierarchy("service").strokeWidth);
+  assert.equal(roadStyleForOsmHierarchy("tertiary").strokeWidth, roadStyleForOsmHierarchy("secondary").strokeWidth);
+});
+
+test("converted OSM road labels are optional and deduplicated by road name", () => {
+  const hiddenLabels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0]);
+  const visibleLabels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0], {
+    includeOsmRoadLabels: true
+  });
+  const eustonRoadLabels = visibleLabels.filter((label) => label.kind === "road" && label.text === "Euston Road");
+
+  assert.equal(hiddenLabels.some((label) => label.kind === "road" && label.text === "Euston Road"), false);
+  assert.equal(eustonRoadLabels.length, 1);
+  assert.deepEqual(eustonRoadLabels[0], {
+    id: "road-label-osm-euston-road",
+    kind: "road",
+    text: "Euston Road",
+    point: { x: -166.20283849999998, y: -200.376 },
+    angleRadians: 0,
+    priority: 3
+  });
+});
+
+test("unnamed converted OSM roads do not crash label generation", () => {
+  const unnamedOsmMap: MapDefinition = {
+    id: "unnamed-osm-map",
+    name: "Unnamed OSM map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 20, y: 0 }
+    ],
+    roads: [
+      {
+        id: "osm-way-1-segment-0",
+        fromNodeId: "a",
+        toNodeId: "b",
+        distanceMeters: 20,
+        isOneWay: false,
+        metadata: {
+          source: "osm",
+          osmWayId: 1,
+          highway: "residential"
+        }
+      }
+    ],
+    restrictions: [],
+    landmarks: []
+  } as MapDefinition;
+
+  assert.equal(deriveOsmRoadVisualHierarchy(unnamedOsmMap.roads[0]), "residential");
+  assert.deepEqual(deriveOsmRoadRenderMetadata(unnamedOsmMap.roads[0]), {
+    source: "osm",
+    highway: "residential",
+    hierarchy: "residential",
+    osmWayId: "1"
+  });
+  assert.deepEqual(
+    buildSyntheticMapLabels(unnamedOsmMap, undefined, { includeOsmRoadLabels: true }).filter(
+      (label) => label.kind === "road"
+    ),
+    []
+  );
 });
 
 test("synthetic rail/context features are visual only and deterministic", () => {

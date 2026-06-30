@@ -2075,6 +2075,49 @@ out body;
   shortest-route/reveal-fastest-route logic, touch saved attempts, analytics,
   Supabase, or replace the default synthetic map.
 
+## Stage 108 Medium OSM Exercise QA Harness
+
+- Added a dev/test-only QA harness for converted OSM route-runner exercises.
+  It validates each exercise against the selected converted graph without
+  changing route scoring, snapping, matching, shortest-route behavior, storage,
+  analytics, Supabase, or production UI.
+- The harness checks that start, checkpoint, and destination nodes exist, start
+  and destination are distinct, ordered checkpoint legs are legally reachable,
+  fastest/reveal route edges exist in the graph, returned routes avoid blocked
+  directed edges, one-way/no-entry restrictions are respected, and route points
+  sit inside the rendered map bounds.
+- Diagnostics use stable reason codes for fixture QA, including
+  `missing-start-node`, `missing-destination-node`, `missing-checkpoint-node`,
+  `unreachable-leg`, `illegal-directed-edge`, `unknown-route-edge`, and
+  `outside-render-bounds`.
+- Added test coverage proving all tiny and medium converted OSM exercises pass
+  the harness, while intentionally broken missing-node, unreachable, blocked
+  directed-edge, wrong-way edge, and out-of-bounds cases fail deterministically.
+- Run the OSM exercise QA coverage through `npm.cmd run test:map`. The harness
+  is local and deterministic; it does not fetch live Overpass data or use any
+  external routing API.
+
+## Stage 109 OSM Visual Renderer Pass
+
+- Improved dev-only converted OSM map rendering in `/dev/route-runner` without
+  changing the default Marlowe synthetic map or any route scoring, snapping,
+  matching, shortest-route, storage, analytics, Supabase, or production
+  behavior.
+- Converted OSM roads now expose deterministic visual hierarchy metadata from
+  preserved OSM highway tags. Primary roads render thickest, secondary and
+  tertiary roads render as medium roads, residential/living-street style roads
+  render normally, and service roads render thinner.
+- OSM road-name labels are optional and tied to the existing OSM QA/debug view.
+  They are hidden during normal route drawing, deduplicated by road name when QA
+  is enabled, and skipped safely for unnamed roads.
+- The OSM QA directed-edge model now carries preserved OSM way id, highway, and
+  original direction metadata so one-way and reverse-imported one-way segments
+  are easier to inspect. Reverse-imported one-way debug arrows use a distinct QA
+  colour in the overlay.
+- Stage 109 remains dev-route-runner rendering/debug polish only. It does not
+  fetch live Overpass data, add map data, use external map/routing APIs, replace
+  synthetic fixtures, or alter legality and routing behavior.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

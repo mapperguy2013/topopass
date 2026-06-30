@@ -1122,6 +1122,7 @@ function drawSyntheticStreetMapBase(input: {
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
+  showOsmRoadLabels: boolean;
   selectedExercise?: RouteExercise;
 }): void {
   for (const feature of input.backgroundFeatures) {
@@ -1140,7 +1141,9 @@ function drawSyntheticStreetMapBase(input: {
     drawSyntheticLandmarkVisual(input.context, visual, input.viewport);
   }
 
-  const labels = buildSyntheticMapLabels(input.map, input.selectedExercise);
+  const labels = buildSyntheticMapLabels(input.map, input.selectedExercise, {
+    includeOsmRoadLabels: input.showOsmRoadLabels
+  });
 
   for (const label of labels) {
     if (label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish") {
@@ -1704,7 +1707,7 @@ function drawOsmDebugDirectedEdge(
   style: OsmDebugOverlayStyle
 ): void {
   const [from, to] = shiftedDebugEdgePoints(edge, viewport);
-  const colour = edge.isOneWayRoad ? "#db2777" : "#0891b2";
+  const colour = edge.isOneWayRoad ? (edge.originalDirection === "reverse" ? "#be123c" : "#db2777") : "#0891b2";
   const arrowStart = {
     x: from.x + (to.x - from.x) * 0.58,
     y: from.y + (to.y - from.y) * 0.58
@@ -1781,6 +1784,7 @@ function drawRouteCanvas(input: {
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
+  showOsmRoadLabels: boolean;
   selectedExercise?: RouteExercise;
   trace: DrawnRouteTrace;
   routeDraft: DrawnRouteDraft;
@@ -1813,6 +1817,7 @@ function drawRouteCanvas(input: {
     backgroundFeatures: input.backgroundFeatures,
     linearFeatures: input.linearFeatures,
     roadVisuals: input.roadVisuals,
+    showOsmRoadLabels: input.showOsmRoadLabels,
     selectedExercise: input.selectedExercise
   });
 
@@ -2705,6 +2710,7 @@ export function RouteRunnerClient() {
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
+      showOsmRoadLabels: isConvertedOsmMap ? osmDebugOverlayState.visible : true,
       selectedExercise,
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,
@@ -2724,8 +2730,10 @@ export function RouteRunnerClient() {
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
+    isConvertedOsmMap,
     osmDebugOverlay,
     osmDebugOverlayAvailable,
+    osmDebugOverlayState.visible,
     restrictionMapVisualItems,
     routeReplayMarkers,
     routeIssueOverlays,

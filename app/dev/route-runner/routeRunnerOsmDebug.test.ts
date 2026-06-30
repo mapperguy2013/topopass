@@ -117,7 +117,27 @@ test("visible OSM debug overlay exposes graph nodes and directed edges", () => {
   assert.equal(model.style.showTwoWayDirectionArrows, false);
   assert.ok(firstOneWayEdge);
   assert.equal(firstOneWayEdge.points.length, 2);
+  assert.equal(firstOneWayEdge.osmHighway, "secondary");
+  assert.equal(firstOneWayEdge.originalDirection, "forward");
   assert.notEqual(model.nodes[0].point, mediumLondonOsmRouteMap.nodes[0]);
+});
+
+test("visible OSM debug overlay exposes reverse imported one-way metadata", () => {
+  const model = buildOsmDebugOverlayModel({
+    map: mediumLondonOsmRouteMap,
+    graph: buildMapGraph(mediumLondonOsmRouteMap),
+    state: {
+      visible: true,
+      showIds: false
+    }
+  });
+  const reverseImportedEdge = model.directedEdges.find((edge) => edge.originalDirection === "reverse");
+
+  assert.ok(reverseImportedEdge);
+  assert.equal(reverseImportedEdge.isOneWayRoad, true);
+  assert.equal(reverseImportedEdge.roadName, "Gower Street");
+  assert.equal(reverseImportedEdge.osmHighway, "secondary");
+  assert.equal(reverseImportedEdge.osmWayId, "6004");
 });
 
 test("medium OSM debug overlay style keeps graph QA readable without dense two-way arrows", () => {
