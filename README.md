@@ -2428,6 +2428,30 @@ out body;
   `npm.cmd run test:map` passed 664/664, `npm.cmd run lint` passed, and
   `npm.cmd run build` passed.
 
+## Stage 119 Real London Pilot Consolidated Readiness Report
+
+- Added a dev/test-only readiness report helper for `osm-real-london-pilot`
+  built only from the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture and the
+  existing Stage 115-118 QA helpers.
+- The report consolidates map id, fixture source, exercise count, acceptance
+  QA status, manual-attempt QA status, drawn-route QA status, render/bounds
+  sanity, fastest legal route availability, illegal movement detection
+  coverage, pass/fail section summary, deterministic prefixed failure reason
+  codes, and an overall `ready` or `not-ready` status.
+- Stage 119 reuses the existing acceptance, manual-attempt, drawn-route, and
+  route-runner fit-bounds logic. It does not fetch live Overpass data, use
+  external routing APIs, manually edit OSM road directions, weaken one-way or
+  no-entry legality, change scoring rules, change production behaviour, or
+  make the real London pilot the default map.
+- Focused tests prove the current real pilot readiness report passes, includes
+  every expected section, emits deterministic failure status output, keeps
+  tiny and medium OSM acceptance regression behaviour unchanged, and leaves the
+  Marlowe synthetic map as the default route-runner map.
+- Validation for this stage is covered by the focused
+  `routeRunnerOsmRealPilotReadinessReport` test, `npm.cmd run test:map`,
+  `npm.cmd run lint`, and `npm.cmd run build`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
