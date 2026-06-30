@@ -2577,6 +2577,23 @@ out body;
   the committed `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json`
   fixture with no live OSM/Overpass fetches or external routing APIs.
 
+## Stage 126 OSM Conversion Stability Checks
+
+- Added focused deterministic OSM conversion stability coverage for the
+  committed tiny London, medium London, and real London pilot fixtures.
+- The checks prove repeated conversion and reordered Overpass input elements
+  produce equivalent normalized maps, converted node/road/edge identifiers stay
+  stable, graph references are internally valid, bounds and stop coordinates are
+  finite, and one-way/two-way edge expansion remains deterministic.
+- The tests also lock preservation of app-facing road metadata and deterministic
+  handling of skipped malformed OSM data.
+- This remains fixture-only: `osm-real-london-pilot` still uses the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` file with no live
+  Overpass fetches and no external routing APIs.
+- No route solving, scoring, snapping, legality, attempt review, UI production,
+  Supabase, auth, analytics, deployment, or default-map behaviour changed.
+  Marlowe remains the default map.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
