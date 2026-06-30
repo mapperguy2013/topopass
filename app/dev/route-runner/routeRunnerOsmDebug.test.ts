@@ -10,6 +10,7 @@ import {
 } from "./routeRunnerMaps.ts";
 import {
   buildOsmDebugOverlayModel,
+  buildOsmDebugOverlayStyle,
   buildOsmDebugSummary,
   canOfferOsmDebugOverlay,
   createDefaultOsmDebugOverlayState
@@ -45,6 +46,7 @@ test("medium OSM debug summary is deterministic", () => {
   assert.equal(summary.mapId, "osm-medium-london-prototype");
   assert.equal(summary.mapName, "Medium London OSM Prototype");
   assert.equal(summary.sourceFixtureName, "mediumLondonOverpass.json");
+  assert.equal(summary.sourceKind, "osm");
   assert.equal(summary.nodeCount, 25);
   assert.equal(summary.roadSegmentCount, 48);
   assert.equal(summary.directedEdgeCount, 76);
@@ -52,6 +54,20 @@ test("medium OSM debug summary is deterministic", () => {
   assert.equal(summary.twoWayRoadSegmentCount, 28);
   assert.equal(summary.oneWayDirectedEdgeCount, 20);
   assert.equal(summary.twoWayDirectedEdgeCount, 56);
+  assert.equal(summary.blockedOsmWayCount, 1);
+  assert.deepEqual(summary.blockedOsmWayIds, ["6016"]);
+  assert.deepEqual(summary.bounds, {
+    minX: -221.603785,
+    minY: -200.376,
+    maxX: 221.603785,
+    maxY: 200.376
+  });
+  assert.deepEqual(summary.extent, {
+    width: 443.20757,
+    height: 400.752,
+    centerX: 0,
+    centerY: 0
+  });
   assert.equal(summary.selectedExerciseId, "osm-medium-bloomsbury-checkpoint");
   assert.deepEqual(
     summary.stops.map((stop) => [stop.role, stop.nodeId]),
@@ -75,6 +91,7 @@ test("hidden OSM debug overlay returns summary without visual clutter", () => {
   assert.equal(model.visible, false);
   assert.equal(model.showIds, false);
   assert.equal(model.summary.nodeCount, 25);
+  assert.equal(model.style.showTwoWayDirectionArrows, false);
   assert.deepEqual(model.nodes, []);
   assert.deepEqual(model.directedEdges, []);
 });
@@ -96,9 +113,27 @@ test("visible OSM debug overlay exposes graph nodes and directed edges", () => {
   assert.equal(model.showIds, true);
   assert.equal(model.nodes.length, mediumLondonOsmRouteMap.nodes.length);
   assert.equal(model.directedEdges.length, graph.edges.length);
+  assert.equal(model.style.nodeRadius, 3.2);
+  assert.equal(model.style.showTwoWayDirectionArrows, false);
   assert.ok(firstOneWayEdge);
   assert.equal(firstOneWayEdge.points.length, 2);
   assert.notEqual(model.nodes[0].point, mediumLondonOsmRouteMap.nodes[0]);
+});
+
+test("medium OSM debug overlay style keeps graph QA readable without dense two-way arrows", () => {
+  const summary = buildOsmDebugSummary({
+    map: mediumLondonOsmRouteMap,
+    graph: buildMapGraph(mediumLondonOsmRouteMap),
+    sourceFixtureName: "mediumLondonOverpass.json"
+  });
+  const style = buildOsmDebugOverlayStyle(summary);
+
+  assert.equal(style.nodeRadius, 3.2);
+  assert.equal(style.nodeInnerRadius, 1.35);
+  assert.equal(style.twoWayEdgeAlpha, 0.24);
+  assert.equal(style.oneWayEdgeAlpha, 0.68);
+  assert.deepEqual(style.twoWayEdgeDash, [3, 5]);
+  assert.equal(style.showTwoWayDirectionArrows, false);
 });
 
 test("tiny and medium converted maps produce different OSM debug summaries", () => {

@@ -32,6 +32,8 @@ export type RouteRunnerMapBounds = {
 
 const OSM_FIXTURE_MAP_ID = "osm-tiny-london-prototype";
 const MEDIUM_OSM_FIXTURE_MAP_ID = "osm-medium-london-prototype";
+const DEFAULT_ROUTE_RUNNER_MAP_PADDING = 45;
+const MEDIUM_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.22;
 
 function buildTinyLondonOsmMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(tinyLondonOverpassFixture, {
@@ -341,6 +343,30 @@ export function getRouteRunnerMapBounds(map: MapDefinition): RouteRunnerMapBound
       maxY: map.nodes[0].y
     }
   );
+}
+
+export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
+  if (map.id !== MEDIUM_OSM_FIXTURE_MAP_ID) {
+    return DEFAULT_ROUTE_RUNNER_MAP_PADDING;
+  }
+
+  const bounds = getRouteRunnerMapBounds(map);
+  const width = Math.max(0, bounds.maxX - bounds.minX);
+  const height = Math.max(0, bounds.maxY - bounds.minY);
+
+  return Math.max(DEFAULT_ROUTE_RUNNER_MAP_PADDING, Math.max(width, height) * MEDIUM_OSM_ROUTE_RUNNER_PADDING_RATIO);
+}
+
+export function getRouteRunnerMapFitBounds(map: MapDefinition): RouteRunnerMapBounds {
+  const bounds = getRouteRunnerMapBounds(map);
+  const padding = getRouteRunnerMapFitPadding(map);
+
+  return {
+    minX: bounds.minX - padding,
+    minY: bounds.minY - padding,
+    maxX: bounds.maxX + padding,
+    maxY: bounds.maxY + padding
+  };
 }
 
 export function routeRunnerMapCenter(map: MapDefinition): Vec2 {

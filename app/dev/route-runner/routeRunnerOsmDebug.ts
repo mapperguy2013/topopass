@@ -27,6 +27,7 @@ export type OsmDebugSummary = {
   mapId: string;
   mapName: string;
   sourceFixtureName: string | null;
+  sourceKind: "osm" | "unknown";
   nodeCount: number;
   roadSegmentCount: number;
   directedEdgeCount: number;
@@ -34,6 +35,20 @@ export type OsmDebugSummary = {
   twoWayRoadSegmentCount: number;
   oneWayDirectedEdgeCount: number;
   twoWayDirectedEdgeCount: number;
+  blockedOsmWayCount: number;
+  blockedOsmWayIds: string[];
+  bounds: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  };
+  extent: {
+    width: number;
+    height: number;
+    centerX: number;
+    centerY: number;
+  };
   selectedExerciseId: string | null;
   selectedExerciseTitle: string | null;
   stops: OsmDebugStopSummary[];
@@ -57,10 +72,24 @@ export type OsmDebugDirectedEdgeVisual = {
   midpoint: Vec2;
 };
 
+export type OsmDebugOverlayStyle = {
+  nodeRadius: number;
+  nodeInnerRadius: number;
+  nodeStrokeWidth: number;
+  twoWayEdgeAlpha: number;
+  oneWayEdgeAlpha: number;
+  twoWayEdgeLineWidth: number;
+  oneWayEdgeLineWidth: number;
+  twoWayEdgeDash: number[];
+  showTwoWayDirectionArrows: boolean;
+  labelOffset: number;
+};
+
 export type OsmDebugOverlayModel = {
   visible: boolean;
   showIds: boolean;
   summary: OsmDebugSummary;
+  style: OsmDebugOverlayStyle;
   nodes: OsmDebugNodeVisual[];
   directedEdges: OsmDebugDirectedEdgeVisual[];
 };
@@ -84,11 +113,15 @@ export function buildOsmDebugSummary(input: {
 }): OsmDebugSummary {
   const oneWayRoadSegmentCount = input.map.roads.filter((road) => road.isOneWay).length;
   const oneWayDirectedEdgeCount = input.graph.edges.filter((edge) => input.graph.roadsById[edge.roadId]?.isOneWay).length;
+  const bounds = calculateMapBounds(input.map.nodes);
+  const metadata = osmMapMetadata(input.map);
+  const blockedOsmWayIds = metadata.blockedOsmWayIds.map((id) => String(id)).sort();
 
   return {
     mapId: input.map.id,
     mapName: input.map.name,
     sourceFixtureName: input.sourceFixtureName ?? null,
+    sourceKind: metadata.source,
     nodeCount: input.map.nodes.length,
     roadSegmentCount: input.map.roads.length,
     directedEdgeCount: input.graph.edges.length,
@@ -96,9 +129,35 @@ export function buildOsmDebugSummary(input: {
     twoWayRoadSegmentCount: input.map.roads.length - oneWayRoadSegmentCount,
     oneWayDirectedEdgeCount,
     twoWayDirectedEdgeCount: input.graph.edges.length - oneWayDirectedEdgeCount,
+    blockedOsmWayCount: blockedOsmWayIds.length,
+    blockedOsmWayIds,
+    bounds,
+    extent: {
+      width: bounds.maxX - bounds.minX,
+      height: bounds.maxY - bounds.minY,
+      centerX: (bounds.minX + bounds.maxX) / 2,
+      centerY: (bounds.minY + bounds.maxY) / 2
+    },
     selectedExerciseId: input.exercise?.id ?? null,
     selectedExerciseTitle: input.exercise?.title ?? null,
     stops: input.exercise ? buildStopSummaries(input.exercise, input.graph.nodesById) : []
+  };
+}
+
+export function buildOsmDebugOverlayStyle(summary: OsmDebugSummary): OsmDebugOverlayStyle {
+  const isMediumFixture = summary.roadSegmentCount >= 40 || summary.nodeCount >= 20;
+
+  return {
+    nodeRadius: isMediumFixture ? 3.2 : 4.25,
+    nodeInnerRadius: isMediumFixture ? 1.35 : 2,
+    nodeStrokeWidth: isMediumFixture ? 1.25 : 1.8,
+    twoWayEdgeAlpha: isMediumFixture ? 0.24 : 0.42,
+    oneWayEdgeAlpha: isMediumFixture ? 0.68 : 0.72,
+    twoWayEdgeLineWidth: isMediumFixture ? 1.15 : 1.7,
+    oneWayEdgeLineWidth: isMediumFixture ? 2.15 : 2.5,
+    twoWayEdgeDash: isMediumFixture ? [3, 5] : [4, 4],
+    showTwoWayDirectionArrows: !isMediumFixture,
+    labelOffset: isMediumFixture ? 9 : 11
   };
 }
 
@@ -117,6 +176,7 @@ export function buildOsmDebugOverlayModel(input: {
       visible: false,
       showIds: state.showIds,
       summary,
+      style: buildOsmDebugOverlayStyle(summary),
       nodes: [],
       directedEdges: []
     };
@@ -126,6 +186,7 @@ export function buildOsmDebugOverlayModel(input: {
     visible: true,
     showIds: state.showIds,
     summary,
+    style: buildOsmDebugOverlayStyle(summary),
     nodes: input.map.nodes.map((node) => ({
       id: node.id,
       label: node.label ?? node.id,
@@ -183,5 +244,43 @@ function copyPoint(point: Vec2): Vec2 {
   return {
     x: point.x,
     y: point.y
+  };
+}
+
+function calculateMapBounds(nodes: readonly MapNode[]): OsmDebugSummary["bounds"] {
+  if (nodes.length === 0) {
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: 0,
+      maxY: 0
+    };
+  }
+
+  return nodes.reduce(
+    (bounds, node) => ({
+      minX: Math.min(bounds.minX, node.x),
+      minY: Math.min(bounds.minY, node.y),
+      maxX: Math.max(bounds.maxX, node.x),
+      maxY: Math.max(bounds.maxY, node.y)
+    }),
+    {
+      minX: nodes[0].x,
+      minY: nodes[0].y,
+      maxX: nodes[0].x,
+      maxY: nodes[0].y
+    }
+  );
+}
+
+function osmMapMetadata(map: MapDefinition): {
+  source: "osm" | "unknown";
+  blockedOsmWayIds: unknown[];
+} {
+  const metadata = (map as { metadata?: { source?: unknown; blockedOsmWayIds?: unknown } }).metadata;
+
+  return {
+    source: metadata?.source === "osm" ? "osm" : "unknown",
+    blockedOsmWayIds: Array.isArray(metadata?.blockedOsmWayIds) ? metadata.blockedOsmWayIds : []
   };
 }

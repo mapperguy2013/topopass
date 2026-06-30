@@ -2049,6 +2049,32 @@ out body;
   shortest-route/reveal-fastest-route logic, touch saved attempts, analytics,
   Supabase, or replace the default synthetic map.
 
+## Stage 107 Medium OSM Visual Fixture QA Fixes
+
+- Improved the first-load fit for the medium converted OSM fixture in
+  `/dev/route-runner`. The medium map now uses a larger deterministic viewport
+  padding so roads and exercise stops are not tight against the canvas edge on
+  initial load. The default synthetic map and tiny converted OSM fixture keep
+  their existing fit behavior.
+- Polished the dev-only OSM QA overlay for the medium fixture: graph nodes are
+  smaller, two-way debug edges are lighter dashed guides, one-way edges remain
+  clearer, and dense two-way arrowheads are suppressed for medium maps. Optional
+  node/segment IDs remain off by default and only appear when explicitly
+  enabled.
+- Expanded the converted OSM QA panel with source kind, blocked OSM way count,
+  map extent, bounds centre, and blocked OSM way IDs, while keeping selected
+  exercise and start/checkpoint/finish node IDs visible for fixture inspection.
+- The overlay continues to draw below routes, restriction focus highlights,
+  replay markers, and start/checkpoint/finish markers so exercise markers remain
+  readable while QA mode is enabled.
+- Added deterministic tests for medium fixture fit bounds, QA summary bounds and
+  extent, blocked-way metadata, medium overlay style, and default-hidden ID
+  behavior.
+- Stage 107 is dev-only visual QA polish. It does not fetch live OSM/Overpass
+  data, change scoring, alter legality, modify snapping or matching, change
+  shortest-route/reveal-fastest-route logic, touch saved attempts, analytics,
+  Supabase, or replace the default synthetic map.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

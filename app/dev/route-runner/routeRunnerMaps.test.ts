@@ -13,6 +13,8 @@ import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   ROUTE_RUNNER_MAP_OPTIONS,
   getRouteRunnerMapBounds,
+  getRouteRunnerMapFitBounds,
+  getRouteRunnerMapFitPadding,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap,
   mediumLondonOsmRouteExercises,
@@ -101,6 +103,17 @@ test("converted OSM map bounds and centre are deterministic", () => {
   assert.deepEqual(routeRunnerMapCenter(tinyLondonOsmRouteMap), {
     x: 0,
     y: 0
+  });
+});
+
+test("medium converted OSM map uses a more comfortable first-load fit", () => {
+  assert.equal(getRouteRunnerMapFitPadding(tinyLondonOsmRouteMap), 45);
+  assert.equal(getRouteRunnerMapFitPadding(mediumLondonOsmRouteMap), 97.5056654);
+  assert.deepEqual(getRouteRunnerMapFitBounds(mediumLondonOsmRouteMap), {
+    minX: -319.1094504,
+    minY: -297.8816654,
+    maxX: 319.1094504,
+    maxY: 297.8816654
   });
 });
 
