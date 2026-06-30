@@ -2,15 +2,24 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   createEmptyRouteDraft,
+  marloweDistrictMap,
+  marloweDistrictRouteExercises,
   mapToScreenPoint,
   screenToMapPoint,
   startRouteStroke,
-  type ScreenMapViewport
+  type ScreenMapViewport,
+  type Vec2
 } from "../../../lib/map-engine/index.ts";
-import { createHiddenFastestRouteRevealState, toggleFastestRouteReveal } from "./fastestRouteOverlay.ts";
+import {
+  buildFastestRouteOverlay,
+  createHiddenFastestRouteRevealState,
+  toggleFastestRouteReveal
+} from "./fastestRouteOverlay.ts";
 import {
   applyPanToMapView,
   buildZoomedMapViewport,
+  canDrawInMapInteractionMode,
+  canPanInMapInteractionMode,
   canZoomInMapView,
   canZoomOutMapView,
   clampMapPan,
@@ -25,6 +34,7 @@ import {
   type MapViewportState,
   type MapZoomLimits
 } from "./mapViewport.ts";
+import { buildRoadRestrictionOverlays } from "./routeRunnerDisplay.ts";
 
 const testLimits: MapZoomLimits = {
   defaultZoom: 1,
@@ -51,6 +61,28 @@ const defaultViewportState: MapViewportState = {
   panY: 0,
   interactionMode: "draw"
 };
+
+function assertPointsRoundTrip(points: readonly Vec2[], viewport: ScreenMapViewport): void {
+  for (const point of points) {
+    const actual = screenToMapPoint(mapToScreenPoint(point, viewport), viewport);
+
+    assert(Math.abs(actual.x - point.x) < 0.000001, `Expected x ${actual.x} to round-trip to ${point.x}`);
+    assert(Math.abs(actual.y - point.y) < 0.000001, `Expected y ${actual.y} to round-trip to ${point.y}`);
+  }
+}
+
+function viewportForPoints(points: readonly Vec2[], width = 1000, height = 720): ScreenMapViewport {
+  return {
+    width,
+    height,
+    mapBounds: {
+      minX: Math.min(...points.map((point) => point.x)),
+      minY: Math.min(...points.map((point) => point.y)),
+      maxX: Math.max(...points.map((point) => point.x)),
+      maxY: Math.max(...points.map((point) => point.y))
+    }
+  };
+}
 
 test("zoom in increases zoom level", () => {
   const zoomed = zoomInMapView(createDefaultMapViewportState(testLimits), testLimits, baseViewport);
@@ -83,6 +115,16 @@ test("interaction mode defaults to draw and can switch between draw and pan", ()
   assert.equal(createDefaultMapViewportState(testLimits).interactionMode, "draw");
   assert.equal(panning.interactionMode, "pan");
   assert.equal(drawing.interactionMode, "draw");
+});
+
+test("interaction mode gates drawing and panning gestures", () => {
+  const drawState = setMapInteractionMode(defaultViewportState, "draw");
+  const panState = setMapInteractionMode(defaultViewportState, "pan");
+
+  assert.equal(canDrawInMapInteractionMode(drawState), true);
+  assert.equal(canPanInMapInteractionMode(drawState), false);
+  assert.equal(canDrawInMapInteractionMode(panState), false);
+  assert.equal(canPanInMapInteractionMode(panState), true);
 });
 
 test("legacy pan helpers map onto explicit interaction modes", () => {
@@ -286,4 +328,81 @@ test("fastest route overlay points remain aligned after pan and zoom", () => {
     fastestRouteScreenPoints.map((point) => screenToMapPoint(point, pannedViewport)),
     fastestRouteMapPoints
   );
+});
+
+test("drawn route road points remain aligned after zooming and panning", () => {
+  const pannedViewport = buildZoomedMapViewport(
+    baseViewport,
+    { ...defaultViewportState, zoom: 1.75, panX: 45, panY: -20 },
+    testLimits
+  );
+  const roadAlignedDraftPoints = [
+    { x: 20, y: 20 },
+    { x: 100, y: 20 },
+    { x: 180, y: 20 }
+  ];
+
+  assertPointsRoundTrip(roadAlignedDraftPoints, pannedViewport);
+});
+
+test("required stop markers remain aligned after zooming and panning", () => {
+  const exercise = marloweDistrictRouteExercises[0];
+  const nodesById = Object.fromEntries(marloweDistrictMap.nodes.map((node) => [node.id, node]));
+  const landmarksById = Object.fromEntries(marloweDistrictMap.landmarks.map((landmark) => [landmark.id, landmark]));
+  const stopPoints = exercise.stops.flatMap((stop): Vec2[] => {
+    if (stop.type === "node") {
+      const node = nodesById[stop.nodeId];
+
+      return node ? [{ x: node.x, y: node.y }] : [];
+    }
+
+    const landmark = landmarksById[stop.landmarkId];
+
+    return landmark ? [{ x: landmark.x, y: landmark.y }] : [];
+  });
+  const pannedViewport = buildZoomedMapViewport(
+    viewportForPoints(marloweDistrictMap.nodes),
+    { ...defaultViewportState, zoom: 1.8, panX: 120, panY: -90 },
+    testLimits
+  );
+
+  assert(stopPoints.length >= 2);
+  assertPointsRoundTrip(stopPoints, pannedViewport);
+});
+
+test("road restriction icons remain aligned after zooming and panning", () => {
+  const overlays = buildRoadRestrictionOverlays(marloweDistrictMap);
+  const overlayPoints = overlays.flatMap((overlay) => [
+    overlay.midpoint,
+    ...overlay.points,
+    ...(overlay.direction ? [overlay.direction.from, overlay.direction.to] : [])
+  ]);
+  const pannedViewport = buildZoomedMapViewport(
+    viewportForPoints(marloweDistrictMap.nodes),
+    { ...defaultViewportState, zoom: 2, panX: -140, panY: 95 },
+    testLimits
+  );
+
+  assert(overlayPoints.length > 0);
+  assertPointsRoundTrip(overlayPoints, pannedViewport);
+});
+
+test("revealed fastest route remains aligned after zooming and panning", () => {
+  const exercise = marloweDistrictRouteExercises.find((candidate) => candidate.id === "ex-crown-market-gardens");
+
+  assert.ok(exercise);
+
+  const overlay = buildFastestRouteOverlay({
+    map: marloweDistrictMap,
+    exercise,
+    revealState: { visible: true }
+  });
+  const pannedViewport = buildZoomedMapViewport(
+    viewportForPoints(marloweDistrictMap.nodes),
+    { ...defaultViewportState, zoom: 1.65, panX: 85, panY: 60 },
+    testLimits
+  );
+
+  assert.equal(overlay.status, "available");
+  assertPointsRoundTrip(overlay.points, pannedViewport);
 });

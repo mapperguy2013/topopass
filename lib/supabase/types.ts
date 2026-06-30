@@ -257,8 +257,12 @@ export type Database = {
           id: string;
           user_id: string | null;
           exercise_id: string;
+          map_id: string | null;
+          map_version: string | null;
+          exercise_version: string | null;
           score: number | null;
           passed: boolean | null;
+          is_legal: boolean | null;
           failure_reason: string | null;
           user_distance_m: number | null;
           shortest_distance_m: number | null;
@@ -268,6 +272,7 @@ export type Database = {
           correction_hints: Json;
           practice_recommendations: Json;
           matched_route: Json | null;
+          per_leg_breakdown: Json;
           review_payload: Json;
           review_schema_version: number;
           created_at: string;
@@ -276,8 +281,12 @@ export type Database = {
           id?: string;
           user_id?: string | null;
           exercise_id: string;
+          map_id?: string | null;
+          map_version?: string | null;
+          exercise_version?: string | null;
           score?: number | null;
           passed?: boolean | null;
+          is_legal?: boolean | null;
           failure_reason?: string | null;
           user_distance_m?: number | null;
           shortest_distance_m?: number | null;
@@ -287,6 +296,7 @@ export type Database = {
           correction_hints?: Json;
           practice_recommendations?: Json;
           matched_route?: Json | null;
+          per_leg_breakdown?: Json;
           review_payload: Json;
           review_schema_version?: number;
           created_at?: string;
@@ -294,8 +304,12 @@ export type Database = {
         Update: {
           user_id?: string | null;
           exercise_id?: string;
+          map_id?: string | null;
+          map_version?: string | null;
+          exercise_version?: string | null;
           score?: number | null;
           passed?: boolean | null;
+          is_legal?: boolean | null;
           failure_reason?: string | null;
           user_distance_m?: number | null;
           shortest_distance_m?: number | null;
@@ -305,6 +319,7 @@ export type Database = {
           correction_hints?: Json;
           practice_recommendations?: Json;
           matched_route?: Json | null;
+          per_leg_breakdown?: Json;
           review_payload?: Json;
           review_schema_version?: number;
         };

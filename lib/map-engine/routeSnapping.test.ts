@@ -226,6 +226,60 @@ test("snapping prefers a connected candidate sequence over a closer disconnected
   assert.deepEqual(matchedRoute.orderedRoadIds, ["r1", "r2"]);
 });
 
+test("shaky slightly off-road drawing still snaps to connected roads", () => {
+  const result = snapDrawnRouteToRoads({
+    map: connectedCandidateMap,
+    points: [
+      { x: 8, y: -3 },
+      { x: 55, y: 5 },
+      { x: 100, y: -2 },
+      { x: 150, y: 4 },
+      { x: 194, y: -3 }
+    ],
+    snapTolerance: 10
+  });
+
+  assert.equal(result.isValidTrace, true);
+  assert.equal(result.hasOffRoadPoints, false);
+  assert.deepEqual(result.connectivity.collapsedRoadIds, ["r1", "r2"]);
+  assert.equal(result.connectivity.isContinuous, true);
+  assert(result.snappedPoints.every((point) => point.confidence >= 0.5));
+});
+
+test("drawing over a junction prefers a continuous transition", () => {
+  const result = snapDrawnRouteToRoads({
+    map: connectedCandidateMap,
+    points: [
+      { x: 50, y: 1 },
+      { x: 100, y: 0 },
+      { x: 150, y: 1 }
+    ],
+    snapTolerance: 8
+  });
+
+  assert.equal(result.isValidTrace, true);
+  assert.equal(result.hasOffRoadPoints, false);
+  assert.deepEqual(result.connectivity.collapsedRoadIds, ["r1", "r2"]);
+  assert.equal(result.connectivity.isContinuous, true);
+});
+
+test("nearby parallel roads do not override the connected route when a connected path is available", () => {
+  const result = snapDrawnRouteToRoads({
+    map: connectedCandidateMap,
+    points: [
+      { x: 15, y: 0 },
+      { x: 100, y: 3.5 },
+      { x: 185, y: 0 }
+    ],
+    snapTolerance: 8
+  });
+
+  assert.deepEqual(result.connectivity.collapsedRoadIds, ["r1", "r2"]);
+  assert.equal(result.connectivity.isContinuous, true);
+  assert(result.snappedPoints[1].candidates.some((candidate) => candidate.roadId === "rx"));
+  assert(result.snappedPoints[1].candidates.some((candidate) => candidate.roadId === "r1" && candidate.selected));
+});
+
 test("same-road stability avoids nearby disconnected r17 to r04 to r17 flicker", () => {
   const result = snapDrawnRouteToRoads({
     map: flickerRegressionMap,

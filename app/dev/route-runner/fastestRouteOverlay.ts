@@ -3,9 +3,11 @@ import {
   findShortestLegalRouteThroughStops,
   validateRouteExerciseLegalReachability,
   type MapDefinition,
+  type MapGraph,
   type RouteExercise,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
+import type { ExerciseRouteAvailability } from "./exerciseValidation.ts";
 
 const NO_LEGAL_FASTEST_ROUTE_MESSAGE = "No legal fastest route available for this exercise.";
 
@@ -99,6 +101,8 @@ export function buildFastestRouteOverlay(input: {
   map: MapDefinition;
   exercise?: RouteExercise;
   revealState: FastestRouteRevealState;
+  graph?: MapGraph;
+  availability?: ExerciseRouteAvailability | null;
 }): FastestRouteOverlayResult {
   if (!input.revealState.visible) {
     return hiddenFastestRouteResult();
@@ -108,13 +112,19 @@ export function buildFastestRouteOverlay(input: {
     return unavailableFastestRouteResult();
   }
 
-  const exerciseValidation = validateRouteExerciseLegalReachability(input.exercise, input.map);
+  const exerciseValidation = input.availability
+    ? {
+        valid: input.availability.isValid,
+        errors: input.availability.errors,
+        stopNodeIds: input.availability.stopNodeIds
+      }
+    : validateRouteExerciseLegalReachability(input.exercise, input.map);
 
   if (!exerciseValidation.valid) {
     return unavailableFastestRouteResult(NO_LEGAL_FASTEST_ROUTE_MESSAGE, exerciseValidation.errors);
   }
 
-  const graph = buildMapGraph(input.map);
+  const graph = input.graph ?? buildMapGraph(input.map);
   const route = findShortestLegalRouteThroughStops({
     graph,
     stopNodeIds: exerciseValidation.stopNodeIds,

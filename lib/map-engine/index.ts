@@ -70,7 +70,7 @@ export {
   turnRestrictionSignedAngleDegrees
 } from "./restrictionVisuals.ts";
 export { snapDrawnRouteToRoads } from "./routeSnapping.ts";
-export { scoreRouteAttempt } from "./scoringEngine.ts";
+export { calculateRouteEfficiencyScore, scoreRouteAttempt } from "./scoringEngine.ts";
 export { findShortestLegalRoute, findShortestLegalRouteThroughStops } from "./shortestRoute.ts";
 export { validateMapDefinition, validateRouteExercise, validateRouteExerciseLegalReachability } from "./validation.ts";
 export type {
@@ -132,9 +132,11 @@ export type { DraftRouteSelectionState, RunRouteExerciseDraftInput } from "./rou
 export type {
   MatchedRouteMovement,
   MatchSnappedRouteToSelectionInput,
+  RouteMatchingConfidence,
   RouteMatchingDiagnostic,
   RouteMatchingDiagnosticCode,
   RouteMatchingDiagnosticSeverity,
+  RouteMatchingFailureReason,
   RouteMatchingOptions,
   RouteMatchingResult,
   RouteMatchingStatus
@@ -159,8 +161,12 @@ export type {
 } from "./routeSnapping.ts";
 export type {
   RoutePassStatus,
+  RouteEfficiencyGrade,
+  RouteEfficiencyScoreInput,
+  RouteEfficiencyScoreResult,
   RouteScoringFailureReason,
   RouteScoringInput,
+  RouteScoringLegResult,
   RouteScoringResult,
   RouteScoreFailureReason,
   RouteScoreResult,

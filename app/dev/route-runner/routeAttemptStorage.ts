@@ -4,25 +4,31 @@ import { getSupabaseClient } from "../../../lib/supabaseClient.ts";
 import type { RouteAttemptReview } from "./routeAttemptReview.ts";
 
 export const ROUTE_ATTEMPT_REVIEW_SCHEMA_VERSION = 1;
+export const LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY = "topopass.devRouteRunner.routeAttempts";
 
 export type RouteAttemptStorageScore = {
   scorePercent?: number | null;
   passed?: boolean | null;
+  isLegal?: boolean | null;
   userRouteDistanceMeters?: number | null;
   shortestLegalRouteDistanceMeters?: number | null;
   failureReasons?: readonly string[];
+  legBreakdown?: unknown;
 };
 
 export type SaveRouteAttemptInput = {
   userId?: string | null;
   exerciseId: string;
+  mapId?: string | null;
+  mapVersion?: string | number | null;
+  exerciseVersion?: string | number | null;
   review: RouteAttemptReview;
   score?: RouteAttemptStorageScore | null;
   matchedRoute?: unknown;
 };
 
 export type SaveRouteAttemptResult = {
-  source: "supabase" | "not-configured";
+  source: "supabase" | "local" | "not-configured";
   persisted: boolean;
   id?: string;
   reason?: string;
@@ -39,19 +45,30 @@ export type SavedRouteAttemptListItem = {
   id: string;
   exerciseId: string;
   exerciseLabel: string;
+  mapId: string | null;
+  mapVersion: string | null;
+  exerciseVersion: string | null;
   createdAt: string | null;
   dateLabel: string;
   scoreLabel: string;
   statusLabel: "Pass" | "Fail" | "Blocked" | "Unknown";
   passed: boolean | null;
+  isLegal: boolean | null;
+  userDistanceMeters: number | null;
+  shortestDistanceMeters: number | null;
+  extraDistanceMeters: number | null;
+  userDistanceLabel: string;
+  shortestDistanceLabel: string;
+  extraDistanceLabel: string;
   failureReason: string;
   reviewTitle: string;
   reviewPayload: Json;
   matchedRoute: Json | null;
+  perLegBreakdown: Json;
 };
 
 export type ListRouteAttemptsResult = {
-  source: "supabase" | "not-configured";
+  source: "supabase" | "local" | "not-configured";
   attempts: SavedRouteAttemptListItem[];
   reason?: string;
   error?: string;
@@ -59,6 +76,15 @@ export type ListRouteAttemptsResult = {
 
 type RouteAttemptInsert = TableInsert<"route_attempts">;
 type RouteAttemptRow = TableRow<"route_attempts">;
+type RouteAttemptLocalStore = Pick<Storage, "getItem" | "setItem">;
+
+function currentIsoTimestamp(): string {
+  return new Date().toISOString();
+}
+
+function localAttemptId(): string {
+  return `local-route-attempt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -100,12 +126,54 @@ function reviewPassed(review: RouteAttemptReview): boolean | null {
   return null;
 }
 
+function reviewLegality(review: RouteAttemptReview, score?: RouteAttemptStorageScore | null): boolean | null {
+  if (typeof score?.isLegal === "boolean") {
+    return score.isLegal;
+  }
+
+  if (review.status === "blocked" || review.illegalMovements.length > 0) {
+    return false;
+  }
+
+  if (review.status === "pass") {
+    return true;
+  }
+
+  return null;
+}
+
 function toJson(value: unknown, fallback: Json): Json {
   if (typeof value === "undefined") {
     return fallback;
   }
 
   return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+function compactStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function compactMatchedRoutePayload(value: unknown): Json | null {
+  const payload = objectValue(value);
+
+  if (Object.keys(payload).length === 0) {
+    return null;
+  }
+
+  return toJson(
+    {
+      status: typeof payload.status === "string" ? payload.status : undefined,
+      isReadyForRunRouteExercise:
+        typeof payload.isReadyForRunRouteExercise === "boolean" ? payload.isReadyForRunRouteExercise : undefined,
+      orderedRoadIds: compactStringArray(payload.orderedRoadIds),
+      selectedRoadIds: compactStringArray(payload.selectedRoadIds),
+      selectedNodeIds: compactStringArray(payload.selectedNodeIds),
+      directedEdgeIds: compactStringArray(payload.directedEdgeIds),
+      requiredNodeIds: compactStringArray(payload.requiredNodeIds)
+    },
+    null
+  );
 }
 
 function firstFailureReason(input: {
@@ -127,6 +195,103 @@ function timestampValue(value: string | null): number {
   const timestamp = new Date(value).getTime();
 
   return Number.isFinite(timestamp) ? timestamp : Number.NEGATIVE_INFINITY;
+}
+
+function stringVersion(value: string | number | null | undefined): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return null;
+}
+
+function getRouteAttemptLocalStore(options: { localStore?: RouteAttemptLocalStore | null } = {}): RouteAttemptLocalStore | null {
+  if (Object.prototype.hasOwnProperty.call(options, "localStore")) {
+    return options.localStore ?? null;
+  }
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function routeAttemptInsertToRow(
+  insert: RouteAttemptInsert,
+  options: { id?: string; createdAt?: string } = {}
+): RouteAttemptRow {
+  return {
+    id: options.id ?? localAttemptId(),
+    user_id: insert.user_id ?? null,
+    exercise_id: insert.exercise_id,
+    map_id: insert.map_id ?? null,
+    map_version: insert.map_version ?? null,
+    exercise_version: insert.exercise_version ?? null,
+    score: insert.score ?? null,
+    passed: insert.passed ?? null,
+    is_legal: insert.is_legal ?? null,
+    failure_reason: insert.failure_reason ?? null,
+    user_distance_m: insert.user_distance_m ?? null,
+    shortest_distance_m: insert.shortest_distance_m ?? null,
+    extra_distance_m: insert.extra_distance_m ?? null,
+    violations: insert.violations ?? [],
+    missed_restrictions: insert.missed_restrictions ?? [],
+    correction_hints: insert.correction_hints ?? [],
+    practice_recommendations: insert.practice_recommendations ?? [],
+    matched_route: insert.matched_route ?? null,
+    per_leg_breakdown: insert.per_leg_breakdown ?? [],
+    review_payload: insert.review_payload,
+    review_schema_version: insert.review_schema_version ?? ROUTE_ATTEMPT_REVIEW_SCHEMA_VERSION,
+    created_at: options.createdAt ?? currentIsoTimestamp()
+  };
+}
+
+function readLocalRouteAttemptRows(store: RouteAttemptLocalStore): RouteAttemptRow[] {
+  const rawValue = store.getItem(LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY);
+
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue);
+
+    return Array.isArray(parsed) ? (parsed as RouteAttemptRow[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalRouteAttemptRows(store: RouteAttemptLocalStore, rows: readonly RouteAttemptRow[]): void {
+  store.setItem(LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY, JSON.stringify(rows));
+}
+
+function saveRouteAttemptLocally(
+  input: SaveRouteAttemptInput,
+  store: RouteAttemptLocalStore,
+  options: { reason?: string; error?: string } = {}
+): SaveRouteAttemptResult {
+  const payload = buildRouteAttemptInsert(input);
+  const row = routeAttemptInsertToRow(payload);
+  const rows = readLocalRouteAttemptRows(store);
+  writeLocalRouteAttemptRows(store, [row, ...rows].slice(0, 50));
+
+  return {
+    source: "local",
+    persisted: true,
+    id: row.id,
+    reason: options.reason,
+    error: options.error
+  };
 }
 
 export function formatSavedRouteAttemptDate(createdAt: string | null | undefined): string {
@@ -151,6 +316,26 @@ function scoreDisplayLabel(score: unknown): string {
   const scorePercent = numericValue(score);
 
   return scorePercent === null ? "n/a" : `${scorePercent.toFixed(1)}%`;
+}
+
+function distanceDisplayLabel(distance: unknown): string {
+  const distanceMeters = numericValue(distance);
+
+  if (distanceMeters === null) {
+    return "n/a";
+  }
+
+  if (Math.abs(distanceMeters) >= 1000) {
+    return `${(distanceMeters / 1000).toFixed(2)} km`;
+  }
+
+  return `${Math.round(distanceMeters)} m`;
+}
+
+function extraDistanceDisplayLabel(distance: unknown): string {
+  const label = distanceDisplayLabel(distance);
+
+  return label === "n/a" ? label : `+${label}`;
 }
 
 function statusDisplayLabel(row: Pick<RouteAttemptRow, "passed" | "review_payload">): SavedRouteAttemptListItem["statusLabel"] {
@@ -197,18 +382,29 @@ export function mapRouteAttemptRow(
     id: row.id,
     exerciseId: row.exercise_id,
     exerciseLabel: options.exerciseTitleById?.[row.exercise_id] ?? row.exercise_id,
+    mapId: row.map_id ?? null,
+    mapVersion: row.map_version ?? null,
+    exerciseVersion: row.exercise_version ?? null,
     createdAt: row.created_at ?? null,
     dateLabel: formatSavedRouteAttemptDate(row.created_at),
     scoreLabel: scoreDisplayLabel(row.score),
     statusLabel: statusDisplayLabel(row),
     passed: row.passed,
+    isLegal: row.is_legal,
+    userDistanceMeters: numericValue(row.user_distance_m),
+    shortestDistanceMeters: numericValue(row.shortest_distance_m),
+    extraDistanceMeters: numericValue(row.extra_distance_m),
+    userDistanceLabel: distanceDisplayLabel(row.user_distance_m),
+    shortestDistanceLabel: distanceDisplayLabel(row.shortest_distance_m),
+    extraDistanceLabel: extraDistanceDisplayLabel(row.extra_distance_m),
     failureReason: failureReasonLabel(row),
     reviewTitle:
       typeof objectValue(reviewPayload).title === "string"
         ? (objectValue(reviewPayload).title as string)
         : "Saved route attempt",
     reviewPayload,
-    matchedRoute: row.matched_route ?? null
+    matchedRoute: row.matched_route ?? null,
+    perLegBreakdown: row.per_leg_breakdown ?? []
   };
 }
 
@@ -234,8 +430,12 @@ export function buildRouteAttemptInsert(input: SaveRouteAttemptInput): RouteAtte
   return {
     user_id: input.userId ?? null,
     exercise_id: input.exerciseId,
+    map_id: input.mapId ?? null,
+    map_version: stringVersion(input.mapVersion),
+    exercise_version: stringVersion(input.exerciseVersion),
     score,
     passed: typeof input.score?.passed === "boolean" ? input.score.passed : reviewPassed(input.review),
+    is_legal: reviewLegality(input.review, input.score),
     failure_reason: firstFailureReason(input),
     user_distance_m: userDistance,
     shortest_distance_m: shortestDistance,
@@ -244,7 +444,8 @@ export function buildRouteAttemptInsert(input: SaveRouteAttemptInput): RouteAtte
     missed_restrictions: toJson(input.review.missedRestrictions, []),
     correction_hints: toJson(input.review.correctionHints, []),
     practice_recommendations: toJson(input.review.practiceRecommendations, []),
-    matched_route: toJson(input.matchedRoute, null),
+    matched_route: compactMatchedRoutePayload(input.matchedRoute),
+    per_leg_breakdown: toJson(input.score?.legBreakdown, []),
     review_payload: toJson(input.review, {}),
     review_schema_version: ROUTE_ATTEMPT_REVIEW_SCHEMA_VERSION
   };
@@ -276,13 +477,20 @@ async function resolveRouteAttemptUserId(client: PersistenceClient, fallbackUser
 
 export async function saveRouteAttempt(
   input: SaveRouteAttemptInput,
-  options: { client?: unknown | null } = {}
+  options: { client?: unknown | null; localStore?: RouteAttemptLocalStore | null } = {}
 ): Promise<SaveRouteAttemptResult> {
   const client = asPersistenceClient(
     Object.prototype.hasOwnProperty.call(options, "client") ? options.client : getSupabaseClient()
   );
+  const localStore = getRouteAttemptLocalStore(options);
 
   if (!client) {
+    if (localStore) {
+      return saveRouteAttemptLocally(input, localStore, {
+        reason: "Supabase is not configured; route attempt was saved locally on this device."
+      });
+    }
+
     return {
       source: "not-configured",
       persisted: false,
@@ -302,6 +510,20 @@ export async function saveRouteAttempt(
     .single<{ id: string }>();
 
   if (error || !data?.id) {
+    if (localStore) {
+      return saveRouteAttemptLocally(
+        {
+          ...input,
+          userId
+        },
+        localStore,
+        {
+          reason: "Attempt reviewed, but Supabase could not save it; saved locally on this device.",
+          error: error?.message ?? "Route attempt insert returned no row."
+        }
+      );
+    }
+
     return {
       source: "supabase",
       persisted: false,
@@ -319,13 +541,22 @@ export async function saveRouteAttempt(
 
 export async function listRouteAttempts(
   input: ListRouteAttemptsInput = {},
-  options: { client?: unknown | null; exerciseTitleById?: Record<string, string> } = {}
+  options: { client?: unknown | null; exerciseTitleById?: Record<string, string>; localStore?: RouteAttemptLocalStore | null } = {}
 ): Promise<ListRouteAttemptsResult> {
   const client = asPersistenceClient(
     Object.prototype.hasOwnProperty.call(options, "client") ? options.client : getSupabaseClient()
   );
+  const localStore = getRouteAttemptLocalStore(options);
 
   if (!client) {
+    if (localStore) {
+      return {
+        source: "local",
+        attempts: mapRouteAttemptRows(readLocalRouteAttemptRows(localStore), options),
+        reason: "Supabase is not configured; showing locally saved route attempts from this device."
+      };
+    }
+
     return {
       source: "not-configured",
       attempts: [],
@@ -355,6 +586,15 @@ export async function listRouteAttempts(
   const { data, error } = await query;
 
   if (error) {
+    if (localStore) {
+      return {
+        source: "local",
+        attempts: mapRouteAttemptRows(readLocalRouteAttemptRows(localStore), options),
+        reason: "Saved route attempts could not be loaded from Supabase; showing local attempts from this device.",
+        error: error.message
+      };
+    }
+
     return {
       source: "supabase",
       attempts: [],

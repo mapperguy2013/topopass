@@ -322,6 +322,10 @@ function suggestedFailureReason(input: {
     return input.illegalMovements[0].message;
   }
 
+  if (score.failureReasons.includes("illegal_route")) {
+    return "Your route failed because it used a restricted movement.";
+  }
+
   if (score.failureReasons.includes("missed_required_stop")) {
     return "The route missed a required stop or visited required stops out of order.";
   }
@@ -335,7 +339,7 @@ function suggestedFailureReason(input: {
   }
 
   if (score.failureReasons.includes("below_efficiency_threshold")) {
-    return "The route is legal, but it is too long compared with the shortest legal route.";
+    return "Your route was legal but too long.";
   }
 
   return "The route reached scoring but did not meet the current pass rules.";

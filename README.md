@@ -1688,6 +1688,159 @@ MAX_BACKUP_AGE_HOURS=36
   semantics, map fixtures, adaptive practice logic, attempt storage, backend
   schema, Supabase logic, or exercise semantics.
 
+## Stage 90.5 Route Runner Regression Lock
+
+- Added focused regression coverage for the Stage 85-89 route-runner viewport
+  behavior without adding new UI features.
+- The tests lock draw/pan interaction intent, route-point alignment after
+  zooming and panning, required stop marker alignment, road-restriction overlay
+  alignment, and fastest-route overlay alignment.
+- Existing drawing-trace and fastest-route tests continue to cover undo,
+  clearing the full drawn route, and legal-only fastest-route reveal behavior.
+- Stage 90.5 does not change scoring, legality, snapping, route matching,
+  shortest-route algorithm behavior, exercise semantics, map fixtures,
+  backend/schema logic, Supabase logic, adaptive practice logic, attempt
+  history, or saved attempt shape.
+
+## Stage 92 Route Matching Hardening
+
+- Hardened route matching so same-road reversals are preserved as repeated road
+  movements instead of being collapsed into invalid node sequences. This keeps
+  loops, dead-end turn-backs, and repeated roads available for the existing
+  legality/scoring layer to judge.
+- Added additive matching debug output with high/medium/low/failed confidence,
+  structured failure reasons, average/minimum snapped-point confidence, and
+  matched route distance in metres.
+- Added regressions for shaky and slightly off-road drawing, junction drawing,
+  nearby parallel roads, multi-stroke draft scoring, disconnected rejection,
+  off-road rejection, illegal route scoring, and legal-only fastest-route reveal.
+- Stage 92 does not change scoring thresholds, legality rules, snapping
+  tolerance policy, shortest-route behavior, exercise semantics, map fixtures,
+  backend/schema logic, Supabase logic, adaptive practice logic, attempt
+  history, or saved attempt shape.
+
+## Stage 93 Scoring Calibration
+
+- Centralised route-efficiency scoring in a pure `calculateRouteEfficiencyScore`
+  helper used by `scoreRouteAttempt`.
+- The calibrated score remains `shortest legal route distance / user route
+  distance`, with the 80% pass mark preserved. Scores are rounded to one
+  decimal place for display and capped at 100% when a user route is shorter
+  than the calculated shortest route.
+- Added safe handling for illegal routes, empty/zero-distance attempts, and
+  missing shortest legal routes. Illegal movements still automatically fail
+  before efficiency scoring.
+- Added learner-facing grade bands: Excellent, Very good, Pass, Fail, and
+  Automatic fail.
+- Added stable scoring explanations for legal passes, legal-but-too-long
+  failures, and restricted-movement failures so the route-runner review can
+  explain the result consistently.
+- Added regression examples for 1000/1000, 1000/1200, 1000/1250, 1000/1300,
+  1000/5000, illegal attempts, empty routes, score clamping, grading bands, and
+  explanation strings.
+- Stage 93 does not change legality rules, snapping, route matching,
+  shortest-route behavior, map fixtures, backend/schema logic, Supabase logic,
+  adaptive practice logic, attempt history, or saved attempt shape.
+
+## Stage 94 Multi-Stop Route Scoring
+
+- Extended `scoreRouteAttempt` with a `legBreakdown` for ordered required stops
+  such as A -> B, A -> B -> C, and A -> B -> C -> D.
+- Each consecutive required-stop pair is scored as its own leg, with shortest
+  legal distance, user route distance, extra distance, score percentage, grade,
+  pass/fail state, failure reasons, and any legality violations for that leg.
+- Overall scoring still uses the existing formula: total shortest legal
+  required-route distance divided by the full user attempted distance.
+- Illegal movement on any leg remains an automatic full-attempt fail, while
+  missed or out-of-order checkpoints are reported as ordered-stop failures.
+- Added internal per-leg minimum-score metadata support for future use without
+  enforcing a new minimum-leg floor by default.
+- `/dev/route-runner` now shows compact per-leg breakdown cards in the drawn
+  attempt review and manual route result panels.
+- Stage 94 keeps A -> B exercises working as before and does not change
+  legality rules, one-way/no-entry/prohibited-turn enforcement, snapping,
+  route matching, shortest-route algorithm behavior, map fixtures, backend
+  schema, Supabase logic, adaptive practice logic, attempt history, or saved
+  attempt shape.
+
+## Stage 95 Attempt Storage
+
+- Extended the route-runner attempt storage model with explicit map metadata,
+  legal/illegal state, compact matched-route IDs, and Stage 94 per-leg
+  breakdown payloads.
+- Supabase-backed attempts now store `map_id`, `map_version`,
+  `exercise_version`, `is_legal`, and `per_leg_breakdown` alongside the
+  existing score, pass/fail, distance, violation, recommendation, matched-route,
+  review payload, schema version, and created-at fields.
+- Added local device fallback storage for `/dev/route-runner` attempts when
+  Supabase is unavailable or a save fails, so anonymous/dev practice can keep
+  working without blocking scoring feedback.
+- Matched-route storage is intentionally compact: road IDs, node IDs, required
+  stop IDs, and directed edge IDs are kept, while large matcher diagnostics and
+  raw drawing traces are not saved.
+- Saved attempt history can read from Supabase when available or local fallback
+  attempts when Supabase is not configured or temporarily unavailable.
+- Stage 95 does not change scoring rules, legality rules, snapping, route
+  matching, shortest-route behavior, map fixtures, dashboards, OSM import, or
+  exercise semantics.
+
+## Stage 96 Attempt History Review
+
+- Added a pure saved-attempt review builder for `/dev/route-runner` that turns
+  stored attempt rows into structured learner-facing review sections.
+- Saved history rows now show date, exercise title or id, score, pass/fail,
+  legal/illegal state, user route distance, shortest route distance, and failure
+  reason.
+- Selecting a saved attempt now opens a structured review with user-route
+  summary, shortest-route summary, score explanation, violations, missed
+  restrictions, and Stage 94 per-leg breakdowns when available.
+- The saved review panel handles stale or missing exercise titles safely by
+  falling back to the saved exercise id and showing a compact warning.
+- Visual replay is intentionally deferred; saved attempts currently show a
+  textual route summary from compact stored road/node/directed-edge IDs, with
+  the raw saved review payload retained in a collapsible debug section.
+- Stage 96 does not change scoring rules, legality rules, snapping, route
+  matching, shortest-route behavior, storage serialization semantics, backend
+  schema, OSM import, dashboards, or exercise semantics.
+
+## Stage 98 Weak Area Analytics Upgrade
+
+- Added a pure saved-attempt weak-area analytics helper for
+  `/dev/route-runner` that consumes stored attempt records without requiring
+  Supabase during dev testing.
+- The analytics summary detects repeated one-way, no-entry, prohibited-turn,
+  restricted-road, disconnected/off-road drawing, missed-checkpoint,
+  checkpoint-order, inefficient-route, long-route, road-specific, and
+  junction-specific weakness signals where the saved review data contains them.
+- Weak areas are ranked by frequency with recent-attempt weighting, and the
+  saved attempt panel now shows learner-friendly messages, practice focus, and
+  an improving/stable/getting-worse trend when enough saved attempts exist.
+- Existing adaptive practice helpers still consume their current signals; Stage
+  98 adds an additional saved-history summary rather than replacing the
+  Stage 74-79 recommendation flow.
+- Stage 98 does not change scoring rules, legality rules, snapping, route
+  matching, shortest-route behavior, storage schema, Supabase requirements,
+  OSM import, dashboards, or exercise semantics.
+
+## Stage 100 Performance Hardening
+
+- Added a pure route-runner performance helper for graph memoization,
+  large-trace budgeting, and active-drawing pipeline placeholders.
+- `/dev/route-runner` now builds the Marlowe map graph once per component
+  lifecycle and reuses it for exercise reachability checks and fastest-route
+  reveal, avoiding repeated graph rebuilds in the dev UI.
+- Active pointer drawing now keeps the UI responsive by rendering the raw trace
+  while deferring snap, match, scoring, and debug overlay rebuilding until the
+  stroke is finished.
+- Very large completed traces are defensively simplified and capped before the
+  drawn-route pipeline runs, preserving endpoints while preventing accidental
+  huge pointer traces from overwhelming snapping/matching.
+- Stage 100 keeps the existing debug panels and map overlays, but avoids
+  recalculating expensive derived route data on every pointer move.
+- Stage 100 does not change scoring rules, legality checks, snapping semantics,
+  route matching semantics, shortest-route behavior, map fixtures, backend
+  schema, Supabase logic, OSM import, or adaptive practice behavior.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

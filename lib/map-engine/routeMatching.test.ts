@@ -31,14 +31,21 @@ const matchingFixtureMap: MapDefinition = {
   landmarks: []
 };
 
-function snappedPoint(roadId: string | null, point: Vec2): SnappedRoutePoint {
+function snappedPoint(
+  roadId: string | null,
+  point: Vec2,
+  options: { confidence?: number; distanceFromRoad?: number } = {}
+): SnappedRoutePoint {
+  const distanceFromRoad = options.distanceFromRoad ?? (roadId ? 0 : Number.POSITIVE_INFINITY);
+  const confidence = options.confidence ?? (roadId ? 1 : 0);
+
   return {
     originalPoint: { ...point },
     snappedPoint: { ...point },
     roadId,
     directedEdgeId: roadId ? `${roadId}:forward` : null,
-    distanceFromRoad: roadId ? 0 : Number.POSITIVE_INFINITY,
-    confidence: roadId ? 1 : 0,
+    distanceFromRoad,
+    confidence,
     candidates: []
   };
 }
@@ -63,6 +70,8 @@ test("empty snapped route returns empty status", () => {
 
   assert.equal(result.status, "empty");
   assert.equal(result.isReadyForRunRouteExercise, false);
+  assert.equal(result.confidence, "failed");
+  assert.equal(result.failureReason, "empty_input");
   assert.deepEqual(result.selection, { nodeIds: [], roadIds: [] });
   assert.equal(result.diagnostics[0]?.code, "empty_input");
 });
@@ -75,6 +84,8 @@ test("one snapped point returns insufficient_points status", () => {
 
   assert.equal(result.status, "insufficient_points");
   assert.equal(result.isReadyForRunRouteExercise, false);
+  assert.equal(result.confidence, "failed");
+  assert.equal(result.failureReason, "insufficient_points");
   assert.equal(result.diagnostics[0]?.code, "insufficient_points");
 });
 
@@ -98,6 +109,10 @@ test("simple two-road route produces transition and node sequence", () => {
   assert.deepEqual(result.orderedRoadIds, ["r1", "r2"]);
   assert.deepEqual(result.transitionNodeIds, ["B"]);
   assert.deepEqual(result.nodeIds, ["A", "B", "C"]);
+  assert.equal(result.confidence, "high");
+  assert.equal(result.averageSnappedPointConfidence, 1);
+  assert.equal(result.minimumSnappedPointConfidence, 1);
+  assert.equal(result.routeDistanceMeters, 200);
 });
 
 test("multi-road route produces roads, nodes, directed edges, and attempted movements", () => {
@@ -140,6 +155,8 @@ test("unknown snapped road returns unmatched status with warning", () => {
 
   assert.equal(result.status, "unmatched");
   assert.equal(result.isReadyForRunRouteExercise, false);
+  assert.equal(result.confidence, "failed");
+  assert.equal(result.failureReason, "unknown_road");
   assert.equal(result.diagnostics[0]?.code, "unknown_road");
 });
 
@@ -151,6 +168,8 @@ test("unmatched snapped point returns unmatched status with warning", () => {
 
   assert.equal(result.status, "unmatched");
   assert.equal(result.isReadyForRunRouteExercise, false);
+  assert.equal(result.confidence, "failed");
+  assert.equal(result.failureReason, "unmatched_point");
   assert.equal(result.diagnostics[0]?.code, "unmatched_point");
 });
 
@@ -162,8 +181,49 @@ test("disconnected road sequence returns disconnected status without throwing", 
 
   assert.equal(result.status, "disconnected");
   assert.equal(result.isReadyForRunRouteExercise, false);
+  assert.equal(result.confidence, "failed");
+  assert.equal(result.failureReason, "disconnected_roads");
   assert.deepEqual(result.orderedRoadIds, ["r1", "r4"]);
+  assert.equal(result.routeDistanceMeters, 200);
   assert.equal(result.diagnostics[0]?.code, "disconnected_roads");
+});
+
+test("slightly off-road matched routes expose medium confidence debug output", () => {
+  const result = matchSnappedRouteToSelection({
+    map: matchingFixtureMap,
+    snappedPoints: [
+      snappedPoint("r1", { x: 0, y: 0 }, { confidence: 0.72, distanceFromRoad: 7 }),
+      snappedPoint("r2", { x: 100, y: 0 }, { confidence: 0.68, distanceFromRoad: 8 })
+    ]
+  });
+
+  assert.equal(result.status, "matched");
+  assert.equal(result.confidence, "medium");
+  assert.equal(result.averageSnappedPointConfidence, 0.7);
+  assert.equal(result.minimumSnappedPointConfidence, 0.68);
+});
+
+test("dead-end turn-back preserves repeated road movements instead of collapsing the reversal", () => {
+  const result = matchSnappedRouteToSelection({
+    map: matchingFixtureMap,
+    snappedPoints: [
+      snappedPoint("r1", { x: 0, y: 0 }),
+      snappedPoint("r1", { x: 100, y: 0 }),
+      snappedPoint("r2", { x: 120, y: 0 }),
+      snappedPoint("r2", { x: 200, y: 0 }),
+      snappedPoint("r2", { x: 140, y: 0 }),
+      snappedPoint("r2", { x: 100, y: 0 }),
+      snappedPoint("r1", { x: 80, y: 0 }),
+      snappedPoint("r1", { x: 0, y: 0 })
+    ]
+  });
+
+  assert.equal(result.status, "matched");
+  assert.deepEqual(result.orderedRoadIds, ["r1", "r2", "r2", "r1"]);
+  assert.deepEqual(result.transitionNodeIds, ["B", "C", "B"]);
+  assert.deepEqual(result.nodeIds, ["A", "B", "C", "B", "A"]);
+  assert.deepEqual(result.directedEdgeSequence, ["r1:forward", "r2:forward", "r2:reverse", "r1:reverse"]);
+  assert.equal(result.routeDistanceMeters, 400);
 });
 
 test("legal one-way direction resolves a directed edge", () => {

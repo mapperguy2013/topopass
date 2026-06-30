@@ -6,6 +6,16 @@ import type { DirectedEdge, MapDefinition, MapGraph, MapRoad } from "./types.ts"
 
 export type RouteMatchingStatus = "empty" | "insufficient_points" | "matched" | "unmatched" | "disconnected";
 
+export type RouteMatchingConfidence = "high" | "medium" | "low" | "failed";
+
+export type RouteMatchingFailureReason =
+  | "empty_input"
+  | "insufficient_points"
+  | "unmatched_point"
+  | "unknown_road"
+  | "disconnected_roads"
+  | "invalid_road_sequence";
+
 export type RouteMatchingDiagnosticCode =
   | "empty_input"
   | "insufficient_points"
@@ -46,6 +56,11 @@ export type MatchSnappedRouteToSelectionInput = {
 export type RouteMatchingResult = {
   status: RouteMatchingStatus;
   isReadyForRunRouteExercise: boolean;
+  confidence: RouteMatchingConfidence;
+  failureReason?: RouteMatchingFailureReason;
+  averageSnappedPointConfidence: number;
+  minimumSnappedPointConfidence: number;
+  routeDistanceMeters: number;
   orderedRoadIds: string[];
   transitionNodeIds: string[];
   nodeIds: string[];
@@ -60,14 +75,100 @@ type RoadRun = {
   roadId: string;
   firstPoint: SnappedRoutePoint;
   lastPoint: SnappedRoutePoint;
+  direction: -1 | 0 | 1;
 };
 
 const DEFAULT_MINIMUM_SNAPPED_POINTS = 2;
+const ROAD_REVERSAL_RATIO_EPSILON = 0.05;
 
-function emptyResult(status: RouteMatchingStatus, diagnostics: RouteMatchingDiagnostic[]): RouteMatchingResult {
+function roundMetric(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function confidenceStats(snappedPoints: readonly SnappedRoutePoint[]): {
+  averageSnappedPointConfidence: number;
+  minimumSnappedPointConfidence: number;
+} {
+  const matchedConfidences = snappedPoints
+    .filter((point) => point.roadId)
+    .map((point) => point.confidence)
+    .filter((confidence) => Number.isFinite(confidence));
+
+  if (matchedConfidences.length === 0) {
+    return {
+      averageSnappedPointConfidence: 0,
+      minimumSnappedPointConfidence: 0
+    };
+  }
+
+  return {
+    averageSnappedPointConfidence: roundMetric(
+      matchedConfidences.reduce((sum, confidence) => sum + confidence, 0) / matchedConfidences.length
+    ),
+    minimumSnappedPointConfidence: roundMetric(Math.min(...matchedConfidences))
+  };
+}
+
+function confidenceForMatchedRoute(input: {
+  status: RouteMatchingStatus;
+  averageSnappedPointConfidence: number;
+  minimumSnappedPointConfidence: number;
+}): RouteMatchingConfidence {
+  if (input.status !== "matched") {
+    return "failed";
+  }
+
+  if (input.minimumSnappedPointConfidence < 0.5 || input.averageSnappedPointConfidence < 0.65) {
+    return "low";
+  }
+
+  if (input.minimumSnappedPointConfidence < 0.75 || input.averageSnappedPointConfidence < 0.85) {
+    return "medium";
+  }
+
+  return "high";
+}
+
+function failureReasonFromDiagnostics(
+  status: RouteMatchingStatus,
+  diagnostics: readonly RouteMatchingDiagnostic[]
+): RouteMatchingFailureReason | undefined {
+  if (status === "matched") {
+    return undefined;
+  }
+
+  const firstWarning = diagnostics.find((issue) => issue.severity === "warning") ?? diagnostics[0];
+
+  if (!firstWarning) {
+    return "invalid_road_sequence";
+  }
+
+  if (firstWarning.code === "ambiguous_transition" || firstWarning.code === "unresolved_direction") {
+    return "invalid_road_sequence";
+  }
+
+  return firstWarning.code;
+}
+
+function routeDistanceMeters(graph: MapGraph, orderedRoadIds: readonly string[]): number {
+  return orderedRoadIds.reduce((sum, roadId) => sum + (graph.roadsById[roadId]?.distanceMeters ?? 0), 0);
+}
+
+function emptyResult(
+  status: RouteMatchingStatus,
+  diagnostics: RouteMatchingDiagnostic[],
+  snappedPoints: readonly SnappedRoutePoint[] = []
+): RouteMatchingResult {
+  const stats = confidenceStats(snappedPoints);
+
   return {
     status,
     isReadyForRunRouteExercise: false,
+    confidence: "failed",
+    failureReason: failureReasonFromDiagnostics(status, diagnostics),
+    averageSnappedPointConfidence: stats.averageSnappedPointConfidence,
+    minimumSnappedPointConfidence: stats.minimumSnappedPointConfidence,
+    routeDistanceMeters: 0,
     orderedRoadIds: [],
     transitionNodeIds: [],
     nodeIds: [],
@@ -90,7 +191,39 @@ function snappedPointsFromInput(input: MatchSnappedRouteToSelectionInput): reado
   return input.snappedPoints ?? input.snappedRoute?.snappedPoints ?? [];
 }
 
-function collapseConsecutiveRoadRuns(snappedPoints: readonly SnappedRoutePoint[]): RoadRun[] {
+function ratioDirection(delta: number): -1 | 0 | 1 {
+  if (Math.abs(delta) < ROAD_REVERSAL_RATIO_EPSILON) {
+    return 0;
+  }
+
+  return delta > 0 ? 1 : -1;
+}
+
+function endpointNearestPoint(graph: MapGraph, road: MapRoad, point: SnappedRoutePoint): string {
+  const fromNode = graph.nodesById[road.fromNodeId];
+  const toNode = graph.nodesById[road.toNodeId];
+
+  if (!fromNode || !toNode) {
+    return road.fromNodeId;
+  }
+
+  const distanceToFrom = Math.hypot(point.snappedPoint.x - fromNode.x, point.snappedPoint.y - fromNode.y);
+  const distanceToTo = Math.hypot(point.snappedPoint.x - toNode.x, point.snappedPoint.y - toNode.y);
+
+  return distanceToFrom <= distanceToTo ? road.fromNodeId : road.toNodeId;
+}
+
+function endpointNearestRunBoundary(graph: MapGraph, road: MapRoad, previousRun: RoadRun, nextRun: RoadRun): string {
+  return endpointNearestPoint(graph, road, {
+    ...previousRun.lastPoint,
+    snappedPoint: {
+      x: (previousRun.lastPoint.snappedPoint.x + nextRun.firstPoint.snappedPoint.x) / 2,
+      y: (previousRun.lastPoint.snappedPoint.y + nextRun.firstPoint.snappedPoint.y) / 2
+    }
+  });
+}
+
+function collapseConsecutiveRoadRuns(graph: MapGraph, snappedPoints: readonly SnappedRoutePoint[]): RoadRun[] {
   const runs: RoadRun[] = [];
 
   for (const point of snappedPoints) {
@@ -101,6 +234,30 @@ function collapseConsecutiveRoadRuns(snappedPoints: readonly SnappedRoutePoint[]
     const previousRun = runs[runs.length - 1];
 
     if (previousRun?.roadId === point.roadId) {
+      const road = graph.roadsById[point.roadId];
+
+      if (!road) {
+        continue;
+      }
+
+      const previousRatio = projectionRatioAlongRoad(graph, road, previousRun.lastPoint);
+      const nextRatio = projectionRatioAlongRoad(graph, road, point);
+      const nextDirection = ratioDirection(nextRatio - previousRatio);
+
+      if (previousRun.direction !== 0 && nextDirection !== 0 && nextDirection !== previousRun.direction) {
+        runs.push({
+          roadId: point.roadId,
+          firstPoint: point,
+          lastPoint: point,
+          direction: nextDirection
+        });
+        continue;
+      }
+
+      if (previousRun.direction === 0 && nextDirection !== 0) {
+        previousRun.direction = nextDirection;
+      }
+
       previousRun.lastPoint = point;
       continue;
     }
@@ -108,7 +265,8 @@ function collapseConsecutiveRoadRuns(snappedPoints: readonly SnappedRoutePoint[]
     runs.push({
       roadId: point.roadId,
       firstPoint: point,
-      lastPoint: point
+      lastPoint: point,
+      direction: 0
     });
   }
 
@@ -172,7 +330,10 @@ function transitionNodeIdsForRuns(
   for (let index = 0; index < runs.length - 1; index += 1) {
     const fromRoad = graph.roadsById[runs[index].roadId];
     const toRoad = graph.roadsById[runs[index + 1].roadId];
-    const sharedNodes = sharedNodeIds(fromRoad, toRoad);
+    const sharedNodes =
+      fromRoad.id === toRoad.id
+        ? [endpointNearestRunBoundary(graph, fromRoad, runs[index], runs[index + 1])]
+        : sharedNodeIds(fromRoad, toRoad);
 
     if (sharedNodes.length === 0) {
       diagnostics.push(
@@ -350,11 +511,12 @@ export function matchSnappedRouteToSelection(input: MatchSnappedRouteToSelection
   }
 
   if (diagnostics.some((issue) => issue.code === "unmatched_point" || issue.code === "unknown_road")) {
-    return emptyResult("unmatched", diagnostics);
+    return emptyResult("unmatched", diagnostics, snappedPoints);
   }
 
-  const roadRuns = collapseConsecutiveRoadRuns(snappedPoints);
+  const roadRuns = collapseConsecutiveRoadRuns(graph, snappedPoints);
   const orderedRoadIds = roadRuns.map((run) => run.roadId);
+  const matchedRouteDistanceMeters = routeDistanceMeters(graph, orderedRoadIds);
 
   if (orderedRoadIds.length === 0) {
     return emptyResult("unmatched", [
@@ -363,15 +525,16 @@ export function matchSnappedRouteToSelection(input: MatchSnappedRouteToSelection
         severity: "warning",
         message: "Snapped route points did not contain any matched roads."
       })
-    ]);
+    ], snappedPoints);
   }
 
   const transitionNodeIds = transitionNodeIdsForRuns(graph, roadRuns, diagnostics);
 
   if (!transitionNodeIds) {
     return {
-      ...emptyResult("disconnected", diagnostics),
-      orderedRoadIds
+      ...emptyResult("disconnected", diagnostics, snappedPoints),
+      orderedRoadIds,
+      routeDistanceMeters: matchedRouteDistanceMeters
     };
   }
 
@@ -380,8 +543,9 @@ export function matchSnappedRouteToSelection(input: MatchSnappedRouteToSelection
 
   if (!attemptedMovements) {
     return {
-      ...emptyResult("disconnected", diagnostics),
+      ...emptyResult("disconnected", diagnostics, snappedPoints),
       orderedRoadIds,
+      routeDistanceMeters: matchedRouteDistanceMeters,
       transitionNodeIds: [...transitionNodeIds],
       nodeIds
     };
@@ -389,10 +553,19 @@ export function matchSnappedRouteToSelection(input: MatchSnappedRouteToSelection
 
   const directedEdgeSequence = attemptedMovements.map((movement) => movement.directedEdgeId);
   const directedEdgeIds = directedEdgeSequence.filter((edgeId): edgeId is string => Boolean(edgeId));
+  const stats = confidenceStats(snappedPoints);
 
   return {
     status: "matched",
     isReadyForRunRouteExercise: true,
+    confidence: confidenceForMatchedRoute({
+      status: "matched",
+      averageSnappedPointConfidence: stats.averageSnappedPointConfidence,
+      minimumSnappedPointConfidence: stats.minimumSnappedPointConfidence
+    }),
+    averageSnappedPointConfidence: stats.averageSnappedPointConfidence,
+    minimumSnappedPointConfidence: stats.minimumSnappedPointConfidence,
+    routeDistanceMeters: matchedRouteDistanceMeters,
     orderedRoadIds,
     transitionNodeIds: [...transitionNodeIds],
     nodeIds,

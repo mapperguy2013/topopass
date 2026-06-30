@@ -2,8 +2,12 @@ create table if not exists public.route_attempts (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
   exercise_id text not null,
+  map_id text,
+  map_version text,
+  exercise_version text,
   score numeric(7, 2),
   passed boolean,
+  is_legal boolean,
   failure_reason text,
   user_distance_m numeric(12, 2),
   shortest_distance_m numeric(12, 2),
@@ -13,6 +17,7 @@ create table if not exists public.route_attempts (
   correction_hints jsonb not null default '[]'::jsonb,
   practice_recommendations jsonb not null default '[]'::jsonb,
   matched_route jsonb,
+  per_leg_breakdown jsonb not null default '[]'::jsonb,
   review_payload jsonb not null,
   review_schema_version integer not null default 1,
   created_at timestamptz not null default now(),
@@ -24,11 +29,21 @@ create table if not exists public.route_attempts (
   )
 );
 
+alter table public.route_attempts
+  add column if not exists map_id text,
+  add column if not exists map_version text,
+  add column if not exists exercise_version text,
+  add column if not exists is_legal boolean,
+  add column if not exists per_leg_breakdown jsonb not null default '[]'::jsonb;
+
 create index if not exists route_attempts_user_created_idx
   on public.route_attempts(user_id, created_at desc);
 
 create index if not exists route_attempts_exercise_created_idx
   on public.route_attempts(exercise_id, created_at desc);
+
+create index if not exists route_attempts_map_created_idx
+  on public.route_attempts(map_id, created_at desc);
 
 alter table public.route_attempts enable row level security;
 

@@ -170,6 +170,14 @@ export function setMapInteractionMode(state: MapViewportState, interactionMode: 
   };
 }
 
+export function canDrawInMapInteractionMode(state: Pick<MapViewportState, "interactionMode">): boolean {
+  return state.interactionMode === "draw";
+}
+
+export function canPanInMapInteractionMode(state: Pick<MapViewportState, "interactionMode">): boolean {
+  return state.interactionMode === "pan";
+}
+
 export function setMapPanMode(state: MapViewportState, isPanModeEnabled: boolean): MapViewportState {
   return setMapInteractionMode(state, isPanModeEnabled ? "pan" : "draw");
 }

@@ -154,10 +154,15 @@ test("route attempts migration stores dev route runner reviews safely", () => {
     /create table if not exists public\.route_attempts/i
   );
   assert.match(routeAttemptsMigrationSql, /user_id uuid references auth\.users\(id\) on delete set null/i);
+  assert.match(routeAttemptsMigrationSql, /map_id text/i);
+  assert.match(routeAttemptsMigrationSql, /map_version text/i);
+  assert.match(routeAttemptsMigrationSql, /exercise_version text/i);
+  assert.match(routeAttemptsMigrationSql, /is_legal boolean/i);
   assert.match(routeAttemptsMigrationSql, /violations jsonb/i);
   assert.match(routeAttemptsMigrationSql, /missed_restrictions jsonb/i);
   assert.match(routeAttemptsMigrationSql, /correction_hints jsonb/i);
   assert.match(routeAttemptsMigrationSql, /practice_recommendations jsonb/i);
+  assert.match(routeAttemptsMigrationSql, /per_leg_breakdown jsonb not null default '\[\]'::jsonb/i);
   assert.match(routeAttemptsMigrationSql, /review_payload jsonb not null/i);
   assert.match(routeAttemptsMigrationSql, /review_schema_version integer not null default 1/i);
   assert.match(

@@ -5,6 +5,7 @@ import { buildRouteAttemptReview } from "./routeAttemptReview.ts";
 import {
   buildRouteAttemptInsert,
   listRouteAttempts,
+  LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY,
   mapRouteAttemptRow,
   mapRouteAttemptRows,
   ROUTE_ATTEMPT_REVIEW_SCHEMA_VERSION,
@@ -45,12 +46,37 @@ function exerciseResult(value: Partial<RunRouteExerciseResult> = {}): RunRouteEx
       scorePercent: 100,
       efficiencyRatio: 1,
       scoreRatio: 1,
+      grade: "excellent",
+      gradeLabel: "Excellent",
+      scoringExplanation: "Your route was legal and within the pass threshold.",
       userRouteDistanceMeters: 1000,
       shortestLegalRouteDistanceMeters: 1000,
       userDistanceMeters: 1000,
       shortestLegalDistanceMeters: 1000,
+      extraDistanceMeters: 0,
       passThresholdPercent: 80,
       thresholdPercent: 80,
+      legBreakdown: [
+        {
+          legIndex: 0,
+          fromNodeId: "n01",
+          toNodeId: "n02",
+          userRouteDistanceMeters: 1000,
+          shortestLegalRouteDistanceMeters: 1000,
+          extraDistanceMeters: 0,
+          scorePercent: 100,
+          efficiencyRatio: 1,
+          grade: "excellent",
+          gradeLabel: "Excellent",
+          passed: true,
+          automaticFail: false,
+          isLegal: true,
+          failureReasons: [],
+          violations: [],
+          movementStartIndex: 0,
+          movementEndIndex: 0
+        }
+      ],
       failureReasons: [],
       legality: {
         isLegal: true,
@@ -117,6 +143,13 @@ class RecordingQuery {
   }
 
   single<T = unknown>() {
+    if (this.errorMessage) {
+      return Promise.resolve({
+        data: null,
+        error: { message: this.errorMessage }
+      });
+    }
+
     return Promise.resolve({
       data: { id: "route-attempt-id" } as T,
       error: null
@@ -158,13 +191,29 @@ class RecordingClient {
   }
 }
 
+class RecordingLocalStore {
+  private readonly values = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.values.set(key, value);
+  }
+}
+
 function routeAttemptRow(value: Partial<TableRow<"route_attempts">> = {}): TableRow<"route_attempts"> {
   return {
     id: "attempt-1",
     user_id: null,
     exercise_id: "fox-lane-to-northgate-hospital",
+    map_id: "marlowe-district-dev-map",
+    map_version: "1",
+    exercise_version: null,
     score: 83.3,
     passed: true,
+    is_legal: true,
     failure_reason: null,
     user_distance_m: 1200,
     shortest_distance_m: 1000,
@@ -174,6 +223,14 @@ function routeAttemptRow(value: Partial<TableRow<"route_attempts">> = {}): Table
     correction_hints: ["Keep checking signs."],
     practice_recommendations: [],
     matched_route: { orderedRoadIds: ["r01"] },
+    per_leg_breakdown: [
+      {
+        legIndex: 0,
+        fromNodeId: "n01",
+        toNodeId: "n02",
+        scorePercent: 83.3
+      }
+    ],
     review_payload: {
       status: "pass",
       title: "Route passed",
@@ -211,26 +268,42 @@ test("buildRouteAttemptInsert stores score, pass/fail, distances, and review pay
   const row = buildRouteAttemptInsert({
     userId: "11111111-1111-4111-8111-111111111111",
     exerciseId: result.exerciseId,
+    mapId: "marlowe-district-dev-map",
+    mapVersion: 1,
+    exerciseVersion: "dev-fixture-v1",
     review,
     score: result.score,
     matchedRoute: {
       orderedRoadIds: ["r01", "r02"],
-      selectedNodeIds: ["n01", "n02", "n03"]
+      selectedNodeIds: ["n01", "n02", "n03"],
+      selectedRoadIds: ["r01", "r02"],
+      directedEdgeIds: ["r01:forward", "r02:forward"],
+      diagnostics: {
+        rawCandidateCount: 999
+      }
     }
   });
 
   assert.equal(row.user_id, "11111111-1111-4111-8111-111111111111");
   assert.equal(row.exercise_id, "fox-lane-to-northgate-hospital");
+  assert.equal(row.map_id, "marlowe-district-dev-map");
+  assert.equal(row.map_version, "1");
+  assert.equal(row.exercise_version, "dev-fixture-v1");
   assert.equal(row.score, 62.4);
   assert.equal(row.passed, false);
+  assert.equal(row.is_legal, true);
   assert.equal(row.user_distance_m, 1420);
   assert.equal(row.shortest_distance_m, 1080);
   assert.equal(row.extra_distance_m, 340);
   assert.match(row.failure_reason ?? "", /too long/i);
   assert.deepEqual(row.matched_route, {
     orderedRoadIds: ["r01", "r02"],
-    selectedNodeIds: ["n01", "n02", "n03"]
+    selectedRoadIds: ["r01", "r02"],
+    selectedNodeIds: ["n01", "n02", "n03"],
+    directedEdgeIds: ["r01:forward", "r02:forward"],
+    requiredNodeIds: []
   });
+  assert.deepEqual(row.per_leg_breakdown, result.score.legBreakdown);
   assert.equal(row.review_schema_version, ROUTE_ATTEMPT_REVIEW_SCHEMA_VERSION);
   assert.equal((row.review_payload as { title?: string }).title, review.title);
 });
@@ -291,11 +364,101 @@ test("buildRouteAttemptInsert stores violations, hints, and recommendations", ()
   });
 
   assert.equal(row.user_id, null);
+  assert.equal(row.is_legal, false);
   assert.equal((row.violations as unknown[]).length, 1);
   assert.equal((row.correction_hints as string[]).length > 0, true);
   assert.equal((row.practice_recommendations as unknown[]).length > 0, true);
   assert.equal((row.missed_restrictions as unknown[]).length, 0);
   assert.equal((row.review_payload as { suggestedFailureReason?: string }).suggestedFailureReason, review.suggestedFailureReason);
+});
+
+test("buildRouteAttemptInsert serializes multi-stop per-leg breakdowns", () => {
+  const baseResult = exerciseResult();
+  const multiStopScore = {
+    ...baseResult.score,
+    scorePercent: 88.9,
+    efficiencyRatio: 0.889,
+    scoreRatio: 0.889,
+    userRouteDistanceMeters: 900,
+    shortestLegalRouteDistanceMeters: 800,
+    userDistanceMeters: 900,
+    shortestLegalDistanceMeters: 800,
+    legBreakdown: [
+      {
+        legIndex: 0,
+        fromNodeId: "n01",
+        toNodeId: "n02",
+        userRouteDistanceMeters: 300,
+        shortestLegalRouteDistanceMeters: 300,
+        extraDistanceMeters: 0,
+        scorePercent: 100,
+        efficiencyRatio: 1,
+        grade: "excellent" as const,
+        gradeLabel: "Excellent",
+        passed: true,
+        automaticFail: false,
+        isLegal: true,
+        failureReasons: [],
+        violations: [],
+        movementStartIndex: 0,
+        movementEndIndex: 0
+      },
+      {
+        legIndex: 1,
+        fromNodeId: "n02",
+        toNodeId: "n03",
+        userRouteDistanceMeters: 600,
+        shortestLegalRouteDistanceMeters: 500,
+        extraDistanceMeters: 100,
+        scorePercent: 83.3,
+        efficiencyRatio: 0.8333333333333334,
+        grade: "good" as const,
+        gradeLabel: "Good",
+        passed: true,
+        automaticFail: false,
+        isLegal: true,
+        failureReasons: [],
+        violations: [],
+        movementStartIndex: 1,
+        movementEndIndex: 2
+      }
+    ]
+  };
+  const review = buildRouteAttemptReview({
+    pipelineResult: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        normalisedAttempt: {
+          ...baseResult.normalisedAttempt,
+          requiredNodeIds: ["n01", "n02", "n03"]
+        },
+        score: multiStopScore
+      })
+    }),
+    illegalMovements: []
+  });
+
+  const row = buildRouteAttemptInsert({
+    exerciseId: "multi-stop-exercise",
+    review,
+    score: multiStopScore
+  });
+
+  assert.equal(row.score, 88.9);
+  assert.equal(row.shortest_distance_m, 800);
+  assert.equal(row.user_distance_m, 900);
+  assert.equal((row.per_leg_breakdown as unknown[]).length, 2);
+  assert.deepEqual(
+    (row.per_leg_breakdown as Array<{ fromNodeId: string; toNodeId: string; scorePercent: number }>).map((leg) => [
+      leg.fromNodeId,
+      leg.toNodeId,
+      leg.scorePercent
+    ]),
+    [
+      ["n01", "n02", 100],
+      ["n02", "n03", 83.3]
+    ]
+  );
 });
 
 test("buildRouteAttemptInsert handles missing optional score and matched route safely", () => {
@@ -322,10 +485,12 @@ test("buildRouteAttemptInsert handles missing optional score and matched route s
 
   assert.equal(row.score, null);
   assert.equal(row.passed, false);
+  assert.equal(row.is_legal, false);
   assert.equal(row.user_distance_m, null);
   assert.equal(row.shortest_distance_m, null);
   assert.equal(row.extra_distance_m, null);
   assert.equal(row.matched_route, null);
+  assert.deepEqual(row.per_leg_breakdown, []);
   assert.equal((row.missed_restrictions as unknown[]).length, 1);
   assert.match(row.failure_reason ?? "", /matched roads do not connect/i);
 });
@@ -399,6 +564,67 @@ test("saveRouteAttempt returns a non-blocking result when Supabase is unavailabl
   assert.match(result.reason ?? "", /not saved/i);
 });
 
+test("saveRouteAttempt stores locally when Supabase is unavailable but local storage exists", async () => {
+  const localStore = new RecordingLocalStore();
+  const result = await saveRouteAttempt(
+    {
+      exerciseId: "local-only",
+      mapId: "marlowe-district-dev-map",
+      review: buildRouteAttemptReview({
+        pipelineResult: pipelineResult({
+          status: "scored",
+          exerciseResult: exerciseResult()
+        }),
+        illegalMovements: []
+      }),
+      score: exerciseResult().score,
+      matchedRoute: {
+        orderedRoadIds: ["r01"],
+        selectedRoadIds: ["r01"],
+        selectedNodeIds: ["n01", "n02"],
+        directedEdgeIds: ["r01:forward"]
+      }
+    },
+    { client: null, localStore }
+  );
+  const savedRows = JSON.parse(localStore.getItem(LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY) ?? "[]") as TableRow<"route_attempts">[];
+
+  assert.equal(result.persisted, true);
+  assert.equal(result.source, "local");
+  assert.equal(savedRows.length, 1);
+  assert.equal(savedRows[0].exercise_id, "local-only");
+  assert.equal(savedRows[0].map_id, "marlowe-district-dev-map");
+  assert.equal(savedRows[0].is_legal, true);
+});
+
+test("saveRouteAttempt falls back to local storage when Supabase insert fails", async () => {
+  const localStore = new RecordingLocalStore();
+  const result = await saveRouteAttempt(
+    {
+      exerciseId: "fallback-save",
+      review: buildRouteAttemptReview({
+        pipelineResult: pipelineResult({
+          status: "scored",
+          exerciseResult: exerciseResult()
+        }),
+        illegalMovements: []
+      }),
+      score: exerciseResult().score
+    },
+    {
+      client: new RecordingClient({ errorMessage: "database unavailable" }),
+      localStore
+    }
+  );
+  const savedRows = JSON.parse(localStore.getItem(LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY) ?? "[]") as TableRow<"route_attempts">[];
+
+  assert.equal(result.persisted, true);
+  assert.equal(result.source, "local");
+  assert.equal(result.error, "database unavailable");
+  assert.equal(savedRows.length, 1);
+  assert.equal(savedRows[0].exercise_id, "fallback-save");
+});
+
 test("mapRouteAttemptRow formats pass and fail display values", () => {
   const passAttempt = mapRouteAttemptRow(routeAttemptRow(), {
     exerciseTitleById: {
@@ -419,9 +645,13 @@ test("mapRouteAttemptRow formats pass and fail display values", () => {
   );
 
   assert.equal(passAttempt.exerciseLabel, "Fox Lane Station to Northgate Hospital");
+  assert.equal(passAttempt.mapId, "marlowe-district-dev-map");
+  assert.equal(passAttempt.mapVersion, "1");
   assert.match(passAttempt.dateLabel, /25 Jun 2026/);
   assert.equal(passAttempt.scoreLabel, "83.3%");
   assert.equal(passAttempt.statusLabel, "Pass");
+  assert.equal(passAttempt.isLegal, true);
+  assert.equal((passAttempt.perLegBreakdown as unknown[]).length, 1);
   assert.equal(passAttempt.failureReason, "None");
   assert.equal(failAttempt.scoreLabel, "62.0%");
   assert.equal(failAttempt.statusLabel, "Fail");
@@ -530,4 +760,32 @@ test("listRouteAttempts returns empty and error states", async () => {
   assert.match(errorResult.reason ?? "", /could not be loaded/i);
   assert.deepEqual(notConfiguredResult.attempts, []);
   assert.equal(notConfiguredResult.source, "not-configured");
+});
+
+test("listRouteAttempts reads local attempts when Supabase is unavailable or failing", async () => {
+  const localStore = new RecordingLocalStore();
+  localStore.setItem(
+    LOCAL_ROUTE_ATTEMPTS_STORAGE_KEY,
+    JSON.stringify([
+      routeAttemptRow({
+        id: "local-attempt",
+        exercise_id: "local-exercise"
+      })
+    ])
+  );
+
+  const notConfiguredResult = await listRouteAttempts({}, { client: null, localStore });
+  const failedSupabaseResult = await listRouteAttempts(
+    {},
+    {
+      client: new RecordingClient({ errorMessage: "database unavailable" }),
+      localStore
+    }
+  );
+
+  assert.equal(notConfiguredResult.source, "local");
+  assert.equal(notConfiguredResult.attempts[0].id, "local-attempt");
+  assert.equal(failedSupabaseResult.source, "local");
+  assert.equal(failedSupabaseResult.error, "database unavailable");
+  assert.equal(failedSupabaseResult.attempts[0].exerciseId, "local-exercise");
 });

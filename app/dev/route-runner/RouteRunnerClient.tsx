@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   appendRouteDraftPoint,
+  buildMapGraph,
   boundingBoxForPoints,
   buildIllegalDrawnMovementHighlights,
   clearRouteDraft,
@@ -29,6 +30,7 @@ import {
   type MapNode,
   type MapRoad,
   type RouteExercise,
+  type RouteScoringLegResult,
   type RouteStop,
   type RunRouteExerciseResult,
   type ScreenMapViewport,
@@ -103,7 +105,19 @@ import {
   type RouteAttemptReview,
   type RouteAttemptReviewItemSeverity
 } from "./routeAttemptReview";
+import {
+  buildSavedAttemptHistoryReviewList,
+  buildSavedAttemptReview
+} from "./routeAttemptHistoryReview";
+import {
+  buildRouteWeakAreaAnalytics,
+  type RouteWeakAreaAnalyticsPriority
+} from "./weakAreaAnalytics";
 import { listRouteAttempts, saveRouteAttempt, type SavedRouteAttemptListItem } from "./routeAttemptStorage";
+import {
+  createActiveDrawingPipelineResult,
+  prepareTraceForRoutePipeline
+} from "./routeRunnerPerformance";
 import {
   buildSyntheticBackgroundFeatures,
   buildSyntheticLandmarkVisuals,
@@ -159,6 +173,7 @@ const CANVAS_HEIGHT = 760;
 const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
+const MAX_PIPELINE_TRACE_POINTS = 1200;
 const ROAD_RESTRICTION_OVERLAYS = buildRoadRestrictionOverlays(marloweDistrictMap);
 const TURN_RESTRICTION_VISUALS = getTurnRestrictionVisuals(marloweDistrictMap);
 const SYNTHETIC_BACKGROUND_FEATURES = buildSyntheticBackgroundFeatures(marloweDistrictMap);
@@ -261,6 +276,26 @@ function resultSummary(result: RunRouteExerciseResult): string {
   const reasons = result.score.failureReasons.length > 0 ? `: ${result.score.failureReasons.join(", ")}` : "";
 
   return `${status} - ${score}%${reasons}`;
+}
+
+function legStatusLabel(leg: RouteScoringLegResult): string {
+  if (leg.automaticFail) {
+    return "Automatic fail";
+  }
+
+  return leg.passed ? "Pass" : "Fail";
+}
+
+function legIssueSummary(leg: RouteScoringLegResult): string {
+  if (leg.violations.length > 0) {
+    return leg.violations.map((violation) => violation.type).join(", ");
+  }
+
+  if (leg.failureReasons.length > 0) {
+    return leg.failureReasons.join(", ");
+  }
+
+  return "None";
 }
 
 function formatDistance(distanceMeters: number): string {
@@ -399,6 +434,37 @@ function savedAttemptStatusClass(status: SavedRouteAttemptListItem["statusLabel"
   }
 
   return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function weakAreaAnalyticsPriorityClass(priority: RouteWeakAreaAnalyticsPriority): string {
+  if (priority === "high") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (priority === "medium") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function weakAreaLastSeenLabel(lastSeenAt: string | null): string {
+  if (!lastSeenAt) {
+    return "date unavailable";
+  }
+
+  const timestamp = Date.parse(lastSeenAt);
+
+  if (!Number.isFinite(timestamp)) {
+    return "date unavailable";
+  }
+
+  return new Date(timestamp).toLocaleString(undefined, {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function adaptivePriorityClass(priority: AdaptivePracticeQueuePriority): string {
@@ -584,14 +650,19 @@ function matchedRoutePayloadForStorage(result: DrawnRoutePipelineResult) {
     status: match.status,
     isReadyForRunRouteExercise: match.isReadyForRunRouteExercise,
     orderedRoadIds: match.orderedRoadIds,
-    transitionNodeIds: match.transitionNodeIds,
-    nodeIds: match.nodeIds,
-    directedEdgeIds: match.directedEdgeIds,
-    directedEdgeSequence: match.directedEdgeSequence,
-    selectedNodeIds: match.selection.nodeIds ?? [],
     selectedRoadIds: match.selection.roadIds ?? [],
-    diagnostics: match.diagnostics,
-    normalisedAttempt: result.exerciseResult?.normalisedAttempt ?? null
+    selectedNodeIds: match.selection.nodeIds ?? [],
+    directedEdgeIds: match.directedEdgeIds,
+    requiredNodeIds: result.exerciseResult?.normalisedAttempt.requiredNodeIds ?? [],
+    normalisedAttempt: result.exerciseResult
+      ? {
+          exerciseId: result.exerciseResult.normalisedAttempt.exerciseId,
+          requiredNodeIds: result.exerciseResult.normalisedAttempt.requiredNodeIds,
+          selectedNodeIds: result.exerciseResult.normalisedAttempt.selectedNodeIds,
+          selectedRoadIds: result.exerciseResult.normalisedAttempt.selectedRoadIds,
+          selectedDirectedEdgeIds: result.exerciseResult.normalisedAttempt.selectedDirectedEdgeIds
+        }
+      : null
   };
 }
 
@@ -1758,6 +1829,7 @@ export function RouteRunnerClient() {
 
   const baseViewport = useMemo(() => createViewport(), []);
   const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
+  const marloweMapGraph = useMemo(() => buildMapGraph(marloweDistrictMap), []);
   const canZoomIn = canZoomInMapView(mapViewportState);
   const canZoomOut = canZoomOutMapView(mapViewportState);
   const mapInteractionMode = mapViewportState.interactionMode;
@@ -1767,10 +1839,11 @@ export function RouteRunnerClient() {
       Object.fromEntries(
         validateExerciseReachabilityList({
           map: marloweDistrictMap,
-          exercises: marloweDistrictRouteExercises
+          exercises: marloweDistrictRouteExercises,
+          graph: marloweMapGraph
         }).map((availability) => [availability.exerciseId, availability])
       ) as Record<string, ExerciseRouteAvailability>,
-    []
+    [marloweMapGraph]
   );
   const drawnTrace = useMemo(() => routeDraftToDrawnRouteTrace(drawnRouteDraft), [drawnRouteDraft]);
   const hasUndoableDrawnStroke = hasUndoableRouteStroke(drawnRouteDraft);
@@ -1800,9 +1873,11 @@ export function RouteRunnerClient() {
       buildFastestRouteOverlay({
         map: marloweDistrictMap,
         exercise: selectedExercise,
-        revealState: fastestRouteRevealState
+        revealState: fastestRouteRevealState,
+        graph: marloweMapGraph,
+        availability: selectedExerciseAvailability
       }),
-    [fastestRouteRevealState, selectedExercise]
+    [fastestRouteRevealState, marloweMapGraph, selectedExercise, selectedExerciseAvailability]
   );
   const selectedExerciseMetadata = useMemo(
     () => getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, exerciseId),
@@ -1828,6 +1903,15 @@ export function RouteRunnerClient() {
       ? `Exercise ${selectedExerciseIndex + 1} of ${marloweDistrictRouteExercises.length}`
       : "Exercise not selected";
   const drawnPipelineResult = useMemo(() => {
+    if (isDrawing) {
+      // Keep pointer drawing responsive by deferring snap/match/score work until the stroke is finished.
+      return createActiveDrawingPipelineResult(drawnTrace);
+    }
+
+    const performanceTrace = prepareTraceForRoutePipeline(drawnTrace, {
+      maxPointCount: MAX_PIPELINE_TRACE_POINTS
+    });
+    const pipelineTrace = performanceTrace.trace;
     const gestureValidation = validateDrawnRouteGesture(drawnTrace, {
       minimumRawPointCount: MIN_DRAWN_GESTURE_POINT_COUNT,
       minimumTotalDistance: MIN_DRAWN_GESTURE_DISTANCE
@@ -1835,27 +1919,27 @@ export function RouteRunnerClient() {
 
     if (drawnTrace.points.length > 0 && !gestureValidation.isMeaningful) {
       return createInsufficientDrawnGesturePipelineResult({
-        drawnTrace,
+        drawnTrace: pipelineTrace,
         validation: gestureValidation
       });
     }
 
     if (selectedExerciseAvailability && !selectedExerciseAvailability.isValid && drawnTrace.points.length > 0) {
-      return invalidExercisePipelineResult(drawnTrace, selectedExerciseAvailability);
+      return invalidExercisePipelineResult(pipelineTrace, selectedExerciseAvailability);
     }
 
     return runDrawnRoutePipeline({
       map: marloweDistrictMap,
       exercises: marloweDistrictRouteExercises,
       exerciseId,
-      drawnTrace,
+      drawnTrace: pipelineTrace,
       options: {
         minimumGesturePointCount: MIN_DRAWN_GESTURE_POINT_COUNT,
         minimumGestureDistance: MIN_DRAWN_GESTURE_DISTANCE,
         maximumSnapDistance: SNAP_TOLERANCE
       }
     });
-  }, [drawnTrace, exerciseId, selectedExerciseAvailability]);
+  }, [drawnTrace, exerciseId, isDrawing, selectedExerciseAvailability]);
   const snapPreview = drawnPipelineResult.snappedRoute ?? emptySnapPreview();
   const drawnDisplayStatus = getDrawnPipelineDisplayStatus(drawnPipelineResult, isDrawing);
   const pipelineStageBadges = getPipelineStageBadges(drawnPipelineResult, isDrawing);
@@ -1953,6 +2037,18 @@ export function RouteRunnerClient() {
   const selectedSavedAttempt = useMemo(
     () => savedAttemptHistory.attempts.find((attempt) => attempt.id === savedAttemptHistory.selectedAttemptId) ?? null,
     [savedAttemptHistory]
+  );
+  const savedAttemptReviewList = useMemo(
+    () => buildSavedAttemptHistoryReviewList(savedAttemptHistory.attempts),
+    [savedAttemptHistory.attempts]
+  );
+  const savedWeakAreaAnalytics = useMemo(
+    () => buildRouteWeakAreaAnalytics(savedAttemptHistory.attempts),
+    [savedAttemptHistory.attempts]
+  );
+  const selectedSavedAttemptReview = useMemo(
+    () => buildSavedAttemptReview(selectedSavedAttempt),
+    [selectedSavedAttempt]
   );
   const adaptivePracticeQueue = useMemo(
     () =>
@@ -2142,6 +2238,8 @@ export function RouteRunnerClient() {
     saveRouteAttempt({
       userId: null,
       exerciseId,
+      mapId: marloweDistrictMap.id,
+      mapVersion: marloweDistrictMap.version,
       review: drawnAttemptReview,
       score: drawnPipelineResult.exerciseResult?.score ?? null,
       matchedRoute: matchedRoutePayloadForStorage(drawnPipelineResult)
@@ -2154,7 +2252,10 @@ export function RouteRunnerClient() {
         if (saveResult.persisted) {
           setAttemptSaveStatus({
             state: "saved",
-            message: "Attempt saved.",
+            message:
+              saveResult.source === "local"
+                ? "Attempt saved locally on this device."
+                : "Attempt saved.",
             id: saveResult.id
           });
           setSavedHistoryRefreshKey((currentKey) => currentKey + 1);
@@ -3342,6 +3443,61 @@ export function RouteRunnerClient() {
                 )}
               </div>
 
+              {visibleDrawnExerciseResult ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Grade</p>
+                    <p className="mt-1 font-semibold">{visibleDrawnExerciseResult.score.gradeLabel}</p>
+                  </div>
+                  <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Scoring note</p>
+                    <p className="mt-1 leading-5">{visibleDrawnExerciseResult.score.scoringExplanation}</p>
+                  </div>
+                </div>
+              ) : null}
+
+              {visibleDrawnExerciseResult?.score.legBreakdown.length ? (
+                <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Per-leg breakdown</p>
+                  <ol className="mt-2 grid gap-2 text-xs leading-5 md:grid-cols-2 xl:grid-cols-3">
+                    {visibleDrawnExerciseResult.score.legBreakdown.map((leg) => (
+                      <li
+                        key={`${leg.legIndex}-${leg.fromNodeId}-${leg.toNodeId}`}
+                        className="rounded border border-current/10 bg-white/80 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold">
+                            Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId)} to {nodeLabel(leg.toNodeId)}
+                          </p>
+                          <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                            {legStatusLabel(leg)}
+                          </span>
+                        </div>
+                        <dl className="mt-2 grid grid-cols-2 gap-2">
+                          <div>
+                            <dt className="opacity-70">Score</dt>
+                            <dd className="font-semibold">{leg.scorePercent.toFixed(1)}%</dd>
+                          </div>
+                          <div>
+                            <dt className="opacity-70">Extra</dt>
+                            <dd className="font-semibold">{formatDistance(leg.extraDistanceMeters)}</dd>
+                          </div>
+                          <div>
+                            <dt className="opacity-70">Your route</dt>
+                            <dd className="font-semibold">{formatDistance(leg.userRouteDistanceMeters)}</dd>
+                          </div>
+                          <div>
+                            <dt className="opacity-70">Shortest</dt>
+                            <dd className="font-semibold">{formatDistance(leg.shortestLegalRouteDistanceMeters)}</dd>
+                          </div>
+                        </dl>
+                        <p className="mt-2 text-[11px] opacity-80">Issues: {legIssueSummary(leg)}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
+
               {drawnAttemptReview.suggestedFailureReason ? (
                 <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Suggested reason</p>
@@ -3788,16 +3944,91 @@ export function RouteRunnerClient() {
                   </p>
                 ) : null}
 
-                {savedAttemptHistory.state === "loaded" && savedAttemptHistory.attempts.length === 0 ? (
+                {savedAttemptHistory.state === "loaded" && savedAttemptReviewList.isEmpty ? (
                   <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
-                    No saved route attempts yet. Submit a drawn route to save its review.
+                    {savedAttemptReviewList.emptyMessage}
                   </p>
                 ) : null}
 
-                {savedAttemptHistory.attempts.length > 0 ? (
+                {savedAttemptHistory.state === "loaded" ? (
+                  <div className="mt-3 rounded-md border border-current/10 bg-white/80 p-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Weak-area analytics</p>
+                        <p className="mt-1 text-xs leading-5">
+                          {savedWeakAreaAnalytics.analysedAttempts} saved attempt
+                          {savedWeakAreaAnalytics.analysedAttempts === 1 ? "" : "s"} analysed.{" "}
+                          {savedWeakAreaAnalytics.trendMessage}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                        {savedWeakAreaAnalytics.trend.replaceAll("_", " ")}
+                      </span>
+                    </div>
+
+                    {savedWeakAreaAnalytics.emptyMessage ? (
+                      <p className="mt-3 rounded-md border border-current/10 bg-white p-3 text-xs leading-5">
+                        {savedWeakAreaAnalytics.emptyMessage}
+                      </p>
+                    ) : (
+                      <ul className="mt-3 grid gap-2 lg:grid-cols-2">
+                        {savedWeakAreaAnalytics.topWeakAreas.map((weakArea) => (
+                          <li key={weakArea.id} className="rounded-md border border-current/10 bg-white p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold">{weakArea.title}</p>
+                                <p className="mt-1 text-xs leading-5">{weakArea.message}</p>
+                              </div>
+                              <span
+                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${weakAreaAnalyticsPriorityClass(
+                                  weakArea.priority
+                                )}`}
+                              >
+                                {weakArea.priority}
+                              </span>
+                            </div>
+                            <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-3">
+                              <div>
+                                <dt className="font-semibold">Frequency</dt>
+                                <dd>
+                                  {weakArea.count} attempt{weakArea.count === 1 ? "" : "s"}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="font-semibold">Recent</dt>
+                                <dd>
+                                  {weakArea.recentCount} of {savedWeakAreaAnalytics.recentAttemptCount}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="font-semibold">Last seen</dt>
+                                <dd>{weakAreaLastSeenLabel(weakArea.lastSeenAt)}</dd>
+                              </div>
+                            </dl>
+                            <p className="mt-2 text-xs leading-5">
+                              <span className="font-semibold">Try next: </span>
+                              {weakArea.practiceFocus}
+                            </p>
+                            {weakArea.relatedRoadIds.length > 0 || weakArea.relatedJunctionNodeIds.length > 0 ? (
+                              <p className="mt-2 text-xs leading-5 opacity-75">
+                                {weakArea.relatedRoadIds.length > 0 ? `Roads: ${weakArea.relatedRoadIds.join(", ")}` : ""}
+                                {weakArea.relatedRoadIds.length > 0 && weakArea.relatedJunctionNodeIds.length > 0 ? " - " : ""}
+                                {weakArea.relatedJunctionNodeIds.length > 0
+                                  ? `Junctions: ${weakArea.relatedJunctionNodeIds.join(", ")}`
+                                  : ""}
+                              </p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
+
+                {savedAttemptReviewList.attempts.length > 0 ? (
                   <>
                     <ul className="mt-3 space-y-2">
-                      {savedAttemptHistory.attempts.map((attempt) => {
+                      {savedAttemptReviewList.attempts.map((attempt) => {
                         const isSelected = attempt.id === savedAttemptHistory.selectedAttemptId;
 
                         return (
@@ -3827,10 +4058,22 @@ export function RouteRunnerClient() {
                                   {attempt.statusLabel}
                                 </span>
                               </div>
-                              <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-3">
+                              <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-6">
                                 <div>
                                   <dt className="font-semibold">Score</dt>
                                   <dd>{attempt.scoreLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Legal state</dt>
+                                  <dd>{attempt.legalLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Your route</dt>
+                                  <dd>{attempt.userDistanceLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Shortest</dt>
+                                  <dd>{attempt.shortestDistanceLabel}</dd>
                                 </div>
                                 <div>
                                   <dt className="font-semibold">Failure reason</dt>
@@ -3847,32 +4090,150 @@ export function RouteRunnerClient() {
                       })}
                     </ul>
 
-                    {selectedSavedAttempt ? (
+                    {selectedSavedAttemptReview ? (
                       <div className="mt-3 rounded-md border border-current/10 bg-white/80 p-3">
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                           <div>
-                            <p className="font-semibold">{selectedSavedAttempt.reviewTitle}</p>
+                            <p className="font-semibold">{selectedSavedAttemptReview.title}</p>
                             <p className="mt-1 text-xs leading-5">
-                              {selectedSavedAttempt.exerciseLabel} - {selectedSavedAttempt.dateLabel}
+                              {selectedSavedAttemptReview.subtitle}
                             </p>
                           </div>
                           <span
                             className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${savedAttemptStatusClass(
-                              selectedSavedAttempt.statusLabel
+                              selectedSavedAttemptReview.statusLabel
                             )}`}
                           >
-                            {selectedSavedAttempt.statusLabel}
+                            {selectedSavedAttemptReview.statusLabel}
                           </span>
                         </div>
-                        <p className="mt-2 text-xs leading-5">
-                          <span className="font-semibold">Score: </span>
-                          {selectedSavedAttempt.scoreLabel}
-                          <span className="font-semibold"> Reason: </span>
-                          {selectedSavedAttempt.failureReason}
-                        </p>
-                        <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-5 text-slate-50">
-                          {JSON.stringify(selectedSavedAttempt.reviewPayload, null, 2)}
-                        </pre>
+
+                        {selectedSavedAttemptReview.exerciseDataWarning ? (
+                          <p className="mt-3 rounded-md border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+                            {selectedSavedAttemptReview.exerciseDataWarning}
+                          </p>
+                        ) : null}
+
+                        <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-5">
+                          <div>
+                            <dt className="font-semibold">Score</dt>
+                            <dd>{selectedSavedAttemptReview.scoreLabel}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">Legal state</dt>
+                            <dd>{selectedSavedAttemptReview.legalLabel}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">Your route</dt>
+                            <dd>{selectedSavedAttemptReview.userRouteSummary}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">Shortest route</dt>
+                            <dd>{selectedSavedAttemptReview.shortestRouteSummary}</dd>
+                          </div>
+                          <div>
+                            <dt className="font-semibold">Failure reason</dt>
+                            <dd>{selectedSavedAttemptReview.failureReason}</dd>
+                          </div>
+                        </dl>
+
+                        <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-950">
+                          <p className="font-semibold">Score explanation</p>
+                          <p className="mt-1">{selectedSavedAttemptReview.scoreExplanation}</p>
+                        </div>
+
+                        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Violations</p>
+                            {selectedSavedAttemptReview.violations.length > 0 ? (
+                              <ul className="mt-2 space-y-2">
+                                {selectedSavedAttemptReview.violations.map((item) => (
+                                  <li key={item.id} className={`rounded-md border p-3 text-xs leading-5 ${reviewItemClass(item.severity)}`}>
+                                    <p className="font-semibold">{item.label}</p>
+                                    {item.detail ? <p className="mt-1">{item.detail}</p> : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="mt-2 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
+                                No saved violations were recorded.
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Missed restrictions</p>
+                            {selectedSavedAttemptReview.missedRestrictions.length > 0 ? (
+                              <ul className="mt-2 space-y-2">
+                                {selectedSavedAttemptReview.missedRestrictions.map((item) => (
+                                  <li key={item.id} className={`rounded-md border p-3 text-xs leading-5 ${reviewItemClass(item.severity)}`}>
+                                    <p className="font-semibold">{item.label}</p>
+                                    {item.detail ? <p className="mt-1">{item.detail}</p> : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="mt-2 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
+                                No missed restrictions were recorded.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Saved route summary</p>
+                          <p className="mt-2 text-xs leading-5">{selectedSavedAttemptReview.matchedRouteSummary}</p>
+                          <p className="mt-1 text-xs leading-5">
+                            Visual replay is not available yet, so this review uses the compact saved route IDs and review payload.
+                          </p>
+                        </div>
+
+                        {selectedSavedAttemptReview.legBreakdown.length > 0 ? (
+                          <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Per-leg breakdown</p>
+                            <ul className="mt-2 grid gap-2 lg:grid-cols-2">
+                              {selectedSavedAttemptReview.legBreakdown.map((leg) => (
+                                <li key={leg.id} className="rounded-md border border-current/10 bg-white p-3 text-xs leading-5">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="font-semibold">{leg.label}</p>
+                                    <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                                      {leg.statusLabel}
+                                    </span>
+                                  </div>
+                                  <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                                    <div>
+                                      <dt className="font-semibold">Score</dt>
+                                      <dd>{leg.scoreLabel}</dd>
+                                    </div>
+                                    <div>
+                                      <dt className="font-semibold">Extra distance</dt>
+                                      <dd>{leg.extraDistanceLabel}</dd>
+                                    </div>
+                                    <div>
+                                      <dt className="font-semibold">Your route</dt>
+                                      <dd>{leg.userDistanceLabel}</dd>
+                                    </div>
+                                    <div>
+                                      <dt className="font-semibold">Shortest</dt>
+                                      <dd>{leg.shortestDistanceLabel}</dd>
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                      <dt className="font-semibold">Issues</dt>
+                                      <dd>{leg.issueLabel}</dd>
+                                    </div>
+                                  </dl>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+
+                        <details className="mt-3 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
+                          <summary className="cursor-pointer font-semibold">Raw saved review payload</summary>
+                          <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-5 text-slate-50">
+                            {JSON.stringify(selectedSavedAttemptReview.rawReviewPayload, null, 2)}
+                          </pre>
+                        </details>
                       </div>
                     ) : null}
                   </>
@@ -4033,6 +4394,9 @@ export function RouteRunnerClient() {
                     <p className="mt-1 text-lg font-bold text-slate-950">
                       {visibleDrawnExerciseResult.score.passed ? "Pass" : "Fail"}
                     </p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      {visibleDrawnExerciseResult.score.gradeLabel}
+                    </p>
                   </div>
                   <div className="rounded-md border border-slate-100 bg-white p-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</p>
@@ -4060,6 +4424,10 @@ export function RouteRunnerClient() {
 
                 <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
                   <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scoring note</dt>
+                    <dd className="mt-1">{visibleDrawnExerciseResult.score.scoringExplanation}</dd>
+                  </div>
+                  <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Failure reasons</dt>
                     <dd className="mt-1">
                       {visibleDrawnExerciseResult.score.failureReasons.length > 0
@@ -4078,6 +4446,36 @@ export function RouteRunnerClient() {
                     </dd>
                   </div>
                 </dl>
+
+                {visibleDrawnExerciseResult.score.legBreakdown.length > 0 ? (
+                  <div className="mt-4 rounded-md border border-slate-100 bg-white p-3">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Per-leg breakdown</h4>
+                    <ol className="mt-3 grid gap-3 text-xs text-slate-700 md:grid-cols-2 xl:grid-cols-3">
+                      {visibleDrawnExerciseResult.score.legBreakdown.map((leg) => (
+                        <li
+                          key={`${leg.legIndex}-${leg.fromNodeId}-${leg.toNodeId}`}
+                          className="rounded-md border border-slate-100 bg-slate-50 p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold text-slate-950">
+                              Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId)} to {nodeLabel(leg.toNodeId)}
+                            </p>
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase">
+                              {legStatusLabel(leg)}
+                            </span>
+                          </div>
+                          <p className="mt-2">
+                            Score {leg.scorePercent.toFixed(1)}% | Your route{" "}
+                            {formatDistance(leg.userRouteDistanceMeters)} | Shortest{" "}
+                            {formatDistance(leg.shortestLegalRouteDistanceMeters)} | Extra{" "}
+                            {formatDistance(leg.extraDistanceMeters)}
+                          </p>
+                          <p className="mt-1">Issues: {legIssueSummary(leg)}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -4208,10 +4606,14 @@ export function RouteRunnerClient() {
                 </span>
               </div>
 
-              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
+              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
                 <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</p>
                   <p className="mt-1 text-lg font-bold text-slate-950">{result.score.scorePercent.toFixed(1)}%</p>
+                </div>
+                <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Grade</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950">{result.score.gradeLabel}</p>
                 </div>
                 <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">User distance</p>
@@ -4232,6 +4634,10 @@ export function RouteRunnerClient() {
               </div>
 
               <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scoring note</dt>
+                  <dd className="mt-1">{result.score.scoringExplanation}</dd>
+                </div>
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Failure reason</dt>
                   <dd className="mt-1">
@@ -4257,6 +4663,36 @@ export function RouteRunnerClient() {
                   <dd className="mt-1 font-mono text-xs">{result.normalisedAttempt.selectedRoadIds.join(" -> ")}</dd>
                 </div>
               </dl>
+
+              {result.score.legBreakdown.length > 0 ? (
+                <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Per-leg breakdown</h3>
+                  <ol className="mt-3 grid gap-3 text-xs text-slate-700 md:grid-cols-2 xl:grid-cols-3">
+                    {result.score.legBreakdown.map((leg) => (
+                      <li
+                        key={`${leg.legIndex}-${leg.fromNodeId}-${leg.toNodeId}`}
+                        className="rounded-md border border-slate-100 bg-white p-3"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold text-slate-950">
+                            Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId)} to {nodeLabel(leg.toNodeId)}
+                          </p>
+                          <span className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                            {legStatusLabel(leg)}
+                          </span>
+                        </div>
+                        <p className="mt-2">
+                          Score {leg.scorePercent.toFixed(1)}% | Your route{" "}
+                          {formatDistance(leg.userRouteDistanceMeters)} | Shortest{" "}
+                          {formatDistance(leg.shortestLegalRouteDistanceMeters)} | Extra{" "}
+                          {formatDistance(leg.extraDistanceMeters)}
+                        </p>
+                        <p className="mt-1">Issues: {legIssueSummary(leg)}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
 
               <h3 className="mt-5 text-sm font-semibold text-slate-950">Attempted movements</h3>
               <pre className="mt-2 max-h-52 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-100">

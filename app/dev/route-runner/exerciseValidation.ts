@@ -1,8 +1,9 @@
 import {
   buildMapGraph,
   findShortestLegalRouteThroughStops,
-  validateRouteExerciseLegalReachability,
+  validateRouteExercise,
   type MapDefinition,
+  type MapGraph,
   type RouteExercise
 } from "../../../lib/map-engine/index.ts";
 
@@ -35,11 +36,27 @@ export type ExerciseRouteAvailability = {
 export function validateExerciseReachability(input: {
   map: MapDefinition;
   exercise: RouteExercise;
+  graph?: MapGraph;
 }): ExerciseRouteAvailability {
-  const reachability = validateRouteExerciseLegalReachability(input.exercise, input.map);
-  const graph = buildMapGraph(input.map);
-  const stopNodeIds = [...reachability.stopNodeIds];
+  const structuralValidation = validateRouteExercise(input.exercise, input.map);
+  const graph = input.graph ?? buildMapGraph(input.map);
+  const stopNodeIds = input.exercise.stops
+    .map((stop) => {
+      if (stop.type === "node") {
+        return graph.nodesById[stop.nodeId] ? stop.nodeId : null;
+      }
+
+      const landmark = input.map.landmarks.find((candidate) => candidate.id === stop.landmarkId);
+
+      return landmark?.nearestNodeId && graph.nodesById[landmark.nearestNodeId] ? landmark.nearestNodeId : null;
+    })
+    .filter((nodeId): nodeId is string => Boolean(nodeId));
   const legs: ExerciseRouteAvailabilityLeg[] = [];
+  const reachabilityErrors = [...structuralValidation.errors];
+
+  if (structuralValidation.valid && stopNodeIds.length !== input.exercise.stops.length) {
+    reachabilityErrors.push(`Route exercise ${input.exercise.id} cannot resolve all required stops to routable nodes`);
+  }
 
   for (let index = 0; index < stopNodeIds.length - 1; index += 1) {
     const fromNodeId = stopNodeIds[index];
@@ -71,7 +88,7 @@ export function validateExerciseReachability(input: {
       : null;
   const missingLegs = legs.filter((leg) => !leg.isAvailable);
   const errors = uniqueStrings([
-    ...reachability.errors,
+    ...reachabilityErrors,
     ...missingLegs.map((leg) => leg.reason).filter((reason): reason is string => Boolean(reason)),
     ...(overallRoute && !overallRoute.found
       ? [
@@ -81,7 +98,7 @@ export function validateExerciseReachability(input: {
         ]
       : [])
   ]);
-  const isValid = reachability.valid && Boolean(overallRoute?.found);
+  const isValid = structuralValidation.valid && stopNodeIds.length === input.exercise.stops.length && Boolean(overallRoute?.found);
   const checkpointLegs = legs.slice(1);
 
   return {
@@ -103,11 +120,15 @@ export function validateExerciseReachability(input: {
 export function validateExerciseReachabilityList(input: {
   map: MapDefinition;
   exercises: readonly RouteExercise[];
+  graph?: MapGraph;
 }): ExerciseRouteAvailability[] {
+  const graph = input.graph ?? buildMapGraph(input.map);
+
   return input.exercises.map((exercise) =>
     validateExerciseReachability({
       map: input.map,
-      exercise
+      exercise,
+      graph
     })
   );
 }

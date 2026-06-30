@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  appendRouteDraftPoint,
+  createEmptyRouteDraft,
   createDrawnRouteTrace,
+  finishRouteStroke,
   marloweDistrictMap,
   marloweDistrictRouteExercises,
+  routeDraftToDrawnRouteTrace,
   runDrawnRoutePipeline,
   runRouteExercise,
+  startRouteStroke,
   type MapDefinition,
   type RouteExercise,
   type Vec2
@@ -135,6 +140,20 @@ test("clean drawn pipeline remains compatible with manual route runner selection
     roadIds: manualResult.normalisedAttempt.selectedRoadIds
   });
   assert.equal(pipelineResult.exerciseResult?.score.scorePercent, manualResult.score.scorePercent);
+});
+
+test("multi-stroke draft route is matched and scored as one continuous route", () => {
+  const firstStroke = finishRouteStroke(
+    appendRouteDraftPoint(startRouteStroke(createEmptyRouteDraft(), { x: 180, y: 181 }), { x: 290, y: 242 })
+  );
+  const draft = finishRouteStroke(
+    appendRouteDraftPoint(startRouteStroke(firstStroke, { x: 290, y: 242 }), { x: 352, y: 380 })
+  );
+  const result = pipelineForMarlowe(routeDraftToDrawnRouteTrace(draft).points);
+
+  assert.equal(result.status, "scored");
+  assert.deepEqual(result.matchResult?.orderedRoadIds, ["r02", "r37", "r24"]);
+  assert.equal(result.exerciseResult?.score.passed, true);
 });
 
 test("disconnected drawn route returns matching_failed without faking a connected route", () => {
