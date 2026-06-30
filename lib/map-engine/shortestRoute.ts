@@ -1,3 +1,8 @@
+import {
+  buildBlockedDirectedEdgeKeys,
+  directedEdgeKey,
+  validateDirectedEdgePath
+} from "./directedEdgeRestrictions.ts";
 import type { DirectedEdge, MapGraph, MapRestriction } from "./types.ts";
 
 export type FindShortestLegalRouteInput = {
@@ -74,30 +79,6 @@ function stateKey(state: SearchState): string {
   return `${state.nodeId}|${state.previousEdgeId ?? "START"}`;
 }
 
-function isEdgeBlockedByNoEntry(
-  edge: DirectedEdge,
-  restrictions: Array<Extract<MapRestriction, { type: "no_entry" }>>
-): boolean {
-  return restrictions.some((restriction) => {
-    if (restriction.roadId !== edge.roadId) {
-      return false;
-    }
-
-    if (!restriction.fromNodeId || !restriction.toNodeId) {
-      return true;
-    }
-
-    return restriction.fromNodeId === edge.fromNodeId && restriction.toNodeId === edge.toNodeId;
-  });
-}
-
-function isEdgeBlockedByRoadClosure(
-  edge: DirectedEdge,
-  restrictions: Array<Extract<MapRestriction, { type: "road_closed" }>>
-): boolean {
-  return restrictions.some((restriction) => restriction.roadId === edge.roadId);
-}
-
 function isImmediateUTurn(previousEdge: DirectedEdge | null, nextEdge: DirectedEdge): boolean {
   return (
     previousEdge !== null &&
@@ -127,13 +108,11 @@ function isTransitionBlockedByProhibitedTurn(
 function transitionIsBlocked(input: {
   previousEdge: DirectedEdge | null;
   nextEdge: DirectedEdge;
-  noEntryRestrictions: Array<Extract<MapRestriction, { type: "no_entry" }>>;
-  roadClosedRestrictions: Array<Extract<MapRestriction, { type: "road_closed" }>>;
+  blockedDirectedEdgeKeys: Set<string>;
   prohibitedTurnRestrictions: Array<Extract<MapRestriction, { type: "prohibited_turn" }>>;
 }): boolean {
   return (
-    isEdgeBlockedByNoEntry(input.nextEdge, input.noEntryRestrictions) ||
-    isEdgeBlockedByRoadClosure(input.nextEdge, input.roadClosedRestrictions) ||
+    input.blockedDirectedEdgeKeys.has(directedEdgeKey(input.nextEdge)) ||
     isImmediateUTurn(input.previousEdge, input.nextEdge) ||
     isTransitionBlockedByProhibitedTurn(input.previousEdge, input.nextEdge, input.prohibitedTurnRestrictions)
   );
@@ -179,6 +158,14 @@ function advanceStopIndex(nodeId: string, nextStopIndex: number, stopNodeIds: st
   return advancedIndex;
 }
 
+function routeEdgeIdsAreLegal(input: {
+  graph: MapGraph;
+  edgeIds: readonly string[];
+  restrictions: readonly MapRestriction[];
+}): boolean {
+  return validateDirectedEdgePath(input).valid;
+}
+
 export function findShortestLegalRoute(input: FindShortestLegalRouteInput): ShortestLegalRouteResult {
   const { graph, startNodeId, endNodeId } = input;
 
@@ -213,8 +200,7 @@ export function findShortestLegalRoute(input: FindShortestLegalRouteInput): Shor
   }
 
   const restrictions = input.restrictions ?? [];
-  const noEntryRestrictions = restrictions.filter((restriction) => restriction.type === "no_entry");
-  const roadClosedRestrictions = restrictions.filter((restriction) => restriction.type === "road_closed");
+  const blockedDirectedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, restrictions);
   const prohibitedTurnRestrictions = restrictions.filter((restriction) => restriction.type === "prohibited_turn");
   const startState: SearchState = {
     nodeId: startNodeId,
@@ -239,6 +225,16 @@ export function findShortestLegalRoute(input: FindShortestLegalRouteInput): Shor
       const edgeIds = reconstructEdgeIds(currentKey, previousByStateKey);
       const edges = edgeIds.map((edgeId) => graph.edgesById[edgeId]);
 
+      if (
+        !routeEdgeIdsAreLegal({
+          graph,
+          edgeIds,
+          restrictions
+        })
+      ) {
+        continue;
+      }
+
       return {
         found: true,
         startNodeId,
@@ -258,8 +254,7 @@ export function findShortestLegalRoute(input: FindShortestLegalRouteInput): Shor
         transitionIsBlocked({
           previousEdge,
           nextEdge: candidateEdge,
-          noEntryRestrictions,
-          roadClosedRestrictions,
+          blockedDirectedEdgeKeys,
           prohibitedTurnRestrictions
         })
       ) {
@@ -322,8 +317,7 @@ export function findShortestLegalRouteThroughStops(
   }
 
   const restrictions = input.restrictions ?? [];
-  const noEntryRestrictions = restrictions.filter((restriction) => restriction.type === "no_entry");
-  const roadClosedRestrictions = restrictions.filter((restriction) => restriction.type === "road_closed");
+  const blockedDirectedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, restrictions);
   const prohibitedTurnRestrictions = restrictions.filter((restriction) => restriction.type === "prohibited_turn");
   const startState: OrderedStopSearchState = {
     nodeId: stopNodeIds[0],
@@ -349,6 +343,16 @@ export function findShortestLegalRouteThroughStops(
       const edgeIds = reconstructEdgeIds(currentKey, previousByStateKey);
       const edges = edgeIds.map((edgeId) => graph.edgesById[edgeId]);
 
+      if (
+        !routeEdgeIdsAreLegal({
+          graph,
+          edgeIds,
+          restrictions
+        })
+      ) {
+        continue;
+      }
+
       return {
         found: true,
         stopNodeIds: [...stopNodeIds],
@@ -367,8 +371,7 @@ export function findShortestLegalRouteThroughStops(
         transitionIsBlocked({
           previousEdge,
           nextEdge: candidateEdge,
-          noEntryRestrictions,
-          roadClosedRestrictions,
+          blockedDirectedEdgeKeys,
           prohibitedTurnRestrictions
         })
       ) {

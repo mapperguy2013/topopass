@@ -23,6 +23,8 @@ export type DirectedEdge = {
   toNodeId: string;
   distanceMeters: number;
   direction: DirectedEdgeDirection;
+  sourceFromDistanceMeters: number;
+  sourceToDistanceMeters: number;
 };
 
 export type MapRestriction =
@@ -32,6 +34,8 @@ export type MapRestriction =
       roadId: string;
       fromNodeId?: string;
       toNodeId?: string;
+      blockedFromDistanceMeters?: number;
+      blockedToDistanceMeters?: number;
       reason?: string;
     }
   | {

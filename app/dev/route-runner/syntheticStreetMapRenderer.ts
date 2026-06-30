@@ -130,6 +130,34 @@ export type SyntheticStreetMapLegendItem = {
   tone: SyntheticLegendTone;
 };
 
+type RoadWithOptionalOsmMetadata = MapRoad & {
+  metadata?: {
+    highway?: string;
+  };
+};
+
+function roadClassFromOsmHighway(road: MapRoad): SyntheticRoadClass | null {
+  const highway = (road as RoadWithOptionalOsmMetadata).metadata?.highway;
+
+  if (!highway) {
+    return null;
+  }
+
+  if (highway === "primary" || highway === "primary_link") {
+    return "major";
+  }
+
+  if (highway === "secondary" || highway === "secondary_link" || highway === "tertiary" || highway === "tertiary_link") {
+    return "secondary";
+  }
+
+  if (highway === "service") {
+    return "service";
+  }
+
+  return "local";
+}
+
 export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): SyntheticRoadClass {
   if (hasRoadClosedRestriction(map, road.id)) {
     return "restricted";
@@ -141,6 +169,12 @@ export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): Syn
 
   if (road.isOneWay) {
     return "one-way";
+  }
+
+  const osmRoadClass = roadClassFromOsmHighway(road);
+
+  if (osmRoadClass) {
+    return osmRoadClass;
   }
 
   if (road.distanceMeters >= 155) {

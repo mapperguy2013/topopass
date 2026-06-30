@@ -1,6 +1,7 @@
 import {
   buildMapGraph,
   findShortestLegalRouteThroughStops,
+  validateDirectedEdgePath,
   validateRouteExerciseLegalReachability,
   type MapDefinition,
   type MapGraph,
@@ -135,6 +136,20 @@ export function buildFastestRouteOverlay(input: {
     return unavailableFastestRouteResult(NO_LEGAL_FASTEST_ROUTE_MESSAGE, [
       `Route exercise ${input.exercise.id} has no valid legal route through required stops ${exerciseValidation.stopNodeIds.join(
         " -> "
+      )}`
+    ]);
+  }
+
+  const routeValidation = validateDirectedEdgePath({
+    graph,
+    edgeIds: route.edgeIds,
+    restrictions: input.map.restrictions
+  });
+
+  if (!routeValidation.valid) {
+    return unavailableFastestRouteResult(NO_LEGAL_FASTEST_ROUTE_MESSAGE, [
+      `Route exercise ${input.exercise.id} returned blocked directed edges: ${routeValidation.invalidEdgeKeys.join(
+        ", "
       )}`
     ]);
   }

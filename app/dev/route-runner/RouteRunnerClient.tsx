@@ -15,8 +15,6 @@ import {
   getTurnRestrictionVisuals,
   hasUndoableRouteStroke,
   mapToScreenPoint,
-  marloweDistrictMap,
-  marloweDistrictRouteExercises,
   routeDraftToDrawnRouteTrace,
   runDrawnRoutePipeline,
   runRouteExercise,
@@ -27,6 +25,7 @@ import {
   type DrawnRouteDraft,
   type DrawnRoutePipelineResult,
   type DrawnRouteTrace,
+  type MapDefinition,
   type MapNode,
   type MapRoad,
   type RouteExercise,
@@ -167,6 +166,31 @@ import {
   type MapInteractionMode,
   type MapViewportState
 } from "./mapViewport";
+import {
+  ROUTE_REPLAY_SPEED_OPTIONS,
+  advanceRouteReplayProgress,
+  buildRouteReplayMarkers,
+  buildRouteReplayTracks,
+  calculateRouteReplayDurationMs,
+  calculateRouteReplayTrackLength,
+  canReplayRouteGeometry,
+  createRouteReplayState,
+  normaliseRouteReplayGeometry,
+  pauseRouteReplay,
+  resetRouteReplayState,
+  selectRouteReplayMode,
+  setRouteReplaySpeed,
+  startRouteReplay,
+  type RouteReplayMarker,
+  type RouteReplayMode,
+  type RouteReplayState
+} from "./routeReplay";
+import {
+  DEFAULT_ROUTE_RUNNER_MAP_ID,
+  ROUTE_RUNNER_MAP_OPTIONS,
+  getRouteRunnerMapOption,
+  isConvertedOsmRouteRunnerMap
+} from "./routeRunnerMaps";
 
 const CANVAS_WIDTH = 1120;
 const CANVAS_HEIGHT = 760;
@@ -174,15 +198,12 @@ const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
 const MAX_PIPELINE_TRACE_POINTS = 1200;
-const ROAD_RESTRICTION_OVERLAYS = buildRoadRestrictionOverlays(marloweDistrictMap);
-const TURN_RESTRICTION_VISUALS = getTurnRestrictionVisuals(marloweDistrictMap);
-const SYNTHETIC_BACKGROUND_FEATURES = buildSyntheticBackgroundFeatures(marloweDistrictMap);
-const SYNTHETIC_LINEAR_FEATURES = buildSyntheticLinearFeatures(marloweDistrictMap);
-const SYNTHETIC_ROAD_VISUALS = buildSyntheticRoadVisuals(marloweDistrictMap);
 const RESTRICTION_MAP_LEGEND_ITEMS = buildRestrictionLegendItems();
 const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
+const DEFAULT_ROUTE_RUNNER_MAP_OPTION =
+  getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID) ?? ROUTE_RUNNER_MAP_OPTIONS[0];
 
 type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
@@ -248,26 +269,26 @@ function invalidExercisePipelineResult(
   };
 }
 
-function stopLabel(stop: RouteStop): string {
+function stopLabel(stop: RouteStop, map: MapDefinition): string {
   if (stop.type === "node") {
-    const node = marloweDistrictMap.nodes.find((candidate) => candidate.id === stop.nodeId);
+    const node = map.nodes.find((candidate) => candidate.id === stop.nodeId);
 
     return `${node?.label ?? stop.nodeId} (${stop.nodeId})`;
   }
 
-  const landmark = marloweDistrictMap.landmarks.find((candidate) => candidate.id === stop.landmarkId);
+  const landmark = map.landmarks.find((candidate) => candidate.id === stop.landmarkId);
   const nearestNode = landmark?.nearestNodeId ? `, nearest node ${landmark.nearestNodeId}` : "";
 
   return `${landmark?.name ?? stop.landmarkId} (${stop.landmarkId}${nearestNode})`;
 }
 
-function resolveStopNode(stop: RouteStop): MapNode | undefined {
+function resolveStopNode(stop: RouteStop, map: MapDefinition): MapNode | undefined {
   const nodeId =
     stop.type === "node"
       ? stop.nodeId
-      : marloweDistrictMap.landmarks.find((landmark) => landmark.id === stop.landmarkId)?.nearestNodeId;
+      : map.landmarks.find((landmark) => landmark.id === stop.landmarkId)?.nearestNodeId;
 
-  return marloweDistrictMap.nodes.find((node) => node.id === nodeId);
+  return map.nodes.find((node) => node.id === nodeId);
 }
 
 function resultSummary(result: RunRouteExerciseResult): string {
@@ -310,14 +331,14 @@ function uniqueOrdered(values: readonly string[]): string[] {
   return values.filter((value, index) => values.indexOf(value) === index);
 }
 
-function selectedRoadNames(roadIds: readonly string[]): string {
+function selectedRoadNames(roadIds: readonly string[], map: MapDefinition): string {
   if (roadIds.length === 0) {
     return "None";
   }
 
   return roadIds
     .map((roadId) => {
-      const road = marloweDistrictMap.roads.find((candidate) => candidate.id === roadId);
+      const road = map.roads.find((candidate) => candidate.id === roadId);
 
       return road?.name ? `${roadId} (${road.name})` : roadId;
     })
@@ -615,7 +636,7 @@ function linkedAdaptiveExercise(item: AdaptivePracticeQueueItem): AdaptivePracti
 
 function launchableRouteExerciseId(item: AdaptivePracticeQueueItem): string | null {
   for (const exerciseId of item.relatedExerciseIds) {
-    if (marloweDistrictRouteExercises.some((exercise) => exercise.id === exerciseId)) {
+    if (ROUTE_RUNNER_MAP_OPTIONS.some((option) => option.exercises.some((exercise) => exercise.id === exerciseId))) {
       return exerciseId;
     }
   }
@@ -637,6 +658,28 @@ function reviewItemClass(severity: RouteAttemptReviewItemSeverity): string {
   }
 
   return "border-blue-100 bg-white text-blue-950";
+}
+
+function routeReplayModeButtonClass(active: boolean): string {
+  return active
+    ? "border-blue-300 bg-blue-700 text-white"
+    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50";
+}
+
+function routeReplayStatusLabel(state: RouteReplayState): string {
+  if (state.status === "playing") {
+    return "Playing";
+  }
+
+  if (state.status === "paused" && state.progress >= 1) {
+    return "Finished";
+  }
+
+  if (state.status === "paused") {
+    return "Paused";
+  }
+
+  return "Ready";
 }
 
 function matchedRoutePayloadForStorage(result: DrawnRoutePipelineResult) {
@@ -775,12 +818,12 @@ function displayStatusText(status: DrawnPipelineDisplayStatus): string {
   return status[0].toUpperCase() + status.slice(1);
 }
 
-function nodeById(nodeId: string): MapNode | undefined {
-  return marloweDistrictMap.nodes.find((node) => node.id === nodeId);
+function nodeById(nodeId: string, map: MapDefinition): MapNode | undefined {
+  return map.nodes.find((node) => node.id === nodeId);
 }
 
-function nodeLabel(nodeId: string): string {
-  const node = nodeById(nodeId);
+function nodeLabel(nodeId: string, map: MapDefinition): string {
+  const node = nodeById(nodeId, map);
 
   return node?.label ? `${node.label} (${nodeId})` : nodeId;
 }
@@ -1063,26 +1106,30 @@ function drawSyntheticMapLabel(
 
 function drawSyntheticStreetMapBase(input: {
   context: CanvasRenderingContext2D;
+  map: MapDefinition;
   viewport: ScreenMapViewport;
+  backgroundFeatures: SyntheticBackgroundFeature[];
+  linearFeatures: SyntheticLinearFeature[];
+  roadVisuals: SyntheticRoadVisual[];
   selectedExercise?: RouteExercise;
 }): void {
-  for (const feature of SYNTHETIC_BACKGROUND_FEATURES) {
+  for (const feature of input.backgroundFeatures) {
     drawSyntheticBackgroundFeature(input.context, feature, input.viewport);
   }
 
-  for (const feature of SYNTHETIC_LINEAR_FEATURES) {
+  for (const feature of input.linearFeatures) {
     drawSyntheticLinearFeature(input.context, feature, input.viewport);
   }
 
-  for (const visual of SYNTHETIC_ROAD_VISUALS) {
+  for (const visual of input.roadVisuals) {
     drawSyntheticRoadVisual(input.context, visual, input.viewport);
   }
 
-  for (const visual of buildSyntheticLandmarkVisuals(marloweDistrictMap, input.selectedExercise)) {
+  for (const visual of buildSyntheticLandmarkVisuals(input.map, input.selectedExercise)) {
     drawSyntheticLandmarkVisual(input.context, visual, input.viewport);
   }
 
-  const labels = buildSyntheticMapLabels(marloweDistrictMap, input.selectedExercise);
+  const labels = buildSyntheticMapLabels(input.map, input.selectedExercise);
 
   for (const label of labels) {
     if (label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish") {
@@ -1095,6 +1142,7 @@ function drawSyntheticStreetMapBase(input: {
 
 function drawSyntheticStopLabels(input: {
   context: CanvasRenderingContext2D;
+  map: MapDefinition;
   viewport: ScreenMapViewport;
   selectedExercise?: RouteExercise;
 }): void {
@@ -1102,7 +1150,7 @@ function drawSyntheticStopLabels(input: {
     return;
   }
 
-  const labels = buildSyntheticMapLabels(marloweDistrictMap, input.selectedExercise).filter(
+  const labels = buildSyntheticMapLabels(input.map, input.selectedExercise).filter(
     (label) => label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish"
   );
 
@@ -1135,10 +1183,10 @@ function warningSeverityClass(severity: string): string {
   return "border-amber-200 bg-amber-50 text-amber-900";
 }
 
-function roadEndpoints(road: MapRoad): { from?: MapNode; to?: MapNode } {
+function roadEndpoints(road: MapRoad, map: MapDefinition): { from?: MapNode; to?: MapNode } {
   return {
-    from: nodeById(road.fromNodeId),
-    to: nodeById(road.toNodeId)
+    from: nodeById(road.fromNodeId, map),
+    to: nodeById(road.toNodeId, map)
   };
 }
 
@@ -1463,7 +1511,8 @@ function routeIssueOverlayColour(kind: RouteIssueOverlay["kind"]): string {
 function drawRouteIssueOverlay(
   context: CanvasRenderingContext2D,
   overlay: RouteIssueOverlay,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  map: MapDefinition
 ): void {
   const colour = routeIssueOverlayColour(overlay.kind);
   const lineStyle = getRouteIssueLineStyle(overlay.kind);
@@ -1477,13 +1526,13 @@ function drawRouteIssueOverlay(
 
   if (overlay.kind !== "prohibited-turn" && overlay.kind !== "no-u-turn") {
     for (const roadId of overlay.roadIds) {
-      const road = marloweDistrictMap.roads.find((candidate) => candidate.id === roadId);
+      const road = map.roads.find((candidate) => candidate.id === roadId);
 
       if (!road) {
         continue;
       }
 
-      const { from, to } = roadEndpoints(road);
+      const { from, to } = roadEndpoints(road, map);
 
       if (!from || !to) {
         continue;
@@ -1566,13 +1615,52 @@ function drawFastestRouteOverlay(
   context.restore();
 }
 
+function replayMarkerColour(kind: RouteReplayMarker["kind"]): string {
+  return kind === "user" ? "#ea580c" : "#0284c7";
+}
+
+function drawRouteReplayMarker(
+  context: CanvasRenderingContext2D,
+  marker: RouteReplayMarker,
+  viewport: ScreenMapViewport
+): void {
+  const point = mapToScreenPoint(marker.point, viewport);
+  const colour = replayMarkerColour(marker.kind);
+
+  context.save();
+  context.fillStyle = "rgba(255,255,255,0.96)";
+  context.strokeStyle = colour;
+  context.lineWidth = 4;
+  context.beginPath();
+  context.arc(point.x, point.y, 15, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = colour;
+  context.beginPath();
+  context.arc(point.x, point.y, 8, 0, Math.PI * 2);
+  context.fill();
+
+  context.strokeStyle = "rgba(15,23,42,0.28)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.arc(point.x, point.y, 21, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
+
 function drawRouteCanvas(input: {
   canvas: HTMLCanvasElement;
+  map: MapDefinition;
   viewport: ScreenMapViewport;
+  backgroundFeatures: SyntheticBackgroundFeature[];
+  linearFeatures: SyntheticLinearFeature[];
+  roadVisuals: SyntheticRoadVisual[];
   selectedExercise?: RouteExercise;
   trace: DrawnRouteTrace;
   routeDraft: DrawnRouteDraft;
   fastestRoutePoints: readonly Vec2[];
+  routeReplayMarkers: readonly RouteReplayMarker[];
   snapPreview: SnappedRouteTraceResult;
   pipelineResult: DrawnRoutePipelineResult;
   roadRestrictionOverlays: RoadRestrictionOverlay[];
@@ -1594,7 +1682,11 @@ function drawRouteCanvas(input: {
   context.lineJoin = "round";
   drawSyntheticStreetMapBase({
     context,
+    map: input.map,
     viewport: input.viewport,
+    backgroundFeatures: input.backgroundFeatures,
+    linearFeatures: input.linearFeatures,
+    roadVisuals: input.roadVisuals,
     selectedExercise: input.selectedExercise
   });
 
@@ -1605,8 +1697,8 @@ function drawRouteCanvas(input: {
   drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport);
 
   input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
-    const from = nodeById(movement.fromNodeId);
-    const to = nodeById(movement.toNodeId);
+    const from = nodeById(movement.fromNodeId, input.map);
+    const to = nodeById(movement.toNodeId, input.map);
 
     if (!from || !to) {
       return;
@@ -1648,7 +1740,7 @@ function drawRouteCanvas(input: {
   });
 
   for (const overlay of input.routeIssueOverlays) {
-    drawRouteIssueOverlay(context, overlay, input.viewport);
+    drawRouteIssueOverlay(context, overlay, input.viewport, input.map);
   }
 
   for (const item of input.restrictionMapVisualItems) {
@@ -1659,7 +1751,7 @@ function drawRouteCanvas(input: {
     drawSelectedRestrictionHighlight(context, input.selectedRestrictionHighlight, input.viewport);
   }
 
-  for (const node of marloweDistrictMap.nodes) {
+  for (const node of input.map.nodes) {
     const point = mapToScreenPoint(node, input.viewport);
 
     context.fillStyle = "rgba(255,255,255,0.72)";
@@ -1672,7 +1764,7 @@ function drawRouteCanvas(input: {
   }
 
   input.pipelineResult.matchResult?.nodeIds.forEach((nodeId, index) => {
-    const node = nodeById(nodeId);
+    const node = nodeById(nodeId, input.map);
 
     if (!node) {
       return;
@@ -1690,7 +1782,7 @@ function drawRouteCanvas(input: {
 
   if (selectedExercise) {
     selectedExercise.stops.forEach((stop, index) => {
-      const node = resolveStopNode(stop);
+      const node = resolveStopNode(stop, input.map);
 
       if (!node) {
         return;
@@ -1711,6 +1803,7 @@ function drawRouteCanvas(input: {
 
   drawSyntheticStopLabels({
     context,
+    map: input.map,
     viewport: input.viewport,
     selectedExercise: input.selectedExercise
   });
@@ -1771,10 +1864,14 @@ function drawRouteCanvas(input: {
     context.arc(screenPoint.x, screenPoint.y, 3, 0, Math.PI * 2);
     context.fill();
   });
+
+  for (const marker of input.routeReplayMarkers) {
+    drawRouteReplayMarker(context, marker, input.viewport);
+  }
 }
 
-function createViewport(): ScreenMapViewport {
-  const mapBounds = expandBoundingBox(boundingBoxForPoints(marloweDistrictMap.nodes), 45);
+function createViewport(map: MapDefinition): ScreenMapViewport {
+  const mapBounds = expandBoundingBox(boundingBoxForPoints(map.nodes), 45);
 
   return {
     width: CANVAS_WIDTH,
@@ -1791,7 +1888,10 @@ export function RouteRunnerClient() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
-  const [exerciseId, setExerciseId] = useState(marloweDistrictRouteExercises[0]?.id ?? "");
+  const routeReplayAnimationFrameRef = useRef<number | null>(null);
+  const routeReplayStateRef = useRef<RouteReplayState>(createRouteReplayState());
+  const [mapOptionId, setMapOptionId] = useState(DEFAULT_ROUTE_RUNNER_MAP_ID);
+  const [exerciseId, setExerciseId] = useState(DEFAULT_ROUTE_RUNNER_MAP_OPTION.defaultExerciseId);
   const [nodeIdsText, setNodeIdsText] = useState("");
   const [roadIdsText, setRoadIdsText] = useState("");
   const [result, setResult] = useState<RunRouteExerciseResult | null>(null);
@@ -1805,6 +1905,8 @@ export function RouteRunnerClient() {
   );
   const [mapViewportState, setMapViewportState] = useState<MapViewportState>(() => createDefaultMapViewportState());
   const [isPanningMap, setIsPanningMap] = useState(false);
+  const [routeReplayState, setRouteReplayState] = useState<RouteReplayState>(() => createRouteReplayState());
+  const [routeReplayRunId, setRouteReplayRunId] = useState(0);
   const [selectedRestrictionReviewItemId, setSelectedRestrictionReviewItemId] = useState<string | null>(null);
   const [weakAreaProfile, setWeakAreaProfile] = useState<LearnerWeakAreaProfile>(() => readStoredWeakAreaProfile());
   const [lastProfileAttemptKey, setLastProfileAttemptKey] = useState<string | null>(null);
@@ -1827,9 +1929,16 @@ export function RouteRunnerClient() {
   const [adaptiveLauncherMessage, setAdaptiveLauncherMessage] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
 
-  const baseViewport = useMemo(() => createViewport(), []);
+  const selectedMapOption = useMemo(
+    () => getRouteRunnerMapOption(mapOptionId) ?? DEFAULT_ROUTE_RUNNER_MAP_OPTION,
+    [mapOptionId]
+  );
+  const activeMap = selectedMapOption.map;
+  const activeExercises = selectedMapOption.exercises;
+  const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
+  const baseViewport = useMemo(() => createViewport(activeMap), [activeMap]);
   const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
-  const marloweMapGraph = useMemo(() => buildMapGraph(marloweDistrictMap), []);
+  const activeMapGraph = useMemo(() => buildMapGraph(activeMap), [activeMap]);
   const canZoomIn = canZoomInMapView(mapViewportState);
   const canZoomOut = canZoomOutMapView(mapViewportState);
   const mapInteractionMode = mapViewportState.interactionMode;
@@ -1838,69 +1947,91 @@ export function RouteRunnerClient() {
     () =>
       Object.fromEntries(
         validateExerciseReachabilityList({
-          map: marloweDistrictMap,
-          exercises: marloweDistrictRouteExercises,
-          graph: marloweMapGraph
+          map: activeMap,
+          exercises: activeExercises,
+          graph: activeMapGraph
         }).map((availability) => [availability.exerciseId, availability])
       ) as Record<string, ExerciseRouteAvailability>,
-    [marloweMapGraph]
+    [activeExercises, activeMap, activeMapGraph]
   );
   const drawnTrace = useMemo(() => routeDraftToDrawnRouteTrace(drawnRouteDraft), [drawnRouteDraft]);
   const hasUndoableDrawnStroke = hasUndoableRouteStroke(drawnRouteDraft);
   const exerciseTitleById = useMemo(
     () =>
       Object.fromEntries(
-        marloweDistrictRouteExercises.map((exercise) => [exercise.id, exercise.title])
+        activeExercises.map((exercise) => [exercise.id, exercise.title])
       ) as Record<string, string>,
-    []
+    [activeExercises]
   );
+  const roadRestrictionOverlays = useMemo(() => buildRoadRestrictionOverlays(activeMap), [activeMap]);
+  const turnRestrictionVisuals = useMemo(() => getTurnRestrictionVisuals(activeMap), [activeMap]);
+  const syntheticBackgroundFeatures = useMemo(
+    () => (isConvertedOsmMap ? [] : buildSyntheticBackgroundFeatures(activeMap)),
+    [activeMap, isConvertedOsmMap]
+  );
+  const syntheticLinearFeatures = useMemo(
+    () => (isConvertedOsmMap ? [] : buildSyntheticLinearFeatures(activeMap)),
+    [activeMap, isConvertedOsmMap]
+  );
+  const syntheticRoadVisuals = useMemo(() => buildSyntheticRoadVisuals(activeMap), [activeMap]);
   const visibleRoadRestrictionOverlays = useMemo(
-    () => (showRoadRestrictions ? ROAD_RESTRICTION_OVERLAYS : []),
-    [showRoadRestrictions]
+    () => (showRoadRestrictions ? roadRestrictionOverlays : []),
+    [roadRestrictionOverlays, showRoadRestrictions]
   );
   const visibleTurnRestrictionVisuals = useMemo(
-    () => (showTurnRestrictions ? TURN_RESTRICTION_VISUALS : []),
-    [showTurnRestrictions]
+    () => (showTurnRestrictions ? turnRestrictionVisuals : []),
+    [showTurnRestrictions, turnRestrictionVisuals]
   );
   const selectedExercise = useMemo<RouteExercise | undefined>(
-    () => marloweDistrictRouteExercises.find((exercise) => exercise.id === exerciseId),
-    [exerciseId]
+    () => activeExercises.find((exercise) => exercise.id === exerciseId),
+    [activeExercises, exerciseId]
   );
   const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
   const selectedExerciseIsInvalid = selectedExerciseAvailability ? !selectedExerciseAvailability.isValid : false;
   const fastestRouteOverlay = useMemo(
     () =>
       buildFastestRouteOverlay({
-        map: marloweDistrictMap,
+        map: activeMap,
         exercise: selectedExercise,
         revealState: fastestRouteRevealState,
-        graph: marloweMapGraph,
+        graph: activeMapGraph,
         availability: selectedExerciseAvailability
       }),
-    [fastestRouteRevealState, marloweMapGraph, selectedExercise, selectedExerciseAvailability]
+    [activeMap, activeMapGraph, fastestRouteRevealState, selectedExercise, selectedExerciseAvailability]
+  );
+  const shortestRouteReplayOverlay = useMemo(
+    () =>
+      buildFastestRouteOverlay({
+        map: activeMap,
+        exercise: selectedExercise,
+        revealState: { visible: true },
+        graph: activeMapGraph,
+        availability: selectedExerciseAvailability
+      }),
+    [activeMap, activeMapGraph, selectedExercise, selectedExerciseAvailability]
   );
   const selectedExerciseMetadata = useMemo(
-    () => getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, exerciseId),
-    [exerciseId]
+    () => (isConvertedOsmMap ? null : getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, exerciseId)),
+    [exerciseId, isConvertedOsmMap]
   );
   const selectedMapMetadata = useMemo(
-    () => getMapMetadataForExercise(MARLOWE_DISTRICT_METADATA_CATALOGUE, exerciseId),
-    [exerciseId]
+    () => (isConvertedOsmMap ? null : getMapMetadataForExercise(MARLOWE_DISTRICT_METADATA_CATALOGUE, exerciseId)),
+    [exerciseId, isConvertedOsmMap]
   );
   const selectedSyntheticScenario = useMemo(
-    () => getRealisticSyntheticScenarioForExercise(exerciseId),
-    [exerciseId]
+    () => (isConvertedOsmMap ? null : getRealisticSyntheticScenarioForExercise(exerciseId)),
+    [exerciseId, isConvertedOsmMap]
   );
   const selectedExerciseIndex = useMemo(
-    () => marloweDistrictRouteExercises.findIndex((exercise) => exercise.id === exerciseId),
-    [exerciseId]
+    () => activeExercises.findIndex((exercise) => exercise.id === exerciseId),
+    [activeExercises, exerciseId]
   );
   const selectedStartStop = selectedExercise?.stops[0] ?? null;
   const selectedCheckpointStops = selectedExercise ? selectedExercise.stops.slice(1, -1) : [];
   const selectedFinishStop = selectedExercise ? selectedExercise.stops[selectedExercise.stops.length - 1] : null;
   const exercisePositionLabel =
     selectedExerciseIndex >= 0
-      ? `Exercise ${selectedExerciseIndex + 1} of ${marloweDistrictRouteExercises.length}`
+      ? `Exercise ${selectedExerciseIndex + 1} of ${activeExercises.length}`
       : "Exercise not selected";
   const drawnPipelineResult = useMemo(() => {
     if (isDrawing) {
@@ -1929,8 +2060,8 @@ export function RouteRunnerClient() {
     }
 
     return runDrawnRoutePipeline({
-      map: marloweDistrictMap,
-      exercises: marloweDistrictRouteExercises,
+      map: activeMap,
+      exercises: activeExercises,
       exerciseId,
       drawnTrace: pipelineTrace,
       options: {
@@ -1939,7 +2070,7 @@ export function RouteRunnerClient() {
         maximumSnapDistance: SNAP_TOLERANCE
       }
     });
-  }, [drawnTrace, exerciseId, isDrawing, selectedExerciseAvailability]);
+  }, [activeExercises, activeMap, drawnTrace, exerciseId, isDrawing, selectedExerciseAvailability]);
   const snapPreview = drawnPipelineResult.snappedRoute ?? emptySnapPreview();
   const drawnDisplayStatus = getDrawnPipelineDisplayStatus(drawnPipelineResult, isDrawing);
   const pipelineStageBadges = getPipelineStageBadges(drawnPipelineResult, isDrawing);
@@ -1952,8 +2083,8 @@ export function RouteRunnerClient() {
       }
     : drawnPipelineResult;
   const routeIssueOverlays = useMemo(
-    () => (isDrawing ? [] : buildRouteIssueOverlays(marloweDistrictMap, drawnPipelineResult)),
-    [drawnPipelineResult, isDrawing]
+    () => (isDrawing ? [] : buildRouteIssueOverlays(activeMap, drawnPipelineResult)),
+    [activeMap, drawnPipelineResult, isDrawing]
   );
   const restrictionMapVisualItems = useMemo(
     () =>
@@ -1969,11 +2100,11 @@ export function RouteRunnerClient() {
       isDrawing
         ? []
         : buildIllegalDrawnMovementHighlights({
-            map: marloweDistrictMap,
+            map: activeMap,
             illegalMovements: drawnPipelineResult.exerciseResult?.score.legality.illegalMovements ?? [],
             scored: Boolean(drawnPipelineResult.exerciseResult)
           }),
-    [drawnPipelineResult, isDrawing]
+    [activeMap, drawnPipelineResult, isDrawing]
   );
   const drawnAttemptReview = useMemo(
     () =>
@@ -1983,6 +2114,66 @@ export function RouteRunnerClient() {
         isDrawing
       }),
     [drawnPipelineResult, illegalDrawnMovements, isDrawing]
+  );
+  const userRouteReplayPoints = useMemo(
+    () => normaliseRouteReplayGeometry(snapPreview.snappedPoints.map((point) => point.snappedPoint)),
+    [snapPreview.snappedPoints]
+  );
+  const shortestRouteReplayPoints = useMemo(
+    () =>
+      shortestRouteReplayOverlay.status === "available"
+        ? normaliseRouteReplayGeometry(shortestRouteReplayOverlay.points)
+        : [],
+    [shortestRouteReplayOverlay]
+  );
+  const routeReplayTracks = useMemo(
+    () =>
+      buildRouteReplayTracks({
+        mode: routeReplayState.mode,
+        userRoutePoints: userRouteReplayPoints,
+        shortestRoutePoints: shortestRouteReplayPoints
+      }),
+    [routeReplayState.mode, shortestRouteReplayPoints, userRouteReplayPoints]
+  );
+  const routeReplayTrackLength = useMemo(
+    () => calculateRouteReplayTrackLength(routeReplayTracks),
+    [routeReplayTracks]
+  );
+  const routeReplayDurationMs = useMemo(
+    () =>
+      calculateRouteReplayDurationMs({
+        routeLength: routeReplayTrackLength,
+        speedMultiplier: routeReplayState.speedMultiplier
+      }),
+    [routeReplayState.speedMultiplier, routeReplayTrackLength]
+  );
+  const canReplayUserRoute = canReplayRouteGeometry(userRouteReplayPoints);
+  const canReplayShortestRoute = canReplayRouteGeometry(shortestRouteReplayPoints);
+  const hasSubmittedReplayAttempt = drawnAttemptReview.status !== "pending";
+  const canPlayRouteReplay =
+    hasSubmittedReplayAttempt &&
+    routeReplayDurationMs > 0 &&
+    routeReplayTracks.some((track) => canReplayRouteGeometry(track.points));
+  const routeReplayMessage = !hasSubmittedReplayAttempt
+    ? "Submit a drawn route to enable replay."
+    : !canReplayUserRoute && !canReplayShortestRoute
+      ? "No replayable route geometry is available for this attempt."
+      : routeReplayState.mode === "user" && !canReplayUserRoute
+        ? "My route replay is unavailable because no snapped user route geometry was captured."
+        : routeReplayState.mode === "shortest" && !canReplayShortestRoute
+          ? "Shortest route replay is unavailable because no legal shortest route is available."
+          : routeReplayState.mode === "compare" && (!canReplayUserRoute || !canReplayShortestRoute)
+            ? "Compare replay needs both snapped user route geometry and a legal shortest route."
+            : "Replay uses the current map view, so markers stay aligned while zooming and panning.";
+  const routeReplayMarkers = useMemo(
+    () =>
+      hasSubmittedReplayAttempt && (routeReplayState.status !== "idle" || routeReplayState.progress > 0)
+        ? buildRouteReplayMarkers({
+            tracks: routeReplayTracks,
+            progress: routeReplayState.progress
+          })
+        : [],
+    [hasSubmittedReplayAttempt, routeReplayState.progress, routeReplayState.status, routeReplayTracks]
   );
   const selectedRestrictionReviewItem = useMemo<RestrictionFocusReviewItem | null>(() => {
     if (!selectedRestrictionReviewItemId) {
@@ -2238,8 +2429,8 @@ export function RouteRunnerClient() {
     saveRouteAttempt({
       userId: null,
       exerciseId,
-      mapId: marloweDistrictMap.id,
-      mapVersion: marloweDistrictMap.version,
+      mapId: activeMap.id,
+      mapVersion: activeMap.version,
       review: drawnAttemptReview,
       score: drawnPipelineResult.exerciseResult?.score ?? null,
       matchedRoute: matchedRoutePayloadForStorage(drawnPipelineResult)
@@ -2283,7 +2474,41 @@ export function RouteRunnerClient() {
     return () => {
       cancelled = true;
     };
-  }, [drawnAttemptReview, drawnPipelineResult, exerciseId, weakAreaAttemptKey]);
+  }, [activeMap.id, activeMap.version, drawnAttemptReview, drawnPipelineResult, exerciseId, weakAreaAttemptKey]);
+
+  useEffect(() => {
+    routeReplayStateRef.current = routeReplayState;
+  }, [routeReplayState]);
+
+  useEffect(() => {
+    if (routeReplayState.status !== "playing") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const tick = (nowMs: number) => {
+      const nextState = advanceRouteReplayProgress(routeReplayStateRef.current, nowMs);
+
+      routeReplayStateRef.current = nextState;
+      setRouteReplayState(nextState);
+
+      if (nextState.status === "playing" && !cancelled) {
+        routeReplayAnimationFrameRef.current = window.requestAnimationFrame(tick);
+      }
+    };
+
+    routeReplayAnimationFrameRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      cancelled = true;
+
+      if (routeReplayAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(routeReplayAnimationFrameRef.current);
+        routeReplayAnimationFrameRef.current = null;
+      }
+    };
+  }, [routeReplayRunId, routeReplayState.status]);
 
   useEffect(() => {
     writeStoredWeakAreaProfile(weakAreaProfile);
@@ -2302,11 +2527,16 @@ export function RouteRunnerClient() {
 
     drawRouteCanvas({
       canvas,
+      map: activeMap,
       viewport,
+      backgroundFeatures: syntheticBackgroundFeatures,
+      linearFeatures: syntheticLinearFeatures,
+      roadVisuals: syntheticRoadVisuals,
       selectedExercise,
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,
       fastestRoutePoints: fastestRouteOverlay.status === "available" ? fastestRouteOverlay.points : [],
+      routeReplayMarkers,
       snapPreview,
       pipelineResult: drawnPipelineResult,
       roadRestrictionOverlays: visibleRoadRestrictionOverlays,
@@ -2315,15 +2545,20 @@ export function RouteRunnerClient() {
       selectedRestrictionHighlight
     });
   }, [
+    activeMap,
     drawnPipelineResult,
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
     restrictionMapVisualItems,
+    routeReplayMarkers,
     routeIssueOverlays,
     selectedExercise,
     selectedRestrictionHighlight,
     snapPreview,
+    syntheticBackgroundFeatures,
+    syntheticLinearFeatures,
+    syntheticRoadVisuals,
     viewport,
     visibleRoadRestrictionOverlays
   ]);
@@ -2347,10 +2582,66 @@ export function RouteRunnerClient() {
     return screenToMapPoint(screenPoint, viewport);
   }
 
+  function cancelRouteReplayAnimation() {
+    if (routeReplayAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(routeReplayAnimationFrameRef.current);
+      routeReplayAnimationFrameRef.current = null;
+    }
+  }
+
+  function updateRouteReplayState(updater: (currentState: RouteReplayState) => RouteReplayState) {
+    const nextState = updater(routeReplayStateRef.current);
+
+    routeReplayStateRef.current = nextState;
+    setRouteReplayState(nextState);
+  }
+
+  function resetRouteReplay() {
+    cancelRouteReplayAnimation();
+    updateRouteReplayState((currentState) => resetRouteReplayState(currentState));
+  }
+
+  function changeRouteReplayMode(mode: RouteReplayMode) {
+    cancelRouteReplayAnimation();
+    updateRouteReplayState((currentState) => selectRouteReplayMode(currentState, mode));
+  }
+
+  function changeRouteReplaySpeed(speedMultiplier: number) {
+    cancelRouteReplayAnimation();
+    updateRouteReplayState((currentState) => setRouteReplaySpeed(currentState, speedMultiplier));
+  }
+
+  function playRouteReplay() {
+    if (!canPlayRouteReplay) {
+      return;
+    }
+
+    const nowMs = window.performance.now();
+    const nextState = startRouteReplay({
+      state: routeReplayStateRef.current,
+      durationMs: routeReplayDurationMs,
+      nowMs
+    });
+
+    routeReplayStateRef.current = nextState;
+    setRouteReplayState(nextState);
+    setRouteReplayRunId((currentId) => currentId + 1);
+  }
+
+  function pauseCurrentRouteReplay() {
+    cancelRouteReplayAnimation();
+    updateRouteReplayState((currentState) => pauseRouteReplay(currentState));
+  }
+
+  function restartRouteReplay() {
+    resetRouteReplay();
+  }
+
   function clearDrawnAttempt() {
     setIsDrawing(false);
     setDrawnRouteDraft(clearRouteDraft());
     setSelectedRestrictionReviewItemId(null);
+    resetRouteReplay();
   }
 
   function toggleFastestRouteOverlay() {
@@ -2385,6 +2676,7 @@ export function RouteRunnerClient() {
     setIsDrawing(false);
     setDrawnRouteDraft((currentDraft) => undoLastRouteStroke(currentDraft));
     setSelectedRestrictionReviewItemId(null);
+    resetRouteReplay();
   }
 
   function submitDrawnAttempt() {
@@ -2428,9 +2720,10 @@ export function RouteRunnerClient() {
   function handleStartAdaptivePractice(item: AdaptivePracticeQueueItem) {
     const nowIso = new Date().toISOString();
     const linkedExerciseId = launchableRouteExerciseId(item);
-    const linkedExercise = linkedExerciseId
-      ? marloweDistrictRouteExercises.find((exercise) => exercise.id === linkedExerciseId)
+    const linkedMapOption = linkedExerciseId
+      ? ROUTE_RUNNER_MAP_OPTIONS.find((option) => option.exercises.some((exercise) => exercise.id === linkedExerciseId))
       : null;
+    const linkedExercise = linkedMapOption?.exercises.find((exercise) => exercise.id === linkedExerciseId) ?? null;
 
     setAdaptiveLauncherState((currentState) => startAdaptivePracticeItem(currentState, item, nowIso));
     resetCurrentRouteAttemptState();
@@ -2439,6 +2732,7 @@ export function RouteRunnerClient() {
       panDragPointRef.current = null;
       setIsPanningMap(false);
       setMapViewportState(resetMapViewport());
+      setMapOptionId(linkedMapOption?.id ?? DEFAULT_ROUTE_RUNNER_MAP_ID);
       setExerciseId(linkedExercise.id);
       setAdaptiveLauncherMessage(
         `Starting: ${item.title}. Chosen because ${item.reasons[0] ?? item.explanation} Focus: ${item.practiceFocus}`
@@ -2497,6 +2791,22 @@ export function RouteRunnerClient() {
     clearDrawnAttempt();
   }
 
+  function handleMapOptionChange(nextMapOptionId: string) {
+    const nextMapOption = getRouteRunnerMapOption(nextMapOptionId) ?? DEFAULT_ROUTE_RUNNER_MAP_OPTION;
+
+    setMapOptionId(nextMapOption.id);
+    setExerciseId(nextMapOption.defaultExerciseId);
+    setNodeIdsText("");
+    setRoadIdsText("");
+    setResult(null);
+    setError(null);
+    panDragPointRef.current = null;
+    setIsPanningMap(false);
+    setMapViewportState(resetMapViewport());
+    setFastestRouteRevealState(hideFastestRouteReveal());
+    clearDrawnAttempt();
+  }
+
   function toggleRestrictionReviewFocus(item: RestrictionFocusReviewItem) {
     setSelectedRestrictionReviewItemId((currentId) => (currentId === item.id ? null : item.id));
   }
@@ -2534,6 +2844,7 @@ export function RouteRunnerClient() {
 
     setIsDrawing(true);
     setSelectedRestrictionReviewItemId(null);
+    resetRouteReplay();
     setDrawnRouteDraft((currentDraft) => startRouteStroke(currentDraft, point));
   }
 
@@ -2656,8 +2967,8 @@ export function RouteRunnerClient() {
 
     try {
       const runResult = runRouteExercise({
-        map: marloweDistrictMap,
-        exercises: marloweDistrictRouteExercises,
+        map: activeMap,
+        exercises: activeExercises,
         exerciseId,
         userRoute: {
           nodeIds: parseCommaSeparatedIds(nodeIdsText),
@@ -2791,7 +3102,7 @@ export function RouteRunnerClient() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">TOPOPASS / Route Runner</p>
             <h1 className="mt-1 text-xl font-bold text-slate-950">
-              {selectedExercise?.title ?? "Marlowe District route exercise runner"}
+              {selectedExercise?.title ?? `${selectedMapOption.label} route exercise runner`}
             </h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               {exercisePositionLabel}
@@ -2835,7 +3146,20 @@ export function RouteRunnerClient() {
             {displayStatusText(drawnDisplayStatus)}
           </span>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
-            Map: {marloweDistrictMap.name}
+            Map: {activeMap.name}
+          </span>
+          {isConvertedOsmMap ? (
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-900">
+              Converted OSM fixture
+            </span>
+          ) : null}
+          {selectedMapOption.attribution ? (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+              Data: {selectedMapOption.attribution}
+            </span>
+          ) : null}
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+            Source: {selectedMapOption.source.replace("-", " ")}
           </span>
           {selectedMapMetadata ? (
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
@@ -2857,6 +3181,28 @@ export function RouteRunnerClient() {
                 {exercisePositionLabel}
               </span>
             </div>
+            <label htmlFor="route-map-option" className="mt-4 block text-sm font-semibold text-slate-900">
+              Dev map
+            </label>
+            <select
+              id="route-map-option"
+              value={selectedMapOption.id}
+              onChange={(event) => handleMapOptionChange(event.target.value)}
+              className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+              {ROUTE_RUNNER_MAP_OPTIONS.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs leading-5 text-slate-600">{selectedMapOption.description}</p>
+            {isConvertedOsmMap ? (
+              <p className="mt-2 rounded-md border border-sky-100 bg-sky-50 p-2 text-xs leading-5 text-sky-950">
+                This dev-only map is converted from the committed Stage 101 Overpass fixture and rendered through the
+                existing TOPOPASS map engine. No live OSM data or external routing service is used.
+              </p>
+            ) : null}
             <label htmlFor="route-exercise" className="mt-4 block text-sm font-semibold text-slate-900">
               Route exercise
             </label>
@@ -2866,7 +3212,7 @@ export function RouteRunnerClient() {
               onChange={(event) => handleExerciseChange(event.target.value)}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {marloweDistrictRouteExercises.map((exercise) => {
+              {activeExercises.map((exercise) => {
                 const availability = exerciseAvailabilityById[exercise.id];
 
                 return (
@@ -2971,7 +3317,7 @@ export function RouteRunnerClient() {
                   ) : null}
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Start</dt>
-                    <dd className="mt-1">{selectedStartStop ? stopLabel(selectedStartStop) : "Not set"}</dd>
+                    <dd className="mt-1">{selectedStartStop ? stopLabel(selectedStartStop, activeMap) : "Not set"}</dd>
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Checkpoints</dt>
@@ -2979,7 +3325,7 @@ export function RouteRunnerClient() {
                       {selectedCheckpointStops.length > 0 ? (
                         <ol className="list-decimal space-y-1 pl-5">
                           {selectedCheckpointStops.map((stop, index) => (
-                            <li key={`${selectedExercise.id}-checkpoint-${index}`}>{stopLabel(stop)}</li>
+                            <li key={`${selectedExercise.id}-checkpoint-${index}`}>{stopLabel(stop, activeMap)}</li>
                           ))}
                         </ol>
                       ) : (
@@ -2989,7 +3335,7 @@ export function RouteRunnerClient() {
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Finish</dt>
-                    <dd className="mt-1">{selectedFinishStop ? stopLabel(selectedFinishStop) : "Not set"}</dd>
+                    <dd className="mt-1">{selectedFinishStop ? stopLabel(selectedFinishStop, activeMap) : "Not set"}</dd>
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rules</dt>
@@ -3251,7 +3597,7 @@ export function RouteRunnerClient() {
                       : "cursor-grab"
                     : "cursor-crosshair"
                 }`}
-                aria-label="Marlowe District drawing capture canvas"
+                aria-label={`${activeMap.name} drawing capture canvas`}
               />
             </div>
 
@@ -3289,7 +3635,7 @@ export function RouteRunnerClient() {
             <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Candidate roads</dt>
-                <dd className="mt-1">{selectedRoadNames(snapPreviewRoadIds)}</dd>
+                <dd className="mt-1">{selectedRoadNames(snapPreviewRoadIds, activeMap)}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snap diagnostics</dt>
@@ -3396,6 +3742,114 @@ export function RouteRunnerClient() {
               <p className="mt-2">{drawnScoreDisplay.summary}</p>
             </div>
 
+            {hasSubmittedReplayAttempt ? (
+              <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 p-4 text-sm text-sky-950">
+                <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Route replay</p>
+                    <h3 className="mt-1 text-base font-semibold">Replay this attempt</h3>
+                    <p className="mt-1 text-xs leading-5">{routeReplayMessage}</p>
+                  </div>
+                  <span className="rounded-full border border-sky-200 bg-white/80 px-3 py-1 text-xs font-semibold">
+                    {routeReplayStatusLabel(routeReplayState)} - {Math.round(routeReplayState.progress * 100)}%
+                  </span>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => changeRouteReplayMode("user")}
+                    disabled={!canReplayUserRoute}
+                    aria-pressed={routeReplayState.mode === "user"}
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${routeReplayModeButtonClass(
+                      routeReplayState.mode === "user"
+                    )}`}
+                  >
+                    Replay my route
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeRouteReplayMode("shortest")}
+                    disabled={!canReplayShortestRoute}
+                    aria-pressed={routeReplayState.mode === "shortest"}
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${routeReplayModeButtonClass(
+                      routeReplayState.mode === "shortest"
+                    )}`}
+                  >
+                    Replay shortest route
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => changeRouteReplayMode("compare")}
+                    disabled={!canReplayUserRoute || !canReplayShortestRoute}
+                    aria-pressed={routeReplayState.mode === "compare"}
+                    className={`rounded-md border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${routeReplayModeButtonClass(
+                      routeReplayState.mode === "compare"
+                    )}`}
+                  >
+                    Compare both
+                  </button>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={playRouteReplay}
+                    disabled={!canPlayRouteReplay || routeReplayState.status === "playing"}
+                    className="rounded-md border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-950 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Play
+                  </button>
+                  <button
+                    type="button"
+                    onClick={pauseCurrentRouteReplay}
+                    disabled={routeReplayState.status !== "playing"}
+                    className="rounded-md border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-950 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Pause
+                  </button>
+                  <button
+                    type="button"
+                    onClick={restartRouteReplay}
+                    disabled={routeReplayState.status === "idle" && routeReplayState.progress === 0}
+                    className="rounded-md border border-sky-200 bg-white px-3 py-2 text-xs font-semibold text-sky-950 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Restart
+                  </button>
+                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-sky-950">
+                    Speed
+                    <select
+                      value={routeReplayState.speedMultiplier}
+                      onChange={(event) => changeRouteReplaySpeed(Number(event.target.value))}
+                      disabled={routeReplayState.status === "playing"}
+                      className="rounded-md border border-sky-200 bg-white px-2 py-2 text-xs font-semibold text-sky-950 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {ROUTE_REPLAY_SPEED_OPTIONS.map((speed) => (
+                        <option key={speed} value={speed}>
+                          {speed}x
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-3">
+                  <div className="rounded-md border border-sky-100 bg-white/80 p-3">
+                    <dt className="font-semibold">My route</dt>
+                    <dd>{canReplayUserRoute ? `${userRouteReplayPoints.length} snapped points` : "Unavailable"}</dd>
+                  </div>
+                  <div className="rounded-md border border-sky-100 bg-white/80 p-3">
+                    <dt className="font-semibold">Shortest route</dt>
+                    <dd>{canReplayShortestRoute ? `${shortestRouteReplayPoints.length} route points` : "Unavailable"}</dd>
+                  </div>
+                  <div className="rounded-md border border-sky-100 bg-white/80 p-3">
+                    <dt className="font-semibold">Duration</dt>
+                    <dd>{routeReplayDurationMs > 0 ? `${(routeReplayDurationMs / 1000).toFixed(1)}s` : "n/a"}</dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+
             <div className={`mt-4 rounded-lg border p-4 text-sm ${reviewStateClass(drawnAttemptReview.status)}`}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -3467,7 +3921,8 @@ export function RouteRunnerClient() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold">
-                            Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId)} to {nodeLabel(leg.toNodeId)}
+                            Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId, activeMap)} to{" "}
+                            {nodeLabel(leg.toNodeId, activeMap)}
                           </p>
                           <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase">
                             {legStatusLabel(leg)}
@@ -4458,7 +4913,8 @@ export function RouteRunnerClient() {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-semibold text-slate-950">
-                              Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId)} to {nodeLabel(leg.toNodeId)}
+                              Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId, activeMap)} to{" "}
+                              {nodeLabel(leg.toNodeId, activeMap)}
                             </p>
                             <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase">
                               {legStatusLabel(leg)}
@@ -4491,7 +4947,7 @@ export function RouteRunnerClient() {
                       <p className="text-xs font-semibold uppercase tracking-wide">
                         {stop.role} {stop.order}
                       </p>
-                      <p className="mt-1 font-semibold">{nodeLabel(stop.nodeId)}</p>
+                      <p className="mt-1 font-semibold">{nodeLabel(stop.nodeId, activeMap)}</p>
                       <p className="mt-1 text-xs">
                         {stop.visited
                           ? `Visited${typeof stop.visitedIndex === "number" ? ` at position ${stop.visitedIndex + 1}` : ""}`
@@ -4675,7 +5131,8 @@ export function RouteRunnerClient() {
                       >
                         <div className="flex items-center justify-between gap-2">
                           <p className="font-semibold text-slate-950">
-                            Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId)} to {nodeLabel(leg.toNodeId)}
+                            Leg {leg.legIndex + 1}: {nodeLabel(leg.fromNodeId, activeMap)} to{" "}
+                            {nodeLabel(leg.toNodeId, activeMap)}
                           </p>
                           <span className="rounded-full border border-slate-200 px-2 py-0.5 text-[10px] font-semibold uppercase">
                             {legStatusLabel(leg)}

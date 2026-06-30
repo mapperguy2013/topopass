@@ -1,4 +1,5 @@
 export { buildDirectedEdges } from "./edges.ts";
+export { buildBlockedDirectedEdgeKeys, directedEdgeKey, validateDirectedEdgePath } from "./directedEdgeRestrictions.ts";
 export { canSubmitDraftRoute, validateDraftRouteSelection } from "./draftRouteValidation.ts";
 export {
   appendDrawnRoutePoint,
@@ -49,6 +50,11 @@ export {
   getLegalOutgoingMovements
 } from "./legalMovementGraph.ts";
 export {
+  convertImportedOsmToRouteMap,
+  convertOverpassJsonToRouteMap,
+  parseOverpassRoadExtract
+} from "./osm/index.ts";
+export {
   addDraftSelectedNode,
   addDraftSelectedRoad,
   clearDraftRouteSelection,
@@ -73,6 +79,9 @@ export { snapDrawnRouteToRoads } from "./routeSnapping.ts";
 export { calculateRouteEfficiencyScore, scoreRouteAttempt } from "./scoringEngine.ts";
 export { findShortestLegalRoute, findShortestLegalRouteThroughStops } from "./shortestRoute.ts";
 export { validateMapDefinition, validateRouteExercise, validateRouteExerciseLegalReachability } from "./validation.ts";
+export type {
+  DirectedEdgePathValidationResult
+} from "./directedEdgeRestrictions.ts";
 export type {
   NormalisedRouteAttempt,
   RunRouteExerciseInput,
@@ -118,6 +127,40 @@ export type {
   IllegalDrawnMovementKind
 } from "./illegalMovementHighlighting.ts";
 export type { LegalMovementGraph, LegalMovementPosition, LegalTransition } from "./legalMovementGraph.ts";
+export type {
+  ConvertImportedOsmToRouteMapOptions,
+  ImportedOsmRoad,
+  ImportedOsmRoadCoordinate,
+  ImportedOsmRoadDirection,
+  OsmAcceptedHighway,
+  OsmLatLonBounds,
+  OsmLocalProjection,
+  OsmProjectedBounds,
+  OsmProjectedPoint,
+  OsmRoadFilterDecision,
+  OsmRoadFilterOptions,
+  OsmRouteGraphConversionResult,
+  OsmRouteGraphConversionWarning,
+  OsmRouteGraphConversionWarningCode,
+  OsmRouteGraphExcludedHighway,
+  OsmRouteGraphHighway,
+  OsmRouteGraphMapDefinition,
+  OsmRouteGraphMetadata,
+  OsmRouteGraphNode,
+  OsmRouteGraphNodeMetadata,
+  OsmRouteGraphRoad,
+  OsmRouteGraphRoadMetadata,
+  OverpassElement,
+  OverpassElementId,
+  OverpassExcludedWay,
+  OverpassExcludedWayReason,
+  OverpassJsonResponse,
+  OverpassNodeElement,
+  OverpassRelationElement,
+  OverpassRoadImportResult,
+  OverpassTags,
+  OverpassWayElement
+} from "./osm/index.ts";
 export type {
   BoundingBox,
   FindCandidateRoadsInput,

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildMapGraph,
+  buildBlockedDirectedEdgeKeys,
   checkRouteLegality,
   findShortestLegalRoute,
   findShortestLegalRouteThroughStops,
@@ -9,7 +10,8 @@ import {
   marloweDistrictRouteExercises,
   type DirectedEdge,
   type MapDefinition,
-  type ShortestLegalRouteResult
+  type ShortestLegalRouteResult,
+  validateDirectedEdgePath
 } from "./index.ts";
 
 function expectFound(result: ShortestLegalRouteResult): Extract<ShortestLegalRouteResult, { found: true }> {
@@ -129,6 +131,138 @@ test("findShortestLegalRoute avoids no-entry restricted movements", () => {
 
   assert.equal(result.distanceMeters, 300);
   assert.deepEqual(result.edgeIds, ["road-ad:forward", "road-dc:forward"]);
+});
+
+test("blocked directed edge keys are stored as fromNodeId->toNodeId", () => {
+  const map: MapDefinition = {
+    id: "blocked-edge-key-map",
+    name: "Blocked Edge Key Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 }
+    ],
+    roads: [{ id: "road-ab", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, isOneWay: false }],
+    restrictions: [{ id: "no-entry-a-to-b", type: "no_entry", roadId: "road-ab", fromNodeId: "a", toNodeId: "b" }],
+    landmarks: []
+  };
+  const graph = buildMapGraph(map);
+  const blockedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, map.restrictions);
+
+  assert.deepEqual([...blockedEdgeKeys], ["a->b"]);
+  assert.equal(blockedEdgeKeys.has("b->a"), false);
+});
+
+test("findShortestLegalRoute splits a road with a mid-road no-entry and blocks only the illegal segment", () => {
+  const map: MapDefinition = {
+    id: "mid-road-no-entry-map",
+    name: "Mid-Road No Entry Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 50, y: 80 }
+    ],
+    roads: [
+      { id: "road-ab", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, isOneWay: false },
+      { id: "road-ac", fromNodeId: "a", toNodeId: "c", distanceMeters: 90, isOneWay: false },
+      { id: "road-cb", fromNodeId: "c", toNodeId: "b", distanceMeters: 90, isOneWay: false }
+    ],
+    restrictions: [
+      {
+        id: "no-entry-ab-halfway",
+        type: "no_entry",
+        roadId: "road-ab",
+        fromNodeId: "a",
+        toNodeId: "b",
+        blockedFromDistanceMeters: 50,
+        blockedToDistanceMeters: 100
+      }
+    ],
+    landmarks: []
+  };
+  const graph = buildMapGraph(map);
+  const splitNodeId = "road-ab__split_50";
+  const blockedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, map.restrictions);
+
+  assert(graph.nodesById[splitNodeId]);
+  assert(blockedEdgeKeys.has(`${splitNodeId}->b`));
+  assert.equal(blockedEdgeKeys.has(`a->${splitNodeId}`), false);
+  assert.equal(blockedEdgeKeys.has(`b->${splitNodeId}`), false);
+
+  const outbound = expectFound(
+    findShortestLegalRoute({
+      graph,
+      startNodeId: "a",
+      endNodeId: "b",
+      restrictions: map.restrictions
+    })
+  );
+  assert.deepEqual(outbound.edgeIds, ["road-ac:forward", "road-cb:forward"]);
+  assert.equal(outbound.distanceMeters, 180);
+
+  const reverse = expectFound(
+    findShortestLegalRoute({
+      graph,
+      startNodeId: "b",
+      endNodeId: "a",
+      restrictions: map.restrictions
+    })
+  );
+  assert.deepEqual(reverse.edgeIds, ["road-ab:segment-1:reverse", "road-ab:segment-0:reverse"]);
+  assert.equal(reverse.distanceMeters, 100);
+});
+
+test("findShortestLegalRoute returns no route when the only path crosses a mid-road no-entry segment", () => {
+  const map: MapDefinition = {
+    id: "mid-road-no-entry-unreachable-map",
+    name: "Mid-Road No Entry Unreachable Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 }
+    ],
+    roads: [{ id: "road-ab", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, isOneWay: false }],
+    restrictions: [
+      {
+        id: "no-entry-ab-halfway",
+        type: "no_entry",
+        roadId: "road-ab",
+        fromNodeId: "a",
+        toNodeId: "b",
+        blockedFromDistanceMeters: 50,
+        blockedToDistanceMeters: 100
+      }
+    ],
+    landmarks: []
+  };
+  const graph = buildMapGraph(map);
+
+  assert.deepEqual(findShortestLegalRoute({ graph, startNodeId: "a", endNodeId: "b", restrictions: map.restrictions }), {
+    found: false,
+    startNodeId: "a",
+    endNodeId: "b",
+    reason: "NO_ROUTE"
+  });
+});
+
+test("validateDirectedEdgePath rejects blocked no-entry edges before a route is rendered", () => {
+  const map: MapDefinition = {
+    id: "render-validation-map",
+    name: "Render Validation Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 }
+    ],
+    roads: [{ id: "road-ab", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, isOneWay: false }],
+    restrictions: [{ id: "no-entry-a-to-b", type: "no_entry", roadId: "road-ab", fromNodeId: "a", toNodeId: "b" }],
+    landmarks: []
+  };
+  const graph = buildMapGraph(map);
+
+  assert.deepEqual(validateDirectedEdgePath({ graph, edgeIds: ["road-ab:forward"], restrictions: map.restrictions }), {
+    valid: false,
+    invalidEdgeKeys: ["a->b"],
+    blockedEdgeKeys: ["a->b"]
+  });
+  assert.equal(validateDirectedEdgePath({ graph, edgeIds: ["road-ab:reverse"], restrictions: map.restrictions }).valid, true);
 });
 
 test("findShortestLegalRoute avoids prohibited turns with transition-aware state", () => {

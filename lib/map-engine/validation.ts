@@ -22,7 +22,7 @@ function duplicateIds(items: Array<{ id: string }>, label: string): string[] {
 
 function restrictionReferenceErrors(
   restriction: MapRestriction,
-  roadsById: Map<string, { fromNodeId: string; toNodeId: string }>,
+  roadsById: Map<string, { fromNodeId: string; toNodeId: string; distanceMeters: number }>,
   nodeIds: Set<string>
 ): string[] {
   if (restriction.type === "prohibited_turn") {
@@ -86,6 +86,40 @@ function restrictionReferenceErrors(
       errors.push(
         `Restriction ${restriction.id} toNodeId ${restriction.toNodeId} is not an endpoint of roadId: ${restriction.roadId}`
       );
+    }
+
+    const hasBlockedStart = restriction.blockedFromDistanceMeters !== undefined;
+    const hasBlockedEnd = restriction.blockedToDistanceMeters !== undefined;
+
+    if (hasBlockedStart !== hasBlockedEnd) {
+      errors.push(
+        `Restriction ${restriction.id} must define both blockedFromDistanceMeters and blockedToDistanceMeters`
+      );
+    }
+
+    if (hasBlockedStart && hasBlockedEnd) {
+      const blockedStart = restriction.blockedFromDistanceMeters as number;
+      const blockedEnd = restriction.blockedToDistanceMeters as number;
+
+      if (!Number.isFinite(blockedStart) || !Number.isFinite(blockedEnd)) {
+        errors.push(`Restriction ${restriction.id} blocked distance values must be finite`);
+      } else {
+        if (blockedStart < 0 || blockedStart > road.distanceMeters) {
+          errors.push(
+            `Restriction ${restriction.id} blockedFromDistanceMeters must be between 0 and road distance ${road.distanceMeters}`
+          );
+        }
+
+        if (blockedEnd < 0 || blockedEnd > road.distanceMeters) {
+          errors.push(
+            `Restriction ${restriction.id} blockedToDistanceMeters must be between 0 and road distance ${road.distanceMeters}`
+          );
+        }
+
+        if (blockedStart === blockedEnd) {
+          errors.push(`Restriction ${restriction.id} blocked distance range must have non-zero length`);
+        }
+      }
     }
   }
 

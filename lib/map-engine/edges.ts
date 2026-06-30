@@ -8,7 +8,9 @@ export function buildDirectedEdges(roads: MapRoad[]): DirectedEdge[] {
       fromNodeId: road.fromNodeId,
       toNodeId: road.toNodeId,
       distanceMeters: road.distanceMeters,
-      direction: "forward"
+      direction: "forward",
+      sourceFromDistanceMeters: 0,
+      sourceToDistanceMeters: road.distanceMeters
     };
 
     if (road.isOneWay) {
@@ -21,7 +23,9 @@ export function buildDirectedEdges(roads: MapRoad[]): DirectedEdge[] {
       fromNodeId: road.toNodeId,
       toNodeId: road.fromNodeId,
       distanceMeters: road.distanceMeters,
-      direction: "reverse"
+      direction: "reverse",
+      sourceFromDistanceMeters: road.distanceMeters,
+      sourceToDistanceMeters: 0
     };
 
     return [forward, reverse];

@@ -1,3 +1,4 @@
+import { buildBlockedDirectedEdgeKeys, directedEdgeKey } from "./directedEdgeRestrictions.ts";
 import { buildMapGraph } from "./graph.ts";
 import type { DirectedEdge, MapDefinition, MapRestriction } from "./types.ts";
 
@@ -22,25 +23,6 @@ export type LegalMovementPosition = {
   nodeId: string;
   previousEdgeId?: string;
 };
-
-function noEntryBlocksEdge(restriction: Extract<MapRestriction, { type: "no_entry" }>, edge: DirectedEdge): boolean {
-  if (restriction.roadId !== edge.roadId) {
-    return false;
-  }
-
-  if (!restriction.fromNodeId || !restriction.toNodeId) {
-    return true;
-  }
-
-  return restriction.fromNodeId === edge.fromNodeId && restriction.toNodeId === edge.toNodeId;
-}
-
-function roadClosureBlocksEdge(
-  restriction: Extract<MapRestriction, { type: "road_closed" }>,
-  edge: DirectedEdge
-): boolean {
-  return restriction.roadId === edge.roadId;
-}
 
 function isProhibitedTurn(
   restrictions: Array<Extract<MapRestriction, { type: "prohibited_turn" }>>,
@@ -69,16 +51,11 @@ function emptyStringArrayIndex(nodeIds: string[]): Record<string, string[]> {
 
 export function buildLegalMovementGraph(map: MapDefinition): LegalMovementGraph {
   const graph = buildMapGraph(map);
-  const noEntryRestrictions = map.restrictions.filter((restriction) => restriction.type === "no_entry");
-  const roadClosedRestrictions = map.restrictions.filter((restriction) => restriction.type === "road_closed");
+  const blockedDirectedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, map.restrictions);
   const prohibitedTurnRestrictions = map.restrictions.filter(
     (restriction) => restriction.type === "prohibited_turn"
   );
-  const legalEdges = graph.edges.filter(
-    (edge) =>
-      !noEntryRestrictions.some((restriction) => noEntryBlocksEdge(restriction, edge)) &&
-      !roadClosedRestrictions.some((restriction) => roadClosureBlocksEdge(restriction, edge))
-  );
+  const legalEdges = graph.edges.filter((edge) => !blockedDirectedEdgeKeys.has(directedEdgeKey(edge)));
   const edgesById = Object.fromEntries(legalEdges.map((edge) => [edge.id, edge]));
   const nodeIds = Object.keys(graph.nodesById);
   const outgoingEdgeIdsByNodeId = emptyStringArrayIndex(nodeIds);
