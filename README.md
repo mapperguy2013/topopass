@@ -2452,6 +2452,26 @@ out body;
   `routeRunnerOsmRealPilotReadinessReport` test, `npm.cmd run test:map`,
   `npm.cmd run lint`, and `npm.cmd run build`.
 
+## Stage 120 Real London Pilot Dev Readiness Panel
+
+- `/dev/route-runner` now shows a compact real London pilot readiness panel
+  when the selected map is `osm-real-london-pilot`.
+- The panel is powered by the deterministic Stage 119 consolidated readiness
+  report and displays map id, committed fixture name, exercise pass/fail
+  counts, readiness state, exercise ids, acceptance QA, manual-attempt QA,
+  drawn-route QA, and deterministic failure reason codes.
+- The panel helps confirm the real London pilot is safe to test manually in
+  the browser while keeping Marlowe as the default synthetic map.
+- This remains dev/test-only and uses only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture. It does
+  not fetch live OSM/Overpass data, use external routing APIs, manually edit
+  OSM road directions, weaken one-way/no-entry legality, change scoring rules,
+  or change production behaviour.
+- Focused tests cover ready formatting, stable summary ordering, all five
+  exercise ids, `none` failure display, deterministic broken-report failure
+  reasons, repeated formatting stability, and guards that keep Marlowe plus
+  tiny/medium OSM maps from showing the real pilot panel.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

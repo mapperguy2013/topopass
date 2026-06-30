@@ -221,6 +221,11 @@ import {
   type OsmQaStatusPanelModel,
   type OsmQaStatusState
 } from "./routeRunnerOsmQaStatus";
+import { buildRealLondonPilotReadinessReport } from "./routeRunnerOsmRealPilotReadinessReport";
+import {
+  buildRealLondonPilotQaPanelModel,
+  shouldShowRealLondonPilotQaPanel
+} from "./routeRunnerRealLondonPilotQaPanel";
 import {
   buildOsmExerciseDebugOverlayModel,
   canOfferOsmExerciseDebugOverlay,
@@ -2426,6 +2431,13 @@ export function RouteRunnerClient() {
       selectedExercise
     ]
   );
+  const realLondonPilotQaPanel = useMemo(
+    () =>
+      shouldShowRealLondonPilotQaPanel(activeMap.id)
+        ? buildRealLondonPilotQaPanelModel(buildRealLondonPilotReadinessReport())
+        : null,
+    [activeMap.id]
+  );
   const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
   const selectedExerciseIsInvalid = selectedExerciseAvailability ? !selectedExerciseAvailability.isValid : false;
   const fastestRouteOverlay = useMemo(
@@ -4351,6 +4363,90 @@ export function RouteRunnerClient() {
                     ? ` Blocked OSM way IDs: ${osmDebugOverlay.summary.blockedOsmWayIds.join(", ")}.`
                     : ""}
                 </p>
+
+                {realLondonPilotQaPanel ? (
+                  <div
+                    className={`mt-4 rounded-md border p-3 text-sm ${
+                      realLondonPilotQaPanel.statusTone === "pass"
+                        ? "border-green-200 bg-green-50 text-green-950"
+                        : "border-red-200 bg-red-50 text-red-950"
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide">Real London Pilot QA</p>
+                        <h3 className="mt-1 font-semibold">{realLondonPilotQaPanel.title}</h3>
+                        <p className="mt-1 text-xs leading-5">
+                          Status: {realLondonPilotQaPanel.statusLabel} | Exercises:{" "}
+                          {realLondonPilotQaPanel.exerciseProgressText}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${osmQaStatusClass(
+                          realLondonPilotQaPanel.statusTone
+                        )}`}
+                      >
+                        {realLondonPilotQaPanel.statusLabel}
+                      </span>
+                    </div>
+
+                    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                      {realLondonPilotQaPanel.metricRows.map((row) => (
+                        <div key={row.id} className="rounded border border-white/80 bg-white p-2">
+                          <dt className="font-semibold uppercase tracking-wide text-slate-500">{row.label}</dt>
+                          <dd className="mt-1 break-words font-semibold text-slate-950">{row.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+
+                    <div className="mt-3 rounded border border-white/80 bg-white p-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise IDs</p>
+                      <ul className="mt-2 flex flex-wrap gap-2">
+                        {realLondonPilotQaPanel.exerciseIds.map((exerciseId) => (
+                          <li
+                            key={exerciseId}
+                            className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800"
+                          >
+                            {exerciseId}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <ul className="mt-3 grid gap-2 text-xs lg:grid-cols-3">
+                      {realLondonPilotQaPanel.summaryRows.map((row) => (
+                        <li key={row.id} className="rounded border border-white/80 bg-white p-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-semibold text-slate-950">{row.label}</p>
+                            <span
+                              className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${osmQaStatusClass(
+                                row.status
+                              )}`}
+                            >
+                              {row.value}
+                            </span>
+                          </div>
+                          <p className="mt-1 leading-5 text-slate-700">{row.detail}</p>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div
+                      className={`mt-3 rounded border p-2 text-xs ${
+                        realLondonPilotQaPanel.statusTone === "pass"
+                          ? "border-green-100 bg-white text-green-950"
+                          : "border-red-100 bg-white text-red-950"
+                      }`}
+                    >
+                      <p className="font-semibold uppercase tracking-wide">Failures</p>
+                      <ul className="mt-2 grid gap-1 font-mono text-[11px] leading-5">
+                        {realLondonPilotQaPanel.failureReasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
 
                 {osmExerciseDebugOverlay ? (
                   <div className="mt-4 rounded-md border border-violet-200 bg-white p-3 text-sm text-violet-950">
