@@ -227,6 +227,10 @@ import {
   shouldShowRealLondonPilotQaPanel
 } from "./routeRunnerRealLondonPilotQaPanel";
 import {
+  buildRealLondonPilotPlaythroughPanelModel,
+  type RealLondonPilotPlaythroughTone
+} from "./routeRunnerRealLondonPilotPlaythroughPanel";
+import {
   buildOsmExerciseDebugOverlayModel,
   canOfferOsmExerciseDebugOverlay,
   createDefaultOsmExerciseDebugOverlayState,
@@ -464,6 +468,26 @@ function reviewStateClass(status: RouteAttemptReview["status"]): string {
 
   if (status === "blocked") {
     return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function realLondonPlaythroughToneClass(tone: RealLondonPilotPlaythroughTone): string {
+  if (tone === "pass") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (tone === "fail") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (tone === "warning") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  if (tone === "active") {
+    return "border-blue-200 bg-blue-50 text-blue-950";
   }
 
   return "border-slate-200 bg-slate-50 text-slate-800";
@@ -2567,6 +2591,20 @@ export function RouteRunnerClient() {
       }),
     [drawnPipelineResult, illegalDrawnMovements, isDrawing]
   );
+  const realLondonPilotPlaythroughPanel = buildRealLondonPilotPlaythroughPanelModel({
+    mapId: activeMap.id,
+    selectedExerciseId: selectedExercise?.id ?? null,
+    startLabel: selectedStartStop ? stopLabel(selectedStartStop, activeMap) : null,
+    destinationLabel: selectedFinishStop ? stopLabel(selectedFinishStop, activeMap) : null,
+    checkpointLabels: selectedCheckpointStops.map((stop) => stopLabel(stop, activeMap)),
+    hasLegalRevealRoute: Boolean(selectedExerciseAvailability?.isValid),
+    isRevealRouteVisible: fastestRouteOverlay.status === "available",
+    isDrawing,
+    drawnPointCount: drawnTrace.points.length,
+    drawnReviewStatus: drawnAttemptReview.status,
+    manualRunStatus: result ? (result.score.passed ? "accepted" : "rejected") : null,
+    illegalHighlightCount: illegalDrawnMovements.length
+  });
   const userRouteReplayPoints = useMemo(
     () => normaliseRouteReplayGeometry(snapPreview.snappedPoints.map((point) => point.snappedPoint)),
     [snapPreview.snappedPoints]
@@ -3973,6 +4011,56 @@ export function RouteRunnerClient() {
                     {displayStatusText(drawnDisplayStatus)}
                   </span>
                 </div>
+              </div>
+            ) : null}
+
+            {realLondonPilotPlaythroughPanel.shouldShowPanel ? (
+              <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      Real London Pilot Playthrough
+                    </p>
+                    <h3 className="mt-1 font-semibold">{realLondonPilotPlaythroughPanel.title}</h3>
+                    <p className="mt-1 font-mono text-[11px] text-blue-800">
+                      {realLondonPilotPlaythroughPanel.selectedExerciseId}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${realLondonPlaythroughToneClass(
+                      realLondonPilotPlaythroughPanel.rows.find((row) => row.id === "attempt")?.tone ?? "neutral"
+                    )}`}
+                  >
+                    {realLondonPilotPlaythroughPanel.attemptStatusText}
+                  </span>
+                </div>
+
+                <dl className="mt-3 grid gap-2 text-xs lg:grid-cols-2">
+                  {realLondonPilotPlaythroughPanel.rows
+                    .filter((row) => row.id !== "next-action")
+                    .map((row) => (
+                      <div key={row.id} className={`rounded border p-2 ${realLondonPlaythroughToneClass(row.tone)}`}>
+                        <dt className="font-semibold uppercase tracking-wide opacity-70">{row.label}</dt>
+                        <dd className="mt-1 break-words font-semibold">{row.value}</dd>
+                      </div>
+                    ))}
+                </dl>
+
+                <div className="mt-3 rounded border border-blue-200 bg-white p-2 text-xs text-blue-950">
+                  <p className="font-semibold uppercase tracking-wide text-blue-700">Next action</p>
+                  <p className="mt-1 leading-5">{realLondonPilotPlaythroughPanel.nextAction}</p>
+                </div>
+
+                {realLondonPilotPlaythroughPanel.warnings.length > 0 ? (
+                  <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950">
+                    <p className="font-semibold uppercase tracking-wide">Warnings</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-4 leading-5">
+                      {realLondonPilotPlaythroughPanel.warnings.map((warning) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

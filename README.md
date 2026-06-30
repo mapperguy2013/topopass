@@ -2472,6 +2472,29 @@ out body;
   reasons, repeated formatting stability, and guards that keep Marlowe plus
   tiny/medium OSM maps from showing the real pilot panel.
 
+## Stage 121 Real London Pilot Route Playthrough UX Polish
+
+- `/dev/route-runner` now shows real London pilot playthrough guidance when
+  the selected map is `osm-real-london-pilot`.
+- The panel helps manual QA testers understand the selected exercise id, start
+  location, destination, ordered checkpoints, reveal-route availability,
+  current drawn/manual route status, illegal movement highlight state, and the
+  next action to take.
+- The formatter is dev/test-only and presentation-only: it consumes existing
+  route-runner state such as exercise selection, reachability, reveal overlay
+  state, drawn review status, manual run status, and illegal highlight counts
+  without duplicating routing, matching, scoring, checkpoint, or legality logic.
+- This stage uses only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture. It does
+  not fetch live OSM/Overpass data, use external routing APIs, manually edit
+  OSM road directions, weaken one-way/no-entry legality, change scoring rules,
+  or change production behaviour.
+- Focused tests cover real-pilot-only visibility, Marlowe/tiny/medium map
+  guards, selected exercise id display, stable start/destination labels,
+  ordered checkpoints, `none` checkpoint display, reveal-route availability,
+  empty/accepted/rejected attempt states, illegal-highlight guidance, stable
+  next actions, and repeated formatting determinism.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
