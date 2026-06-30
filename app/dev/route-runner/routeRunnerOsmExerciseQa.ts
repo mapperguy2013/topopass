@@ -55,6 +55,30 @@ export type OsmExerciseQaSuiteResult = {
   failures: OsmExerciseQaFailure[];
 };
 
+export type OsmExerciseQaAcceptanceReport = {
+  isValid: boolean;
+  mapId: string;
+  exerciseId: string;
+  startNodeId: string | null;
+  destinationNodeId: string | null;
+  checkpointNodeIds: Array<string | null>;
+  checkpointCount: number;
+  hasLegalRoute: boolean;
+  fastestRouteEdgeCount: number;
+  fastestRouteDistanceMeters: number | null;
+  failureReasonCodes: OsmExerciseQaFailureReason[];
+  failureMessages: string[];
+};
+
+export type OsmExerciseQaAcceptanceSuiteReport = {
+  isValid: boolean;
+  mapId: string;
+  exerciseCount: number;
+  reports: OsmExerciseQaAcceptanceReport[];
+  failureReasonCodes: OsmExerciseQaFailureReason[];
+  failureMessages: string[];
+};
+
 export type ValidateOsmRouteExerciseQaInput = {
   map: MapDefinition;
   exercise: RouteExercise;
@@ -322,6 +346,28 @@ export function validateOsmRouteExerciseQaSuite(
   };
 }
 
+export function buildOsmRouteExerciseQaAcceptanceReport(
+  input: ValidateOsmRouteExerciseQaInput
+): OsmExerciseQaAcceptanceReport {
+  return acceptanceReportFromQaResult(validateOsmRouteExerciseQa(input));
+}
+
+export function buildOsmRouteExerciseQaAcceptanceSuiteReport(
+  input: ValidateOsmRouteExerciseQaSuiteInput
+): OsmExerciseQaAcceptanceSuiteReport {
+  const suite = validateOsmRouteExerciseQaSuite(input);
+  const reports = suite.results.map(acceptanceReportFromQaResult);
+
+  return {
+    isValid: suite.isValid,
+    mapId: suite.mapId,
+    exerciseCount: suite.exerciseCount,
+    reports,
+    failureReasonCodes: uniqueFailureReasonCodes(suite.failures),
+    failureMessages: suite.failures.map(formatOsmExerciseQaFailure)
+  };
+}
+
 export function formatOsmExerciseQaFailure(failure: OsmExerciseQaFailure): string {
   return [
     failure.reason,
@@ -335,6 +381,35 @@ export function formatOsmExerciseQaFailure(failure: OsmExerciseQaFailure): strin
   ]
     .filter((part): part is string => Boolean(part))
     .join(" | ");
+}
+
+function acceptanceReportFromQaResult(result: OsmExerciseQaResult): OsmExerciseQaAcceptanceReport {
+  return {
+    isValid: result.isValid,
+    mapId: result.mapId,
+    exerciseId: result.exerciseId,
+    startNodeId: result.stopNodeIds[0] ?? null,
+    destinationNodeId: result.stopNodeIds.at(-1) ?? null,
+    checkpointNodeIds: result.stopNodeIds.slice(1, -1),
+    checkpointCount: Math.max(0, result.stopNodeIds.length - 2),
+    hasLegalRoute: result.isValid && result.routeEdgeIds.length > 0 && result.routeDistanceMeters !== null,
+    fastestRouteEdgeCount: result.routeEdgeIds.length,
+    fastestRouteDistanceMeters: result.routeDistanceMeters,
+    failureReasonCodes: uniqueFailureReasonCodes(result.failures),
+    failureMessages: result.failures.map(formatOsmExerciseQaFailure)
+  };
+}
+
+function uniqueFailureReasonCodes(failures: readonly OsmExerciseQaFailure[]): OsmExerciseQaFailureReason[] {
+  const reasonCodes: OsmExerciseQaFailureReason[] = [];
+
+  for (const failure of failures) {
+    if (!reasonCodes.includes(failure.reason)) {
+      reasonCodes.push(failure.reason);
+    }
+  }
+
+  return reasonCodes;
 }
 
 function validateExerciseStopNodes(input: {

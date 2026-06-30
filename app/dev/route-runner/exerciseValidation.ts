@@ -6,6 +6,7 @@ import {
   type MapGraph,
   type RouteExercise
 } from "../../../lib/map-engine/index.ts";
+import { formatRouteExerciseSelectorLabel } from "./routeRunnerExerciseDisplay.ts";
 
 export const INVALID_EXERCISE_ROUTE_MESSAGE = "This exercise has no legal route and needs fixing.";
 
@@ -134,7 +135,9 @@ export function validateExerciseReachabilityList(input: {
 }
 
 export function formatExerciseAvailabilityOptionLabel(exercise: RouteExercise, availability: ExerciseRouteAvailability): string {
-  return availability.isValid ? exercise.title : `${exercise.title} (Invalid - no legal route)`;
+  return availability.isValid
+    ? formatRouteExerciseSelectorLabel(exercise)
+    : formatRouteExerciseSelectorLabel(exercise, "Invalid - no legal route");
 }
 
 function uniqueStrings(values: readonly string[]): string[] {

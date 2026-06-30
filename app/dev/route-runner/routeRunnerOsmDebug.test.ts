@@ -206,12 +206,12 @@ test("real London OSM pilot debug summary is deterministic", () => {
     maxX: 413.924829,
     maxY: 436.439213
   });
-  assert.equal(summary.selectedExerciseId, "osm-real-store-street");
+  assert.equal(summary.selectedExerciseId, "osm-real-pilot-one-way-detour");
   assert.deepEqual(
     summary.stops.map((stop) => [stop.role, stop.nodeId]),
     [
-      ["start", "osm-node-333719180"],
-      ["finish", "osm-node-25472045"]
+      ["start", "osm-node-108034"],
+      ["finish", "osm-node-108044"]
     ]
   );
 });

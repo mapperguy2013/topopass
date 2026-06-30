@@ -43,6 +43,15 @@ export type MapPointerInput = {
   pointerType?: string;
 };
 
+export type MapScrollLockState = {
+  pointerInsideMap: boolean;
+};
+
+export type MapWheelInput = {
+  deltaX?: number;
+  deltaY?: number;
+};
+
 export const ROUTE_RUNNER_MAP_ZOOM_LIMITS: MapZoomLimits = {
   defaultZoom: 1,
   minZoom: 0.75,
@@ -79,6 +88,10 @@ function panMarginForAxis(axisSize: number, limits: MapZoomLimits): number {
 
 function normalizeZero(value: number): number {
   return Object.is(value, -0) ? 0 : value;
+}
+
+function hasUsableWheelDelta(delta: number | undefined): boolean {
+  return Number.isFinite(delta) && delta !== 0;
 }
 
 function isMouseLikePointer(input: Pick<MapPointerInput, "pointerType">): boolean {
@@ -222,7 +235,7 @@ export function zoomMapViewAroundPoint(
 }
 
 export function shouldPreventMapWheelDefault(deltaY: number): boolean {
-  return Number.isFinite(deltaY) && deltaY !== 0;
+  return hasUsableWheelDelta(deltaY);
 }
 
 export function applyWheelZoomToMapView(
@@ -239,6 +252,49 @@ export function applyWheelZoomToMapView(
   const zoomDirection = deltaY < 0 ? 1 : -1;
 
   return zoomMapViewAroundPoint(state, state.zoom + limits.step * zoomDirection, focusPoint, bounds, limits);
+}
+
+export function createDefaultMapScrollLockState(): MapScrollLockState {
+  return {
+    pointerInsideMap: false
+  };
+}
+
+export function enterMapScrollLockState(state: MapScrollLockState): MapScrollLockState {
+  return state.pointerInsideMap
+    ? state
+    : {
+        pointerInsideMap: true
+      };
+}
+
+export function leaveMapScrollLockState(state: MapScrollLockState): MapScrollLockState {
+  return state.pointerInsideMap
+    ? {
+        pointerInsideMap: false
+      }
+    : state;
+}
+
+export function updateMapScrollLockForOutsidePointerDown(
+  state: MapScrollLockState,
+  pointerDownInsideMap: boolean
+): MapScrollLockState {
+  return pointerDownInsideMap ? state : leaveMapScrollLockState(state);
+}
+
+export function shouldPreventWheelPageScrollOverMap(
+  wheel: number | MapWheelInput,
+  state: MapScrollLockState = {
+    pointerInsideMap: true
+  }
+): boolean {
+  const hasWheelDelta =
+    typeof wheel === "number"
+      ? hasUsableWheelDelta(wheel)
+      : hasUsableWheelDelta(wheel.deltaY) || hasUsableWheelDelta(wheel.deltaX);
+
+  return state.pointerInsideMap && hasWheelDelta;
 }
 
 export function resetMapViewport(limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS): MapViewportState {

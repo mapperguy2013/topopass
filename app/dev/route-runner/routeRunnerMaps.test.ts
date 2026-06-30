@@ -349,7 +349,16 @@ test("real London OSM pilot fixture is selectable from the real export", () => {
   assert.equal(realOption.attribution, "OpenStreetMap contributors");
   assert.equal(realOption.map.nodes.length, 390);
   assert.equal(realOption.map.roads.length, 395);
-  assert.equal(realOption.exercises.length, 3);
+  assert.deepEqual(
+    realOption.exercises.map((exercise) => exercise.id),
+    [
+      "osm-real-pilot-short-crossing",
+      "osm-real-pilot-one-way-detour",
+      "osm-real-pilot-checkpoint-route",
+      "osm-real-pilot-longer-route",
+      "osm-real-pilot-turn-choice"
+    ]
+  );
 });
 
 test("real London OSM pilot labels and road classes use preserved OSM metadata", () => {
@@ -418,6 +427,13 @@ test("every converted OSM exercise uses valid converted graph nodes", () => {
         `${exercise.id} stop ${stop.nodeId} is not attached to a converted road edge`
       );
     }
+
+    const firstStop = exercise.stops[0];
+    const lastStop = exercise.stops.at(-1);
+
+    assert.ok(firstStop && firstStop.type === "node", `${exercise.id} starts on a converted OSM node`);
+    assert.ok(lastStop && lastStop.type === "node", `${exercise.id} finishes on a converted OSM node`);
+    assert.notEqual(firstStop.nodeId, lastStop.nodeId, `${exercise.id} start and finish should differ`);
   }
 });
 
@@ -437,6 +453,13 @@ test("every medium converted OSM exercise uses valid converted graph nodes", () 
         `${exercise.id} stop ${stop.nodeId} is not attached to a converted road edge`
       );
     }
+
+    const firstStop = exercise.stops[0];
+    const lastStop = exercise.stops.at(-1);
+
+    assert.ok(firstStop && firstStop.type === "node", `${exercise.id} starts on a medium OSM node`);
+    assert.ok(lastStop && lastStop.type === "node", `${exercise.id} finishes on a medium OSM node`);
+    assert.notEqual(firstStop.nodeId, lastStop.nodeId, `${exercise.id} start and finish should differ`);
   }
 });
 
@@ -456,6 +479,13 @@ test("every real London OSM pilot exercise uses valid converted graph nodes", ()
         `${exercise.id} stop ${stop.nodeId} is not attached to a converted road edge`
       );
     }
+
+    const firstStop = exercise.stops[0];
+    const lastStop = exercise.stops.at(-1);
+
+    assert.ok(firstStop && firstStop.type === "node", `${exercise.id} starts on a real OSM node`);
+    assert.ok(lastStop && lastStop.type === "node", `${exercise.id} finishes on a real OSM node`);
+    assert.notEqual(firstStop.nodeId, lastStop.nodeId, `${exercise.id} start and finish should differ`);
   }
 });
 
@@ -708,10 +738,10 @@ test("medium converted OSM one-way detour does not use illegal reverse one-way t
   assert.ok(overlay.nodeIds.length > 2);
 });
 
-test("real London OSM pilot one-way exercise uses real Store Street edges", () => {
+test("real London OSM pilot one-way exercise uses real Torrington Place edges", () => {
   const graph = buildMapGraph(realLondonOsmPilotRouteMap);
   const exercise = realLondonOsmPilotRouteExercises.find(
-    (candidate) => candidate.id === "osm-real-store-street"
+    (candidate) => candidate.id === "osm-real-pilot-one-way-detour"
   );
 
   assert.ok(exercise);
@@ -724,27 +754,63 @@ test("real London OSM pilot one-way exercise uses real Store Street edges", () =
   });
 
   assert.equal(overlay.status, "available");
-  assert.ok(overlay.roadIds.every((roadId) => roadId.startsWith("osm-way-2644236-")));
+  assert.ok(
+    overlay.edgeIds.every((edgeId) => {
+      const edge = graph.edgesById[edgeId];
+      const road = edge ? graph.roadsById[edge.roadId] : null;
+
+      return road?.name === "Torrington Place";
+    })
+  );
   assert.deepEqual(overlay.nodeIds, [
-    "osm-node-333719180",
-    "osm-node-9523025798",
-    "osm-node-6355365946",
-    "osm-node-25472045"
+    "osm-node-108034",
+    "osm-node-7083403297",
+    "osm-node-1448876379",
+    "osm-node-5739837615",
+    "osm-node-11170905228",
+    "osm-node-11170905227",
+    "osm-node-108036",
+    "osm-node-5610146044",
+    "osm-node-6384542420",
+    "osm-node-185620586",
+    "osm-node-14725979",
+    "osm-node-6384542422",
+    "osm-node-6384542416",
+    "osm-node-6384542424",
+    "osm-node-11582793599",
+    "osm-node-10185838287",
+    "osm-node-11582793600",
+    "osm-node-6384549780",
+    "osm-node-9279437656",
+    "osm-node-6384561968",
+    "osm-node-11170905220",
+    "osm-node-11170905219",
+    "osm-node-5610161834",
+    "osm-node-9279437653",
+    "osm-node-8162935473",
+    "osm-node-6010004323",
+    "osm-node-108044"
   ]);
 });
 
 test("real London OSM pilot snapping and reveal remain aligned after projection fit", () => {
   const graph = buildMapGraph(realLondonOsmPilotRouteMap);
   const exercise = realLondonOsmPilotRouteExercises.find(
-    (candidate) => candidate.id === "osm-real-store-street"
+    (candidate) => candidate.id === "osm-real-pilot-short-crossing"
   );
-  const storeStreetNodeIds = [
-    "osm-node-333719180",
-    "osm-node-9523025798",
-    "osm-node-6355365946",
-    "osm-node-25472045"
+  const goodgeStreetNodeIds = [
+    "osm-node-107319",
+    "osm-node-2440641461",
+    "osm-node-10275895934",
+    "osm-node-9791487",
+    "osm-node-983839058",
+    "osm-node-6571452366",
+    "osm-node-5612180571",
+    "osm-node-8474252670",
+    "osm-node-1448894892",
+    "osm-node-107320"
   ];
-  const storeStreetPoints = storeStreetNodeIds.map((nodeId) => {
+  const goodgeStreetPoints = goodgeStreetNodeIds.map((nodeId) => {
     const node = graph.nodesById[nodeId];
 
     assert.ok(node);
@@ -756,13 +822,19 @@ test("real London OSM pilot snapping and reveal remain aligned after projection 
 
   const snappedRoute = snapDrawnRouteToRoads({
     map: realLondonOsmPilotRouteMap,
-    points: storeStreetPoints,
+    points: goodgeStreetPoints,
     snapTolerance: 1
   });
 
   assert.equal(snappedRoute.isValidTrace, true);
   assert.equal(snappedRoute.hasOffRoadPoints, false);
-  assert.ok(snappedRoute.snappedPoints.every((point) => point.roadId?.startsWith("osm-way-2644236-")));
+  assert.ok(
+    snappedRoute.snappedPoints.every((point) => {
+      const road = point.roadId ? graph.roadsById[point.roadId] : null;
+
+      return road?.name === "Goodge Street";
+    })
+  );
 
   const overlay = buildFastestRouteOverlay({
     map: realLondonOsmPilotRouteMap,

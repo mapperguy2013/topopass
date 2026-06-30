@@ -25,19 +25,25 @@ import {
   canZoomInMapView,
   canZoomOutMapView,
   clampMapPan,
+  createDefaultMapScrollLockState,
   createDefaultMapViewportState,
+  enterMapScrollLockState,
   getMapPanLimitsForZoom,
   isMiddleButtonMapPanActive,
   isMiddleButtonMapPanPointer,
+  leaveMapScrollLockState,
   resetMapViewport,
   ROUTE_RUNNER_MAP_ZOOM_LIMITS,
   setMapInteractionMode,
   setMapPanMode,
+  shouldPreventWheelPageScrollOverMap,
   shouldPreventMapWheelDefault,
   toggleMapPanMode,
+  updateMapScrollLockForOutsidePointerDown,
   zoomMapViewAroundPoint,
   zoomInMapView,
   zoomOutMapView,
+  type MapScrollLockState,
   type MapViewportState,
   type MapZoomLimits
 } from "./mapViewport.ts";
@@ -170,6 +176,43 @@ test("wheel default prevention is limited to real wheel zoom deltas", () => {
   assert.equal(shouldPreventMapWheelDefault(Number.NaN), false);
 });
 
+test("wheel over the map prevents page scroll and still applies map zoom", () => {
+  const hovered = enterMapScrollLockState(createDefaultMapScrollLockState());
+  const focusPoint = { x: 150, y: 70 };
+  const zoomed = applyWheelZoomToMapView(defaultViewportState, -100, focusPoint, baseViewport);
+
+  assert.equal(shouldPreventWheelPageScrollOverMap(-100, hovered), true);
+  assert.equal(shouldPreventWheelPageScrollOverMap({ deltaX: 36, deltaY: 0 }, hovered), true);
+  assert.equal(zoomed.zoom, 1.25);
+});
+
+test("wheel outside the map does not prevent default page scrolling", () => {
+  const notHovered = createDefaultMapScrollLockState();
+
+  assert.equal(shouldPreventWheelPageScrollOverMap(-100, notHovered), false);
+  assert.equal(shouldPreventWheelPageScrollOverMap(100, notHovered), false);
+});
+
+test("pointer leave restores normal page scroll behaviour", () => {
+  const hovered = enterMapScrollLockState(createDefaultMapScrollLockState());
+  const left = leaveMapScrollLockState(hovered);
+
+  assert.deepEqual(left, {
+    pointerInsideMap: false
+  } satisfies MapScrollLockState);
+  assert.equal(shouldPreventWheelPageScrollOverMap(-100, left), false);
+});
+
+test("clicking outside the map clears scroll lock state", () => {
+  const hovered = enterMapScrollLockState(createDefaultMapScrollLockState());
+  const stillHovered = updateMapScrollLockForOutsidePointerDown(hovered, true);
+  const cleared = updateMapScrollLockForOutsidePointerDown(hovered, false);
+
+  assert.equal(stillHovered.pointerInsideMap, true);
+  assert.equal(cleared.pointerInsideMap, false);
+  assert.equal(shouldPreventWheelPageScrollOverMap(-100, cleared), false);
+});
+
 test("interaction mode defaults to draw and can switch between draw and pan", () => {
   const panning = setMapInteractionMode(defaultViewportState, "pan");
   const drawing = setMapInteractionMode(panning, "draw");
@@ -193,6 +236,10 @@ test("middle mouse enters map pan behavior without creating drawing input", () =
   assert.equal(isMiddleButtonMapPanPointer({ button: 1, pointerType: "mouse" }), true);
   assert.equal(isMiddleButtonMapPanActive({ buttons: 4, pointerType: "mouse" }), true);
   assert.equal(canStartDrawingWithMapPointer({ button: 1, pointerType: "mouse" }), false);
+  assert.equal(
+    shouldPreventWheelPageScrollOverMap(0, enterMapScrollLockState(createDefaultMapScrollLockState())),
+    false
+  );
 });
 
 test("left mouse and touch can still start route drawing", () => {

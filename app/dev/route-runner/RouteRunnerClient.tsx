@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from "react";
 import {
   appendRouteDraftPoint,
   buildMapGraph,
@@ -155,21 +155,30 @@ import {
   type ExerciseRouteAvailability
 } from "./exerciseValidation";
 import {
+  buildRouteExerciseDisplayModel,
+  formatRouteExerciseSelectorLabel
+} from "./routeRunnerExerciseDisplay";
+import {
   applyPanToMapView,
   applyWheelZoomToMapView,
   buildZoomedMapViewport,
   canStartDrawingWithMapPointer,
   canZoomInMapView,
   canZoomOutMapView,
+  createDefaultMapScrollLockState,
   createDefaultMapViewportState,
+  enterMapScrollLockState,
   isMiddleButtonMapPanActive,
   isMiddleButtonMapPanPointer,
+  leaveMapScrollLockState,
   resetMapViewport,
   setMapInteractionMode,
-  shouldPreventMapWheelDefault,
+  shouldPreventWheelPageScrollOverMap,
+  updateMapScrollLockForOutsidePointerDown,
   zoomInMapView,
   zoomOutMapView,
   type MapInteractionMode,
+  type MapScrollLockState,
   type MapViewportState
 } from "./mapViewport";
 import {
@@ -212,6 +221,15 @@ import {
   type OsmQaStatusPanelModel,
   type OsmQaStatusState
 } from "./routeRunnerOsmQaStatus";
+import {
+  buildOsmExerciseDebugOverlayModel,
+  canOfferOsmExerciseDebugOverlay,
+  createDefaultOsmExerciseDebugOverlayState,
+  type OsmExerciseDebugBlockedEdge,
+  type OsmExerciseDebugOverlayModel,
+  type OsmExerciseDebugOverlayState,
+  type OsmExerciseDebugStopMarker
+} from "./routeRunnerOsmExerciseDebugOverlay";
 
 const CANVAS_WIDTH = 1120;
 const CANVAS_HEIGHT = 760;
@@ -920,17 +938,22 @@ function drawExerciseStopMarker(input: {
   index: number;
 }): void {
   const fillStyle =
-    input.role === "start" ? "#2563eb" : input.role === "finish" ? "#0f172a" : "#f97316";
-  const radius = input.role === "checkpoint" ? 11 : 13;
+    input.role === "start" ? "#15803d" : input.role === "finish" ? "#6d28d9" : "#f97316";
+  const markerText = input.role === "start" ? "S" : input.role === "finish" ? "F" : `CP${input.index}`;
+  const radius = input.role === "checkpoint" ? 12 : 14;
 
   input.context.save();
-  input.context.fillStyle = "rgba(255,255,255,0.92)";
+  input.context.shadowColor = "rgba(15,23,42,0.24)";
+  input.context.shadowBlur = 10;
+  input.context.shadowOffsetY = 2;
+  input.context.fillStyle = "rgba(255,255,255,0.96)";
   input.context.strokeStyle = fillStyle;
   input.context.lineWidth = 3;
   input.context.beginPath();
-  input.context.arc(input.point.x, input.point.y, radius + 4, 0, Math.PI * 2);
+  input.context.arc(input.point.x, input.point.y, radius + 5, 0, Math.PI * 2);
   input.context.fill();
   input.context.stroke();
+  input.context.shadowColor = "transparent";
 
   input.context.fillStyle = fillStyle;
   input.context.beginPath();
@@ -938,10 +961,10 @@ function drawExerciseStopMarker(input: {
   input.context.fill();
 
   input.context.fillStyle = "#ffffff";
-  input.context.font = "700 11px Arial, sans-serif";
+  input.context.font = markerText.length > 1 ? "800 9px Arial, sans-serif" : "800 12px Arial, sans-serif";
   input.context.textAlign = "center";
   input.context.textBaseline = "middle";
-  input.context.fillText(String(input.index + 1), input.point.x, input.point.y + 0.5);
+  input.context.fillText(markerText, input.point.x, input.point.y + 0.5);
   input.context.restore();
 }
 
@@ -1673,6 +1696,160 @@ function drawFastestRouteOverlay(
   context.restore();
 }
 
+function drawOsmExerciseDebugRouteOverlay(
+  context: CanvasRenderingContext2D,
+  overlay: OsmExerciseDebugOverlayModel,
+  viewport: ScreenMapViewport
+): void {
+  if (overlay.route.points.length < 2) {
+    return;
+  }
+
+  const screenPoints = overlay.route.points.map((point) => mapToScreenPoint(point, viewport));
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "rgba(255,255,255,0.94)";
+  context.lineWidth = 13;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.strokeStyle = overlay.qa.status === "pass" ? "#7c3aed" : "#be123c";
+  context.lineWidth = 6;
+  context.setLineDash([16, 7]);
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash([]);
+  context.restore();
+}
+
+function drawOsmExerciseDebugBlockedEdge(
+  context: CanvasRenderingContext2D,
+  edge: OsmExerciseDebugBlockedEdge,
+  viewport: ScreenMapViewport
+): void {
+  const fromPoint = mapToScreenPoint(edge.points[0], viewport);
+  const toPoint = mapToScreenPoint(edge.points[1], viewport);
+  const midPoint = mapToScreenPoint(edge.midpoint, viewport);
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.globalAlpha = edge.relevant ? 0.9 : 0.68;
+  context.strokeStyle = "rgba(255,255,255,0.92)";
+  context.lineWidth = edge.relevant ? 11 : 8;
+  context.beginPath();
+  context.moveTo(fromPoint.x, fromPoint.y);
+  context.lineTo(toPoint.x, toPoint.y);
+  context.stroke();
+
+  context.strokeStyle = edge.usedByRoute ? "#7f1d1d" : "#dc2626";
+  context.fillStyle = edge.usedByRoute ? "#7f1d1d" : "#dc2626";
+  context.lineWidth = edge.relevant ? 6 : 4;
+  context.setLineDash(edge.restrictionType === "blocked_access" ? [8, 6] : [4, 4]);
+  context.beginPath();
+  context.moveTo(fromPoint.x, fromPoint.y);
+  context.lineTo(toPoint.x, toPoint.y);
+  context.stroke();
+  context.setLineDash([]);
+
+  if (edge.directedEdgeKey) {
+    drawArrowHead(
+      context,
+      {
+        x: fromPoint.x + (toPoint.x - fromPoint.x) * 0.48,
+        y: fromPoint.y + (toPoint.y - fromPoint.y) * 0.48
+      },
+      {
+        x: fromPoint.x + (toPoint.x - fromPoint.x) * 0.68,
+        y: fromPoint.y + (toPoint.y - fromPoint.y) * 0.68
+      }
+    );
+  }
+
+  context.restore();
+  drawOsmDebugLabel(context, edge.osmWayId ? `${edge.label} ${edge.osmWayId}` : edge.label, midPoint);
+}
+
+function drawOsmExerciseDebugStopMarker(
+  context: CanvasRenderingContext2D,
+  marker: OsmExerciseDebugStopMarker,
+  viewport: ScreenMapViewport
+): void {
+  if (!marker.point) {
+    return;
+  }
+
+  const point = mapToScreenPoint(marker.point, viewport);
+  const fillStyle =
+    marker.role === "start" ? "#059669" : marker.role === "finish" ? "#7c3aed" : "#f59e0b";
+  const labelWidth = Math.max(52, marker.label.length * 8 + 20);
+  const labelHeight = 22;
+  const labelX = point.x - labelWidth / 2;
+  const labelY = point.y - 42;
+
+  context.save();
+  context.fillStyle = "rgba(255,255,255,0.94)";
+  context.strokeStyle = fillStyle;
+  context.lineWidth = 3;
+  context.beginPath();
+  context.arc(point.x, point.y, 18, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = fillStyle;
+  context.beginPath();
+  context.arc(point.x, point.y, 10, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = "rgba(255,255,255,0.96)";
+  context.strokeStyle = fillStyle;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.roundRect(labelX, labelY, labelWidth, labelHeight, 6);
+  context.fill();
+  context.stroke();
+
+  context.fillStyle = "#111827";
+  context.font = "700 11px Arial, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(marker.label, point.x, labelY + labelHeight / 2 + 0.5);
+  context.restore();
+}
+
+function drawOsmExerciseDebugOverlay(
+  context: CanvasRenderingContext2D,
+  overlay: OsmExerciseDebugOverlayModel | null,
+  viewport: ScreenMapViewport
+): void {
+  if (!overlay?.visible) {
+    return;
+  }
+
+  for (const edge of overlay.blockedEdges) {
+    drawOsmExerciseDebugBlockedEdge(context, edge, viewport);
+  }
+
+  drawOsmExerciseDebugRouteOverlay(context, overlay, viewport);
+
+  for (const marker of overlay.stopMarkers) {
+    drawOsmExerciseDebugStopMarker(context, marker, viewport);
+  }
+}
+
 function replayMarkerColour(kind: RouteReplayMarker["kind"]): string {
   return kind === "user" ? "#ea580c" : "#0284c7";
 }
@@ -1841,6 +2018,7 @@ function drawRouteCanvas(input: {
   restrictionMapVisualItems: RestrictionMapVisualItem[];
   selectedRestrictionHighlight: SelectedRestrictionHighlight | null;
   osmDebugOverlay: OsmDebugOverlayModel | null;
+  osmExerciseDebugOverlay: OsmExerciseDebugOverlayModel | null;
 }) {
   const context = input.canvas.getContext("2d");
 
@@ -1872,6 +2050,7 @@ function drawRouteCanvas(input: {
   drawOsmDebugOverlay(context, input.osmDebugOverlay, input.viewport);
 
   drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport);
+  drawOsmExerciseDebugOverlay(context, input.osmExerciseDebugOverlay, input.viewport);
 
   input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
     const from = nodeById(movement.fromNodeId, input.map);
@@ -2063,6 +2242,7 @@ export function RouteRunnerClient() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
+  const mapScrollLockStateRef = useRef<MapScrollLockState>(createDefaultMapScrollLockState());
   const routeReplayAnimationFrameRef = useRef<number | null>(null);
   const routeReplayStateRef = useRef<RouteReplayState>(createRouteReplayState());
   const [mapOptionId, setMapOptionId] = useState(DEFAULT_ROUTE_RUNNER_MAP_ID);
@@ -2077,6 +2257,9 @@ export function RouteRunnerClient() {
   const [showTurnRestrictions, setShowTurnRestrictions] = useState(true);
   const [osmDebugOverlayState, setOsmDebugOverlayState] = useState<OsmDebugOverlayState>(() =>
     createDefaultOsmDebugOverlayState()
+  );
+  const [osmExerciseDebugOverlayState, setOsmExerciseDebugOverlayState] = useState<OsmExerciseDebugOverlayState>(() =>
+    createDefaultOsmExerciseDebugOverlayState()
   );
   const [fastestRouteRevealState, setFastestRouteRevealState] = useState<FastestRouteRevealState>(() =>
     createHiddenFastestRouteRevealState()
@@ -2116,6 +2299,7 @@ export function RouteRunnerClient() {
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
   const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
+  const osmExerciseDebugOverlayAvailable = canOfferOsmExerciseDebugOverlay(selectedMapOption.source);
 
   useEffect(() => {
     setShowRoadRestrictions(!isConvertedOsmMap);
@@ -2172,6 +2356,10 @@ export function RouteRunnerClient() {
     () => activeExercises.find((exercise) => exercise.id === exerciseId),
     [activeExercises, exerciseId]
   );
+  const selectedExerciseDisplay = useMemo(
+    () => (selectedExercise ? buildRouteExerciseDisplayModel(selectedExercise) : null),
+    [selectedExercise]
+  );
   const osmDebugOverlay = useMemo(
     () =>
       buildOsmDebugOverlayModel({
@@ -2194,6 +2382,28 @@ export function RouteRunnerClient() {
       selectedMapOption.fixtureName
     ]
   );
+  const osmExerciseDebugOverlay = useMemo(
+    () =>
+      buildOsmExerciseDebugOverlayModel({
+        map: activeMap,
+        graph: activeMapGraph,
+        exercise: selectedExercise,
+        enabled: osmExerciseDebugOverlayAvailable && osmExerciseDebugOverlayState.visible,
+        isConvertedOsmMap,
+        renderBounds: baseViewport.mapBounds,
+        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+      }),
+    [
+      activeMap,
+      activeMapGraph,
+      baseViewport.mapBounds,
+      isConvertedOsmMap,
+      osmExerciseDebugOverlayAvailable,
+      osmExerciseDebugOverlayState.visible,
+      selectedExercise,
+      selectedMapOption.sourceOverpassFixture
+    ]
+  );
   const osmQaStatusPanel = useMemo(
     () =>
       buildOsmQaStatusPanelModel({
@@ -2201,7 +2411,8 @@ export function RouteRunnerClient() {
         graph: activeMapGraph,
         exercises: activeExercises,
         selectedExercise,
-        enabled: osmDebugOverlayAvailable && osmDebugOverlayState.visible,
+        enabled:
+          osmDebugOverlayAvailable && (osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible),
         isConvertedOsmMap
       }),
     [
@@ -2210,6 +2421,7 @@ export function RouteRunnerClient() {
       activeMapGraph,
       isConvertedOsmMap,
       osmDebugOverlayAvailable,
+      osmExerciseDebugOverlayState.visible,
       osmDebugOverlayState.visible,
       selectedExercise
     ]
@@ -2729,6 +2941,74 @@ export function RouteRunnerClient() {
   }, [routeReplayState]);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+
+    if (!canvas) {
+      return;
+    }
+
+    const handleWheel = (event: globalThis.WheelEvent) => {
+      mapScrollLockStateRef.current = enterMapScrollLockState(mapScrollLockStateRef.current);
+
+      if (
+        !shouldPreventWheelPageScrollOverMap(
+          {
+            deltaX: event.deltaX,
+            deltaY: event.deltaY
+          },
+          mapScrollLockStateRef.current
+        )
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const focusPoint = pointerToScreenPoint(canvas, event.clientX, event.clientY);
+
+      if (!focusPoint) {
+        return;
+      }
+
+      setMapViewportState((currentState) =>
+        applyWheelZoomToMapView(currentState, event.deltaY, focusPoint, baseViewport)
+      );
+    };
+
+    canvas.addEventListener("wheel", handleWheel, {
+      passive: false
+    });
+
+    return () => {
+      canvas.removeEventListener("wheel", handleWheel);
+    };
+  }, [baseViewport]);
+
+  useEffect(() => {
+    const handleDocumentPointerDown = (event: globalThis.PointerEvent) => {
+      const canvas = canvasRef.current;
+      const target = event.target;
+      const pointerDownInsideMap = Boolean(canvas && target instanceof Node && canvas.contains(target));
+
+      mapScrollLockStateRef.current = updateMapScrollLockForOutsidePointerDown(
+        mapScrollLockStateRef.current,
+        pointerDownInsideMap
+      );
+
+      if (!pointerDownInsideMap) {
+        panDragPointRef.current = null;
+        setIsPanningMap(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+    };
+  }, []);
+
+  useEffect(() => {
     if (routeReplayState.status !== "playing") {
       return;
     }
@@ -2780,7 +3060,9 @@ export function RouteRunnerClient() {
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
-      showOsmRoadLabels: isConvertedOsmMap ? osmDebugOverlayState.visible : true,
+      showOsmRoadLabels: isConvertedOsmMap
+        ? osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible
+        : true,
       selectedExercise,
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,
@@ -2792,7 +3074,8 @@ export function RouteRunnerClient() {
       routeIssueOverlays,
       restrictionMapVisualItems,
       selectedRestrictionHighlight,
-      osmDebugOverlay: osmDebugOverlayAvailable ? osmDebugOverlay : null
+      osmDebugOverlay: osmDebugOverlayAvailable ? osmDebugOverlay : null,
+      osmExerciseDebugOverlay: osmExerciseDebugOverlayAvailable ? osmExerciseDebugOverlay : null
     });
   }, [
     activeMap,
@@ -2803,6 +3086,9 @@ export function RouteRunnerClient() {
     isConvertedOsmMap,
     osmDebugOverlay,
     osmDebugOverlayAvailable,
+    osmExerciseDebugOverlay,
+    osmExerciseDebugOverlayAvailable,
+    osmExerciseDebugOverlayState.visible,
     osmDebugOverlayState.visible,
     restrictionMapVisualItems,
     routeReplayMarkers,
@@ -2994,6 +3280,7 @@ export function RouteRunnerClient() {
       panDragPointRef.current = null;
       setIsPanningMap(false);
       setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
+      setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
       setMapViewportState(resetMapViewport());
       setMapOptionId(linkedMapOption?.id ?? DEFAULT_ROUTE_RUNNER_MAP_ID);
       setExerciseId(linkedExercise.id);
@@ -3050,6 +3337,7 @@ export function RouteRunnerClient() {
     panDragPointRef.current = null;
     setIsPanningMap(false);
     setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
+    setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
     setMapViewportState(resetMapViewport());
     setFastestRouteRevealState(hideFastestRouteReveal());
     clearDrawnAttempt();
@@ -3066,6 +3354,8 @@ export function RouteRunnerClient() {
     setError(null);
     panDragPointRef.current = null;
     setIsPanningMap(false);
+    setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
+    setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
     setMapViewportState(resetMapViewport());
     setFastestRouteRevealState(hideFastestRouteReveal());
     clearDrawnAttempt();
@@ -3081,6 +3371,8 @@ export function RouteRunnerClient() {
     if (!canvas) {
       return;
     }
+
+    mapScrollLockStateRef.current = enterMapScrollLockState(mapScrollLockStateRef.current);
 
     const pointerInput = {
       button: event.button,
@@ -3178,6 +3470,10 @@ export function RouteRunnerClient() {
     setDrawnRouteDraft((currentDraft) => appendRouteDraftPoint(currentDraft, point, 3));
   }
 
+  function handlePointerEnter() {
+    mapScrollLockStateRef.current = enterMapScrollLockState(mapScrollLockStateRef.current);
+  }
+
   function handlePointerEnd(event: PointerEvent<HTMLCanvasElement>) {
     if (isPanningMap) {
       if (isMiddleButtonMapPanPointer({ button: event.button, pointerType: event.pointerType })) {
@@ -3223,24 +3519,6 @@ export function RouteRunnerClient() {
     }
   }
 
-  function handleMapWheel(event: WheelEvent<HTMLCanvasElement>) {
-    if (!shouldPreventMapWheelDefault(event.deltaY)) {
-      return;
-    }
-
-    event.preventDefault();
-
-    const focusPoint = pointerToScreenPoint(event.currentTarget, event.clientX, event.clientY);
-
-    if (!focusPoint) {
-      return;
-    }
-
-    setMapViewportState((currentState) =>
-      applyWheelZoomToMapView(currentState, event.deltaY, focusPoint, baseViewport)
-    );
-  }
-
   function handleMapAuxClick(event: MouseEvent<HTMLCanvasElement>) {
     if (isMiddleButtonMapPanPointer({ button: event.button, pointerType: "mouse" })) {
       event.preventDefault();
@@ -3248,6 +3526,8 @@ export function RouteRunnerClient() {
   }
 
   function handlePointerLeave(event: PointerEvent<HTMLCanvasElement>) {
+    mapScrollLockStateRef.current = leaveMapScrollLockState(mapScrollLockStateRef.current);
+
     if (!isPanningMap) {
       return;
     }
@@ -3413,7 +3693,7 @@ export function RouteRunnerClient() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">TOPOPASS / Route Runner</p>
             <h1 className="mt-1 text-xl font-bold text-slate-950">
-              {selectedExercise?.title ?? `${selectedMapOption.label} route exercise runner`}
+              {selectedExerciseDisplay?.title ?? `${selectedMapOption.label} route exercise runner`}
             </h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               {exercisePositionLabel}
@@ -3528,7 +3808,9 @@ export function RouteRunnerClient() {
 
                 return (
                   <option key={exercise.id} value={exercise.id}>
-                    {availability ? formatExerciseAvailabilityOptionLabel(exercise, availability) : exercise.title}
+                    {availability
+                      ? formatExerciseAvailabilityOptionLabel(exercise, availability)
+                      : formatRouteExerciseSelectorLabel(exercise)}
                   </option>
                 );
               })}
@@ -3553,7 +3835,17 @@ export function RouteRunnerClient() {
 
             {selectedExercise ? (
               <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
-                <h2 className="font-semibold text-slate-950">{selectedExercise.title}</h2>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <h2 className="font-semibold text-slate-950">{selectedExerciseDisplay?.title ?? selectedExercise.title}</h2>
+                  {selectedExerciseDisplay?.difficultyLabel ? (
+                    <span className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700">
+                      {selectedExerciseDisplay.difficultyLabel}
+                    </span>
+                  ) : null}
+                </div>
+                {selectedExerciseDisplay?.description ? (
+                  <p className="mt-2 leading-6 text-slate-700">{selectedExerciseDisplay.description}</p>
+                ) : null}
                 <dl className="mt-3 space-y-3">
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise ID</dt>
@@ -3772,7 +4064,7 @@ export function RouteRunnerClient() {
                 </p>
               ) : (
                 <p>
-                  Trace captured for {selectedExercise?.title ?? "the selected exercise"}. Press and drag again to
+                  Trace captured for {selectedExerciseDisplay?.title ?? "the selected exercise"}. Press and drag again to
                   continue the same route, use Undo to remove the latest stroke, or clear it to reset everything.
                 </p>
               )}
@@ -3878,6 +4170,24 @@ export function RouteRunnerClient() {
                     {osmDebugOverlayState.visible ? "Hide OSM QA" : "OSM QA"}
                   </button>
                 ) : null}
+                {osmExerciseDebugOverlayAvailable ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOsmExerciseDebugOverlayState((currentState) => ({
+                        visible: !currentState.visible
+                      }))
+                    }
+                    aria-pressed={osmExerciseDebugOverlayState.visible}
+                    className={`pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-100 ${
+                      osmExerciseDebugOverlayState.visible
+                        ? "border-violet-500 bg-violet-700 text-white hover:bg-violet-800"
+                        : "border-violet-300 bg-white/95 text-violet-900 hover:bg-violet-50"
+                    }`}
+                  >
+                    {osmExerciseDebugOverlayState.visible ? "Hide exercise QA" : "Exercise QA"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={resetRouteMapView}
@@ -3916,11 +4226,11 @@ export function RouteRunnerClient() {
                 width={CANVAS_WIDTH}
                 height={CANVAS_HEIGHT}
                 onPointerDown={handlePointerDown}
+                onPointerEnter={handlePointerEnter}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerEnd}
                 onPointerCancel={handlePointerEnd}
                 onPointerLeave={handlePointerLeave}
-                onWheel={handleMapWheel}
                 onAuxClick={handleMapAuxClick}
                 className={`block h-full w-full touch-none ${
                   isPanningMap ? "cursor-grabbing" : isPanMode ? "cursor-grab" : "cursor-crosshair"
@@ -3953,6 +4263,19 @@ export function RouteRunnerClient() {
                         className="h-4 w-4 rounded border-cyan-300 text-cyan-700 focus:ring-cyan-200"
                       />
                       Show graph overlay
+                    </label>
+                    <label className="inline-flex items-center gap-2 rounded-md border border-violet-200 bg-white px-3 py-2 text-xs font-semibold text-violet-950 shadow-sm">
+                      <input
+                        type="checkbox"
+                        checked={osmExerciseDebugOverlayState.visible}
+                        onChange={(event) =>
+                          setOsmExerciseDebugOverlayState({
+                            visible: event.target.checked
+                          })
+                        }
+                        className="h-4 w-4 rounded border-violet-300 text-violet-700 focus:ring-violet-200"
+                      />
+                      Exercise QA overlay
                     </label>
                     <label
                       className={`inline-flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-xs font-semibold shadow-sm ${
@@ -4028,6 +4351,110 @@ export function RouteRunnerClient() {
                     ? ` Blocked OSM way IDs: ${osmDebugOverlay.summary.blockedOsmWayIds.join(", ")}.`
                     : ""}
                 </p>
+
+                {osmExerciseDebugOverlay ? (
+                  <div className="mt-4 rounded-md border border-violet-200 bg-white p-3 text-sm text-violet-950">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+                          Exercise QA overlay
+                        </p>
+                        <p className="mt-1 font-semibold">{osmExerciseDebugOverlay.exerciseTitle}</p>
+                        <p className="mt-1 font-mono text-[11px] text-violet-800">
+                          {osmExerciseDebugOverlay.exerciseId}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${osmQaStatusClass(
+                          osmExerciseDebugOverlay.qa.status
+                        )}`}
+                      >
+                        {osmQaStatusLabel(osmExerciseDebugOverlay.qa.status)}
+                      </span>
+                    </div>
+
+                    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Map</dt>
+                        <dd className="mt-1 font-semibold">{osmExerciseDebugOverlay.mapId}</dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Fastest route</dt>
+                        <dd className="mt-1 font-semibold">
+                          {osmExerciseDebugOverlay.route.status} | {osmExerciseDebugOverlay.route.segmentCount} segment
+                          {osmExerciseDebugOverlay.route.segmentCount === 1 ? "" : "s"}
+                        </dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Route length</dt>
+                        <dd className="mt-1 font-semibold">
+                          {osmExerciseDebugOverlay.route.distanceMeters !== null
+                            ? formatDistance(osmExerciseDebugOverlay.route.distanceMeters)
+                            : "Unavailable"}
+                        </dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Blocked visuals</dt>
+                        <dd className="mt-1 font-semibold">
+                          {osmExerciseDebugOverlay.metadata.blockedEdgeCount} total |{" "}
+                          {osmExerciseDebugOverlay.metadata.relevantBlockedEdgeCount} relevant
+                        </dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Start</dt>
+                        <dd className="mt-1 font-mono text-[11px]">
+                          {osmExerciseDebugOverlay.metadata.startNodeId ?? "Missing"}
+                        </dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Checkpoints</dt>
+                        <dd className="mt-1 font-mono text-[11px]">
+                          {osmExerciseDebugOverlay.metadata.checkpointNodeIds.length > 0
+                            ? osmExerciseDebugOverlay.metadata.checkpointNodeIds.join(" -> ")
+                            : "None"}
+                        </dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Destination</dt>
+                        <dd className="mt-1 font-mono text-[11px]">
+                          {osmExerciseDebugOverlay.metadata.destinationNodeId ?? "Missing"}
+                        </dd>
+                      </div>
+                      <div className="rounded border border-violet-100 bg-violet-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-violet-700">Route edge status</dt>
+                        <dd className="mt-1 font-semibold">
+                          {osmExerciseDebugOverlay.qa.hasUnknownRouteEdges ? "Unknown edge" : "Known edges"} |{" "}
+                          {osmExerciseDebugOverlay.qa.hasBlockedRouteEdges ? "Blocked edge" : "No blocked edges"}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <p className="mt-3 rounded border border-violet-100 bg-violet-50 p-2 font-mono text-[11px] leading-5 text-violet-900">
+                      Bounds x {osmExerciseDebugOverlay.renderBounds.minX.toFixed(0)} to{" "}
+                      {osmExerciseDebugOverlay.renderBounds.maxX.toFixed(0)}, y{" "}
+                      {osmExerciseDebugOverlay.renderBounds.minY.toFixed(0)} to{" "}
+                      {osmExerciseDebugOverlay.renderBounds.maxY.toFixed(0)}.{" "}
+                      {osmExerciseDebugOverlay.qa.allNodesInsideRenderBounds
+                        ? "All route nodes are inside render bounds."
+                        : "At least one route node is outside render bounds."}
+                    </p>
+
+                    {osmExerciseDebugOverlay.qa.failureMessages.length > 0 ? (
+                      <div className="mt-3 rounded border border-red-100 bg-red-50 p-2 text-xs text-red-950">
+                        <p className="font-semibold uppercase tracking-wide">Overlay QA failures</p>
+                        <ul className="mt-2 grid gap-1 font-mono text-[11px] leading-5">
+                          {osmExerciseDebugOverlay.qa.failureMessages.map((message) => (
+                            <li key={message}>{message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="mt-3 rounded border border-green-100 bg-green-50 p-2 text-xs font-semibold text-green-950">
+                        No QA failures for the selected exercise overlay.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
 
                 {osmQaStatusPanel ? (
                   <div className="mt-4 rounded-md border border-cyan-100 bg-white p-3">
@@ -4134,8 +4561,8 @@ export function RouteRunnerClient() {
                   </div>
                 ) : (
                   <p className="mt-4 rounded-md border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-cyan-800">
-                    Enable OSM QA to run exercise legality, reachability, directed-edge, and render-bounds checks for
-                    the selected converted map.
+                    Enable the graph overlay or Exercise QA overlay to run legality, reachability, directed-edge, and
+                    render-bounds checks for the selected converted map.
                   </p>
                 )}
 

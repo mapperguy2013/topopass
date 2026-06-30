@@ -23,6 +23,7 @@ export type RouteRunnerMapOption = {
   defaultExerciseId: string;
   attribution?: string;
   fixtureName?: string;
+  sourceOverpassFixture?: unknown;
 };
 
 export type RouteRunnerMapBounds = {
@@ -321,61 +322,104 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
 
 export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
   {
-    id: "osm-real-keppel-street",
-    title: "Real OSM pilot: Keppel Street one-way segment",
+    id: "osm-real-pilot-short-crossing",
+    title: "Goodge Street to Tottenham Court Road",
     mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Goodge Street west and route legally to Tottenham Court Road, respecting one-way restrictions.",
     difficulty: "easy",
     stops: [
       {
         type: "node",
-        nodeId: "osm-node-104302",
-        label: "Keppel Street west"
+        nodeId: "osm-node-107319",
+        label: "Goodge Street west"
       },
       {
         type: "node",
-        nodeId: "osm-node-107844",
-        label: "Keppel Street east"
+        nodeId: "osm-node-107320",
+        label: "Tottenham Court Road"
       }
     ]
   },
   {
-    id: "osm-real-store-street",
-    title: "Real OSM pilot: Store Street one-way segment",
+    id: "osm-real-pilot-one-way-detour",
+    title: "Torrington Place one-way check",
     mapId: realLondonOsmPilotRouteMap.id,
-    difficulty: "easy",
-    stops: [
-      {
-        type: "node",
-        nodeId: "osm-node-333719180",
-        label: "Store Street west"
-      },
-      {
-        type: "node",
-        nodeId: "osm-node-25472045",
-        label: "Store Street east"
-      }
-    ]
-  },
-  {
-    id: "osm-real-malet-checkpoint",
-    title: "Real OSM pilot: Malet Street checkpoint route",
-    mapId: realLondonOsmPilotRouteMap.id,
+    description:
+      "Start at Torrington Place east and route legally to Tottenham Court Road north on the committed real London pilot graph.",
     difficulty: "medium",
     stops: [
       {
         type: "node",
-        nodeId: "osm-node-107844",
-        label: "Malet Street north"
+        nodeId: "osm-node-108034",
+        label: "Torrington Place east"
       },
       {
         type: "node",
-        nodeId: "osm-node-1448889398",
-        label: "Malet Street checkpoint"
+        nodeId: "osm-node-108044",
+        label: "Tottenham Court Road north"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-checkpoint-route",
+    title: "Huntley Street via Chenies Street",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description:
+      "Start on Huntley Street south, pass the Chenies Street checkpoint, then finish at Ridgmount Gardens.",
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-14725979",
+        label: "Huntley Street south"
       },
       {
         type: "node",
-        nodeId: "osm-node-108017",
-        label: "Malet Street south"
+        nodeId: "osm-node-108025",
+        label: "Chenies Street checkpoint"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108030",
+        label: "Ridgmount Gardens"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-longer-route",
+    title: "Goodge Street to Byng Place",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Goodge Street west and route legally to Byng Place.",
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-107319",
+        label: "Goodge Street west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-273194",
+        label: "Byng Place"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-turn-choice",
+    title: "Whitfield Street to Goodge Street",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Whitfield Street and route legally to Goodge Street at Tottenham Court Road.",
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-9791489",
+        label: "Whitfield Street"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-107320",
+        label: "Goodge Street at Tottenham Court Road"
       }
     ]
   }
@@ -500,7 +544,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     exercises: tinyLondonOsmRouteExercises,
     defaultExerciseId: tinyLondonOsmRouteExercises[0]?.id ?? "",
     attribution: "OpenStreetMap contributors",
-    fixtureName: "tinyLondonOverpass.json"
+    fixtureName: "tinyLondonOverpass.json",
+    sourceOverpassFixture: tinyLondonOverpassFixture
   },
   {
     id: mediumLondonOsmRouteMap.id,
@@ -511,7 +556,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     exercises: mediumLondonOsmRouteExercises,
     defaultExerciseId: mediumLondonOsmRouteExercises[0]?.id ?? "",
     attribution: "OpenStreetMap contributors",
-    fixtureName: "mediumLondonOverpass.json"
+    fixtureName: "mediumLondonOverpass.json",
+    sourceOverpassFixture: mediumLondonOverpassFixture
   },
   {
     id: realLondonOsmPilotRouteMap.id,
@@ -522,7 +568,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     exercises: realLondonOsmPilotRouteExercises,
     defaultExerciseId: realLondonOsmPilotRouteExercises[0]?.id ?? "",
     attribution: "OpenStreetMap contributors",
-    fixtureName: "realLondonPilotOverpass.json"
+    fixtureName: "realLondonPilotOverpass.json",
+    sourceOverpassFixture: realLondonPilotOverpassFixture
   },
   {
     id: largeLondonOsmRouteMap.id,
@@ -533,7 +580,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     exercises: largeLondonOsmRouteExercises,
     defaultExerciseId: largeLondonOsmRouteExercises[0]?.id ?? "",
     attribution: "OpenStreetMap contributors",
-    fixtureName: "largeLondonOverpass.json"
+    fixtureName: "largeLondonOverpass.json",
+    sourceOverpassFixture: largeLondonOverpassFixture
   }
 ];
 
