@@ -105,9 +105,9 @@ test("OSM QA status panel data is generated for the real London pilot map", () =
   assert.equal(model.mapName, "OSM Real London Pilot");
   assert.equal(model.nodeCount, 390);
   assert.equal(model.directedEdgeCount, 588);
-  assert.equal(model.exerciseCount, 5);
+  assert.equal(model.exerciseCount, realLondonOsmPilotRouteExercises.length);
   assert.equal(model.qaState, "pass");
-  assert.equal(model.passedExerciseCount, 5);
+  assert.equal(model.passedExerciseCount, realLondonOsmPilotRouteExercises.length);
   assert.equal(model.failedExerciseCount, 0);
   assert.equal(model.selectedExercise?.id, "osm-real-pilot-one-way-detour");
   assert.ok(model.selectedExercise?.checks.every((check) => check.state === "pass"));

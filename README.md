@@ -2335,7 +2335,7 @@ out body;
   exposes exercise id, start node, destination node, checkpoint nodes/count,
   legal-route availability, fastest-route edge count, route distance, and
   stable failure reason codes/messages.
-- The Stage 115 acceptance test locks the current five real pilot exercises
+- The Stage 115 acceptance test locked the original five real pilot exercises
   and their accepted fastest-route summaries:
   `osm-real-pilot-short-crossing`, `osm-real-pilot-one-way-detour`,
   `osm-real-pilot-checkpoint-route`, `osm-real-pilot-longer-route`, and
@@ -2411,7 +2411,7 @@ out body;
   through the same drawn-route pipeline used by `/dev/route-runner`: gesture
   validation, simplification, snapping, matching, exercise scoring, illegal
   movement highlighting, and review generation.
-- The Stage 118 tests prove all five real pilot exercises can pass end to end
+- The Stage 118 tests prove the original five real pilot exercises can pass end to end
   from generated drawn geometry, match the expected legal directed edges,
   preserve ordered checkpoint handling, and produce empty illegal movement
   highlights for valid reveal routes.
@@ -2467,7 +2467,7 @@ out body;
   not fetch live OSM/Overpass data, use external routing APIs, manually edit
   OSM road directions, weaken one-way/no-entry legality, change scoring rules,
   or change production behaviour.
-- Focused tests cover ready formatting, stable summary ordering, all five
+- Focused tests cover ready formatting, stable summary ordering, all real pilot
   exercise ids, `none` failure display, deterministic broken-report failure
   reasons, repeated formatting stability, and guards that keep Marlowe plus
   tiny/medium OSM maps from showing the real pilot panel.
@@ -2494,6 +2494,26 @@ out body;
   ordered checkpoints, `none` checkpoint display, reveal-route availability,
   empty/accepted/rejected attempt states, illegal-highlight guidance, stable
   next actions, and repeated formatting determinism.
+
+## Stage 122 Real London Pilot Exercise Expansion
+
+- The dev-only `osm-real-london-pilot` map now has eight additional
+  QA-validated exercises, expanding the real pilot set from five to thirteen
+  exercises while keeping Marlowe as the default route-runner map.
+- The new exercises cover a short A-to-B route, medium A-to-B route,
+  checkpoint routes, a four-stop route, one-way awareness, longer legal
+  detours, and a route-choice exercise with multiple plausible legal options.
+- The readiness report and `/dev/route-runner` QA panel automatically include
+  the expanded exercise set because they consume the shared real London pilot
+  exercise list and Stage 119 deterministic QA helpers.
+- This remains dev/test-only and uses only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture. It does
+  not fetch live OSM/Overpass data, use external routing APIs, manually edit
+  OSM road directions, weaken one-way/no-entry legality, change snapping,
+  matching, or scoring rules, or change production behaviour.
+- Focused tests lock the new exercise ids, route shapes, ordered checkpoint
+  reachability, one-way detour behaviour, expanded readiness/panel counts,
+  tiny/medium OSM regressions, and Marlowe default-map guardrails.
 
 ## Current Feature Set
 

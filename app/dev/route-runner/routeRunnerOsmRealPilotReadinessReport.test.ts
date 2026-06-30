@@ -39,7 +39,7 @@ test("real London pilot readiness report passes when existing QA passes", () => 
   assert.equal(report.fixtureSource.source, "committed-local-overpass-fixture");
   assert.equal(report.fixtureSource.fixtureName, "realLondonPilotOverpass.json");
   assert.equal(report.fixtureSource.path, "lib/map-engine/osm/fixtures/realLondonPilotOverpass.json");
-  assert.equal(report.exerciseCount, 5);
+  assert.equal(report.exerciseCount, realLondonOsmPilotRouteExercises.length);
   assert.equal(report.overallReadinessStatus, "ready", report.failureMessages.join("\n"));
   assert.equal(report.isReady, true);
   assert.deepEqual(report.failureReasonCodes, []);

@@ -422,6 +422,174 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
         label: "Goodge Street at Tottenham Court Road"
       }
     ]
+  },
+  {
+    id: "osm-real-pilot-store-street-short-hop",
+    title: "Store Street short hop",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start at Store Street east and route legally to Store Street west through the short one-way connector.",
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-25472045",
+        label: "Store Street east"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-333670394",
+        label: "Store Street west"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-gower-to-torrington",
+    title: "Gower Street to Torrington Place",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Gower Street south and route legally to Torrington Place east.",
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-108033",
+        label: "Gower Street south"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108034",
+        label: "Torrington Place east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-goodge-chenies-ridgmount",
+    title: "Goodge Street via Chenies Street",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Goodge Street west, pass the Chenies Street checkpoint, then finish at Ridgmount Gardens.",
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-107319",
+        label: "Goodge Street west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108025",
+        label: "Chenies Street checkpoint"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108030",
+        label: "Ridgmount Gardens"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-torrington-byng",
+    title: "Torrington Place to Byng Place",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Torrington Place and route legally to Byng Place.",
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-108006",
+        label: "Torrington Place"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-273194",
+        label: "Byng Place"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-south-crescent-ridgmount-multistop",
+    title: "South Crescent to Ridgmount Gardens",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start at Store Street, pass South Crescent and Ridgmount Street, then finish at Ridgmount Gardens.",
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-25472045",
+        label: "Store Street"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-25472056",
+        label: "South Crescent"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10845640242",
+        label: "Ridgmount Street"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108030",
+        label: "Ridgmount Gardens"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-tottenham-to-gower-detour",
+    title: "Tottenham Court Road to Gower Street",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Tottenham Court Road north and route legally to Gower Street south via the one-way detour.",
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-108044",
+        label: "Tottenham Court Road north"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108033",
+        label: "Gower Street south"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-torrington-reverse-loop",
+    title: "Tottenham Court Road to Torrington Place",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start at Tottenham Court Road north and reach Torrington Place east without reversing one-way segments.",
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-108044",
+        label: "Tottenham Court Road north"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108034",
+        label: "Torrington Place east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-mortimer-goodge-options",
+    title: "Mortimer Market to Goodge Street",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description:
+      "Start at Mortimer Market and route legally to Goodge Street at Tottenham Court Road, where several connected streets make plausible route choices.",
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-1046362979",
+        label: "Mortimer Market"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-107320",
+        label: "Goodge Street at Tottenham Court Road"
+      }
+    ]
   }
 ];
 

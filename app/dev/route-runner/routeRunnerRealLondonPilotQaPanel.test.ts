@@ -21,6 +21,7 @@ import {
 
 test("valid Stage 119 report formats as ready for the real London pilot panel", () => {
   const model = buildRealLondonPilotQaPanelModel(buildRealLondonPilotReadinessReport());
+  const exerciseCount = realLondonOsmPilotRouteExercises.length;
 
   assert.equal(model.title, "Real London Pilot QA");
   assert.equal(model.mapId, "osm-real-london-pilot");
@@ -28,16 +29,16 @@ test("valid Stage 119 report formats as ready for the real London pilot panel", 
   assert.equal(model.status, "ready");
   assert.equal(model.statusLabel, "Ready");
   assert.equal(model.statusTone, "pass");
-  assert.equal(model.exerciseCount, 5);
-  assert.equal(model.passedExerciseCount, 5);
+  assert.equal(model.exerciseCount, exerciseCount);
+  assert.equal(model.passedExerciseCount, exerciseCount);
   assert.equal(model.failedExerciseCount, 0);
-  assert.equal(model.exerciseProgressText, "5/5 passing");
+  assert.equal(model.exerciseProgressText, `${exerciseCount}/${exerciseCount} passing`);
 });
 
-test("real London pilot panel displays all five exercise ids in fixture order", () => {
+test("real London pilot panel displays all expanded exercise ids in fixture order", () => {
   const model = buildRealLondonPilotQaPanelModel(buildRealLondonPilotReadinessReport());
 
-  assert.equal(model.exerciseIds.length, 5);
+  assert.equal(model.exerciseIds.length, realLondonOsmPilotRouteExercises.length);
   assert.deepEqual(
     model.exerciseIds,
     realLondonOsmPilotRouteExercises.map((exercise) => exercise.id)
@@ -46,13 +47,14 @@ test("real London pilot panel displays all five exercise ids in fixture order", 
 
 test("real London pilot panel summaries are shown in stable order", () => {
   const model = buildRealLondonPilotQaPanelModel(buildRealLondonPilotReadinessReport());
+  const exerciseCount = realLondonOsmPilotRouteExercises.length;
 
   assert.deepEqual(
     model.summaryRows.map((row) => [row.id, row.label, row.value, row.detail, row.status]),
     [
-      ["acceptance-qa", "Acceptance QA", "passing", "5/5 exercises passing", "pass"],
-      ["manual-attempt-qa", "Manual Attempt QA", "passing", "5/5 attempts accepted", "pass"],
-      ["drawn-route-qa", "Drawn Route QA", "passing", "5/5 drawn routes passing", "pass"]
+      ["acceptance-qa", "Acceptance QA", "passing", `${exerciseCount}/${exerciseCount} exercises passing`, "pass"],
+      ["manual-attempt-qa", "Manual Attempt QA", "passing", `${exerciseCount}/${exerciseCount} attempts accepted`, "pass"],
+      ["drawn-route-qa", "Drawn Route QA", "passing", `${exerciseCount}/${exerciseCount} drawn routes passing`, "pass"]
     ]
   );
 });

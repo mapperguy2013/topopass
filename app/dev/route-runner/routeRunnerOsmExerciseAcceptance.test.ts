@@ -82,6 +82,94 @@ const REAL_PILOT_ACCEPTANCE_SUMMARIES = [
     fastestRouteEdgeCount: 12,
     fastestRouteDistanceMeters: 159.33,
     failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-store-street-short-hop",
+    startNodeId: "osm-node-25472045",
+    destinationNodeId: "osm-node-333670394",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 2,
+    fastestRouteDistanceMeters: 21.48,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-gower-to-torrington",
+    startNodeId: "osm-node-108033",
+    destinationNodeId: "osm-node-108034",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 9,
+    fastestRouteDistanceMeters: 142.74,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-goodge-chenies-ridgmount",
+    startNodeId: "osm-node-107319",
+    destinationNodeId: "osm-node-108030",
+    checkpointNodeIds: ["osm-node-108025"],
+    checkpointCount: 1,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 21,
+    fastestRouteDistanceMeters: 346.79,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-torrington-byng",
+    startNodeId: "osm-node-108006",
+    destinationNodeId: "osm-node-273194",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 9,
+    fastestRouteDistanceMeters: 49.89,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-south-crescent-ridgmount-multistop",
+    startNodeId: "osm-node-25472045",
+    destinationNodeId: "osm-node-108030",
+    checkpointNodeIds: ["osm-node-25472056", "osm-node-10845640242"],
+    checkpointCount: 2,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 21,
+    fastestRouteDistanceMeters: 294.06,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-tottenham-to-gower-detour",
+    startNodeId: "osm-node-108044",
+    destinationNodeId: "osm-node-108033",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 27,
+    fastestRouteDistanceMeters: 362.61,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-torrington-reverse-loop",
+    startNodeId: "osm-node-108044",
+    destinationNodeId: "osm-node-108034",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 36,
+    fastestRouteDistanceMeters: 505.35,
+    failureReasonCodes: []
+  },
+  {
+    exerciseId: "osm-real-pilot-mortimer-goodge-options",
+    startNodeId: "osm-node-1046362979",
+    destinationNodeId: "osm-node-107320",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 41,
+    fastestRouteDistanceMeters: 512.86,
+    failureReasonCodes: []
   }
 ];
 
@@ -97,7 +185,7 @@ test("real London pilot acceptance report locks every exercise against the commi
 
   assert.equal(suite.isValid, true, suite.failureMessages.join("\n"));
   assert.equal(suite.mapId, "osm-real-london-pilot");
-  assert.equal(suite.exerciseCount, 5);
+  assert.equal(suite.exerciseCount, realLondonOsmPilotRouteExercises.length);
   assert.deepEqual(suite.failureReasonCodes, []);
   assert.deepEqual(suite.failureMessages, []);
   assert.deepEqual(suite.reports.map(stableAcceptanceSummary), REAL_PILOT_ACCEPTANCE_SUMMARIES);

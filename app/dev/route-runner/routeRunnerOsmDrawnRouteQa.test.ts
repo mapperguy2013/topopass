@@ -36,7 +36,7 @@ test("all real London pilot exercises pass end-to-end drawn-route QA", () => {
 
   assert.equal(suite.isValid, true, suite.failureMessages.join("\n"));
   assert.equal(suite.mapId, "osm-real-london-pilot");
-  assert.equal(suite.exerciseCount, 5);
+  assert.equal(suite.exerciseCount, realLondonOsmPilotRouteExercises.length);
   assert.deepEqual(suite.failureReasonCodes, []);
   assert.deepEqual(suite.failureMessages, []);
 
