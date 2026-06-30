@@ -4488,17 +4488,39 @@ export function RouteRunnerClient() {
                     </dl>
 
                     <div className="mt-3 rounded border border-white/80 bg-white p-2">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise IDs</p>
-                      <ul className="mt-2 flex flex-wrap gap-2">
-                        {realLondonPilotQaPanel.exerciseIds.map((exerciseId) => (
-                          <li
-                            key={exerciseId}
-                            className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800"
-                          >
-                            {exerciseId}
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercises</p>
+                      {realLondonPilotQaPanel.exerciseRows.length > 0 ? (
+                        <ul className="mt-2 grid gap-2 lg:grid-cols-2">
+                          {realLondonPilotQaPanel.exerciseRows.map((row) => (
+                            <li key={row.id} className="rounded border border-slate-200 bg-slate-50 p-2 text-slate-800">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[11px] font-semibold">{row.id}</span>
+                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
+                                  {row.difficulty}
+                                </span>
+                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
+                                  {row.routeTypeLabel}
+                                </span>
+                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
+                                  {row.estimatedDistanceText}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[11px] leading-5 text-slate-600">{row.expectedComplexity}</p>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <ul className="mt-2 flex flex-wrap gap-2">
+                          {realLondonPilotQaPanel.exerciseIds.map((exerciseId) => (
+                            <li
+                              key={exerciseId}
+                              className="rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[11px] text-slate-800"
+                            >
+                              {exerciseId}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
 
                     <ul className="mt-3 grid gap-2 text-xs lg:grid-cols-3">

@@ -3,6 +3,7 @@ import {
   marloweDistrictRouteExercises,
   type MapDefinition,
   type RouteExercise,
+  type RouteExerciseDifficulty,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OsmRouteGraphMapDefinition } from "../../../lib/map-engine/osm/index.ts";
@@ -32,6 +33,49 @@ export type RouteRunnerMapBounds = {
   maxX: number;
   maxY: number;
 };
+
+export type RealLondonPilotRouteType = "direct" | "checkpoint" | "multi-stop" | "one-way-awareness";
+
+export type RealLondonPilotExerciseMetadata = {
+  difficulty: RouteExerciseDifficulty;
+  routeType: RealLondonPilotRouteType;
+  estimatedDistanceMeters: number;
+  expectedComplexity: string;
+};
+
+export type RealLondonPilotRouteExercise = RouteExercise & {
+  difficulty: RouteExerciseDifficulty;
+  realLondonPilotMetadata: RealLondonPilotExerciseMetadata;
+};
+
+type RealLondonPilotRouteExerciseInput = RouteExercise & {
+  difficulty: RouteExerciseDifficulty;
+  routeType: RealLondonPilotRouteType;
+  estimatedDistanceMeters: number;
+  expectedComplexity: string;
+};
+
+function buildRealLondonPilotRouteExercise(input: RealLondonPilotRouteExerciseInput): RealLondonPilotRouteExercise {
+  const { routeType, estimatedDistanceMeters, expectedComplexity, ...exercise } = input;
+
+  return {
+    ...exercise,
+    realLondonPilotMetadata: {
+      difficulty: exercise.difficulty,
+      routeType,
+      estimatedDistanceMeters,
+      expectedComplexity
+    }
+  };
+}
+
+export function getRealLondonPilotExerciseMetadata(
+  exercise: RouteExercise
+): RealLondonPilotExerciseMetadata | null {
+  const metadata = (exercise as Partial<RealLondonPilotRouteExercise>).realLondonPilotMetadata;
+
+  return metadata ?? null;
+}
 
 const OSM_FIXTURE_MAP_ID = "osm-tiny-london-prototype";
 const MEDIUM_OSM_FIXTURE_MAP_ID = "osm-medium-london-prototype";
@@ -320,13 +364,16 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
   }
 ];
 
-export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
+const realLondonOsmPilotRouteExerciseDefinitions = [
   {
     id: "osm-real-pilot-short-crossing",
     title: "Goodge Street to Tottenham Court Road",
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Goodge Street west and route legally to Tottenham Court Road, respecting one-way restrictions.",
     difficulty: "easy",
+    routeType: "direct",
+    estimatedDistanceMeters: 154.16,
+    expectedComplexity: "Short direct A to B route with basic one-way compliance.",
     stops: [
       {
         type: "node",
@@ -347,6 +394,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     description:
       "Start at Torrington Place east and route legally to Tottenham Court Road north on the committed real London pilot graph.",
     difficulty: "medium",
+    routeType: "one-way-awareness",
+    estimatedDistanceMeters: 209.11,
+    expectedComplexity: "One-way-aware A to B route that must follow the legal Torrington Place direction.",
     stops: [
       {
         type: "node",
@@ -367,6 +417,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     description:
       "Start on Huntley Street south, pass the Chenies Street checkpoint, then finish at Ridgmount Gardens.",
     difficulty: "medium",
+    routeType: "checkpoint",
+    estimatedDistanceMeters: 181.27,
+    expectedComplexity: "Checkpoint route that verifies Huntley Street to Chenies Street before Ridgmount Gardens.",
     stops: [
       {
         type: "node",
@@ -391,6 +444,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Goodge Street west and route legally to Byng Place.",
     difficulty: "hard",
+    routeType: "direct",
+    estimatedDistanceMeters: 660.84,
+    expectedComplexity: "Long A to B route with a legal path much longer than the visual straight-line trip.",
     stops: [
       {
         type: "node",
@@ -410,6 +466,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Whitfield Street and route legally to Goodge Street at Tottenham Court Road.",
     difficulty: "medium",
+    routeType: "direct",
+    estimatedDistanceMeters: 159.33,
+    expectedComplexity: "Medium A to B route with turn choice around Whitfield Street and Goodge Street.",
     stops: [
       {
         type: "node",
@@ -429,6 +488,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start at Store Street east and route legally to Store Street west through the short one-way connector.",
     difficulty: "easy",
+    routeType: "direct",
+    estimatedDistanceMeters: 21.48,
+    expectedComplexity: "Very short A to B route across the Store Street connector.",
     stops: [
       {
         type: "node",
@@ -448,6 +510,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Gower Street south and route legally to Torrington Place east.",
     difficulty: "medium",
+    routeType: "direct",
+    estimatedDistanceMeters: 142.74,
+    expectedComplexity: "Medium A to B route from Gower Street into the Torrington Place approach.",
     stops: [
       {
         type: "node",
@@ -467,6 +532,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Goodge Street west, pass the Chenies Street checkpoint, then finish at Ridgmount Gardens.",
     difficulty: "medium",
+    routeType: "checkpoint",
+    estimatedDistanceMeters: 346.79,
+    expectedComplexity: "A to B to C checkpoint route linking Goodge Street, Chenies Street, and Ridgmount Gardens.",
     stops: [
       {
         type: "node",
@@ -491,6 +559,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Torrington Place and route legally to Byng Place.",
     difficulty: "easy",
+    routeType: "direct",
+    estimatedDistanceMeters: 49.89,
+    expectedComplexity: "Short A to B route from Torrington Place into Byng Place.",
     stops: [
       {
         type: "node",
@@ -510,6 +581,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start at Store Street, pass South Crescent and Ridgmount Street, then finish at Ridgmount Gardens.",
     difficulty: "hard",
+    routeType: "multi-stop",
+    estimatedDistanceMeters: 294.06,
+    expectedComplexity: "A to B to C to D multi-stop route through South Crescent and Ridgmount Street.",
     stops: [
       {
         type: "node",
@@ -539,6 +613,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Tottenham Court Road north and route legally to Gower Street south via the one-way detour.",
     difficulty: "hard",
+    routeType: "one-way-awareness",
+    estimatedDistanceMeters: 362.61,
+    expectedComplexity: "One-way detour route where the legal path is longer than the visually obvious connection.",
     stops: [
       {
         type: "node",
@@ -558,6 +635,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start at Tottenham Court Road north and reach Torrington Place east without reversing one-way segments.",
     difficulty: "hard",
+    routeType: "one-way-awareness",
+    estimatedDistanceMeters: 505.35,
+    expectedComplexity: "Hard reverse-direction route that proves one-way awareness with a longer legal loop.",
     stops: [
       {
         type: "node",
@@ -578,6 +658,9 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
     description:
       "Start at Mortimer Market and route legally to Goodge Street at Tottenham Court Road, where several connected streets make plausible route choices.",
     difficulty: "hard",
+    routeType: "direct",
+    estimatedDistanceMeters: 512.86,
+    expectedComplexity: "Long A to B route with multiple plausible legal street choices before Goodge Street.",
     stops: [
       {
         type: "node",
@@ -591,7 +674,10 @@ export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
       }
     ]
   }
-];
+] satisfies RealLondonPilotRouteExerciseInput[];
+
+export const realLondonOsmPilotRouteExercises: RealLondonPilotRouteExercise[] =
+  realLondonOsmPilotRouteExerciseDefinitions.map(buildRealLondonPilotRouteExercise);
 
 export const largeLondonOsmRouteExercises: RouteExercise[] = [
   {

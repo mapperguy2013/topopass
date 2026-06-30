@@ -2515,6 +2515,27 @@ out body;
   reachability, one-way detour behaviour, expanded readiness/panel counts,
   tiny/medium OSM regressions, and Marlowe default-map guardrails.
 
+## Stage 123 Real London Pilot Exercise Difficulty Metadata
+
+- Every dev-only `osm-real-london-pilot` exercise now declares structured
+  metadata for difficulty, route type, estimated distance in metres, and a
+  deterministic expected-complexity note.
+- The metadata is declared beside the existing real London pilot exercises and
+  is carried into the deterministic readiness report plus the
+  `/dev/route-runner` QA panel, where difficulty and route type are shown in
+  the compact exercise list.
+- The metadata is descriptive only. It does not change route legality,
+  snapping, matching, scoring, saved attempts, analytics, auth, Supabase,
+  deployment config, production behaviour, or default map selection.
+- This remains dev/test-only, keeps Marlowe as the default map, and continues
+  to use only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture with no
+  live OSM/Overpass fetches or external routing APIs.
+- Focused tests validate metadata completeness and allowed values, confirm the
+  declared estimated distances match locked acceptance QA distances, prove the
+  readiness report and QA panel preserve the metadata, and re-check
+  tiny/medium OSM plus Marlowe guardrails.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

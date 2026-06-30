@@ -10,8 +10,10 @@ import {
 import {
   getRouteRunnerMapFitBounds,
   getRouteRunnerMapOption,
+  getRealLondonPilotExerciseMetadata,
   realLondonOsmPilotRouteExercises,
   realLondonOsmPilotRouteMap,
+  type RealLondonPilotExerciseMetadata,
   type RouteRunnerMapBounds,
   type RouteRunnerMapOption
 } from "./routeRunnerMaps.ts";
@@ -85,6 +87,13 @@ export type OsmPilotExerciseCountReadiness = {
   count: number;
   failureReasonCodes: Array<"empty">;
   failureMessages: string[];
+};
+
+export type OsmPilotExerciseMetadataReport = RealLondonPilotExerciseMetadata & {
+  exerciseId: string;
+  title: string;
+  stopCount: number;
+  stopNodeIds: string[];
 };
 
 export type OsmPilotAcceptanceQaReadiness = {
@@ -214,6 +223,7 @@ export type OsmPilotReadinessReport = {
   mapId: string;
   fixtureSource: OsmPilotFixtureSourceReadiness;
   exerciseCount: number;
+  exerciseMetadata: OsmPilotExerciseMetadataReport[];
   acceptanceQa: OsmPilotAcceptanceQaReadiness;
   manualAttemptQa: OsmPilotManualAttemptQaReadiness;
   drawnRouteQa: OsmPilotDrawnRouteQaReadiness;
@@ -291,6 +301,7 @@ export function buildOsmPilotReadinessReport(input: BuildOsmPilotReadinessReport
   });
   const fixtureSource = buildFixtureSourceReadiness(input);
   const exerciseCount = buildExerciseCountReadiness(exercises.length, map.id);
+  const exerciseMetadata = buildExerciseMetadataReports(exercises);
   const acceptanceQa = buildAcceptanceQaReadiness(acceptanceSuite);
   const manualAttemptQa = buildManualAttemptQaReadiness({
     map,
@@ -358,6 +369,7 @@ export function buildOsmPilotReadinessReport(input: BuildOsmPilotReadinessReport
     mapId: map.id,
     fixtureSource,
     exerciseCount: exercises.length,
+    exerciseMetadata,
     acceptanceQa,
     manualAttemptQa,
     drawnRouteQa,
@@ -385,6 +397,13 @@ export function stableOsmPilotReadinessReportSummary(report: OsmPilotReadinessRe
       failureReasonCodes: report.fixtureSource.failureReasonCodes
     },
     exerciseCount: report.exerciseCount,
+    exerciseMetadata: report.exerciseMetadata.map((metadata) => ({
+      exerciseId: metadata.exerciseId,
+      difficulty: metadata.difficulty,
+      routeType: metadata.routeType,
+      estimatedDistanceMeters: metadata.estimatedDistanceMeters,
+      expectedComplexity: metadata.expectedComplexity
+    })),
     acceptanceQa: {
       status: report.acceptanceQa.status,
       exerciseCount: report.acceptanceQa.exerciseCount,
@@ -487,6 +506,28 @@ function buildExerciseCountReadiness(count: number, mapId: string): OsmPilotExer
     failureMessages:
       count > 0 ? [] : [`exercise-count:empty | map=${mapId} | no route exercises are registered for readiness QA.`]
   };
+}
+
+function buildExerciseMetadataReports(exercises: readonly RouteExercise[]): OsmPilotExerciseMetadataReport[] {
+  return exercises.flatMap((exercise) => {
+    const metadata = getRealLondonPilotExerciseMetadata(exercise);
+
+    if (!metadata) {
+      return [];
+    }
+
+    return [
+      {
+        exerciseId: exercise.id,
+        title: exercise.title,
+        stopCount: exercise.stops.length,
+        stopNodeIds: exercise.stops.map((stop) =>
+          stop.type === "node" ? stop.nodeId : `landmark:${stop.landmarkId}`
+        ),
+        ...metadata
+      }
+    ];
+  });
 }
 
 function buildAcceptanceQaReadiness(
