@@ -2024,6 +2024,31 @@ out body;
   legality, alter snapping, modify shortest-route/reveal-fastest-route logic,
   or change backend/Supabase behavior.
 
+## Stage 106 Medium OSM Map Visual QA / Debug Overlay
+
+- Added a dev-only OSM graph QA overlay for `/dev/route-runner`. The overlay is
+  available only when a converted OSM map is selected, is off by default, and
+  does not appear for the default Marlowe synthetic map.
+- To inspect the medium fixture, open `/dev/route-runner`, select `Medium
+  converted OSM fixture`, then use the in-map `OSM QA` button or the converted
+  OSM QA panel below the map to enable the graph overlay.
+- When enabled, the overlay draws graph nodes, directed graph edges, one-way
+  direction arrows, and optional node/road-segment IDs using the same map
+  coordinate transform as roads, restrictions, drawn routes, fastest-route
+  reveal, replay markers, and exercise stops. This keeps the QA layer aligned
+  while zooming, panning, and resetting the view.
+- Added a compact converted OSM QA summary panel with map id/name, source
+  fixture name, node count, road segment count, directed edge count, one-way and
+  two-way segment counts, selected exercise id/title, and start/checkpoint/finish
+  node ids.
+- Added deterministic helper tests for default-off state, converted-map-only
+  availability, medium fixture debug counts, hidden overlay behavior, visible
+  graph node/edge models, and tiny-vs-medium debug summary differences.
+- Stage 106 is visual/debug-only. It does not fetch live OSM/Overpass data,
+  change scoring, alter legality, modify snapping or matching, change
+  shortest-route/reveal-fastest-route logic, touch saved attempts, analytics,
+  Supabase, or replace the default synthetic map.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

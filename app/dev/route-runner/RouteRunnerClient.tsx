@@ -191,6 +191,14 @@ import {
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap
 } from "./routeRunnerMaps";
+import {
+  buildOsmDebugOverlayModel,
+  canOfferOsmDebugOverlay,
+  createDefaultOsmDebugOverlayState,
+  type OsmDebugDirectedEdgeVisual,
+  type OsmDebugOverlayModel,
+  type OsmDebugOverlayState
+} from "./routeRunnerOsmDebug";
 
 const CANVAS_WIDTH = 1120;
 const CANVAS_HEIGHT = 760;
@@ -1649,6 +1657,115 @@ function drawRouteReplayMarker(
   context.restore();
 }
 
+function drawOsmDebugLabel(context: CanvasRenderingContext2D, text: string, point: Vec2): void {
+  context.save();
+  context.font = "600 10px Arial, sans-serif";
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.lineWidth = 3;
+  context.strokeStyle = "rgba(255,255,255,0.92)";
+  context.fillStyle = "rgba(15,23,42,0.76)";
+  context.strokeText(text, point.x, point.y);
+  context.fillText(text, point.x, point.y);
+  context.restore();
+}
+
+function shiftedDebugEdgePoints(edge: OsmDebugDirectedEdgeVisual, viewport: ScreenMapViewport): [Vec2, Vec2] {
+  const from = mapToScreenPoint(edge.points[0], viewport);
+  const to = mapToScreenPoint(edge.points[1], viewport);
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.hypot(dx, dy);
+
+  if (length === 0 || edge.isOneWayRoad) {
+    return [from, to];
+  }
+
+  const offset = edge.direction === "forward" ? 2.5 : -2.5;
+  const normal = {
+    x: (-dy / length) * offset,
+    y: (dx / length) * offset
+  };
+
+  return [
+    { x: from.x + normal.x, y: from.y + normal.y },
+    { x: to.x + normal.x, y: to.y + normal.y }
+  ];
+}
+
+function drawOsmDebugDirectedEdge(
+  context: CanvasRenderingContext2D,
+  edge: OsmDebugDirectedEdgeVisual,
+  viewport: ScreenMapViewport,
+  showIds: boolean
+): void {
+  const [from, to] = shiftedDebugEdgePoints(edge, viewport);
+  const colour = edge.isOneWayRoad ? "#be185d" : "#0f766e";
+  const arrowStart = {
+    x: from.x + (to.x - from.x) * 0.58,
+    y: from.y + (to.y - from.y) * 0.58
+  };
+  const arrowEnd = {
+    x: from.x + (to.x - from.x) * 0.74,
+    y: from.y + (to.y - from.y) * 0.74
+  };
+
+  context.save();
+  context.globalAlpha = edge.isOneWayRoad ? 0.72 : 0.42;
+  context.strokeStyle = colour;
+  context.fillStyle = colour;
+  context.lineWidth = edge.isOneWayRoad ? 2.5 : 1.7;
+  context.setLineDash(edge.isOneWayRoad ? [] : [4, 4]);
+  context.beginPath();
+  context.moveTo(from.x, from.y);
+  context.lineTo(to.x, to.y);
+  context.stroke();
+  context.setLineDash([]);
+  drawArrowHead(context, arrowStart, arrowEnd);
+  context.restore();
+
+  if (showIds) {
+    drawOsmDebugLabel(context, edge.roadId, mapToScreenPoint(edge.midpoint, viewport));
+  }
+}
+
+function drawOsmDebugOverlay(
+  context: CanvasRenderingContext2D,
+  overlay: OsmDebugOverlayModel | null,
+  viewport: ScreenMapViewport
+): void {
+  if (!overlay?.visible) {
+    return;
+  }
+
+  for (const edge of overlay.directedEdges) {
+    drawOsmDebugDirectedEdge(context, edge, viewport, overlay.showIds);
+  }
+
+  context.save();
+  for (const node of overlay.nodes) {
+    const point = mapToScreenPoint(node.point, viewport);
+
+    context.fillStyle = "rgba(255,255,255,0.9)";
+    context.strokeStyle = "#0891b2";
+    context.lineWidth = 1.8;
+    context.beginPath();
+    context.arc(point.x, point.y, 4.25, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+
+    context.fillStyle = "#0e7490";
+    context.beginPath();
+    context.arc(point.x, point.y, 2, 0, Math.PI * 2);
+    context.fill();
+
+    if (overlay.showIds) {
+      drawOsmDebugLabel(context, node.id, { x: point.x, y: point.y - 11 });
+    }
+  }
+  context.restore();
+}
+
 function drawRouteCanvas(input: {
   canvas: HTMLCanvasElement;
   map: MapDefinition;
@@ -1667,6 +1784,7 @@ function drawRouteCanvas(input: {
   routeIssueOverlays: RouteIssueOverlay[];
   restrictionMapVisualItems: RestrictionMapVisualItem[];
   selectedRestrictionHighlight: SelectedRestrictionHighlight | null;
+  osmDebugOverlay: OsmDebugOverlayModel | null;
 }) {
   const context = input.canvas.getContext("2d");
 
@@ -1693,6 +1811,8 @@ function drawRouteCanvas(input: {
   for (const overlay of input.roadRestrictionOverlays) {
     drawRoadRestrictionOverlay(context, overlay, input.viewport);
   }
+
+  drawOsmDebugOverlay(context, input.osmDebugOverlay, input.viewport);
 
   drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport);
 
@@ -1900,6 +2020,9 @@ export function RouteRunnerClient() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
   const [showTurnRestrictions, setShowTurnRestrictions] = useState(true);
+  const [osmDebugOverlayState, setOsmDebugOverlayState] = useState<OsmDebugOverlayState>(() =>
+    createDefaultOsmDebugOverlayState()
+  );
   const [fastestRouteRevealState, setFastestRouteRevealState] = useState<FastestRouteRevealState>(() =>
     createHiddenFastestRouteRevealState()
   );
@@ -1936,6 +2059,7 @@ export function RouteRunnerClient() {
   const activeMap = selectedMapOption.map;
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
+  const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
   const baseViewport = useMemo(() => createViewport(activeMap), [activeMap]);
   const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
   const activeMapGraph = useMemo(() => buildMapGraph(activeMap), [activeMap]);
@@ -1985,6 +2109,28 @@ export function RouteRunnerClient() {
   const selectedExercise = useMemo<RouteExercise | undefined>(
     () => activeExercises.find((exercise) => exercise.id === exerciseId),
     [activeExercises, exerciseId]
+  );
+  const osmDebugOverlay = useMemo(
+    () =>
+      buildOsmDebugOverlayModel({
+        map: activeMap,
+        graph: activeMapGraph,
+        exercise: selectedExercise,
+        sourceFixtureName: selectedMapOption.fixtureName,
+        state: {
+          visible: osmDebugOverlayAvailable && osmDebugOverlayState.visible,
+          showIds: osmDebugOverlayAvailable && osmDebugOverlayState.showIds
+        }
+      }),
+    [
+      activeMap,
+      activeMapGraph,
+      osmDebugOverlayAvailable,
+      osmDebugOverlayState.showIds,
+      osmDebugOverlayState.visible,
+      selectedExercise,
+      selectedMapOption.fixtureName
+    ]
   );
   const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
   const selectedExerciseIsInvalid = selectedExerciseAvailability ? !selectedExerciseAvailability.isValid : false;
@@ -2542,7 +2688,8 @@ export function RouteRunnerClient() {
       roadRestrictionOverlays: visibleRoadRestrictionOverlays,
       routeIssueOverlays,
       restrictionMapVisualItems,
-      selectedRestrictionHighlight
+      selectedRestrictionHighlight,
+      osmDebugOverlay: osmDebugOverlayAvailable ? osmDebugOverlay : null
     });
   }, [
     activeMap,
@@ -2550,6 +2697,8 @@ export function RouteRunnerClient() {
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
+    osmDebugOverlay,
+    osmDebugOverlayAvailable,
     restrictionMapVisualItems,
     routeReplayMarkers,
     routeIssueOverlays,
@@ -2731,6 +2880,7 @@ export function RouteRunnerClient() {
     if (linkedExercise) {
       panDragPointRef.current = null;
       setIsPanningMap(false);
+      setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
       setMapViewportState(resetMapViewport());
       setMapOptionId(linkedMapOption?.id ?? DEFAULT_ROUTE_RUNNER_MAP_ID);
       setExerciseId(linkedExercise.id);
@@ -2786,6 +2936,7 @@ export function RouteRunnerClient() {
     setError(null);
     panDragPointRef.current = null;
     setIsPanningMap(false);
+    setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
     setMapViewportState(resetMapViewport());
     setFastestRouteRevealState(hideFastestRouteReveal());
     clearDrawnAttempt();
@@ -3548,6 +3699,25 @@ export function RouteRunnerClient() {
                       ? "Hide fastest route"
                       : "Reveal fastest route"}
                 </button>
+                {osmDebugOverlayAvailable ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOsmDebugOverlayState((currentState) => ({
+                        ...currentState,
+                        visible: !currentState.visible
+                      }))
+                    }
+                    aria-pressed={osmDebugOverlayState.visible}
+                    className={`pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-100 ${
+                      osmDebugOverlayState.visible
+                        ? "border-cyan-500 bg-cyan-700 text-white hover:bg-cyan-800"
+                        : "border-cyan-300 bg-white/95 text-cyan-900 hover:bg-cyan-50"
+                    }`}
+                  >
+                    {osmDebugOverlayState.visible ? "Hide OSM QA" : "OSM QA"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={resetRouteMapView}
@@ -3600,6 +3770,101 @@ export function RouteRunnerClient() {
                 aria-label={`${activeMap.name} drawing capture canvas`}
               />
             </div>
+
+            {osmDebugOverlayAvailable ? (
+              <div className="mt-4 rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Converted OSM QA</p>
+                    <h3 className="mt-1 font-semibold text-cyan-950">{osmDebugOverlay.summary.mapName}</h3>
+                    <p className="mt-1 text-xs leading-5 text-cyan-800">
+                      {osmDebugOverlay.summary.sourceFixtureName ?? "Converted fixture"} | {osmDebugOverlay.summary.mapId}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex items-center gap-2 rounded-md border border-cyan-200 bg-white px-3 py-2 text-xs font-semibold text-cyan-950 shadow-sm">
+                      <input
+                        type="checkbox"
+                        checked={osmDebugOverlayState.visible}
+                        onChange={(event) =>
+                          setOsmDebugOverlayState((currentState) => ({
+                            ...currentState,
+                            visible: event.target.checked
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-cyan-300 text-cyan-700 focus:ring-cyan-200"
+                      />
+                      Show graph overlay
+                    </label>
+                    <label
+                      className={`inline-flex items-center gap-2 rounded-md border bg-white px-3 py-2 text-xs font-semibold shadow-sm ${
+                        osmDebugOverlayState.visible
+                          ? "border-cyan-200 text-cyan-950"
+                          : "border-slate-200 text-slate-400"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={osmDebugOverlayState.showIds}
+                        disabled={!osmDebugOverlayState.visible}
+                        onChange={(event) =>
+                          setOsmDebugOverlayState((currentState) => ({
+                            ...currentState,
+                            showIds: event.target.checked
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-cyan-300 text-cyan-700 focus:ring-cyan-200 disabled:opacity-50"
+                      />
+                      Show node / segment IDs
+                    </label>
+                  </div>
+                </div>
+
+                <dl className="mt-4 grid gap-3 text-xs text-cyan-950 sm:grid-cols-2 lg:grid-cols-5">
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Nodes</dt>
+                    <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.nodeCount}</dd>
+                  </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Road segments</dt>
+                    <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.roadSegmentCount}</dd>
+                  </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Directed edges</dt>
+                    <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.directedEdgeCount}</dd>
+                  </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">One-way segments</dt>
+                    <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.oneWayRoadSegmentCount}</dd>
+                  </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Two-way segments</dt>
+                    <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.twoWayRoadSegmentCount}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-4 rounded-md border border-cyan-100 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Selected exercise</p>
+                  <p className="mt-1 font-semibold">
+                    {osmDebugOverlay.summary.selectedExerciseTitle ?? "No exercise selected"}
+                  </p>
+                  <p className="mt-1 font-mono text-xs text-cyan-800">
+                    {osmDebugOverlay.summary.selectedExerciseId ?? "No exercise id"}
+                  </p>
+                  {osmDebugOverlay.summary.stops.length > 0 ? (
+                    <ol className="mt-3 grid gap-2 text-xs md:grid-cols-3">
+                      {osmDebugOverlay.summary.stops.map((stop) => (
+                        <li key={`${stop.order}-${stop.nodeId ?? stop.label}`} className="rounded border border-cyan-100 bg-cyan-50 p-2">
+                          <p className="font-semibold uppercase tracking-wide">{stop.role} {stop.order}</p>
+                          <p className="mt-1">{stop.label}</p>
+                          <p className="mt-1 font-mono text-[11px] text-cyan-800">{stop.nodeId ?? "unresolved"}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
               <div className="rounded-md border border-slate-100 bg-slate-50 p-3">

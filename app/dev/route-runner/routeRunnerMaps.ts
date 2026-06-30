@@ -20,6 +20,7 @@ export type RouteRunnerMapOption = {
   exercises: RouteExercise[];
   defaultExerciseId: string;
   attribution?: string;
+  fixtureName?: string;
 };
 
 export type RouteRunnerMapBounds = {
@@ -292,7 +293,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     map: tinyLondonOsmRouteMap,
     exercises: tinyLondonOsmRouteExercises,
     defaultExerciseId: tinyLondonOsmRouteExercises[0]?.id ?? "",
-    attribution: "OpenStreetMap contributors"
+    attribution: "OpenStreetMap contributors",
+    fixtureName: "tinyLondonOverpass.json"
   },
   {
     id: mediumLondonOsmRouteMap.id,
@@ -302,7 +304,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     map: mediumLondonOsmRouteMap,
     exercises: mediumLondonOsmRouteExercises,
     defaultExerciseId: mediumLondonOsmRouteExercises[0]?.id ?? "",
-    attribution: "OpenStreetMap contributors"
+    attribution: "OpenStreetMap contributors",
+    fixtureName: "mediumLondonOverpass.json"
   }
 ];
 
