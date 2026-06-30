@@ -1,0 +1,198 @@
+{
+  "version": 0.6,
+  "generator": "TOPOPASS Stage 105 deterministic medium London-like fixture",
+  "elements": [
+    { "type": "node", "id": 5001, "lat": 51.5328, "lon": -0.1304 },
+    { "type": "node", "id": 5002, "lat": 51.5328, "lon": -0.1288 },
+    { "type": "node", "id": 5003, "lat": 51.5328, "lon": -0.1272 },
+    { "type": "node", "id": 5004, "lat": 51.5328, "lon": -0.1256 },
+    { "type": "node", "id": 5005, "lat": 51.5328, "lon": -0.124 },
+    { "type": "node", "id": 5011, "lat": 51.5319, "lon": -0.1304 },
+    { "type": "node", "id": 5012, "lat": 51.5319, "lon": -0.1288 },
+    { "type": "node", "id": 5013, "lat": 51.5319, "lon": -0.1272 },
+    { "type": "node", "id": 5014, "lat": 51.5319, "lon": -0.1256 },
+    { "type": "node", "id": 5015, "lat": 51.5319, "lon": -0.124 },
+    { "type": "node", "id": 5021, "lat": 51.531, "lon": -0.1304 },
+    { "type": "node", "id": 5022, "lat": 51.531, "lon": -0.1288 },
+    { "type": "node", "id": 5023, "lat": 51.531, "lon": -0.1272 },
+    { "type": "node", "id": 5024, "lat": 51.531, "lon": -0.1256 },
+    { "type": "node", "id": 5025, "lat": 51.531, "lon": -0.124 },
+    { "type": "node", "id": 5031, "lat": 51.5301, "lon": -0.1304 },
+    { "type": "node", "id": 5032, "lat": 51.5301, "lon": -0.1288 },
+    { "type": "node", "id": 5033, "lat": 51.5301, "lon": -0.1272 },
+    { "type": "node", "id": 5034, "lat": 51.5301, "lon": -0.1256 },
+    { "type": "node", "id": 5035, "lat": 51.5301, "lon": -0.124 },
+    { "type": "node", "id": 5041, "lat": 51.5292, "lon": -0.1304 },
+    { "type": "node", "id": 5042, "lat": 51.5292, "lon": -0.1288 },
+    { "type": "node", "id": 5043, "lat": 51.5292, "lon": -0.1272 },
+    { "type": "node", "id": 5044, "lat": 51.5292, "lon": -0.1256 },
+    { "type": "node", "id": 5045, "lat": 51.5292, "lon": -0.124 },
+    {
+      "type": "way",
+      "id": 6001,
+      "nodes": [5001, 5002, 5003, 5004, 5005],
+      "tags": {
+        "highway": "primary",
+        "name": "Euston Road"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6002,
+      "nodes": [5002, 5012, 5022, 5032, 5042],
+      "tags": {
+        "highway": "tertiary",
+        "name": "King's Cross Road"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6003,
+      "nodes": [5003, 5013, 5023, 5033, 5043],
+      "tags": {
+        "highway": "secondary",
+        "name": "Woburn Place",
+        "oneway": "yes"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6004,
+      "nodes": [5004, 5014, 5024, 5034, 5044],
+      "tags": {
+        "highway": "secondary",
+        "name": "Gower Street",
+        "oneway": "-1"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6005,
+      "nodes": [5011, 5012, 5013, 5014, 5015],
+      "tags": {
+        "highway": "residential",
+        "name": "Tavistock Place",
+        "oneway": "yes"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6006,
+      "nodes": [5021, 5022, 5023, 5024, 5025],
+      "tags": {
+        "highway": "residential",
+        "name": "Guilford Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6007,
+      "nodes": [5031, 5032, 5033, 5034, 5035],
+      "tags": {
+        "highway": "residential",
+        "name": "Russell Square",
+        "oneway": "-1"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6008,
+      "nodes": [5041, 5042, 5043, 5044, 5045],
+      "tags": {
+        "highway": "service",
+        "name": "Store Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6009,
+      "nodes": [5001, 5011, 5021, 5031, 5041],
+      "tags": {
+        "highway": "tertiary",
+        "name": "Eversholt Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6010,
+      "nodes": [5005, 5015, 5025, 5035, 5045],
+      "tags": {
+        "highway": "tertiary",
+        "name": "Gray's Inn Road"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6011,
+      "nodes": [5012, 5023, 5034],
+      "tags": {
+        "highway": "residential",
+        "name": "Marchmont Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6012,
+      "nodes": [5014, 5023, 5032],
+      "tags": {
+        "highway": "residential",
+        "name": "Cartwright Gardens"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6013,
+      "nodes": [5023, 5024, 5034, 5033, 5023],
+      "tags": {
+        "highway": "secondary",
+        "junction": "roundabout",
+        "name": "Russell Square Gyratory"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6014,
+      "nodes": [5002, 5013, 5024],
+      "tags": {
+        "highway": "footway",
+        "name": "Station Walk"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6015,
+      "nodes": [5021, 5032, 5043],
+      "tags": {
+        "highway": "cycleway",
+        "name": "Bloomsbury Cycle Link"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6016,
+      "nodes": [5015, 5025],
+      "tags": {
+        "highway": "service",
+        "name": "Private Service Yard",
+        "vehicle": "no"
+      }
+    },
+    {
+      "type": "way",
+      "id": 6017,
+      "nodes": [5001, 5045],
+      "tags": {
+        "highway": "trunk",
+        "name": "Inner Ring Trunk Link"
+      }
+    },
+    {
+      "type": "relation",
+      "id": 7001,
+      "members": [],
+      "tags": {
+        "type": "restriction"
+      }
+    }
+  ]
+}

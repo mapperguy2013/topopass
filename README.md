@@ -1994,6 +1994,36 @@ out body;
   modify shortest-route behavior, replace synthetic fixtures, or expose OSM maps
   outside the dev route-runner flow.
 
+## Stage 105 Medium London OSM Fixture Import
+
+- Added a committed dev/test-only `mediumLondonOverpass.json` fixture under
+  `lib/map-engine/osm/fixtures`. It is a deterministic, generated
+  Overpass-like extract inspired by the King's Cross, Euston, and Bloomsbury
+  street pattern, with multiple junctions, one-way streets, a roundabout,
+  excluded foot/cycle/trunk ways, and a blocked private service way.
+- The medium fixture is parsed and converted through the existing Stage 101/102
+  OSM import pipeline into a normal `MapDefinition`. It currently produces 25
+  converted graph nodes and 48 converted road segments, larger than the tiny
+  prototype while remaining compact enough for unit tests and local dev.
+- `/dev/route-runner` now exposes the medium converted OSM map as a separate
+  selectable dev map. The Marlowe synthetic map remains the default, and the
+  tiny converted OSM fixture remains available as its own option.
+- Added five dev-only medium OSM exercises using stable converted graph node
+  stops. The exercises cover simple start/finish routing, a one-way street, a
+  checkpoint route, a one-way-aware detour, and a service-road route.
+- Added parser, converter, route-runner selection, marker attachment,
+  solvability, and reveal-fastest-route legality tests for the medium fixture.
+  Revealed routes are validated against the existing directed-edge path
+  validation and must not travel illegally against imported one-way rules.
+- To replace this fixture later, commit a similarly small trimmed Overpass JSON
+  extract, keep node/way ids stable, and run the parser/converter and
+  route-runner map tests before adding exercises. Tests must not fetch live
+  Overpass data.
+- Stage 105 does not fetch live OSM/Overpass data, replace synthetic maps, use
+  external routing APIs, hard-code solution routes, change scoring, change
+  legality, alter snapping, modify shortest-route/reveal-fastest-route logic,
+  or change backend/Supabase behavior.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

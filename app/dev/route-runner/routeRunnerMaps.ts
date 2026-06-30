@@ -6,6 +6,7 @@ import {
   type Vec2
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OsmRouteGraphMapDefinition } from "../../../lib/map-engine/osm/index.ts";
+import mediumLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/mediumLondonOverpass.json" with { type: "json" };
 import tinyLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/tinyLondonOverpass.json" with { type: "json" };
 
 export type RouteRunnerMapSource = "synthetic-dev" | "converted-osm";
@@ -29,6 +30,7 @@ export type RouteRunnerMapBounds = {
 };
 
 const OSM_FIXTURE_MAP_ID = "osm-tiny-london-prototype";
+const MEDIUM_OSM_FIXTURE_MAP_ID = "osm-medium-london-prototype";
 
 function buildTinyLondonOsmMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(tinyLondonOverpassFixture, {
@@ -46,6 +48,23 @@ function buildTinyLondonOsmMap(): OsmRouteGraphMapDefinition {
 }
 
 export const tinyLondonOsmRouteMap = buildTinyLondonOsmMap();
+
+function buildMediumLondonOsmMap(): OsmRouteGraphMapDefinition {
+  const result = convertOverpassJsonToRouteMap(mediumLondonOverpassFixture, {
+    mapId: MEDIUM_OSM_FIXTURE_MAP_ID,
+    name: "Medium London OSM Prototype",
+    description: "Dev-only medium converted Overpass-like fixture for route-runner map-scale checks.",
+    version: 1
+  });
+
+  if (!result.ok) {
+    throw new Error(`Unable to build converted medium OSM fixture map: ${result.errors.join("; ")}`);
+  }
+
+  return result.map;
+}
+
+export const mediumLondonOsmRouteMap = buildMediumLondonOsmMap();
 
 export const tinyLondonOsmRouteExercises: RouteExercise[] = [
   {
@@ -155,6 +174,104 @@ export const tinyLondonOsmRouteExercises: RouteExercise[] = [
   }
 ];
 
+export const mediumLondonOsmRouteExercises: RouteExercise[] = [
+  {
+    id: "osm-medium-euston-crossing",
+    title: "Medium OSM: Euston Road crossing",
+    mapId: mediumLondonOsmRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5001",
+        label: "Euston Road west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5005",
+        label: "Euston Road east"
+      }
+    ]
+  },
+  {
+    id: "osm-medium-tavistock-one-way",
+    title: "Medium OSM: Tavistock Place one-way run",
+    mapId: mediumLondonOsmRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5011",
+        label: "Tavistock Place west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5015",
+        label: "Tavistock Place east"
+      }
+    ]
+  },
+  {
+    id: "osm-medium-bloomsbury-checkpoint",
+    title: "Medium OSM: King's Cross to Bloomsbury via Russell Square",
+    mapId: mediumLondonOsmRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5002",
+        label: "King's Cross Road north"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5023",
+        label: "Russell Square gyratory"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5044",
+        label: "Store Street east"
+      }
+    ]
+  },
+  {
+    id: "osm-medium-one-way-detour",
+    title: "Medium OSM: one-way-aware Tavistock detour",
+    mapId: mediumLondonOsmRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5015",
+        label: "Tavistock Place east"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5011",
+        label: "Tavistock Place west"
+      }
+    ]
+  },
+  {
+    id: "osm-medium-store-street",
+    title: "Medium OSM: Store Street service route",
+    mapId: mediumLondonOsmRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5041",
+        label: "Store Street west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5045",
+        label: "Store Street east"
+      }
+    ]
+  }
+];
+
 export const DEFAULT_ROUTE_RUNNER_MAP_ID = marloweDistrictMap.id;
 
 export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
@@ -175,6 +292,16 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     map: tinyLondonOsmRouteMap,
     exercises: tinyLondonOsmRouteExercises,
     defaultExerciseId: tinyLondonOsmRouteExercises[0]?.id ?? "",
+    attribution: "OpenStreetMap contributors"
+  },
+  {
+    id: mediumLondonOsmRouteMap.id,
+    label: "Medium converted OSM fixture",
+    description: "Medium London-like Overpass extract converted into the TOPOPASS route graph shape.",
+    source: "converted-osm",
+    map: mediumLondonOsmRouteMap,
+    exercises: mediumLondonOsmRouteExercises,
+    defaultExerciseId: mediumLondonOsmRouteExercises[0]?.id ?? "",
     attribution: "OpenStreetMap contributors"
   }
 ];

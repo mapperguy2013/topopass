@@ -12,12 +12,25 @@ import { convertImportedOsmToRouteMap, convertOverpassJsonToRouteMap } from "./o
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.join(currentDirectory, "fixtures", "tinyLondonOverpass.json");
+const mediumFixturePath = path.join(currentDirectory, "fixtures", "mediumLondonOverpass.json");
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+const mediumFixture = JSON.parse(readFileSync(mediumFixturePath, "utf8"));
 
 function convertFixture() {
   const result = convertOverpassJsonToRouteMap(fixture, {
     mapId: "tiny-london-osm",
     name: "Tiny London OSM Prototype"
+  });
+
+  assert.equal(result.ok, true, result.ok ? undefined : result.errors.join("; "));
+
+  return result.map;
+}
+
+function convertMediumFixture() {
+  const result = convertOverpassJsonToRouteMap(mediumFixture, {
+    mapId: "medium-london-osm",
+    name: "Medium London OSM Prototype"
   });
 
   assert.equal(result.ok, true, result.ok ? undefined : result.errors.join("; "));
@@ -254,5 +267,62 @@ test("converter accepts Stage 102 highway classes from Stage 101 parser output",
       result.map.roads.map((road) => road.metadata.highway),
       ["primary_link", "road"]
     );
+  }
+});
+
+test("medium London fixture converts into a compact route graph", () => {
+  const tinyMap = convertFixture();
+  const mediumMap = convertMediumFixture();
+
+  assert.equal(mediumMap.nodes.length, 25);
+  assert.equal(mediumMap.roads.length, 48);
+  assert.ok(mediumMap.nodes.length > tinyMap.nodes.length);
+  assert.ok(mediumMap.roads.length > tinyMap.roads.length);
+  assert.ok(mediumMap.roads.length <= 120);
+  assert.equal(mediumMap.metadata.sourceRoadCount, 13);
+  assert.equal(mediumMap.metadata.convertedRoadSegmentCount, 48);
+  assert.deepEqual(mediumMap.metadata.blockedOsmWayIds, [6016]);
+});
+
+test("medium London fixture preserves names and highway metadata for rendering", () => {
+  const mediumMap = convertMediumFixture();
+  const eustonRoad = mediumMap.roads.find((road) => road.name === "Euston Road");
+  const storeStreet = mediumMap.roads.find((road) => road.name === "Store Street");
+
+  assert.ok(eustonRoad);
+  assert.ok(storeStreet);
+  assert.equal(eustonRoad.metadata.highway, "primary");
+  assert.equal(storeStreet.metadata.highway, "service");
+});
+
+test("medium London one-way roads only generate legal directed graph edges", () => {
+  const mediumMap = convertMediumFixture();
+  const graph = buildMapGraph(mediumMap);
+  const eastboundTavistock = findShortestLegalRoute({
+    graph,
+    startNodeId: "osm-node-5011",
+    endNodeId: "osm-node-5015",
+    restrictions: mediumMap.restrictions
+  });
+  const westboundDetour = findShortestLegalRoute({
+    graph,
+    startNodeId: "osm-node-5015",
+    endNodeId: "osm-node-5011",
+    restrictions: mediumMap.restrictions
+  });
+  const illegalReverseTavistockEdge = graph.edges.find(
+    (edge) => edge.roadId === "osm-way-6005-segment-3" && edge.fromNodeId === "osm-node-5015"
+  );
+
+  assert.equal(eastboundTavistock.found, true);
+  assert.equal(westboundDetour.found, true);
+  assert.equal(illegalReverseTavistockEdge, undefined);
+
+  if (eastboundTavistock.found) {
+    assert.ok(eastboundTavistock.roadIds.every((roadId) => roadId.startsWith("osm-way-6005-")));
+  }
+
+  if (westboundDetour.found) {
+    assert.equal(westboundDetour.roadIds.some((roadId) => roadId.startsWith("osm-way-6005-")), false);
   }
 });

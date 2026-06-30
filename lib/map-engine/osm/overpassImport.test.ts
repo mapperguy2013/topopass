@@ -8,7 +8,9 @@ import { parseOverpassRoadExtract } from "./overpassImport.ts";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.join(currentDirectory, "fixtures", "tinyLondonOverpass.json");
+const mediumFixturePath = path.join(currentDirectory, "fixtures", "mediumLondonOverpass.json");
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+const mediumFixture = JSON.parse(readFileSync(mediumFixturePath, "utf8"));
 
 function parseFixture() {
   return parseOverpassRoadExtract(fixture);
@@ -146,6 +148,48 @@ test("returns stable deterministic output regardless of element order", () => {
   };
 
   assert.deepEqual(parseOverpassRoadExtract(reversedFixture), parseFixture());
+});
+
+test("medium London fixture parses as a larger deterministic road extract", () => {
+  const tinyResult = parseFixture();
+  const mediumResult = parseOverpassRoadExtract(mediumFixture);
+
+  assert.equal(mediumResult.nodeCount, 25);
+  assert.deepEqual(
+    mediumResult.roads.map((road) => road.osmWayId),
+    [6001, 6002, 6003, 6004, 6005, 6006, 6007, 6008, 6009, 6010, 6011, 6012, 6013]
+  );
+  assert.ok(mediumResult.roads.length > tinyResult.roads.length);
+  assert.ok(mediumResult.roads.length <= 20);
+  assert.deepEqual(
+    mediumResult.excludedWays.map((way) => [way.osmWayId, way.reason]),
+    [
+      [6014, "ignored_non_road"],
+      [6015, "ignored_non_road"],
+      [6016, "blocked_access"],
+      [6017, "unsupported_highway"]
+    ]
+  );
+  assert.deepEqual(mediumResult.ignoredRelationIds, [7001]);
+});
+
+test("medium London fixture detects one-way, reverse one-way, roundabout, and blocked access tags", () => {
+  const mediumResult = parseOverpassRoadExtract(mediumFixture);
+  const tavistockPlace = mediumResult.roads.find((road) => road.osmWayId === 6005);
+  const gowerStreet = mediumResult.roads.find((road) => road.osmWayId === 6004);
+  const russellSquare = mediumResult.roads.find((road) => road.osmWayId === 6007);
+  const gyratory = mediumResult.roads.find((road) => road.osmWayId === 6013);
+
+  assert.ok(tavistockPlace);
+  assert.ok(gowerStreet);
+  assert.ok(russellSquare);
+  assert.ok(gyratory);
+  assert.equal(tavistockPlace.direction, "forward");
+  assert.equal(gowerStreet.direction, "reverse");
+  assert.equal(russellSquare.direction, "reverse");
+  assert.equal(gyratory.direction, "forward");
+  assert.equal(gyratory.oneWay, true);
+  assert.equal(mediumResult.excludedWays.find((way) => way.osmWayId === 6016)?.reason, "blocked_access");
 });
 
 test("handles invalid or empty Overpass payloads safely", () => {
