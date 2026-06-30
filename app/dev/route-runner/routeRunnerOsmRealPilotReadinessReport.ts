@@ -91,6 +91,7 @@ export type OsmPilotExerciseCountReadiness = {
 
 export type OsmPilotExerciseMetadataReport = RealLondonPilotExerciseMetadata & {
   exerciseId: string;
+  exerciseVersion: string | null;
   title: string;
   stopCount: number;
   stopNodeIds: string[];
@@ -221,6 +222,7 @@ export type OsmPilotReadinessPassFailSummary = {
 
 export type OsmPilotReadinessReport = {
   mapId: string;
+  mapVersion: string | null;
   fixtureSource: OsmPilotFixtureSourceReadiness;
   exerciseCount: number;
   exerciseMetadata: OsmPilotExerciseMetadataReport[];
@@ -367,6 +369,7 @@ export function buildOsmPilotReadinessReport(input: BuildOsmPilotReadinessReport
 
   return {
     mapId: map.id,
+    mapVersion: map.mapVersion ?? null,
     fixtureSource,
     exerciseCount: exercises.length,
     exerciseMetadata,
@@ -387,6 +390,7 @@ export function buildOsmPilotReadinessReport(input: BuildOsmPilotReadinessReport
 export function stableOsmPilotReadinessReportSummary(report: OsmPilotReadinessReport): object {
   return {
     mapId: report.mapId,
+    mapVersion: report.mapVersion,
     fixtureSource: {
       status: report.fixtureSource.status,
       source: report.fixtureSource.source,
@@ -399,6 +403,7 @@ export function stableOsmPilotReadinessReportSummary(report: OsmPilotReadinessRe
     exerciseCount: report.exerciseCount,
     exerciseMetadata: report.exerciseMetadata.map((metadata) => ({
       exerciseId: metadata.exerciseId,
+      exerciseVersion: metadata.exerciseVersion,
       difficulty: metadata.difficulty,
       routeType: metadata.routeType,
       estimatedDistanceMeters: metadata.estimatedDistanceMeters,
@@ -519,6 +524,7 @@ function buildExerciseMetadataReports(exercises: readonly RouteExercise[]): OsmP
     return [
       {
         exerciseId: exercise.id,
+        exerciseVersion: exercise.exerciseVersion ?? null,
         title: exercise.title,
         stopCount: exercise.stops.length,
         stopNodeIds: exercise.stops.map((stop) =>

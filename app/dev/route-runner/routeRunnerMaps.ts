@@ -49,6 +49,7 @@ export type RealLondonPilotRouteExercise = RouteExercise & {
 };
 
 type RealLondonPilotRouteExerciseInput = RouteExercise & {
+  exerciseVersion: string;
   difficulty: RouteExerciseDifficulty;
   routeType: RealLondonPilotRouteType;
   estimatedDistanceMeters: number;
@@ -164,6 +165,7 @@ export const tinyLondonOsmRouteExercises: RouteExercise[] = [
     title: "OSM prototype: King's Cross Road to Argyle Street",
     mapId: tinyLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -182,6 +184,7 @@ export const tinyLondonOsmRouteExercises: RouteExercise[] = [
     title: "OSM prototype: King's Cross Road via junction to Argyle Street",
     mapId: tinyLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -205,6 +208,7 @@ export const tinyLondonOsmRouteExercises: RouteExercise[] = [
     title: "OSM prototype: roundabout checkpoint segment",
     mapId: tinyLondonOsmRouteMap.id,
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -228,6 +232,7 @@ export const tinyLondonOsmRouteExercises: RouteExercise[] = [
     title: "OSM prototype: roundabout to Argyle Street legal one-way route",
     mapId: tinyLondonOsmRouteMap.id,
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -251,6 +256,7 @@ export const tinyLondonOsmRouteExercises: RouteExercise[] = [
     title: "OSM prototype: Stable Yard Lane",
     mapId: tinyLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -272,6 +278,7 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
     title: "Medium OSM: Euston Road crossing",
     mapId: mediumLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -290,6 +297,7 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
     title: "Medium OSM: Tavistock Place one-way run",
     mapId: mediumLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -308,6 +316,7 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
     title: "Medium OSM: King's Cross to Bloomsbury via Russell Square",
     mapId: mediumLondonOsmRouteMap.id,
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -331,6 +340,7 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
     title: "Medium OSM: one-way-aware Tavistock detour",
     mapId: mediumLondonOsmRouteMap.id,
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -349,6 +359,7 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
     title: "Medium OSM: Store Street service route",
     mapId: mediumLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -371,6 +382,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Goodge Street west and route legally to Tottenham Court Road, respecting one-way restrictions.",
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 154.16,
     expectedComplexity: "Short direct A to B route with basic one-way compliance.",
@@ -394,6 +406,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     description:
       "Start at Torrington Place east and route legally to Tottenham Court Road north on the committed real London pilot graph.",
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     routeType: "one-way-awareness",
     estimatedDistanceMeters: 209.11,
     expectedComplexity: "One-way-aware A to B route that must follow the legal Torrington Place direction.",
@@ -417,6 +430,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     description:
       "Start on Huntley Street south, pass the Chenies Street checkpoint, then finish at Ridgmount Gardens.",
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     routeType: "checkpoint",
     estimatedDistanceMeters: 181.27,
     expectedComplexity: "Checkpoint route that verifies Huntley Street to Chenies Street before Ridgmount Gardens.",
@@ -444,6 +458,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Goodge Street west and route legally to Byng Place.",
     difficulty: "hard",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 660.84,
     expectedComplexity: "Long A to B route with a legal path much longer than the visual straight-line trip.",
@@ -466,6 +481,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Whitfield Street and route legally to Goodge Street at Tottenham Court Road.",
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 159.33,
     expectedComplexity: "Medium A to B route with turn choice around Whitfield Street and Goodge Street.",
@@ -488,6 +504,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start at Store Street east and route legally to Store Street west through the short one-way connector.",
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 21.48,
     expectedComplexity: "Very short A to B route across the Store Street connector.",
@@ -510,6 +527,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Gower Street south and route legally to Torrington Place east.",
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 142.74,
     expectedComplexity: "Medium A to B route from Gower Street into the Torrington Place approach.",
@@ -532,6 +550,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Goodge Street west, pass the Chenies Street checkpoint, then finish at Ridgmount Gardens.",
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     routeType: "checkpoint",
     estimatedDistanceMeters: 346.79,
     expectedComplexity: "A to B to C checkpoint route linking Goodge Street, Chenies Street, and Ridgmount Gardens.",
@@ -559,6 +578,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Torrington Place and route legally to Byng Place.",
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 49.89,
     expectedComplexity: "Short A to B route from Torrington Place into Byng Place.",
@@ -581,6 +601,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start at Store Street, pass South Crescent and Ridgmount Street, then finish at Ridgmount Gardens.",
     difficulty: "hard",
+    exerciseVersion: "1.0.0",
     routeType: "multi-stop",
     estimatedDistanceMeters: 294.06,
     expectedComplexity: "A to B to C to D multi-stop route through South Crescent and Ridgmount Street.",
@@ -613,6 +634,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start on Tottenham Court Road north and route legally to Gower Street south via the one-way detour.",
     difficulty: "hard",
+    exerciseVersion: "1.0.0",
     routeType: "one-way-awareness",
     estimatedDistanceMeters: 362.61,
     expectedComplexity: "One-way detour route where the legal path is longer than the visually obvious connection.",
@@ -635,6 +657,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     mapId: realLondonOsmPilotRouteMap.id,
     description: "Start at Tottenham Court Road north and reach Torrington Place east without reversing one-way segments.",
     difficulty: "hard",
+    exerciseVersion: "1.0.0",
     routeType: "one-way-awareness",
     estimatedDistanceMeters: 505.35,
     expectedComplexity: "Hard reverse-direction route that proves one-way awareness with a longer legal loop.",
@@ -658,6 +681,7 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     description:
       "Start at Mortimer Market and route legally to Goodge Street at Tottenham Court Road, where several connected streets make plausible route choices.",
     difficulty: "hard",
+    exerciseVersion: "1.0.0",
     routeType: "direct",
     estimatedDistanceMeters: 512.86,
     expectedComplexity: "Long A to B route with multiple plausible legal street choices before Goodge Street.",
@@ -685,6 +709,7 @@ export const largeLondonOsmRouteExercises: RouteExercise[] = [
     title: "Large OSM: Euston Road main crossing",
     mapId: largeLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -703,6 +728,7 @@ export const largeLondonOsmRouteExercises: RouteExercise[] = [
     title: "Large OSM: one-way Tavistock detour",
     mapId: largeLondonOsmRouteMap.id,
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -721,6 +747,7 @@ export const largeLondonOsmRouteExercises: RouteExercise[] = [
     title: "Large OSM: Euston to Store Street via Russell Square",
     mapId: largeLondonOsmRouteMap.id,
     difficulty: "medium",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -744,6 +771,7 @@ export const largeLondonOsmRouteExercises: RouteExercise[] = [
     title: "Large OSM: Store Street service route",
     mapId: largeLondonOsmRouteMap.id,
     difficulty: "easy",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",
@@ -762,6 +790,7 @@ export const largeLondonOsmRouteExercises: RouteExercise[] = [
     title: "Large OSM: Oxford Street to Euston Road",
     mapId: largeLondonOsmRouteMap.id,
     difficulty: "hard",
+    exerciseVersion: "1.0.0",
     stops: [
       {
         type: "node",

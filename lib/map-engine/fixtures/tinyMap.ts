@@ -3,6 +3,7 @@ import type { MapDefinition } from "../types.ts";
 export const tinyMap: MapDefinition = {
   id: "tiny-fictional-grid",
   name: "Tiny Fictional Grid",
+  mapVersion: "1.0.0",
   nodes: [
     { id: "node-maple-square", x: 0, y: 0, label: "Maple Square" },
     { id: "node-orchard-corner", x: 120, y: 0, label: "Orchard Corner" },

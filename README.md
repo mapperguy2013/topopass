@@ -2536,6 +2536,29 @@ out body;
   readiness report and QA panel preserve the metadata, and re-check
   tiny/medium OSM plus Marlowe guardrails.
 
+## Stage 124 Map and Exercise Versioning
+
+- Registered route-runner maps now expose `mapVersion`, and registered route
+  exercises now expose `exerciseVersion`, both using simple
+  `major.minor.patch` semver-style strings.
+- Existing maps and exercises start at `1.0.0`. The numeric internal map
+  `version` field is preserved where it already existed, but the new semver
+  fields are the explicit metadata used for dev QA, future migration checks,
+  beta debugging, and saved attempt metadata.
+- The route-runner exercise brief now shows selected map and exercise versions,
+  and the real London pilot readiness panel includes map/exercise versions
+  alongside the Stage 123 difficulty/type/distance metadata.
+- Added deterministic validation helpers for registered map/exercise version
+  metadata. Focused tests reject missing, empty, and non-semver values and
+  prove every registered route-runner map and exercise has valid version
+  metadata.
+- This remains metadata-only. It does not change route legality, route solving,
+  snapping, matching, scoring, analytics, auth, Supabase schema, production
+  behaviour, or default map selection. Marlowe remains the default map, and
+  `osm-real-london-pilot` still uses only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture with no
+  live OSM/Overpass fetches or external routing APIs.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

@@ -26,6 +26,7 @@ export type RealLondonPilotQaPanelSummaryRow = {
 
 export type RealLondonPilotQaPanelExerciseRow = {
   id: string;
+  exerciseVersion: string;
   difficulty: string;
   routeType: string;
   routeTypeLabel: string;
@@ -36,6 +37,7 @@ export type RealLondonPilotQaPanelExerciseRow = {
 export type RealLondonPilotQaPanelModel = {
   title: "Real London Pilot QA";
   mapId: string;
+  mapVersion: string;
   fixtureName: string;
   exerciseCount: number;
   passedExerciseCount: number;
@@ -81,6 +83,7 @@ export function buildRealLondonPilotQaPanelModel(report: OsmPilotReadinessReport
   return {
     title: "Real London Pilot QA",
     mapId: report.mapId,
+    mapVersion: report.mapVersion ?? "none",
     fixtureName,
     exerciseCount: report.exerciseCount,
     passedExerciseCount,
@@ -93,6 +96,7 @@ export function buildRealLondonPilotQaPanelModel(report: OsmPilotReadinessReport
     exerciseRows,
     metricRows: [
       { id: "map-id", label: "Map ID", value: report.mapId },
+      { id: "map-version", label: "Map version", value: report.mapVersion ?? "none" },
       { id: "fixture-name", label: "Fixture", value: fixtureName },
       { id: "readiness-state", label: "Readiness", value: statusLabel },
       { id: "exercise-count", label: "Exercises", value: String(report.exerciseCount) },
@@ -135,6 +139,7 @@ function statusValue(status: OsmPilotReadinessStatus): "passing" | "failing" {
 function formatExerciseRow(metadata: OsmPilotExerciseMetadataReport): RealLondonPilotQaPanelExerciseRow {
   return {
     id: metadata.exerciseId,
+    exerciseVersion: metadata.exerciseVersion ?? "none",
     difficulty: metadata.difficulty,
     routeType: metadata.routeType,
     routeTypeLabel: formatRouteTypeLabel(metadata.routeType),

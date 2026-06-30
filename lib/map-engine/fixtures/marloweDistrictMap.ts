@@ -5,6 +5,7 @@ const MARLOWE_DISTRICT_MAP_ID = "marlowe-district-dev-map";
 export const marloweDistrictMap: MapDefinition = {
   id: MARLOWE_DISTRICT_MAP_ID,
   name: "Marlowe District",
+  mapVersion: "1.0.0",
   version: 1,
   description: "Fictional London-feel development map for route-engine testing.",
   nodes: [
@@ -580,6 +581,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-station-to-hospital",
     title: "Fox Lane Station to Northgate Hospital",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-fox-lane-station" },
       { type: "landmark", landmarkId: "lm-northgate-hospital" }
@@ -590,6 +592,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-library-market-museum",
     title: "Westbourne Library to Civic Museum via Marlowe Market Hall",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-westbourne-library" },
       { type: "landmark", landmarkId: "lm-market-hall" },
@@ -601,6 +604,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-gardens-yard-exchange",
     title: "Royal Oak Gardens to Exchange House via Queen's Yard",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-royal-oak-gardens" },
       { type: "landmark", landmarkId: "lm-queens-yard" },
@@ -612,6 +616,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-church-to-east-dock",
     title: "St Anselm Church to East Dock",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-st-anselm-church" },
       { type: "landmark", landmarkId: "lm-east-dock" }
@@ -622,6 +627,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-canal-to-theatre",
     title: "Canal Bridge West to Theatre Arcade",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-canal-bridge-west" },
       { type: "landmark", landmarkId: "lm-theatre-arcade" }
@@ -632,6 +638,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-crown-market-gardens",
     title: "Crown Court to Royal Oak Gardens via Marlowe Market Hall",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-crown-court" },
       { type: "landmark", landmarkId: "lm-market-hall" },
@@ -643,6 +650,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-central-grid-library-clocktower",
     title: "Central grid: Westbourne Library to Clocktower via Market Hall",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-westbourne-library" },
       { type: "landmark", landmarkId: "lm-market-hall" },
@@ -654,6 +662,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-one-way-canal-station",
     title: "One-way system: Canal Bridge West to Fox Lane Station",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-canal-bridge-west" },
       { type: "landmark", landmarkId: "lm-fox-lane-station" }
@@ -664,6 +673,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-no-entry-eastgate-market",
     title: "No-entry focus: Eastgate to Marlowe Market Hall",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-eastgate" },
       { type: "landmark", landmarkId: "lm-market-hall" }
@@ -674,6 +684,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-prohibited-turn-albion-theatre",
     title: "Prohibited turns: Albion Square to Theatre Arcade",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-albion-square" },
       { type: "landmark", landmarkId: "lm-theatre-arcade" }
@@ -684,6 +695,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-restricted-station-south-gate",
     title: "Restricted road awareness: Fox Lane Station to South Gate",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-fox-lane-station" },
       { type: "landmark", landmarkId: "lm-south-gate" }
@@ -694,6 +706,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-checkpoint-order-library-dock",
     title: "Checkpoint order: Westbourne Library to East Dock",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-westbourne-library" },
       { type: "landmark", landmarkId: "lm-market-hall" },
@@ -707,6 +720,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-efficiency-trap-gardens-hospital",
     title: "Efficiency trap: Royal Oak Gardens to Northgate Hospital",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-royal-oak-gardens" },
       { type: "landmark", landmarkId: "lm-northgate-hospital" }
@@ -717,6 +731,7 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
     id: "ex-mixed-difficulty-church-market-theatre-dock",
     title: "Mixed difficulty: Church to East Dock via Market and Theatre",
     mapId: MARLOWE_DISTRICT_MAP_ID,
+    exerciseVersion: "1.0.0",
     stops: [
       { type: "landmark", landmarkId: "lm-st-anselm-church" },
       { type: "landmark", landmarkId: "lm-market-hall" },

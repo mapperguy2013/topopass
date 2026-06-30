@@ -2940,7 +2940,8 @@ export function RouteRunnerClient() {
       userId: null,
       exerciseId,
       mapId: activeMap.id,
-      mapVersion: activeMap.version,
+      mapVersion: activeMap.mapVersion,
+      exerciseVersion: selectedExercise?.exerciseVersion,
       review: drawnAttemptReview,
       score: drawnPipelineResult.exerciseResult?.score ?? null,
       matchedRoute: matchedRoutePayloadForStorage(drawnPipelineResult)
@@ -2984,7 +2985,15 @@ export function RouteRunnerClient() {
     return () => {
       cancelled = true;
     };
-  }, [activeMap.id, activeMap.version, drawnAttemptReview, drawnPipelineResult, exerciseId, weakAreaAttemptKey]);
+  }, [
+    activeMap.id,
+    activeMap.mapVersion,
+    drawnAttemptReview,
+    drawnPipelineResult,
+    exerciseId,
+    selectedExercise?.exerciseVersion,
+    weakAreaAttemptKey
+  ]);
 
   useEffect(() => {
     routeReplayStateRef.current = routeReplayState;
@@ -3901,6 +3910,12 @@ export function RouteRunnerClient() {
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise ID</dt>
                     <dd className="mt-1 font-mono text-xs text-slate-700">{selectedExercise.id}</dd>
                   </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Versions</dt>
+                    <dd className="mt-1 font-mono text-xs text-slate-700">
+                      map {activeMap.mapVersion ?? "none"} | exercise {selectedExercise.exerciseVersion ?? "none"}
+                    </dd>
+                  </div>
                   {selectedExerciseMetadata ? (
                     <>
                       <div>
@@ -4495,6 +4510,9 @@ export function RouteRunnerClient() {
                             <li key={row.id} className="rounded border border-slate-200 bg-slate-50 p-2 text-slate-800">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-mono text-[11px] font-semibold">{row.id}</span>
+                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
+                                  v{row.exerciseVersion}
+                                </span>
                                 <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
                                   {row.difficulty}
                                 </span>

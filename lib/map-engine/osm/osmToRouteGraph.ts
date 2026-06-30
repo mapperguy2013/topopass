@@ -78,6 +78,7 @@ export type ConvertImportedOsmToRouteMapOptions = OsmRoadFilterOptions & {
   mapId?: string;
   name?: string;
   description?: string;
+  mapVersion?: string;
   version?: number;
 };
 
@@ -363,6 +364,7 @@ export function convertImportedOsmToRouteMap(
   const map: OsmRouteGraphMapDefinition = {
     id: options.mapId ?? DEFAULT_MAP_ID,
     name: options.name ?? DEFAULT_MAP_NAME,
+    mapVersion: options.mapVersion ?? "1.0.0",
     version: options.version,
     description: options.description,
     nodes,

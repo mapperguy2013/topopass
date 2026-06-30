@@ -97,6 +97,7 @@ export type RouteExercise = {
   id: string;
   title: string;
   mapId: string;
+  exerciseVersion?: string;
   stops: RouteStop[];
   description?: string;
   difficulty?: RouteExerciseDifficulty;
@@ -126,6 +127,7 @@ export type RouteScore = {
 export type MapDefinition = {
   id: string;
   name: string;
+  mapVersion?: string;
   version?: number;
   description?: string;
   nodes: MapNode[];
