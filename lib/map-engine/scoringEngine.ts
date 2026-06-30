@@ -1,6 +1,6 @@
 import { buildMapGraph } from "./graph.ts";
 import { checkRouteLegality, type AttemptedRouteMovement, type LegalityCheckResult } from "./legalityEngine.ts";
-import { findShortestLegalRoute } from "./shortestRoute.ts";
+import { findShortestLegalRouteThroughStops } from "./shortestRoute.ts";
 import type { MapDefinition, MapGraph } from "./types.ts";
 
 export type RoutePassStatus = "pass" | "fail";
@@ -113,24 +113,17 @@ function calculateShortestRequiredRouteDistance(input: {
   restrictions: MapDefinition["restrictions"];
   requiredStopNodeIds: string[];
 }): { found: true; distanceMeters: number } | { found: false; distanceMeters: 0 } {
-  let distanceMeters = 0;
+  const route = findShortestLegalRouteThroughStops({
+    graph: input.graph,
+    stopNodeIds: input.requiredStopNodeIds,
+    restrictions: input.restrictions
+  });
 
-  for (let index = 0; index < input.requiredStopNodeIds.length - 1; index += 1) {
-    const leg = findShortestLegalRoute({
-      graph: input.graph,
-      startNodeId: input.requiredStopNodeIds[index],
-      endNodeId: input.requiredStopNodeIds[index + 1],
-      restrictions: input.restrictions
-    });
-
-    if (!leg.found || leg.distanceMeters <= 0) {
-      return { found: false, distanceMeters: 0 };
-    }
-
-    distanceMeters += leg.distanceMeters;
+  if (!route.found || route.distanceMeters <= 0) {
+    return { found: false, distanceMeters: 0 };
   }
 
-  return { found: true, distanceMeters };
+  return { found: true, distanceMeters: route.distanceMeters };
 }
 
 function roundToOneDecimal(value: number): number {

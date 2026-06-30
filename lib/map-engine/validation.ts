@@ -1,4 +1,10 @@
-import type { MapDefinition, MapRestriction, RouteExercise, ValidationResult } from "./types.ts";
+import { buildMapGraph } from "./graph.ts";
+import { findShortestLegalRouteThroughStops } from "./shortestRoute.ts";
+import type { MapDefinition, MapRestriction, RouteExercise, RouteStop, ValidationResult } from "./types.ts";
+
+export type RouteExerciseLegalReachabilityValidationResult = ValidationResult & {
+  stopNodeIds: string[];
+};
 
 function duplicateIds(items: Array<{ id: string }>, label: string): string[] {
   const seen = new Set<string>();
@@ -155,5 +161,66 @@ export function validateRouteExercise(exercise: RouteExercise, map: MapDefinitio
   return {
     valid: errors.length === 0,
     errors
+  };
+}
+
+function resolveRouteStopNodeId(stop: RouteStop, map: MapDefinition): string | null {
+  if (stop.type === "node") {
+    return map.nodes.some((node) => node.id === stop.nodeId) ? stop.nodeId : null;
+  }
+
+  const landmark = map.landmarks.find((candidate) => candidate.id === stop.landmarkId);
+
+  if (!landmark?.nearestNodeId || !map.nodes.some((node) => node.id === landmark.nearestNodeId)) {
+    return null;
+  }
+
+  return landmark.nearestNodeId;
+}
+
+export function validateRouteExerciseLegalReachability(
+  exercise: RouteExercise,
+  map: MapDefinition
+): RouteExerciseLegalReachabilityValidationResult {
+  const structuralValidation = validateRouteExercise(exercise, map);
+  const stopNodeIds = exercise.stops
+    .map((stop) => resolveRouteStopNodeId(stop, map))
+    .filter((nodeId): nodeId is string => Boolean(nodeId));
+  const errors = [...structuralValidation.errors];
+
+  if (!structuralValidation.valid) {
+    return {
+      valid: false,
+      errors,
+      stopNodeIds
+    };
+  }
+
+  if (stopNodeIds.length !== exercise.stops.length || stopNodeIds.length < 2) {
+    errors.push(`Route exercise ${exercise.id} cannot resolve all required stops to routable nodes`);
+    return {
+      valid: false,
+      errors,
+      stopNodeIds
+    };
+  }
+
+  const graph = buildMapGraph(map);
+  const route = findShortestLegalRouteThroughStops({
+    graph,
+    stopNodeIds,
+    restrictions: map.restrictions
+  });
+
+  if (!route.found) {
+    errors.push(
+      `Route exercise ${exercise.id} has no valid legal route through required stops ${stopNodeIds.join(" -> ")}`
+    );
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    stopNodeIds
   };
 }

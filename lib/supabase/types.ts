@@ -252,6 +252,64 @@ export type Database = {
         };
         Relationships: [];
       };
+      route_attempts: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          exercise_id: string;
+          score: number | null;
+          passed: boolean | null;
+          failure_reason: string | null;
+          user_distance_m: number | null;
+          shortest_distance_m: number | null;
+          extra_distance_m: number | null;
+          violations: Json;
+          missed_restrictions: Json;
+          correction_hints: Json;
+          practice_recommendations: Json;
+          matched_route: Json | null;
+          review_payload: Json;
+          review_schema_version: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          exercise_id: string;
+          score?: number | null;
+          passed?: boolean | null;
+          failure_reason?: string | null;
+          user_distance_m?: number | null;
+          shortest_distance_m?: number | null;
+          extra_distance_m?: number | null;
+          violations?: Json;
+          missed_restrictions?: Json;
+          correction_hints?: Json;
+          practice_recommendations?: Json;
+          matched_route?: Json | null;
+          review_payload: Json;
+          review_schema_version?: number;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string | null;
+          exercise_id?: string;
+          score?: number | null;
+          passed?: boolean | null;
+          failure_reason?: string | null;
+          user_distance_m?: number | null;
+          shortest_distance_m?: number | null;
+          extra_distance_m?: number | null;
+          violations?: Json;
+          missed_restrictions?: Json;
+          correction_hints?: Json;
+          practice_recommendations?: Json;
+          matched_route?: Json | null;
+          review_payload?: Json;
+          review_schema_version?: number;
+        };
+        Relationships: [];
+      };
       question_bank_items: {
         Row: {
           id: string;

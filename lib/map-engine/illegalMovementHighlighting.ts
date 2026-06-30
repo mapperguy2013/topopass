@@ -68,6 +68,22 @@ function highlightForIllegalMovement(
     };
   }
 
+  if (movement.type === "road_closed" && roadExists(map, movement.roadId)) {
+    const highlight = {
+      kind: "closed-road" as const,
+      movementIndex: movement.movementIndex,
+      roadId: movement.roadId,
+      fromNodeId: movement.fromNodeId,
+      toNodeId: movement.toNodeId,
+      message: movement.message
+    };
+
+    return {
+      id: highlightId(highlight),
+      ...highlight
+    };
+  }
+
   if (movement.type === "wrong_way_one_way" && roadExists(map, movement.roadId)) {
     const highlight = {
       kind: "one-way-wrong-direction" as const,

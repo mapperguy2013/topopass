@@ -125,11 +125,30 @@ test("starting from a node returns legal outgoing movements", () => {
 test("prohibited turns block only the illegal transition", () => {
   const graph = buildLegalMovementGraph(legalMovementTestMap);
 
-  assert.deepEqual(edgeIds(getLegalNextMovements(graph, "road-ab:forward")), [
-    "road-ab:reverse",
-    "road-bd:forward",
-    "road-db:reverse"
-  ]);
+  assert.deepEqual(edgeIds(getLegalNextMovements(graph, "road-ab:forward")), ["road-bd:forward", "road-db:reverse"]);
+});
+
+test("legal movement graph blocks immediate U-turn transitions", () => {
+  const graph = buildLegalMovementGraph(legalMovementTestMap);
+
+  assert(!edgeIds(getLegalNextMovements(graph, "road-ab:forward")).includes("road-ab:reverse"));
+});
+
+test("road-closed restrictions remove every direction of the closed road", () => {
+  const graph = buildLegalMovementGraph({
+    ...legalMovementTestMap,
+    restrictions: [
+      ...legalMovementTestMap.restrictions,
+      {
+        id: "road-bd-closed",
+        type: "road_closed",
+        roadId: "road-bd"
+      }
+    ]
+  });
+
+  assert(!graph.edgesById["road-bd:forward"]);
+  assert(!graph.edgesById["road-bd:reverse"]);
 });
 
 test("the same destination road remains legal when approached from a different road", () => {
@@ -156,7 +175,7 @@ test("getLegalMovementsFromPosition handles starts and validates previous edge p
         previousEdgeId: "road-ab:forward"
       })
     ),
-    ["road-ab:reverse", "road-bd:forward", "road-db:reverse"]
+    ["road-bd:forward", "road-db:reverse"]
   );
   assert.throws(
     () =>

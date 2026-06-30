@@ -4,20 +4,27 @@ import { Sidebar } from "@/components/layout/Sidebar";
 type AppShellProps = {
   title: string;
   children: React.ReactNode;
+  frameClassName?: string;
+  mainClassName?: string;
 };
 
-export function AppShell({ title, children }: AppShellProps) {
+export function AppShell({
+  title,
+  children,
+  frameClassName = "max-w-[1500px]",
+  mainClassName = ""
+}: AppShellProps) {
   return (
     <div className="min-h-screen bg-surface">
       <Navbar />
       <div
-        className="mx-auto flex max-w-[1500px] gap-6 px-4 py-6 sm:px-6 lg:px-8"
+        className={`mx-auto flex ${frameClassName} gap-6 px-4 py-6 sm:px-6 lg:px-8`}
         data-app-shell-frame
       >
         <div data-app-sidebar>
           <Sidebar />
         </div>
-        <main className="min-w-0 flex-1">
+        <main className={`min-w-0 flex-1 ${mainClassName}`}>
           <div className="mb-6" data-app-shell-heading>
             <p className="text-sm font-semibold uppercase tracking-wide text-road">
               TopoPass

@@ -5,6 +5,7 @@ import {
   tinyMap,
   validateMapDefinition,
   validateRouteExercise,
+  validateRouteExerciseLegalReachability,
   type MapDefinition,
   type RouteExercise
 } from "./index.ts";
@@ -166,4 +167,91 @@ test("route exercise validation rejects missing stop references", () => {
   assert.equal(result.valid, false);
   assert(result.errors.some((error) => error.includes("missing nodeId")));
   assert(result.errors.some((error) => error.includes("missing landmarkId")));
+});
+
+test("route exercise legal reachability validates routable exercises", () => {
+  const map: MapDefinition = {
+    id: "reachable-exercise-map",
+    name: "Reachable Exercise Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 200, y: 0 }
+    ],
+    roads: [
+      { id: "road-ab", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, isOneWay: false },
+      { id: "road-bc", fromNodeId: "b", toNodeId: "c", distanceMeters: 100, isOneWay: false }
+    ],
+    restrictions: [],
+    landmarks: []
+  };
+  const exercise: RouteExercise = {
+    id: "reachable",
+    title: "Reachable",
+    mapId: map.id,
+    stops: [
+      { type: "node", nodeId: "a" },
+      { type: "node", nodeId: "b" },
+      { type: "node", nodeId: "c" }
+    ]
+  };
+
+  assert.deepEqual(validateRouteExerciseLegalReachability(exercise, map), {
+    valid: true,
+    errors: [],
+    stopNodeIds: ["a", "b", "c"]
+  });
+});
+
+test("route exercise legal reachability rejects unreachable checkpoints and finishes", () => {
+  const map: MapDefinition = {
+    id: "unreachable-exercise-map",
+    name: "Unreachable Exercise Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 200, y: 0 }
+    ],
+    roads: [
+      { id: "road-ab", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, isOneWay: false },
+      { id: "road-bc", fromNodeId: "b", toNodeId: "c", distanceMeters: 100, isOneWay: false }
+    ],
+    restrictions: [
+      {
+        id: "block-b-to-c",
+        type: "no_entry",
+        roadId: "road-bc",
+        fromNodeId: "b",
+        toNodeId: "c"
+      }
+    ],
+    landmarks: []
+  };
+  const checkpointExercise: RouteExercise = {
+    id: "unreachable-checkpoint",
+    title: "Unreachable Checkpoint",
+    mapId: map.id,
+    stops: [
+      { type: "node", nodeId: "a" },
+      { type: "node", nodeId: "c" },
+      { type: "node", nodeId: "b" }
+    ]
+  };
+  const finishExercise: RouteExercise = {
+    id: "unreachable-finish",
+    title: "Unreachable Finish",
+    mapId: map.id,
+    stops: [
+      { type: "node", nodeId: "a" },
+      { type: "node", nodeId: "c" }
+    ]
+  };
+
+  const checkpointResult = validateRouteExerciseLegalReachability(checkpointExercise, map);
+  const finishResult = validateRouteExerciseLegalReachability(finishExercise, map);
+
+  assert.equal(checkpointResult.valid, false);
+  assert(checkpointResult.errors.some((error) => error.includes("no valid legal route")));
+  assert.equal(finishResult.valid, false);
+  assert(finishResult.errors.some((error) => error.includes("no valid legal route")));
 });

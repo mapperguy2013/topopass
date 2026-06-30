@@ -2,20 +2,28 @@
 
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
-  appendDrawnRoutePoint,
+  appendRouteDraftPoint,
   boundingBoxForPoints,
   buildIllegalDrawnMovementHighlights,
-  createInsufficientDrawnGesturePipelineResult,
+  clearRouteDraft,
   createDrawnRouteTrace,
+  createEmptyRouteDraft,
+  createInsufficientDrawnGesturePipelineResult,
   expandBoundingBox,
+  finishRouteStroke,
   getTurnRestrictionVisuals,
+  hasUndoableRouteStroke,
   mapToScreenPoint,
   marloweDistrictMap,
   marloweDistrictRouteExercises,
+  routeDraftToDrawnRouteTrace,
   runDrawnRoutePipeline,
   runRouteExercise,
   screenToMapPoint,
+  startRouteStroke,
+  undoLastRouteStroke,
   validateDrawnRouteGesture,
+  type DrawnRouteDraft,
   type DrawnRoutePipelineResult,
   type DrawnRouteTrace,
   type MapNode,
@@ -30,6 +38,41 @@ import {
 } from "@/lib/map-engine";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
 import {
+  buildAdaptivePracticeQueue,
+  buildAttemptHistoryInsights,
+  type AdaptivePracticeExercise,
+  type AdaptivePracticeExerciseDifficulty,
+  type AdaptivePracticeQueueItem,
+  type AdaptivePracticeQueuePriority,
+  type AdaptivePracticeSourceSignals
+} from "./adaptivePracticeQueue";
+import {
+  MARLOWE_DISTRICT_EXERCISE_METADATA,
+  MARLOWE_DISTRICT_METADATA_CATALOGUE,
+  exerciseMetadataCatalogueToAdaptivePracticeExercises,
+  getExerciseMetadata,
+  getMapMetadataForExercise
+} from "./exerciseMapMetadata";
+import {
+  ADAPTIVE_PRACTICE_LAUNCHER_STORAGE_KEY,
+  appendAdaptivePracticeOutcomeFeedback,
+  buildAdaptivePracticeOutcomeFeedback,
+  completeAdaptivePracticeItem,
+  createEmptyAdaptivePracticeLauncherState,
+  dismissAdaptivePracticeItem,
+  getAdaptivePracticeItemStatus,
+  getLatestAdaptivePracticeOutcomeFeedback,
+  parseStoredAdaptivePracticeLauncherState,
+  serialiseAdaptivePracticeLauncherState,
+  skipAdaptivePracticeItem,
+  startAdaptivePracticeItem,
+  summarizeAdaptivePracticeOutcomeFeedback,
+  undoAdaptivePracticeItemStatus,
+  type AdaptivePracticeOutcome,
+  type AdaptivePracticeLauncherItemStatus,
+  type AdaptivePracticeLauncherState
+} from "./adaptivePracticeLauncher";
+import {
   buildRoadRestrictionOverlays,
   buildRouteIssueOverlays,
   getDrawnPipelineDisplayStatus,
@@ -38,8 +81,6 @@ import {
   getPipelineStageBadges,
   getRouteIssueLineStyle,
   getRequiredStopVisitStatuses,
-  getTurnRestrictionDisplayItems,
-  getVisualTurnRestrictionTurnKind,
   type DrawnPipelineDisplayStatus,
   type DrawnRouteScoreDisplayState,
   type PipelineStageState,
@@ -47,18 +88,99 @@ import {
   type RouteIssueOverlay
 } from "./routeRunnerDisplay";
 import {
+  appendRouteAttemptToHistory,
   buildRouteAttemptReview,
+  createEmptyLearnerWeakAreaProfile,
+  createRouteAttemptHistoryState,
+  getLearnerWeakAreaPracticeFocus,
+  getSelectedRouteAttemptHistoryItem,
+  getStrongestWeakAreas,
+  selectRouteAttemptHistoryItem,
+  updateLearnerWeakAreaProfile,
+  type LearnerWeakAreaProfile,
+  type LearnerWeakAreaProfileEntry,
+  type RouteAttemptHistoryState,
   type RouteAttemptReview,
   type RouteAttemptReviewItemSeverity
 } from "./routeAttemptReview";
+import { listRouteAttempts, saveRouteAttempt, type SavedRouteAttemptListItem } from "./routeAttemptStorage";
+import {
+  buildSyntheticBackgroundFeatures,
+  buildSyntheticLandmarkVisuals,
+  buildSyntheticLinearFeatures,
+  buildSyntheticMapLabels,
+  buildSyntheticRoadVisuals,
+  type SyntheticBackgroundFeature,
+  type SyntheticLandmarkVisual,
+  type SyntheticLinearFeature,
+  type SyntheticMapLabel,
+  type SyntheticRoadVisual,
+  type SyntheticStreetMapLegendItem
+} from "./syntheticStreetMapRenderer";
+import {
+  buildRestrictionLegendItems,
+  buildRestrictionMapVisualItems,
+  buildSelectedRestrictionHighlight,
+  resolveRestrictionFocusTarget,
+  type RestrictionFocusReviewItem,
+  type RestrictionMapVisualItem,
+  type SelectedRestrictionHighlight
+} from "./restrictionMapVisuals";
+import { getRealisticSyntheticScenarioForExercise } from "./realisticSyntheticExercises";
+import {
+  buildFastestRouteOverlay,
+  createHiddenFastestRouteRevealState,
+  hideFastestRouteReveal,
+  toggleFastestRouteReveal,
+  type FastestRouteRevealState
+} from "./fastestRouteOverlay";
+import {
+  INVALID_EXERCISE_ROUTE_MESSAGE,
+  formatExerciseAvailabilityOptionLabel,
+  validateExerciseReachabilityList,
+  type ExerciseRouteAvailability
+} from "./exerciseValidation";
+import {
+  applyPanToMapView,
+  buildZoomedMapViewport,
+  canZoomInMapView,
+  canZoomOutMapView,
+  createDefaultMapViewportState,
+  resetMapViewport,
+  setMapInteractionMode,
+  zoomInMapView,
+  zoomOutMapView,
+  type MapInteractionMode,
+  type MapViewportState
+} from "./mapViewport";
 
-const CANVAS_WIDTH = 820;
-const CANVAS_HEIGHT = 660;
+const CANVAS_WIDTH = 1120;
+const CANVAS_HEIGHT = 760;
 const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
 const ROAD_RESTRICTION_OVERLAYS = buildRoadRestrictionOverlays(marloweDistrictMap);
 const TURN_RESTRICTION_VISUALS = getTurnRestrictionVisuals(marloweDistrictMap);
+const SYNTHETIC_BACKGROUND_FEATURES = buildSyntheticBackgroundFeatures(marloweDistrictMap);
+const SYNTHETIC_LINEAR_FEATURES = buildSyntheticLinearFeatures(marloweDistrictMap);
+const SYNTHETIC_ROAD_VISUALS = buildSyntheticRoadVisuals(marloweDistrictMap);
+const RESTRICTION_MAP_LEGEND_ITEMS = buildRestrictionLegendItems();
+const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
+const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
+  exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
+
+type RouteAttemptSaveStatus = {
+  state: "idle" | "saving" | "saved" | "failed";
+  message: string | null;
+  id?: string;
+};
+
+type SavedAttemptHistoryState = {
+  state: "loading" | "loaded" | "error";
+  attempts: SavedRouteAttemptListItem[];
+  message: string | null;
+  selectedAttemptId: string | null;
+};
 
 function emptySnapPreview(): SnappedRouteTraceResult {
   return {
@@ -80,6 +202,34 @@ function emptySnapPreview(): SnappedRouteTraceResult {
       }
     },
     diagnostics: []
+  };
+}
+
+function invalidExercisePipelineResult(
+  drawnTrace: DrawnRouteTrace,
+  availability: ExerciseRouteAvailability
+): DrawnRoutePipelineResult {
+  return {
+    status: "exercise_failed",
+    simplifiedTrace: createDrawnRouteTrace(drawnTrace.points),
+    snappedRoute: null,
+    snappedPoints: [],
+    matchResult: null,
+    exerciseResult: null,
+    warnings: [
+      {
+        source: "exercise",
+        code: "invalid_exercise",
+        severity: "error",
+        message: availability.reason ?? INVALID_EXERCISE_ROUTE_MESSAGE
+      },
+      ...availability.errors.map((error) => ({
+        source: "exercise" as const,
+        code: "invalid_exercise_detail",
+        severity: "error" as const,
+        message: error
+      }))
+    ]
   };
 }
 
@@ -219,6 +369,198 @@ function reviewStateClass(status: RouteAttemptReview["status"]): string {
   return "border-slate-200 bg-slate-50 text-slate-800";
 }
 
+function saveStatusClass(state: RouteAttemptSaveStatus["state"]): string {
+  if (state === "saved") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (state === "failed") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  if (state === "saving") {
+    return "border-blue-200 bg-blue-50 text-blue-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function savedAttemptStatusClass(status: SavedRouteAttemptListItem["statusLabel"]): string {
+  if (status === "Pass") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (status === "Fail") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (status === "Blocked") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function adaptivePriorityClass(priority: AdaptivePracticeQueuePriority): string {
+  if (priority === "urgent") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (priority === "high") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  if (priority === "medium") {
+    return "border-blue-200 bg-blue-50 text-blue-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function adaptiveSourceSignalLabels(signals: AdaptivePracticeSourceSignals): string[] {
+  const labels: string[] = [];
+
+  if (signals.latestReview) {
+    labels.push("latest review");
+  }
+
+  if (signals.weakAreaProfile) {
+    labels.push("weak-area profile");
+  }
+
+  if (signals.attemptHistory) {
+    labels.push("attempt history");
+  }
+
+  if (signals.savedAttempts) {
+    labels.push("saved attempts");
+  }
+
+  if (signals.outcomeFeedback) {
+    labels.push("outcome feedback");
+  }
+
+  return labels;
+}
+
+function adaptiveOutcomeClass(outcome: AdaptivePracticeOutcome): string {
+  if (outcome === "resolved") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (outcome === "improved") {
+    return "border-blue-200 bg-blue-50 text-blue-950";
+  }
+
+  if (outcome === "repeated-issue") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (outcome === "mixed") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function adaptiveLauncherStatusLabel(status: AdaptivePracticeLauncherItemStatus): string {
+  if (status === "recommended") {
+    return "recommended";
+  }
+
+  return status;
+}
+
+function adaptiveLauncherStatusClass(status: AdaptivePracticeLauncherItemStatus): string {
+  if (status === "active") {
+    return "border-blue-200 bg-blue-50 text-blue-950";
+  }
+
+  if (status === "completed") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (status === "dismissed") {
+    return "border-slate-200 bg-slate-100 text-slate-700";
+  }
+
+  if (status === "skipped") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-white text-slate-800";
+}
+
+function adaptiveDifficultyClass(difficulty: AdaptivePracticeExerciseDifficulty | null): string {
+  if (difficulty === "hard") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (difficulty === "medium") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  if (difficulty === "easy") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function syntheticLegendToneClass(tone: SyntheticStreetMapLegendItem["tone"]): string {
+  if (tone === "route") {
+    return "border-purple-200 bg-purple-50 text-purple-950";
+  }
+
+  if (tone === "shortest" || tone === "one-way" || tone === "start") {
+    return "border-blue-200 bg-blue-50 text-blue-950";
+  }
+
+  if (tone === "illegal" || tone === "restriction" || tone === "turn") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (tone === "restricted" || tone === "checkpoint") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  if (tone === "finish") {
+    return "border-slate-300 bg-slate-100 text-slate-950";
+  }
+
+  if (tone === "background") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  return "border-slate-200 bg-white text-slate-800";
+}
+
+function linkedAdaptiveExercise(item: AdaptivePracticeQueueItem): AdaptivePracticeExercise | null {
+  for (const exerciseId of item.relatedExerciseIds) {
+    const exercise = ADAPTIVE_PRACTICE_EXERCISES.find((candidate) => candidate.id === exerciseId);
+
+    if (exercise) {
+      return exercise;
+    }
+  }
+
+  return null;
+}
+
+function launchableRouteExerciseId(item: AdaptivePracticeQueueItem): string | null {
+  for (const exerciseId of item.relatedExerciseIds) {
+    if (marloweDistrictRouteExercises.some((exercise) => exercise.id === exerciseId)) {
+      return exerciseId;
+    }
+  }
+
+  return null;
+}
+
+function adaptiveWeakAreaLabel(item: AdaptivePracticeQueueItem): string {
+  return item.relatedWeakAreas.length > 0 ? item.relatedWeakAreas.map((weakArea) => weakArea.replaceAll("-", " ")).join(", ") : "Mixed practice";
+}
+
 function reviewItemClass(severity: RouteAttemptReviewItemSeverity): string {
   if (severity === "error") {
     return "border-red-100 bg-white text-red-950";
@@ -229,6 +571,129 @@ function reviewItemClass(severity: RouteAttemptReviewItemSeverity): string {
   }
 
   return "border-blue-100 bg-white text-blue-950";
+}
+
+function matchedRoutePayloadForStorage(result: DrawnRoutePipelineResult) {
+  const match = result.matchResult;
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    status: match.status,
+    isReadyForRunRouteExercise: match.isReadyForRunRouteExercise,
+    orderedRoadIds: match.orderedRoadIds,
+    transitionNodeIds: match.transitionNodeIds,
+    nodeIds: match.nodeIds,
+    directedEdgeIds: match.directedEdgeIds,
+    directedEdgeSequence: match.directedEdgeSequence,
+    selectedNodeIds: match.selection.nodeIds ?? [],
+    selectedRoadIds: match.selection.roadIds ?? [],
+    diagnostics: match.diagnostics,
+    normalisedAttempt: result.exerciseResult?.normalisedAttempt ?? null
+  };
+}
+
+function normaliseStoredWeakAreaEntry(value: unknown): LearnerWeakAreaProfileEntry | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const entry = value as Partial<LearnerWeakAreaProfileEntry>;
+
+  if (
+    typeof entry.weaknessType !== "string" ||
+    typeof entry.label !== "string" ||
+    typeof entry.count !== "number" ||
+    typeof entry.priority !== "string" ||
+    typeof entry.lastSeenAttemptNumber !== "number"
+  ) {
+    return null;
+  }
+
+  if (!["high", "medium", "low"].includes(entry.priority)) {
+    return null;
+  }
+
+  return {
+    weaknessType: entry.weaknessType,
+    label: entry.label,
+    count: entry.count,
+    priority: entry.priority,
+    lastSeenAttemptNumber: entry.lastSeenAttemptNumber
+  } as LearnerWeakAreaProfileEntry;
+}
+
+function readStoredWeakAreaProfile(): LearnerWeakAreaProfile {
+  if (typeof window === "undefined") {
+    return createEmptyLearnerWeakAreaProfile();
+  }
+
+  try {
+    const rawProfile = window.localStorage.getItem(WEAK_AREA_PROFILE_STORAGE_KEY);
+
+    if (!rawProfile) {
+      return createEmptyLearnerWeakAreaProfile();
+    }
+
+    const parsedProfile = JSON.parse(rawProfile) as Partial<LearnerWeakAreaProfile>;
+
+    if (
+      typeof parsedProfile.attemptsReviewed !== "number" ||
+      typeof parsedProfile.totalWeaknessCount !== "number" ||
+      !Array.isArray(parsedProfile.weaknesses)
+    ) {
+      return createEmptyLearnerWeakAreaProfile();
+    }
+
+    return {
+      attemptsReviewed: parsedProfile.attemptsReviewed,
+      totalWeaknessCount: parsedProfile.totalWeaknessCount,
+      weaknesses: parsedProfile.weaknesses
+        .map((entry) => normaliseStoredWeakAreaEntry(entry))
+        .filter((entry): entry is LearnerWeakAreaProfileEntry => Boolean(entry))
+    };
+  } catch {
+    return createEmptyLearnerWeakAreaProfile();
+  }
+}
+
+function writeStoredWeakAreaProfile(profile: LearnerWeakAreaProfile): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(WEAK_AREA_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+}
+
+function readStoredAdaptivePracticeLauncherState(): AdaptivePracticeLauncherState {
+  if (typeof window === "undefined") {
+    return createEmptyAdaptivePracticeLauncherState();
+  }
+
+  try {
+    return parseStoredAdaptivePracticeLauncherState(
+      window.localStorage.getItem(ADAPTIVE_PRACTICE_LAUNCHER_STORAGE_KEY)
+    );
+  } catch {
+    return createEmptyAdaptivePracticeLauncherState();
+  }
+}
+
+function writeStoredAdaptivePracticeLauncherState(state: AdaptivePracticeLauncherState): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      ADAPTIVE_PRACTICE_LAUNCHER_STORAGE_KEY,
+      serialiseAdaptivePracticeLauncherState(state)
+    );
+  } catch {
+    // Browser storage can be disabled in dev environments. The launcher remains usable in memory.
+  }
 }
 
 function stopVisitClass(visited: boolean): string {
@@ -279,6 +744,302 @@ function drawNodeMarker(input: {
   input.context.fill();
 }
 
+function drawExerciseStopMarker(input: {
+  context: CanvasRenderingContext2D;
+  point: Vec2;
+  role: "start" | "checkpoint" | "finish";
+  index: number;
+}): void {
+  const fillStyle =
+    input.role === "start" ? "#2563eb" : input.role === "finish" ? "#0f172a" : "#f97316";
+  const radius = input.role === "checkpoint" ? 11 : 13;
+
+  input.context.save();
+  input.context.fillStyle = "rgba(255,255,255,0.92)";
+  input.context.strokeStyle = fillStyle;
+  input.context.lineWidth = 3;
+  input.context.beginPath();
+  input.context.arc(input.point.x, input.point.y, radius + 4, 0, Math.PI * 2);
+  input.context.fill();
+  input.context.stroke();
+
+  input.context.fillStyle = fillStyle;
+  input.context.beginPath();
+  input.context.arc(input.point.x, input.point.y, radius, 0, Math.PI * 2);
+  input.context.fill();
+
+  input.context.fillStyle = "#ffffff";
+  input.context.font = "700 11px Arial, sans-serif";
+  input.context.textAlign = "center";
+  input.context.textBaseline = "middle";
+  input.context.fillText(String(input.index + 1), input.point.x, input.point.y + 0.5);
+  input.context.restore();
+}
+
+function drawSyntheticBackgroundFeature(
+  context: CanvasRenderingContext2D,
+  feature: SyntheticBackgroundFeature,
+  viewport: ScreenMapViewport
+): void {
+  if (feature.points.length < 3) {
+    return;
+  }
+
+  const screenPoints = feature.points.map((point) => mapToScreenPoint(point, viewport));
+
+  context.save();
+  context.fillStyle = feature.fillColor;
+  context.strokeStyle = feature.strokeColor;
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.restore();
+}
+
+function drawSyntheticLinearFeature(
+  context: CanvasRenderingContext2D,
+  feature: SyntheticLinearFeature,
+  viewport: ScreenMapViewport
+): void {
+  if (feature.points.length < 2) {
+    return;
+  }
+
+  const screenPoints = feature.points.map((point) => mapToScreenPoint(point, viewport));
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.setLineDash([]);
+  context.strokeStyle = feature.casingColor;
+  context.lineWidth = feature.casingWidth;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash(feature.dash ?? []);
+  context.strokeStyle = feature.strokeColor;
+  context.lineWidth = feature.strokeWidth;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash([]);
+  context.restore();
+}
+
+function drawSyntheticRoadVisual(
+  context: CanvasRenderingContext2D,
+  visual: SyntheticRoadVisual,
+  viewport: ScreenMapViewport
+): void {
+  if (visual.points.length < 2) {
+    return;
+  }
+
+  const screenPoints = visual.points.map((point) => mapToScreenPoint(point, viewport));
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.setLineDash([]);
+  context.strokeStyle = visual.style.casingColor;
+  context.lineWidth = visual.style.casingWidth;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash(visual.style.dash ?? []);
+  context.strokeStyle = visual.style.strokeColor;
+  context.lineWidth = visual.style.strokeWidth;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash([]);
+  context.restore();
+}
+
+function drawSyntheticLandmarkVisual(
+  context: CanvasRenderingContext2D,
+  visual: SyntheticLandmarkVisual,
+  viewport: ScreenMapViewport
+): void {
+  const point = mapToScreenPoint(visual.point, viewport);
+
+  context.save();
+  context.fillStyle = visual.haloColor;
+  context.beginPath();
+  context.arc(point.x, point.y, visual.radius + 8, 0, Math.PI * 2);
+  context.fill();
+
+  context.fillStyle = visual.fillColor;
+  context.strokeStyle = visual.strokeColor;
+  context.lineWidth = visual.kind === "station" ? 3.5 : 2.5;
+  context.beginPath();
+  context.arc(point.x, point.y, visual.radius, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  if (visual.kind === "station") {
+    context.strokeStyle = "#1d4ed8";
+    context.lineWidth = 5;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(point.x - visual.radius - 4, point.y);
+    context.lineTo(point.x + visual.radius + 4, point.y);
+    context.stroke();
+  } else if (visual.kind === "hospital") {
+    context.strokeStyle = "#2563eb";
+    context.lineWidth = 2.4;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(point.x - 4, point.y);
+    context.lineTo(point.x + 4, point.y);
+    context.moveTo(point.x, point.y - 4);
+    context.lineTo(point.x, point.y + 4);
+    context.stroke();
+  } else if (visual.kind === "park") {
+    context.fillStyle = "#16a34a";
+    context.beginPath();
+    context.arc(point.x, point.y, 3, 0, Math.PI * 2);
+    context.fill();
+  } else if (visual.kind === "market" || visual.kind === "dock") {
+    context.strokeStyle = visual.strokeColor;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(point.x - 4, point.y + 3);
+    context.lineTo(point.x, point.y - 4);
+    context.lineTo(point.x + 4, point.y + 3);
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function readableRoadLabelAngle(angleRadians: number): number {
+  if (angleRadians > Math.PI / 2 || angleRadians < -Math.PI / 2) {
+    return angleRadians + Math.PI;
+  }
+
+  return angleRadians;
+}
+
+function drawSyntheticMapLabel(
+  context: CanvasRenderingContext2D,
+  label: SyntheticMapLabel,
+  viewport: ScreenMapViewport
+): void {
+  const point = mapToScreenPoint(label.point, viewport);
+  const isRoadLabel = label.kind === "road";
+  const isAreaLabel = label.kind === "area";
+  const isLandmarkLabel = label.kind === "landmark";
+  const isStopLabel = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish";
+
+  context.save();
+  context.translate(point.x, point.y);
+
+  if (isRoadLabel && typeof label.angleRadians === "number") {
+    context.rotate(readableRoadLabelAngle(label.angleRadians));
+  }
+
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.font = isAreaLabel
+    ? "600 13px Arial, sans-serif"
+    : isStopLabel
+      ? "700 11px Arial, sans-serif"
+      : isLandmarkLabel
+        ? "700 11px Arial, sans-serif"
+        : "600 11px Arial, sans-serif";
+  context.lineWidth = isStopLabel ? 4 : 3;
+  context.strokeStyle = isAreaLabel ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.94)";
+  context.fillStyle = isAreaLabel
+    ? "rgba(71,85,105,0.56)"
+    : isStopLabel
+      ? "#0f172a"
+      : isLandmarkLabel
+        ? "rgba(15,23,42,0.78)"
+        : "rgba(51,65,85,0.78)";
+  context.strokeText(label.text, 0, isStopLabel ? -18 : 0);
+  context.fillText(label.text, 0, isStopLabel ? -18 : 0);
+  context.restore();
+}
+
+function drawSyntheticStreetMapBase(input: {
+  context: CanvasRenderingContext2D;
+  viewport: ScreenMapViewport;
+  selectedExercise?: RouteExercise;
+}): void {
+  for (const feature of SYNTHETIC_BACKGROUND_FEATURES) {
+    drawSyntheticBackgroundFeature(input.context, feature, input.viewport);
+  }
+
+  for (const feature of SYNTHETIC_LINEAR_FEATURES) {
+    drawSyntheticLinearFeature(input.context, feature, input.viewport);
+  }
+
+  for (const visual of SYNTHETIC_ROAD_VISUALS) {
+    drawSyntheticRoadVisual(input.context, visual, input.viewport);
+  }
+
+  for (const visual of buildSyntheticLandmarkVisuals(marloweDistrictMap, input.selectedExercise)) {
+    drawSyntheticLandmarkVisual(input.context, visual, input.viewport);
+  }
+
+  const labels = buildSyntheticMapLabels(marloweDistrictMap, input.selectedExercise);
+
+  for (const label of labels) {
+    if (label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish") {
+      continue;
+    }
+
+    drawSyntheticMapLabel(input.context, label, input.viewport);
+  }
+}
+
+function drawSyntheticStopLabels(input: {
+  context: CanvasRenderingContext2D;
+  viewport: ScreenMapViewport;
+  selectedExercise?: RouteExercise;
+}): void {
+  if (!input.selectedExercise) {
+    return;
+  }
+
+  const labels = buildSyntheticMapLabels(marloweDistrictMap, input.selectedExercise).filter(
+    (label) => label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish"
+  );
+
+  for (const label of labels) {
+    drawSyntheticMapLabel(input.context, label, input.viewport);
+  }
+}
+
 function scoreSummary(result: RunRouteExerciseResult | null): string {
   if (!result) {
     return "n/a";
@@ -312,87 +1073,14 @@ function roadEndpoints(road: MapRoad): { from?: MapNode; to?: MapNode } {
 
 function restrictionOverlayColour(kind: RoadRestrictionOverlay["kind"]): string {
   if (kind === "no-entry") {
-    return "#dc2626";
+    return "#ef4444";
   }
 
   if (kind === "restricted") {
-    return "#d97706";
+    return "#f59e0b";
   }
 
-  return "#2563eb";
-}
-
-function drawRestrictionBadge(context: CanvasRenderingContext2D, point: Vec2, overlay: RoadRestrictionOverlay): void {
-  const colour = restrictionOverlayColour(overlay.kind);
-
-  if (overlay.kind === "no-entry") {
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = colour;
-    context.lineWidth = 2;
-    context.beginPath();
-    context.arc(point.x, point.y, 11, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
-    context.strokeStyle = colour;
-    context.lineWidth = 3;
-    context.beginPath();
-    context.moveTo(point.x - 6, point.y);
-    context.lineTo(point.x + 6, point.y);
-    context.stroke();
-    return;
-  }
-
-  if (overlay.kind === "restricted") {
-    context.fillStyle = "#fef3c7";
-    context.strokeStyle = colour;
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(point.x, point.y - 10);
-    context.lineTo(point.x + 10, point.y);
-    context.lineTo(point.x, point.y + 10);
-    context.lineTo(point.x - 10, point.y);
-    context.closePath();
-    context.fill();
-    context.stroke();
-    context.strokeStyle = colour;
-    context.lineWidth = 3;
-    context.beginPath();
-    context.moveTo(point.x, point.y - 5);
-    context.lineTo(point.x, point.y + 2);
-    context.stroke();
-    context.fillStyle = colour;
-    context.beginPath();
-    context.arc(point.x, point.y + 6, 1.6, 0, Math.PI * 2);
-    context.fill();
-    return;
-  }
-
-  return;
-}
-
-function drawOneWayArrowhead(context: CanvasRenderingContext2D, fromPoint: Vec2, toPoint: Vec2): void {
-  const angle = Math.atan2(toPoint.y - fromPoint.y, toPoint.x - fromPoint.x);
-  const midpoint = {
-    x: (fromPoint.x + toPoint.x) / 2,
-    y: (fromPoint.y + toPoint.y) / 2
-  };
-  const length = 11;
-  const rear = {
-    x: midpoint.x - 6 * Math.cos(angle),
-    y: midpoint.y - 6 * Math.sin(angle)
-  };
-  const normal = {
-    x: 6 * Math.cos(angle + Math.PI / 2),
-    y: 6 * Math.sin(angle + Math.PI / 2)
-  };
-
-  context.fillStyle = "#2563eb";
-  context.beginPath();
-  context.moveTo(midpoint.x + length * Math.cos(angle), midpoint.y + length * Math.sin(angle));
-  context.lineTo(rear.x - normal.x, rear.y - normal.y);
-  context.lineTo(rear.x + normal.x, rear.y + normal.y);
-  context.closePath();
-  context.fill();
+  return "#3b82f6";
 }
 
 function drawRoadRestrictionOverlay(
@@ -406,14 +1094,13 @@ function drawRoadRestrictionOverlay(
 
   const colour = restrictionOverlayColour(overlay.kind);
   const screenPoints = overlay.points.map((point) => mapToScreenPoint(point, viewport));
-  const midpoint = mapToScreenPoint(overlay.midpoint, viewport);
 
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
-  context.globalAlpha = overlay.kind === "one-way" ? 0.65 : 0.9;
-  context.lineWidth = overlay.kind === "one-way" ? 2 : 5;
-  context.setLineDash([]);
+  context.globalAlpha = overlay.kind === "one-way" ? 0.32 : 0.38;
+  context.lineWidth = overlay.kind === "one-way" ? 3 : overlay.kind === "restricted" ? 7 : 6;
+  context.setLineDash(overlay.kind === "restricted" ? [10, 7] : []);
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -423,20 +1110,6 @@ function drawRoadRestrictionOverlay(
 
   context.stroke();
   context.setLineDash([]);
-  context.globalAlpha = 1;
-
-  if (overlay.direction) {
-    const from = mapToScreenPoint(overlay.direction.from, viewport);
-    const to = mapToScreenPoint(overlay.direction.to, viewport);
-
-    if (overlay.kind === "one-way") {
-      drawOneWayArrowhead(context, from, to);
-    } else {
-      drawArrowHead(context, from, to);
-    }
-  }
-
-  drawRestrictionBadge(context, midpoint, overlay);
   context.restore();
 }
 
@@ -473,28 +1146,237 @@ function drawTurnArrowSymbol(context: CanvasRenderingContext2D, turnKind: TurnRe
   context.stroke();
 }
 
-function drawTurnRestrictionVisual(
-  context: CanvasRenderingContext2D,
-  visual: TurnRestrictionVisual,
-  viewport: ScreenMapViewport
-): void {
-  const signPoint = mapToScreenPoint(visual.signPosition, viewport);
+function drawNoEntryMapSymbol(context: CanvasRenderingContext2D, point: Vec2, radius = 14): void {
+  context.save();
+  context.fillStyle = "rgba(255,255,255,0.96)";
+  context.strokeStyle = "#dc2626";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.strokeStyle = "#dc2626";
+  context.lineWidth = 5;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(point.x - radius * 0.58, point.y);
+  context.lineTo(point.x + radius * 0.58, point.y);
+  context.stroke();
+  context.restore();
+}
 
+function drawOneWayMapSymbol(
+  context: CanvasRenderingContext2D,
+  point: Vec2,
+  direction: RestrictionMapVisualItem["direction"]
+): void {
+  if (!direction) {
+    return;
+  }
+
+  const angle = Math.atan2(direction.to.y - direction.from.y, direction.to.x - direction.from.x);
+  const tip = {
+    x: point.x + 13 * Math.cos(angle),
+    y: point.y + 13 * Math.sin(angle)
+  };
+  const tail = {
+    x: point.x - 11 * Math.cos(angle),
+    y: point.y - 11 * Math.sin(angle)
+  };
+
+  context.save();
+  context.strokeStyle = "#1d4ed8";
+  context.fillStyle = "#1d4ed8";
+  context.lineWidth = 4;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(tail.x, tail.y);
+  context.lineTo(tip.x, tip.y);
+  context.stroke();
+  drawArrowHead(context, tail, tip);
+  context.restore();
+}
+
+function drawRestrictedRoadMapSymbol(context: CanvasRenderingContext2D, point: Vec2): void {
+  context.save();
+  context.fillStyle = "#fffbeb";
+  context.strokeStyle = "#d97706";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.moveTo(point.x, point.y - 14);
+  context.lineTo(point.x + 14, point.y);
+  context.lineTo(point.x, point.y + 14);
+  context.lineTo(point.x - 14, point.y);
+  context.closePath();
+  context.fill();
+  context.stroke();
+  context.strokeStyle = "#92400e";
+  context.lineWidth = 3;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(point.x, point.y - 7);
+  context.lineTo(point.x, point.y + 2);
+  context.stroke();
+  context.fillStyle = "#92400e";
+  context.beginPath();
+  context.arc(point.x, point.y + 7, 2, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function drawTurnBanMapSymbol(
+  context: CanvasRenderingContext2D,
+  point: Vec2,
+  turnKind: TurnRestrictionVisual["turnKind"] | undefined
+): void {
   context.save();
   context.fillStyle = "#ffffff";
   context.strokeStyle = "#be123c";
   context.lineWidth = 3;
   context.beginPath();
-  context.arc(signPoint.x, signPoint.y, 13, 0, Math.PI * 2);
+  context.arc(point.x, point.y, 14, 0, Math.PI * 2);
   context.fill();
   context.stroke();
-  context.translate(signPoint.x, signPoint.y);
-  drawTurnArrowSymbol(context, getVisualTurnRestrictionTurnKind(visual));
+  context.translate(point.x, point.y);
+  drawTurnArrowSymbol(context, turnKind ?? "no-left-turn");
   context.strokeStyle = "#be123c";
   context.lineWidth = 3;
+  context.lineCap = "round";
   context.beginPath();
-  context.moveTo(-8, 8);
-  context.lineTo(8, -8);
+  context.moveTo(-9, 9);
+  context.lineTo(9, -9);
+  context.stroke();
+  context.restore();
+}
+
+function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: RestrictionMapVisualItem, point: Vec2): void {
+  if (item.symbol === "disconnected-gap") {
+    context.save();
+    context.fillStyle = "#ffffff";
+    context.strokeStyle = "#dc2626";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.arc(point.x, point.y, 15, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.setLineDash([4, 3]);
+    context.beginPath();
+    context.moveTo(point.x - 9, point.y);
+    context.lineTo(point.x + 9, point.y);
+    context.stroke();
+    context.setLineDash([]);
+    context.fillStyle = "#dc2626";
+    context.beginPath();
+    context.arc(point.x - 9, point.y, 3, 0, Math.PI * 2);
+    context.arc(point.x + 9, point.y, 3, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+    return;
+  }
+
+  context.save();
+  context.fillStyle = "#fee2e2";
+  context.strokeStyle = "#b91c1c";
+  context.lineWidth = 3;
+  context.beginPath();
+  context.arc(point.x, point.y, 16, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+
+  if (item.label.toLowerCase().includes("no entry")) {
+    context.strokeStyle = "#b91c1c";
+    context.lineWidth = 5;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(point.x - 9, point.y);
+    context.lineTo(point.x + 9, point.y);
+    context.stroke();
+  } else {
+    context.strokeStyle = "#b91c1c";
+    context.lineWidth = 4;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(point.x - 7, point.y - 7);
+    context.lineTo(point.x + 7, point.y + 7);
+    context.moveTo(point.x + 7, point.y - 7);
+    context.lineTo(point.x - 7, point.y + 7);
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function drawRestrictionMapVisualItem(
+  context: CanvasRenderingContext2D,
+  item: RestrictionMapVisualItem,
+  viewport: ScreenMapViewport
+): void {
+  const point = mapToScreenPoint(item.point, viewport);
+  const direction = item.direction
+    ? {
+        from: mapToScreenPoint(item.direction.from, viewport),
+        to: mapToScreenPoint(item.direction.to, viewport)
+      }
+    : undefined;
+
+  if (item.symbol === "one-way-arrow") {
+    drawOneWayMapSymbol(context, point, direction);
+    return;
+  }
+
+  if (item.symbol === "no-entry-sign") {
+    drawNoEntryMapSymbol(context, point);
+    return;
+  }
+
+  if (item.symbol === "restricted-road-sign") {
+    drawRestrictedRoadMapSymbol(context, point);
+    return;
+  }
+
+  if (item.symbol === "turn-ban-sign") {
+    drawTurnBanMapSymbol(context, point, item.turnKind);
+    return;
+  }
+
+  drawRouteIssueMapSymbol(context, item, point);
+}
+
+function drawSelectedRestrictionHighlight(
+  context: CanvasRenderingContext2D,
+  highlight: SelectedRestrictionHighlight,
+  viewport: ScreenMapViewport
+): void {
+  const point = mapToScreenPoint(highlight.point, viewport);
+
+  context.save();
+  context.strokeStyle = "#0284c7";
+  context.fillStyle = "rgba(14,165,233,0.12)";
+  context.lineWidth = 4;
+  context.setLineDash([]);
+
+  if (highlight.points.length >= 2) {
+    const screenPoints = highlight.points.map((candidate) => mapToScreenPoint(candidate, viewport));
+
+    context.globalAlpha = 0.86;
+    context.lineWidth = 9;
+    context.beginPath();
+    context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+    for (const screenPoint of screenPoints.slice(1)) {
+      context.lineTo(screenPoint.x, screenPoint.y);
+    }
+
+    context.stroke();
+  }
+
+  context.globalAlpha = 1;
+  context.beginPath();
+  context.arc(point.x, point.y, 24, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.beginPath();
+  context.arc(point.x, point.y, 31, 0, Math.PI * 2);
   context.stroke();
   context.restore();
 }
@@ -505,54 +1387,6 @@ function routeIssueOverlayColour(kind: RouteIssueOverlay["kind"]): string {
   }
 
   return "#dc2626";
-}
-
-function drawRouteIssueBadge(context: CanvasRenderingContext2D, point: Vec2, overlay: RouteIssueOverlay): void {
-  const colour = routeIssueOverlayColour(overlay.kind);
-
-  context.fillStyle = "#ffffff";
-  context.strokeStyle = colour;
-  context.lineWidth = 3;
-  context.beginPath();
-  context.arc(point.x, point.y, overlay.kind === "prohibited-turn" ? 15 : 13, 0, Math.PI * 2);
-  context.fill();
-  context.stroke();
-
-  if (overlay.kind === "disconnected") {
-    context.strokeStyle = colour;
-    context.lineWidth = 3;
-    context.setLineDash([4, 3]);
-    context.beginPath();
-    context.moveTo(point.x - 8, point.y);
-    context.lineTo(point.x + 8, point.y);
-    context.stroke();
-    context.setLineDash([]);
-    context.fillStyle = colour;
-    context.beginPath();
-    context.arc(point.x - 8, point.y, 3, 0, Math.PI * 2);
-    context.arc(point.x + 8, point.y, 3, 0, Math.PI * 2);
-    context.fill();
-    return;
-  }
-
-  if (overlay.kind === "no-entry") {
-    context.strokeStyle = colour;
-    context.lineWidth = 4;
-    context.beginPath();
-    context.moveTo(point.x - 8, point.y);
-    context.lineTo(point.x + 8, point.y);
-    context.stroke();
-    return;
-  }
-
-  context.strokeStyle = colour;
-  context.lineWidth = 4;
-  context.beginPath();
-  context.moveTo(point.x - 7, point.y - 7);
-  context.lineTo(point.x + 7, point.y + 7);
-  context.moveTo(point.x + 7, point.y - 7);
-  context.lineTo(point.x - 7, point.y + 7);
-  context.stroke();
 }
 
 function drawRouteIssueOverlay(
@@ -619,9 +1453,45 @@ function drawRouteIssueOverlay(
     );
   }
 
-  const midpoint = mapToScreenPoint(overlay.midpoint, viewport);
-  drawRouteIssueBadge(context, midpoint, overlay);
+  context.restore();
+}
 
+function drawFastestRouteOverlay(
+  context: CanvasRenderingContext2D,
+  routePoints: readonly Vec2[],
+  viewport: ScreenMapViewport
+): void {
+  if (routePoints.length < 2) {
+    return;
+  }
+
+  const screenPoints = routePoints.map((point) => mapToScreenPoint(point, viewport));
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.strokeStyle = "rgba(255,255,255,0.94)";
+  context.lineWidth = 10;
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.strokeStyle = "#0284c7";
+  context.lineWidth = 5;
+  context.setLineDash([14, 8]);
+  context.beginPath();
+  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+  for (const point of screenPoints.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash([]);
   context.restore();
 }
 
@@ -630,11 +1500,14 @@ function drawRouteCanvas(input: {
   viewport: ScreenMapViewport;
   selectedExercise?: RouteExercise;
   trace: DrawnRouteTrace;
+  routeDraft: DrawnRouteDraft;
+  fastestRoutePoints: readonly Vec2[];
   snapPreview: SnappedRouteTraceResult;
   pipelineResult: DrawnRoutePipelineResult;
   roadRestrictionOverlays: RoadRestrictionOverlay[];
-  turnRestrictionVisuals: TurnRestrictionVisual[];
   routeIssueOverlays: RouteIssueOverlay[];
+  restrictionMapVisualItems: RestrictionMapVisualItem[];
+  selectedRestrictionHighlight: SelectedRestrictionHighlight | null;
 }) {
   const context = input.canvas.getContext("2d");
 
@@ -643,33 +1516,22 @@ function drawRouteCanvas(input: {
   }
 
   context.clearRect(0, 0, input.canvas.width, input.canvas.height);
-  context.fillStyle = "#f8fafc";
+  context.fillStyle = "#eef3f8";
   context.fillRect(0, 0, input.canvas.width, input.canvas.height);
 
   context.lineCap = "round";
   context.lineJoin = "round";
-
-  for (const road of marloweDistrictMap.roads) {
-    const { from, to } = roadEndpoints(road);
-
-    if (!from || !to) {
-      continue;
-    }
-
-    const fromPoint = mapToScreenPoint(from, input.viewport);
-    const toPoint = mapToScreenPoint(to, input.viewport);
-
-    context.strokeStyle = road.isOneWay ? "#c7d2fe" : "#cbd5e1";
-    context.lineWidth = road.isOneWay ? 3 : 2;
-    context.beginPath();
-    context.moveTo(fromPoint.x, fromPoint.y);
-    context.lineTo(toPoint.x, toPoint.y);
-    context.stroke();
-  }
+  drawSyntheticStreetMapBase({
+    context,
+    viewport: input.viewport,
+    selectedExercise: input.selectedExercise
+  });
 
   for (const overlay of input.roadRestrictionOverlays) {
     drawRoadRestrictionOverlay(context, overlay, input.viewport);
   }
+
+  drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport);
 
   input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
     const from = nodeById(movement.fromNodeId);
@@ -686,10 +1548,18 @@ function drawRouteCanvas(input: {
       y: (fromPoint.y + toPoint.y) / 2
     };
 
+    context.strokeStyle = "rgba(255,255,255,0.88)";
+    context.lineWidth = 11;
+    context.globalAlpha = 0.84;
+    context.beginPath();
+    context.moveTo(fromPoint.x, fromPoint.y);
+    context.lineTo(toPoint.x, toPoint.y);
+    context.stroke();
+
     context.strokeStyle = movement.directedEdgeId ? "#7c3aed" : "#ef4444";
     context.fillStyle = movement.directedEdgeId ? "#7c3aed" : "#ef4444";
-    context.lineWidth = 7;
-    context.globalAlpha = 0.45;
+    context.lineWidth = 6;
+    context.globalAlpha = 0.7;
     context.beginPath();
     context.moveTo(fromPoint.x, fromPoint.y);
     context.lineTo(toPoint.x, toPoint.y);
@@ -706,22 +1576,26 @@ function drawRouteCanvas(input: {
     context.stroke();
   });
 
-  for (const visual of input.turnRestrictionVisuals) {
-    drawTurnRestrictionVisual(context, visual, input.viewport);
-  }
-
   for (const overlay of input.routeIssueOverlays) {
     drawRouteIssueOverlay(context, overlay, input.viewport);
+  }
+
+  for (const item of input.restrictionMapVisualItems) {
+    drawRestrictionMapVisualItem(context, item, input.viewport);
+  }
+
+  if (input.selectedRestrictionHighlight) {
+    drawSelectedRestrictionHighlight(context, input.selectedRestrictionHighlight, input.viewport);
   }
 
   for (const node of marloweDistrictMap.nodes) {
     const point = mapToScreenPoint(node, input.viewport);
 
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = "#64748b";
+    context.fillStyle = "rgba(255,255,255,0.72)";
+    context.strokeStyle = "rgba(100,116,139,0.28)";
     context.lineWidth = 1;
     context.beginPath();
-    context.arc(point.x, point.y, 4, 0, Math.PI * 2);
+    context.arc(point.x, point.y, 2.25, 0, Math.PI * 2);
     context.fill();
     context.stroke();
   }
@@ -741,8 +1615,10 @@ function drawRouteCanvas(input: {
     });
   });
 
-  if (input.selectedExercise) {
-    input.selectedExercise.stops.forEach((stop, index) => {
+  const selectedExercise = input.selectedExercise;
+
+  if (selectedExercise) {
+    selectedExercise.stops.forEach((stop, index) => {
       const node = resolveStopNode(stop);
 
       if (!node) {
@@ -750,15 +1626,23 @@ function drawRouteCanvas(input: {
       }
 
       const point = mapToScreenPoint(node, input.viewport);
+      const role =
+        index === 0 ? "start" : index === selectedExercise.stops.length - 1 ? "finish" : "checkpoint";
 
-      drawNodeMarker({
+      drawExerciseStopMarker({
         context,
         point,
-        fillStyle: index === 0 ? "#2563eb" : "#f97316",
-        radius: 8
+        role,
+        index
       });
     });
   }
+
+  drawSyntheticStopLabels({
+    context,
+    viewport: input.viewport,
+    selectedExercise: input.selectedExercise
+  });
 
   if (input.snapPreview.snappedPoints.length > 0) {
     context.strokeStyle = "#22c55e";
@@ -778,20 +1662,34 @@ function drawRouteCanvas(input: {
     context.setLineDash([]);
   }
 
-  if (input.trace.points.length > 0) {
+  const visibleRawStrokes =
+    input.routeDraft.strokes.length > 0
+      ? input.routeDraft.strokes
+      : input.trace.points.length > 0
+        ? [{ points: input.trace.points }]
+        : [];
+
+  if (visibleRawStrokes.length > 0) {
     context.strokeStyle = "#ea580c";
     context.lineWidth = 4;
-    input.trace.points.forEach((point, index) => {
-      const screenPoint = mapToScreenPoint(point, input.viewport);
 
-      if (index === 0) {
-        context.beginPath();
-        context.moveTo(screenPoint.x, screenPoint.y);
-      } else {
-        context.lineTo(screenPoint.x, screenPoint.y);
+    visibleRawStrokes.forEach((stroke) => {
+      if (stroke.points.length === 0) {
+        return;
       }
+
+      context.beginPath();
+      stroke.points.forEach((point, index) => {
+        const screenPoint = mapToScreenPoint(point, input.viewport);
+
+        if (index === 0) {
+          context.moveTo(screenPoint.x, screenPoint.y);
+        } else {
+          context.lineTo(screenPoint.x, screenPoint.y);
+        }
+      });
+      context.stroke();
     });
-    context.stroke();
   }
 
   input.snapPreview.snappedPoints.forEach((point) => {
@@ -820,17 +1718,69 @@ function readableError(caughtError: unknown): string {
 
 export function RouteRunnerClient() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastSaveAttemptKeyRef = useRef<string | null>(null);
+  const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const [exerciseId, setExerciseId] = useState(marloweDistrictRouteExercises[0]?.id ?? "");
   const [nodeIdsText, setNodeIdsText] = useState("");
   const [roadIdsText, setRoadIdsText] = useState("");
   const [result, setResult] = useState<RunRouteExerciseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [drawnTrace, setDrawnTrace] = useState<DrawnRouteTrace>(() => createDrawnRouteTrace());
+  const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
   const [isDrawing, setIsDrawing] = useState(false);
   const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
   const [showTurnRestrictions, setShowTurnRestrictions] = useState(true);
+  const [fastestRouteRevealState, setFastestRouteRevealState] = useState<FastestRouteRevealState>(() =>
+    createHiddenFastestRouteRevealState()
+  );
+  const [mapViewportState, setMapViewportState] = useState<MapViewportState>(() => createDefaultMapViewportState());
+  const [isPanningMap, setIsPanningMap] = useState(false);
+  const [selectedRestrictionReviewItemId, setSelectedRestrictionReviewItemId] = useState<string | null>(null);
+  const [weakAreaProfile, setWeakAreaProfile] = useState<LearnerWeakAreaProfile>(() => readStoredWeakAreaProfile());
+  const [lastProfileAttemptKey, setLastProfileAttemptKey] = useState<string | null>(null);
+  const [attemptHistory, setAttemptHistory] = useState<RouteAttemptHistoryState>(() => createRouteAttemptHistoryState());
+  const [lastHistoryAttemptKey, setLastHistoryAttemptKey] = useState<string | null>(null);
+  const [attemptSaveStatus, setAttemptSaveStatus] = useState<RouteAttemptSaveStatus>({
+    state: "idle",
+    message: null
+  });
+  const [savedHistoryRefreshKey, setSavedHistoryRefreshKey] = useState(0);
+  const [savedAttemptHistory, setSavedAttemptHistory] = useState<SavedAttemptHistoryState>({
+    state: "loading",
+    attempts: [],
+    message: "Loading saved attempts...",
+    selectedAttemptId: null
+  });
+  const [adaptiveLauncherState, setAdaptiveLauncherState] = useState<AdaptivePracticeLauncherState>(() =>
+    readStoredAdaptivePracticeLauncherState()
+  );
+  const [adaptiveLauncherMessage, setAdaptiveLauncherMessage] = useState<string | null>(null);
+  const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
 
-  const viewport = useMemo(() => createViewport(), []);
+  const baseViewport = useMemo(() => createViewport(), []);
+  const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
+  const canZoomIn = canZoomInMapView(mapViewportState);
+  const canZoomOut = canZoomOutMapView(mapViewportState);
+  const mapInteractionMode = mapViewportState.interactionMode;
+  const isPanMode = mapInteractionMode === "pan";
+  const exerciseAvailabilityById = useMemo(
+    () =>
+      Object.fromEntries(
+        validateExerciseReachabilityList({
+          map: marloweDistrictMap,
+          exercises: marloweDistrictRouteExercises
+        }).map((availability) => [availability.exerciseId, availability])
+      ) as Record<string, ExerciseRouteAvailability>,
+    []
+  );
+  const drawnTrace = useMemo(() => routeDraftToDrawnRouteTrace(drawnRouteDraft), [drawnRouteDraft]);
+  const hasUndoableDrawnStroke = hasUndoableRouteStroke(drawnRouteDraft);
+  const exerciseTitleById = useMemo(
+    () =>
+      Object.fromEntries(
+        marloweDistrictRouteExercises.map((exercise) => [exercise.id, exercise.title])
+      ) as Record<string, string>,
+    []
+  );
   const visibleRoadRestrictionOverlays = useMemo(
     () => (showRoadRestrictions ? ROAD_RESTRICTION_OVERLAYS : []),
     [showRoadRestrictions]
@@ -839,11 +1789,44 @@ export function RouteRunnerClient() {
     () => (showTurnRestrictions ? TURN_RESTRICTION_VISUALS : []),
     [showTurnRestrictions]
   );
-  const turnRestrictionDisplayItems = useMemo(() => getTurnRestrictionDisplayItems(TURN_RESTRICTION_VISUALS), []);
   const selectedExercise = useMemo<RouteExercise | undefined>(
     () => marloweDistrictRouteExercises.find((exercise) => exercise.id === exerciseId),
     [exerciseId]
   );
+  const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
+  const selectedExerciseIsInvalid = selectedExerciseAvailability ? !selectedExerciseAvailability.isValid : false;
+  const fastestRouteOverlay = useMemo(
+    () =>
+      buildFastestRouteOverlay({
+        map: marloweDistrictMap,
+        exercise: selectedExercise,
+        revealState: fastestRouteRevealState
+      }),
+    [fastestRouteRevealState, selectedExercise]
+  );
+  const selectedExerciseMetadata = useMemo(
+    () => getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, exerciseId),
+    [exerciseId]
+  );
+  const selectedMapMetadata = useMemo(
+    () => getMapMetadataForExercise(MARLOWE_DISTRICT_METADATA_CATALOGUE, exerciseId),
+    [exerciseId]
+  );
+  const selectedSyntheticScenario = useMemo(
+    () => getRealisticSyntheticScenarioForExercise(exerciseId),
+    [exerciseId]
+  );
+  const selectedExerciseIndex = useMemo(
+    () => marloweDistrictRouteExercises.findIndex((exercise) => exercise.id === exerciseId),
+    [exerciseId]
+  );
+  const selectedStartStop = selectedExercise?.stops[0] ?? null;
+  const selectedCheckpointStops = selectedExercise ? selectedExercise.stops.slice(1, -1) : [];
+  const selectedFinishStop = selectedExercise ? selectedExercise.stops[selectedExercise.stops.length - 1] : null;
+  const exercisePositionLabel =
+    selectedExerciseIndex >= 0
+      ? `Exercise ${selectedExerciseIndex + 1} of ${marloweDistrictRouteExercises.length}`
+      : "Exercise not selected";
   const drawnPipelineResult = useMemo(() => {
     const gestureValidation = validateDrawnRouteGesture(drawnTrace, {
       minimumRawPointCount: MIN_DRAWN_GESTURE_POINT_COUNT,
@@ -857,6 +1840,10 @@ export function RouteRunnerClient() {
       });
     }
 
+    if (selectedExerciseAvailability && !selectedExerciseAvailability.isValid && drawnTrace.points.length > 0) {
+      return invalidExercisePipelineResult(drawnTrace, selectedExerciseAvailability);
+    }
+
     return runDrawnRoutePipeline({
       map: marloweDistrictMap,
       exercises: marloweDistrictRouteExercises,
@@ -868,7 +1855,7 @@ export function RouteRunnerClient() {
         maximumSnapDistance: SNAP_TOLERANCE
       }
     });
-  }, [drawnTrace, exerciseId]);
+  }, [drawnTrace, exerciseId, selectedExerciseAvailability]);
   const snapPreview = drawnPipelineResult.snappedRoute ?? emptySnapPreview();
   const drawnDisplayStatus = getDrawnPipelineDisplayStatus(drawnPipelineResult, isDrawing);
   const pipelineStageBadges = getPipelineStageBadges(drawnPipelineResult, isDrawing);
@@ -883,6 +1870,15 @@ export function RouteRunnerClient() {
   const routeIssueOverlays = useMemo(
     () => (isDrawing ? [] : buildRouteIssueOverlays(marloweDistrictMap, drawnPipelineResult)),
     [drawnPipelineResult, isDrawing]
+  );
+  const restrictionMapVisualItems = useMemo(
+    () =>
+      buildRestrictionMapVisualItems({
+        roadRestrictionOverlays: visibleRoadRestrictionOverlays,
+        turnRestrictionVisuals: visibleTurnRestrictionVisuals,
+        routeIssueOverlays
+      }),
+    [routeIssueOverlays, visibleRoadRestrictionOverlays, visibleTurnRestrictionVisuals]
   );
   const illegalDrawnMovements = useMemo(
     () =>
@@ -904,6 +1900,117 @@ export function RouteRunnerClient() {
       }),
     [drawnPipelineResult, illegalDrawnMovements, isDrawing]
   );
+  const selectedRestrictionReviewItem = useMemo<RestrictionFocusReviewItem | null>(() => {
+    if (!selectedRestrictionReviewItemId) {
+      return null;
+    }
+
+    return (
+      [...drawnAttemptReview.illegalMovements, ...drawnAttemptReview.missedRestrictions].find(
+        (item) => item.id === selectedRestrictionReviewItemId
+      ) ?? null
+    );
+  }, [drawnAttemptReview.illegalMovements, drawnAttemptReview.missedRestrictions, selectedRestrictionReviewItemId]);
+  const selectedRestrictionFocusTarget = useMemo(
+    () =>
+      resolveRestrictionFocusTarget({
+        reviewItem: selectedRestrictionReviewItem,
+        visualItems: restrictionMapVisualItems
+      }),
+    [restrictionMapVisualItems, selectedRestrictionReviewItem]
+  );
+  const selectedRestrictionHighlight = useMemo(
+    () => buildSelectedRestrictionHighlight(selectedRestrictionFocusTarget),
+    [selectedRestrictionFocusTarget]
+  );
+  const weakAreaAttemptKey = useMemo(() => {
+    if (isDrawing || drawnTrace.points.length === 0 || drawnAttemptReview.status === "pending") {
+      return null;
+    }
+
+    const firstPoint = drawnTrace.points[0];
+    const lastPoint = drawnTrace.points[drawnTrace.points.length - 1];
+
+    return [
+      exerciseId,
+      drawnPipelineResult.status,
+      drawnAttemptReview.status,
+      drawnAttemptReview.scoreLabel,
+      drawnTrace.points.length,
+      `${firstPoint.x.toFixed(1)},${firstPoint.y.toFixed(1)}`,
+      `${lastPoint.x.toFixed(1)},${lastPoint.y.toFixed(1)}`,
+      drawnAttemptReview.recommendedPracticeQueue.map((item) => item.id).join("|"),
+      drawnPipelineResult.warnings.map((warning) => warning.code).join("|")
+    ].join("::");
+  }, [drawnAttemptReview, drawnPipelineResult.status, drawnPipelineResult.warnings, drawnTrace.points, exerciseId, isDrawing]);
+  const strongestWeakAreas = useMemo(() => getStrongestWeakAreas(weakAreaProfile, 4), [weakAreaProfile]);
+  const weakAreaPracticeFocus = useMemo(() => getLearnerWeakAreaPracticeFocus(weakAreaProfile), [weakAreaProfile]);
+  const attemptHistoryInsights = useMemo(() => buildAttemptHistoryInsights(attemptHistory), [attemptHistory]);
+  const selectedHistoryItem = useMemo(
+    () => getSelectedRouteAttemptHistoryItem(attemptHistory),
+    [attemptHistory]
+  );
+  const selectedSavedAttempt = useMemo(
+    () => savedAttemptHistory.attempts.find((attempt) => attempt.id === savedAttemptHistory.selectedAttemptId) ?? null,
+    [savedAttemptHistory]
+  );
+  const adaptivePracticeQueue = useMemo(
+    () =>
+      buildAdaptivePracticeQueue({
+        latestReview: drawnAttemptReview,
+        weakAreaProfile,
+        attemptHistoryInsights,
+        savedAttempts: savedAttemptHistory.attempts,
+        outcomeFeedbackHistory: adaptiveLauncherState.outcomeFeedbackHistory,
+        availableExercises: ADAPTIVE_PRACTICE_EXERCISES
+      }),
+    [
+      adaptiveLauncherState.outcomeFeedbackHistory,
+      attemptHistoryInsights,
+      drawnAttemptReview,
+      savedAttemptHistory.attempts,
+      weakAreaProfile
+    ]
+  );
+  const latestAdaptiveOutcomeFeedback = useMemo(
+    () => getLatestAdaptivePracticeOutcomeFeedback(adaptiveLauncherState),
+    [adaptiveLauncherState]
+  );
+  const latestAdaptiveOutcomePracticeItem = useMemo(
+    () =>
+      latestAdaptiveOutcomeFeedback
+        ? adaptivePracticeQueue.items.find((item) => item.id === latestAdaptiveOutcomeFeedback.practiceItemId) ?? null
+        : null,
+    [adaptivePracticeQueue.items, latestAdaptiveOutcomeFeedback]
+  );
+  const activeAdaptivePracticeItem = useMemo(
+    () =>
+      adaptivePracticeQueue.items.find(
+        (item) => item.id === adaptiveLauncherState.activeAdaptivePracticeItemId
+      ) ?? null,
+    [adaptiveLauncherState.activeAdaptivePracticeItemId, adaptivePracticeQueue.items]
+  );
+  const recommendedAdaptivePracticeItems = useMemo(
+    () =>
+      adaptivePracticeQueue.items.filter(
+        (item) => getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id) === "recommended"
+      ),
+    [adaptiveLauncherState, adaptivePracticeQueue.items]
+  );
+  const skippedAdaptivePracticeItems = useMemo(
+    () =>
+      adaptivePracticeQueue.items.filter((item) => getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id) === "skipped"),
+    [adaptiveLauncherState, adaptivePracticeQueue.items]
+  );
+  const completedAdaptivePracticeItems = useMemo(
+    () =>
+      adaptivePracticeQueue.items.filter((item) => {
+        const status = getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id);
+
+        return status === "completed" || status === "dismissed";
+      }),
+    [adaptiveLauncherState, adaptivePracticeQueue.items]
+  );
   const hasUsableDrawnMatch =
     drawnPipelineResult.matchResult?.status === "matched" &&
     drawnPipelineResult.matchResult.isReadyForRunRouteExercise;
@@ -918,6 +2025,174 @@ export function RouteRunnerClient() {
   );
 
   useEffect(() => {
+    if (selectedRestrictionReviewItemId && !selectedRestrictionReviewItem) {
+      setSelectedRestrictionReviewItemId(null);
+    }
+  }, [selectedRestrictionReviewItem, selectedRestrictionReviewItemId]);
+
+  useEffect(() => {
+    if (!weakAreaAttemptKey || weakAreaAttemptKey === lastProfileAttemptKey) {
+      return;
+    }
+
+    setWeakAreaProfile((currentProfile) => updateLearnerWeakAreaProfile(currentProfile, drawnAttemptReview));
+    setLastProfileAttemptKey(weakAreaAttemptKey);
+  }, [drawnAttemptReview, lastProfileAttemptKey, weakAreaAttemptKey]);
+
+  useEffect(() => {
+    if (!weakAreaAttemptKey || weakAreaAttemptKey === lastHistoryAttemptKey) {
+      return;
+    }
+
+    setAttemptHistory((currentHistory) => appendRouteAttemptToHistory(currentHistory, drawnAttemptReview));
+    setLastHistoryAttemptKey(weakAreaAttemptKey);
+  }, [drawnAttemptReview, lastHistoryAttemptKey, weakAreaAttemptKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setSavedAttemptHistory((currentHistory) => ({
+      ...currentHistory,
+      state: "loading",
+      message: "Loading saved attempts..."
+    }));
+
+    listRouteAttempts(
+      {
+        userId: null,
+        limit: 10
+      },
+      {
+        exerciseTitleById
+      }
+    )
+      .then((historyResult) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (historyResult.error) {
+          setSavedAttemptHistory({
+            state: "error",
+            attempts: [],
+            message: historyResult.reason ?? historyResult.error,
+            selectedAttemptId: null
+          });
+          return;
+        }
+
+        setSavedAttemptHistory((currentHistory) => {
+          const selectedAttemptStillExists = historyResult.attempts.some(
+            (attempt) => attempt.id === currentHistory.selectedAttemptId
+          );
+
+          return {
+            state: "loaded",
+            attempts: historyResult.attempts,
+            message: historyResult.reason ?? null,
+            selectedAttemptId: selectedAttemptStillExists
+              ? currentHistory.selectedAttemptId
+              : historyResult.attempts[0]?.id ?? null
+          };
+        });
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        setSavedAttemptHistory({
+          state: "error",
+          attempts: [],
+          message: readableError(caughtError),
+          selectedAttemptId: null
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [exerciseTitleById, savedHistoryRefreshKey]);
+
+  useEffect(() => {
+    if (!weakAreaAttemptKey) {
+      setAttemptSaveStatus((currentStatus) =>
+        currentStatus.state === "idle"
+          ? currentStatus
+          : {
+              state: "idle",
+              message: null
+            }
+      );
+      return;
+    }
+
+    if (weakAreaAttemptKey === lastSaveAttemptKeyRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    lastSaveAttemptKeyRef.current = weakAreaAttemptKey;
+
+    setAttemptSaveStatus({
+      state: "saving",
+      message: "Saving route attempt..."
+    });
+
+    saveRouteAttempt({
+      userId: null,
+      exerciseId,
+      review: drawnAttemptReview,
+      score: drawnPipelineResult.exerciseResult?.score ?? null,
+      matchedRoute: matchedRoutePayloadForStorage(drawnPipelineResult)
+    })
+      .then((saveResult) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (saveResult.persisted) {
+          setAttemptSaveStatus({
+            state: "saved",
+            message: "Attempt saved.",
+            id: saveResult.id
+          });
+          setSavedHistoryRefreshKey((currentKey) => currentKey + 1);
+          return;
+        }
+
+        setAttemptSaveStatus({
+          state: "failed",
+          message: saveResult.reason
+            ? `Attempt reviewed, but could not be saved. ${saveResult.reason}`
+            : "Attempt reviewed, but could not be saved."
+        });
+      })
+      .catch((caughtError: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        setAttemptSaveStatus({
+          state: "failed",
+          message: `Attempt reviewed, but could not be saved. ${readableError(caughtError)}`
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [drawnAttemptReview, drawnPipelineResult, exerciseId, weakAreaAttemptKey]);
+
+  useEffect(() => {
+    writeStoredWeakAreaProfile(weakAreaProfile);
+  }, [weakAreaProfile]);
+
+  useEffect(() => {
+    writeStoredAdaptivePracticeLauncherState(adaptiveLauncherState);
+  }, [adaptiveLauncherState]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -929,21 +2204,27 @@ export function RouteRunnerClient() {
       viewport,
       selectedExercise,
       trace: drawnTrace,
+      routeDraft: drawnRouteDraft,
+      fastestRoutePoints: fastestRouteOverlay.status === "available" ? fastestRouteOverlay.points : [],
       snapPreview,
       pipelineResult: drawnPipelineResult,
       roadRestrictionOverlays: visibleRoadRestrictionOverlays,
-      turnRestrictionVisuals: visibleTurnRestrictionVisuals,
-      routeIssueOverlays
+      routeIssueOverlays,
+      restrictionMapVisualItems,
+      selectedRestrictionHighlight
     });
   }, [
     drawnPipelineResult,
+    drawnRouteDraft,
     drawnTrace,
+    fastestRouteOverlay,
+    restrictionMapVisualItems,
     routeIssueOverlays,
     selectedExercise,
+    selectedRestrictionHighlight,
     snapPreview,
     viewport,
-    visibleRoadRestrictionOverlays,
-    visibleTurnRestrictionVisuals
+    visibleRoadRestrictionOverlays
   ]);
 
   function pointerToMapPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: number): Vec2 | null {
@@ -967,20 +2248,176 @@ export function RouteRunnerClient() {
 
   function clearDrawnAttempt() {
     setIsDrawing(false);
-    setDrawnTrace(createDrawnRouteTrace());
+    setDrawnRouteDraft(clearRouteDraft());
+    setSelectedRestrictionReviewItemId(null);
+  }
+
+  function toggleFastestRouteOverlay() {
+    setFastestRouteRevealState((currentState) => toggleFastestRouteReveal(currentState));
+  }
+
+  function zoomInRouteMap() {
+    setMapViewportState((currentState) => zoomInMapView(currentState, undefined, baseViewport));
+  }
+
+  function zoomOutRouteMap() {
+    setMapViewportState((currentState) => zoomOutMapView(currentState, undefined, baseViewport));
+  }
+
+  function resetRouteMapView() {
+    panDragPointRef.current = null;
+    setIsPanningMap(false);
+    setMapViewportState(resetMapViewport());
+  }
+
+  function setRouteMapInteractionMode(interactionMode: MapInteractionMode) {
+    panDragPointRef.current = null;
+    setIsPanningMap(false);
+    setIsDrawing(false);
+    setDrawnRouteDraft((currentDraft) =>
+      currentDraft.activeStrokeIndex === null ? currentDraft : finishRouteStroke(currentDraft)
+    );
+    setMapViewportState((currentState) => setMapInteractionMode(currentState, interactionMode));
+  }
+
+  function undoLastDrawnStroke() {
+    setIsDrawing(false);
+    setDrawnRouteDraft((currentDraft) => undoLastRouteStroke(currentDraft));
+    setSelectedRestrictionReviewItemId(null);
+  }
+
+  function submitDrawnAttempt() {
+    setIsDrawing(false);
+  }
+
+  function resetWeakAreaProfile() {
+    setWeakAreaProfile(createEmptyLearnerWeakAreaProfile());
+    setLastProfileAttemptKey(null);
+  }
+
+  function selectHistoryAttempt(attemptNumber: number) {
+    setAttemptHistory((currentHistory) => selectRouteAttemptHistoryItem(currentHistory, attemptNumber));
+  }
+
+  function refreshSavedAttemptHistory() {
+    setSavedHistoryRefreshKey((currentKey) => currentKey + 1);
+  }
+
+  function selectSavedAttempt(attemptId: string) {
+    setSavedAttemptHistory((currentHistory) => ({
+      ...currentHistory,
+      selectedAttemptId: attemptId
+    }));
+  }
+
+  function resetCurrentRouteAttemptState() {
+    setNodeIdsText("");
+    setRoadIdsText("");
+    setResult(null);
+    setError(null);
+    setAttemptSaveStatus({
+      state: "idle",
+      message: null
+    });
+    lastSaveAttemptKeyRef.current = null;
+    setFastestRouteRevealState(hideFastestRouteReveal());
+    clearDrawnAttempt();
+  }
+
+  function handleStartAdaptivePractice(item: AdaptivePracticeQueueItem) {
+    const nowIso = new Date().toISOString();
+    const linkedExerciseId = launchableRouteExerciseId(item);
+    const linkedExercise = linkedExerciseId
+      ? marloweDistrictRouteExercises.find((exercise) => exercise.id === linkedExerciseId)
+      : null;
+
+    setAdaptiveLauncherState((currentState) => startAdaptivePracticeItem(currentState, item, nowIso));
+    resetCurrentRouteAttemptState();
+
+    if (linkedExercise) {
+      panDragPointRef.current = null;
+      setIsPanningMap(false);
+      setMapViewportState(resetMapViewport());
+      setExerciseId(linkedExercise.id);
+      setAdaptiveLauncherMessage(
+        `Starting: ${item.title}. Chosen because ${item.reasons[0] ?? item.explanation} Focus: ${item.practiceFocus}`
+      );
+      return;
+    }
+
+    setAdaptiveLauncherMessage(
+      `Starting: ${item.title}. No linked exercise is available yet, so the current exercise stayed selected.`
+    );
+  }
+
+  function handleSkipAdaptivePractice(itemId: string) {
+    setAdaptiveLauncherState((currentState) => skipAdaptivePracticeItem(currentState, itemId));
+    setAdaptiveLauncherMessage("Recommendation skipped. You can restart it from the skipped section.");
+  }
+
+  function handleDismissAdaptivePractice(itemId: string) {
+    setAdaptiveLauncherState((currentState) => dismissAdaptivePracticeItem(currentState, itemId));
+    setAdaptiveLauncherMessage("Recommendation marked as not useful.");
+  }
+
+  function handleCompleteAdaptivePractice(item: AdaptivePracticeQueueItem) {
+    const completedAt = new Date().toISOString();
+    const feedback = buildAdaptivePracticeOutcomeFeedback({
+      practiceItem: item,
+      exerciseId: launchableRouteExerciseId(item) ?? exerciseId,
+      completedAt,
+      review: drawnAttemptReview
+    });
+
+    setAdaptiveLauncherState((currentState) =>
+      appendAdaptivePracticeOutcomeFeedback(completeAdaptivePracticeItem(currentState, item.id), feedback)
+    );
+    setAdaptiveLauncherMessage(summarizeAdaptivePracticeOutcomeFeedback(feedback));
+  }
+
+  function handleUndoAdaptivePracticeStatus(itemId: string) {
+    setAdaptiveLauncherState((currentState) => undoAdaptivePracticeItemStatus(currentState, itemId));
+    setAdaptiveLauncherMessage("Practice item status cleared.");
+  }
+
+  function resetAdaptivePracticeLauncher() {
+    setAdaptiveLauncherState(createEmptyAdaptivePracticeLauncherState());
+    setAdaptiveLauncherMessage("Adaptive practice launcher reset.");
   }
 
   function handleExerciseChange(nextExerciseId: string) {
     setExerciseId(nextExerciseId);
     setResult(null);
     setError(null);
+    panDragPointRef.current = null;
+    setIsPanningMap(false);
+    setMapViewportState(resetMapViewport());
+    setFastestRouteRevealState(hideFastestRouteReveal());
     clearDrawnAttempt();
+  }
+
+  function toggleRestrictionReviewFocus(item: RestrictionFocusReviewItem) {
+    setSelectedRestrictionReviewItemId((currentId) => (currentId === item.id ? null : item.id));
   }
 
   function handlePointerDown(event: PointerEvent<HTMLCanvasElement>) {
     const canvas = event.currentTarget;
 
     if (!canvas) {
+      return;
+    }
+
+    if (isPanMode) {
+      if (canvas.isConnected) {
+        canvas.setPointerCapture(event.pointerId);
+      }
+
+      panDragPointRef.current = {
+        clientX: event.clientX,
+        clientY: event.clientY
+      };
+      setIsPanningMap(true);
+      setIsDrawing(false);
       return;
     }
 
@@ -995,10 +2432,38 @@ export function RouteRunnerClient() {
     }
 
     setIsDrawing(true);
-    setDrawnTrace(createDrawnRouteTrace([point]));
+    setSelectedRestrictionReviewItemId(null);
+    setDrawnRouteDraft((currentDraft) => startRouteStroke(currentDraft, point));
   }
 
   function handlePointerMove(event: PointerEvent<HTMLCanvasElement>) {
+    if (isPanningMap) {
+      const previousPoint = panDragPointRef.current;
+      const currentPoint = {
+        clientX: event.clientX,
+        clientY: event.clientY
+      };
+
+      if (!previousPoint) {
+        panDragPointRef.current = currentPoint;
+        return;
+      }
+
+      panDragPointRef.current = currentPoint;
+
+      setMapViewportState((currentState) =>
+        applyPanToMapView(
+          currentState,
+          {
+            deltaX: currentPoint.clientX - previousPoint.clientX,
+            deltaY: currentPoint.clientY - previousPoint.clientY
+          },
+          baseViewport
+        )
+      );
+      return;
+    }
+
     if (!isDrawing) {
       return;
     }
@@ -1015,10 +2480,23 @@ export function RouteRunnerClient() {
       return;
     }
 
-    setDrawnTrace((currentTrace) => appendDrawnRoutePoint(currentTrace, point, 3));
+    setDrawnRouteDraft((currentDraft) => appendRouteDraftPoint(currentDraft, point, 3));
   }
 
   function handlePointerEnd(event: PointerEvent<HTMLCanvasElement>) {
+    if (isPanningMap) {
+      panDragPointRef.current = null;
+      setIsPanningMap(false);
+
+      const canvas = event.currentTarget;
+
+      if (canvas?.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId);
+      }
+
+      return;
+    }
+
     if (!isDrawing) {
       return;
     }
@@ -1026,15 +2504,18 @@ export function RouteRunnerClient() {
     const canvas = event.currentTarget;
 
     if (!canvas) {
+      setDrawnRouteDraft((currentDraft) => finishRouteStroke(currentDraft));
       setIsDrawing(false);
       return;
     }
 
     const point = pointerToMapPoint(canvas, event.clientX, event.clientY);
 
-    if (point) {
-      setDrawnTrace((currentTrace) => appendDrawnRoutePoint(currentTrace, point, 3));
-    }
+    setDrawnRouteDraft((currentDraft) => {
+      const nextDraft = point ? appendRouteDraftPoint(currentDraft, point, 3) : currentDraft;
+
+      return finishRouteStroke(nextDraft);
+    });
 
     setIsDrawing(false);
 
@@ -1043,9 +2524,34 @@ export function RouteRunnerClient() {
     }
   }
 
+  function handlePointerLeave(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isPanningMap) {
+      return;
+    }
+
+    panDragPointRef.current = null;
+    setIsPanningMap(false);
+
+    const canvas = event.currentTarget;
+
+    if (canvas?.hasPointerCapture(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId);
+    }
+  }
+
   function handleRunRoute() {
     setResult(null);
     setError(null);
+
+    if (selectedExerciseAvailability && !selectedExerciseAvailability.isValid) {
+      setError(
+        [
+          selectedExerciseAvailability.reason ?? INVALID_EXERCISE_ROUTE_MESSAGE,
+          ...selectedExerciseAvailability.errors
+        ].join(" ")
+      );
+      return;
+    }
 
     try {
       const runResult = runRouteExercise({
@@ -1064,29 +2570,193 @@ export function RouteRunnerClient() {
     }
   }
 
+  function renderAdaptivePracticeLauncherItem(item: AdaptivePracticeQueueItem, label: string) {
+    const status = getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id);
+    const sourceLabels = adaptiveSourceSignalLabels(item.sourceSignals);
+    const linkedExercise = linkedAdaptiveExercise(item);
+    const linkedExerciseId = launchableRouteExerciseId(item);
+    const difficulty = linkedExercise?.difficulty ?? null;
+
+    return (
+      <li
+        key={item.id}
+        className={`rounded-md border bg-white/85 p-3 ${
+          status === "active" ? "border-blue-300 ring-2 ring-blue-100" : "border-current/10"
+        }`}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide opacity-60">{label}</p>
+            <h5 className="mt-1 font-semibold">{item.title}</h5>
+            <p className="mt-1 text-xs leading-5">{item.explanation}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptivePriorityClass(
+                item.priority
+              )}`}
+            >
+              {item.priority} - {item.score}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveLauncherStatusClass(
+                status
+              )}`}
+            >
+              {adaptiveLauncherStatusLabel(status)}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveDifficultyClass(
+                difficulty
+              )}`}
+            >
+              {difficulty ?? "difficulty tbc"}
+            </span>
+          </div>
+        </div>
+        <dl className="mt-3 grid gap-2 text-xs leading-5 md:grid-cols-2">
+          <div>
+            <dt className="font-semibold">Practice focus</dt>
+            <dd>{item.practiceFocus}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Weak areas targeted</dt>
+            <dd>{adaptiveWeakAreaLabel(item)}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Linked exercise</dt>
+            <dd>{linkedExerciseId ? `${linkedExercise?.title ?? linkedExerciseId} (${linkedExerciseId})` : "No linked exercise yet"}</dd>
+          </div>
+          <div>
+            <dt className="font-semibold">Signals</dt>
+            <dd>{sourceLabels.length > 0 ? sourceLabels.join(", ") : "default queue item"}</dd>
+          </div>
+        </dl>
+        <div className="mt-3">
+          <p className="text-xs font-semibold">Reasons</p>
+          <ul className="mt-1 list-inside list-disc space-y-1 text-xs leading-5">
+            {item.reasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => handleStartAdaptivePractice(item)}
+            className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-950"
+          >
+            {status === "active" ? "Restart practice" : "Start practice"}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSkipAdaptivePractice(item.id)}
+            className="rounded-md border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-950"
+          >
+            Skip
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDismissAdaptivePractice(item.id)}
+            className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
+          >
+            Mark as not useful
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCompleteAdaptivePractice(item)}
+            className="rounded-md border border-green-200 px-3 py-1 text-xs font-semibold text-green-950"
+          >
+            Mark completed
+          </button>
+          {status !== "recommended" ? (
+            <button
+              type="button"
+              onClick={() => handleUndoAdaptivePracticeStatus(item.id)}
+              className="rounded-md border border-current/20 px-3 py-1 text-xs font-semibold"
+            >
+              Undo status
+            </button>
+          ) : null}
+        </div>
+      </li>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Developer route runner</p>
-            <h1 className="mt-2 text-2xl font-bold text-slate-950">Marlowe District route exercise runner</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              This debug page runs manual node and road ID selections through the Stage 55 exercise runner. It also
-              captures raw drawn route traces and runs them through the Stage 63.5 drawing, snapping, matching, and
-              scoring pipeline.
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">TOPOPASS / Route Runner</p>
+            <h1 className="mt-1 text-xl font-bold text-slate-950">
+              {selectedExercise?.title ?? "Marlowe District route exercise runner"}
+            </h1>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              {exercisePositionLabel}
+              {selectedExerciseMetadata ? ` - ${selectedExerciseMetadata.difficulty} - ${selectedExerciseMetadata.estimatedMinutes} min` : ""}
             </p>
           </div>
-          <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
-            Map: {marloweDistrictMap.name}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+              Elapsed --:--
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={undoLastDrawnStroke}
+                disabled={!hasUndoableDrawnStroke}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                onClick={clearDrawnAttempt}
+                disabled={drawnTrace.points.length === 0 && !isDrawing}
+                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={submitDrawnAttempt}
+                disabled={drawnTrace.points.length === 0 || isDrawing}
+                className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Submit Attempt
+              </button>
+            </div>
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 px-5 py-3 text-xs text-slate-600">
+          <span className={`rounded-full px-3 py-1 font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
+            {displayStatusText(drawnDisplayStatus)}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+            Map: {marloweDistrictMap.name}
+          </span>
+          {selectedMapMetadata ? (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+              {selectedMapMetadata.areaLabel ?? selectedMapMetadata.title}
+            </span>
+          ) : null}
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(340px,0.8fr)_minmax(0,1.2fr)]">
-        <div className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <label htmlFor="route-exercise" className="text-sm font-semibold text-slate-900">
+      <section className="grid gap-4">
+        <div className="order-3 grid gap-4 xl:grid-cols-[minmax(320px,0.95fr)_minmax(280px,0.65fr)]">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Exercise brief</p>
+                <h2 className="mt-1 text-base font-semibold text-slate-950">Route assignment</h2>
+              </div>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                {exercisePositionLabel}
+              </span>
+            </div>
+            <label htmlFor="route-exercise" className="mt-4 block text-sm font-semibold text-slate-900">
               Route exercise
             </label>
             <select
@@ -1095,33 +2765,143 @@ export function RouteRunnerClient() {
               onChange={(event) => handleExerciseChange(event.target.value)}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {marloweDistrictRouteExercises.map((exercise) => (
-                <option key={exercise.id} value={exercise.id}>
-                  {exercise.title}
-                </option>
-              ))}
+              {marloweDistrictRouteExercises.map((exercise) => {
+                const availability = exerciseAvailabilityById[exercise.id];
+
+                return (
+                  <option key={exercise.id} value={exercise.id}>
+                    {availability ? formatExerciseAvailabilityOptionLabel(exercise, availability) : exercise.title}
+                  </option>
+                );
+              })}
             </select>
 
+            {selectedExerciseAvailability && !selectedExerciseAvailability.isValid ? (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                <p className="font-semibold">{selectedExerciseAvailability.reason}</p>
+                <p className="mt-1 leading-5">
+                  This route is available for fixture debugging, but it is not treated as a normal scored practice
+                  question until the required stops are legally reachable.
+                </p>
+                {selectedExerciseAvailability.errors.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
+                    {selectedExerciseAvailability.errors.map((availabilityError) => (
+                      <li key={availabilityError}>{availabilityError}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+
             {selectedExercise ? (
-              <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+              <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
                 <h2 className="font-semibold text-slate-950">{selectedExercise.title}</h2>
-                <dl className="mt-3 space-y-2">
+                <dl className="mt-3 space-y-3">
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise ID</dt>
                     <dd className="mt-1 font-mono text-xs text-slate-700">{selectedExercise.id}</dd>
                   </div>
+                  {selectedExerciseMetadata ? (
+                    <>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Metadata</dt>
+                        <dd className="mt-1">
+                          {selectedExerciseMetadata.difficulty} - {selectedExerciseMetadata.estimatedMinutes} min
+                          {selectedMapMetadata ? ` - ${selectedMapMetadata.title}` : ""}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Skill focus</dt>
+                        <dd className="mt-1 flex flex-wrap gap-1">
+                          {selectedExerciseMetadata.skillTags.map((tag) => (
+                            <span key={tag} className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-xs">
+                              {tag.replaceAll("-", " ")}
+                            </span>
+                          ))}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Weak-area tags</dt>
+                        <dd className="mt-1 flex flex-wrap gap-1">
+                          {selectedExerciseMetadata.weakAreaTags.map((tag) => (
+                            <span key={tag} className="rounded-full border border-amber-100 bg-white px-2 py-0.5 text-xs">
+                              {tag.replaceAll("-", " ")}
+                            </span>
+                          ))}
+                        </dd>
+                      </div>
+                    </>
+                  ) : null}
+                  {selectedSyntheticScenario ? (
+                    <>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Scenario</dt>
+                        <dd className="mt-1 space-y-2">
+                          <p>
+                            {selectedSyntheticScenario.title} - {selectedSyntheticScenario.areaLabel}
+                            {selectedSyntheticScenario.estimatedShortestDistanceMeters
+                              ? ` - shortest approx. ${selectedSyntheticScenario.estimatedShortestDistanceMeters}m`
+                              : ""}
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedSyntheticScenario.scenarioTags.map((tag) => (
+                              <span key={tag} className="rounded-full border border-emerald-100 bg-white px-2 py-0.5 text-xs">
+                                {tag.replaceAll("-", " ")}
+                              </span>
+                            ))}
+                          </div>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Road focus</dt>
+                        <dd className="mt-1">{selectedSyntheticScenario.featuredRoadNames.join(", ")}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Restriction summary</dt>
+                        <dd className="mt-1">
+                          <ul className="list-disc space-y-1 pl-5">
+                            {selectedSyntheticScenario.restrictionSummary.map((summary) => (
+                              <li key={summary}>{summary}</li>
+                            ))}
+                          </ul>
+                        </dd>
+                      </div>
+                    </>
+                  ) : null}
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Start</dt>
-                    <dd className="mt-1">{stopLabel(selectedExercise.stops[0])}</dd>
+                    <dd className="mt-1">{selectedStartStop ? stopLabel(selectedStartStop) : "Not set"}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Required stops</dt>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Checkpoints</dt>
                     <dd className="mt-1">
-                      <ol className="list-decimal space-y-1 pl-5">
-                        {selectedExercise.stops.slice(1).map((stop, index) => (
-                          <li key={`${selectedExercise.id}-stop-${index}`}>{stopLabel(stop)}</li>
-                        ))}
-                      </ol>
+                      {selectedCheckpointStops.length > 0 ? (
+                        <ol className="list-decimal space-y-1 pl-5">
+                          {selectedCheckpointStops.map((stop, index) => (
+                            <li key={`${selectedExercise.id}-checkpoint-${index}`}>{stopLabel(stop)}</li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <span>No intermediate checkpoints.</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Finish</dt>
+                    <dd className="mt-1">{selectedFinishStop ? stopLabel(selectedFinishStop) : "Not set"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rules</dt>
+                    <dd className="mt-1 space-y-1">
+                      {selectedSyntheticScenario ? (
+                        selectedSyntheticScenario.exerciseRules.map((rule) => <p key={rule}>{rule}</p>)
+                      ) : (
+                        <>
+                          <p>Start at the first marker and finish at the destination marker.</p>
+                          <p>Visit checkpoints in order and obey no-entry, one-way, restricted-road, and banned-turn signs.</p>
+                        </>
+                      )}
+                      <p>Route efficiency must meet the existing pass mark.</p>
                     </dd>
                   </div>
                 </dl>
@@ -1135,7 +2915,7 @@ export function RouteRunnerClient() {
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-base font-semibold text-slate-950">Manual route input</h2>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               Enter comma-separated fixture IDs. If both fields are supplied, each road must connect the matching pair
@@ -1176,17 +2956,17 @@ export function RouteRunnerClient() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="contents">
+          <section className="order-1 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-950">Drawing capture and snap preview</h2>
+                <h2 className="text-base font-semibold text-slate-950">Route map workspace</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Draw with mouse, touch, or stylus. The orange trace is raw input; green preview points are snapped
-                  candidates. The panel below shows the dev-only pipeline result.
+                  Draw with mouse, touch, or stylus on the synthetic street-map renderer. The orange trace is raw
+                  input; green preview points are snapped candidates. The panel below shows the dev-only pipeline result.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
+              <div className="flex flex-col gap-2 sm:max-w-md sm:items-end">
                 <span
                   className={`min-w-[9.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold ${pipelineStatusClass(
                     drawnDisplayStatus
@@ -1194,13 +2974,33 @@ export function RouteRunnerClient() {
                 >
                   {displayStatusText(drawnDisplayStatus)}
                 </span>
-                <button
-                  type="button"
-                  onClick={clearDrawnAttempt}
-                  className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                >
-                  Clear drawing
-                </button>
+                <p className="text-xs leading-5 text-slate-500">
+                  Draw in multiple strokes. Release and click again to continue. Switch to Pan when you want to move
+                  the map instead of drawing.
+                </p>
+                {isPanMode ? (
+                  <p className="text-xs font-medium leading-5 text-blue-700">
+                    Pan mode is on. Drag the map to move the view; switch back to Draw to add route strokes.
+                  </p>
+                ) : null}
+                {fastestRouteOverlay.status === "available" ? (
+                  <p className="text-xs leading-5 text-sky-700">
+                    Fastest route visible: {formatDistance(fastestRouteOverlay.distanceMeters)}. This overlay is
+                    visual-only and does not affect scoring.
+                  </p>
+                ) : null}
+                {fastestRouteOverlay.status === "unavailable" ? (
+                  <div className="text-xs leading-5 text-amber-700">
+                    <p>{fastestRouteOverlay.message}</p>
+                    {fastestRouteOverlay.invalidReasons.length > 0 ? (
+                      <ul className="mt-1 list-disc space-y-1 pl-4">
+                        {fastestRouteOverlay.invalidReasons.map((reason) => (
+                          <li key={reason}>{reason}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -1214,8 +3014,8 @@ export function RouteRunnerClient() {
                 </p>
               ) : (
                 <p>
-                  Trace captured for {selectedExercise?.title ?? "the selected exercise"}. Redraw to replace this
-                  attempt, or clear it to reset the overlays and score.
+                  Trace captured for {selectedExercise?.title ?? "the selected exercise"}. Press and drag again to
+                  continue the same route, use Undo to remove the latest stroke, or clear it to reset everything.
                 </p>
               )}
             </div>
@@ -1242,9 +3042,98 @@ export function RouteRunnerClient() {
             </div>
 
             <div
-              className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+              className="relative mt-4 min-h-[540px] overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] xl:min-h-[680px] 2xl:min-h-[780px]"
               style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
             >
+              <div className="pointer-events-none absolute right-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2">
+                <div className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setRouteMapInteractionMode("draw")}
+                    aria-pressed={mapInteractionMode === "draw"}
+                    className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      mapInteractionMode === "draw"
+                        ? "bg-blue-700 text-white"
+                        : "bg-white/95 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Draw
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRouteMapInteractionMode("pan")}
+                    aria-pressed={mapInteractionMode === "pan"}
+                    className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap border-l border-slate-300 px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      mapInteractionMode === "pan"
+                        ? "bg-blue-700 text-white"
+                        : "bg-white/95 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Pan
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={undoLastDrawnStroke}
+                  disabled={!hasUndoableDrawnStroke}
+                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={clearDrawnAttempt}
+                  disabled={drawnTrace.points.length === 0 && !isDrawing}
+                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  Clear drawing
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFastestRouteOverlay}
+                  disabled={selectedExerciseIsInvalid}
+                  aria-pressed={fastestRouteRevealState.visible}
+                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-sky-300 bg-white/95 px-3 py-2 text-sm font-semibold text-sky-900 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                >
+                  {selectedExerciseIsInvalid
+                    ? "Fastest route unavailable"
+                    : fastestRouteRevealState.visible
+                      ? "Hide fastest route"
+                      : "Reveal fastest route"}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetRouteMapView}
+                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  Reset view
+                </button>
+              </div>
+              <div className="pointer-events-auto absolute right-4 top-24 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md">
+                <button
+                  type="button"
+                  onClick={zoomInRouteMap}
+                  disabled={!canZoomIn}
+                  aria-label="Zoom in"
+                  title="Zoom in"
+                  className="inline-flex h-10 w-10 items-center justify-center text-lg font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={zoomOutRouteMap}
+                  disabled={!canZoomOut}
+                  aria-label="Zoom out"
+                  title="Zoom out"
+                  className="inline-flex h-10 w-10 items-center justify-center border-t border-slate-200 text-lg font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  -
+                </button>
+              </div>
+              <div className="pointer-events-none absolute bottom-4 right-4 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
+                {Math.round(mapViewportState.zoom * 100)}%
+              </div>
               <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
@@ -1253,7 +3142,14 @@ export function RouteRunnerClient() {
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerEnd}
                 onPointerCancel={handlePointerEnd}
-                className="block h-full w-full touch-none"
+                onPointerLeave={handlePointerLeave}
+                className={`block h-full w-full touch-none ${
+                  isPanMode
+                    ? isPanningMap
+                      ? "cursor-grabbing"
+                      : "cursor-grab"
+                    : "cursor-crosshair"
+                }`}
                 aria-label="Marlowe District drawing capture canvas"
               />
             </div>
@@ -1307,71 +3203,63 @@ export function RouteRunnerClient() {
             <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-950">
               <p className="font-semibold">Restriction overlays</p>
               <p className="mt-1 text-xs leading-5">
-                Road-level no-entry, road-closed, one-way, and junction-level banned-turn restrictions are drawn from
-                the existing map-engine fixture data. The canvas uses symbol-only markers; detailed road and turn IDs
-                stay in this panel and the raw diagnostics. These overlays are visual/debug hints only; the legality
-                engine remains the source of truth.
+                Road-level no-entry, road-closed, one-way, junction-level banned-turn, and post-attempt route issue
+                symbols are drawn from the existing map-engine and review data. The polished symbol layer is visual
+                only; legality, scoring, matching, and review reasoning remain unchanged.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
-                {ROAD_RESTRICTION_OVERLAYS.map((overlay, index) => (
-                  <span
-                    key={`${overlay.kind}-${overlay.roadId}-${index}`}
-                    className={`rounded-full border px-3 py-1 ${
-                      showRoadRestrictions
-                        ? "border-red-200 bg-white text-red-900"
-                        : "border-slate-200 bg-slate-50 text-slate-500"
-                    }`}
-                  >
-                    {overlay.roadId}: {overlay.kind}
-                  </span>
-                ))}
-                {turnRestrictionDisplayItems.map((item) => (
+                {restrictionMapVisualItems.map((item) => (
                   <span
                     key={item.id}
                     className={`rounded-full border px-3 py-1 ${
-                      showTurnRestrictions
-                        ? "border-rose-200 bg-white text-rose-900"
-                        : "border-slate-200 bg-slate-50 text-slate-500"
+                      selectedRestrictionFocusTarget?.visualItemId === item.id
+                        ? "border-sky-300 bg-sky-50 text-sky-950"
+                        : "border-red-200 bg-white text-red-900"
                     }`}
                   >
                     {item.label}
                   </span>
                 ))}
+                {restrictionMapVisualItems.length === 0 ? (
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
+                    No restriction symbols visible
+                  </span>
+                ) : null}
+                {selectedRestrictionFocusTarget ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRestrictionReviewItemId(null)}
+                    className="rounded-full border border-sky-300 bg-white px-3 py-1 text-sky-900 hover:bg-sky-50"
+                  >
+                    Clear map focus
+                  </button>
+                ) : null}
               </div>
+              <p className="mt-2 text-xs leading-5 text-red-900">
+                {showRoadRestrictions || showTurnRestrictions
+                  ? "Use the review panel's Show on map buttons to emphasise a specific route issue or restriction."
+                  : "Restriction toggles are off, so only post-attempt route issue symbols remain visible."}
+              </p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-700">
-              <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1">Orange: raw route</span>
-              <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1">Green: snapped points</span>
-              <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1">Purple: matched route</span>
-              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">
-                Red barred circle: no entry
-              </span>
-              <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1">
-                No left/right/U-turn sign: turn restriction
-              </span>
-              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">
-                Solid red route section: illegal route section
-              </span>
-              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1">
-                Dashed red section: disconnected snapped transition
-              </span>
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1">
-                Amber diamond: restricted
-              </span>
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1">
-                Blue arrow: one-way
-              </span>
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1">
-                Blue/orange circles: route stops
-              </span>
+              {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
+                <span
+                  key={item.id}
+                  title={item.description}
+                  className={`rounded-full border px-3 py-1 ${syntheticLegendToneClass(item.tone)}`}
+                >
+                  {item.label}
+                </span>
+              ))}
+              <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1">Green dots: snapped points</span>
             </div>
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-950">Drawn route pipeline result</h2>
+                <h2 className="text-base font-semibold text-slate-950">Attempt review</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
                   Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner
                   when the match is usable.
@@ -1418,6 +3306,22 @@ export function RouteRunnerClient() {
                 </span>
               </div>
 
+              {attemptSaveStatus.state !== "idle" ? (
+                <div className={`mt-3 rounded-md border p-3 text-xs leading-5 ${saveStatusClass(attemptSaveStatus.state)}`}>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="font-semibold">
+                      {attemptSaveStatus.state === "saving"
+                        ? "Saving attempt"
+                        : attemptSaveStatus.state === "saved"
+                          ? "Saved"
+                          : "Save warning"}
+                    </p>
+                    {attemptSaveStatus.id ? <span className="font-mono opacity-75">{attemptSaveStatus.id}</span> : null}
+                  </div>
+                  {attemptSaveStatus.message ? <p className="mt-1">{attemptSaveStatus.message}</p> : null}
+                </div>
+              ) : null}
+
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Score</p>
@@ -1461,17 +3365,557 @@ export function RouteRunnerClient() {
                 </div>
               ) : null}
 
+              {drawnAttemptReview.status !== "pending" ? (
+                <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Recommended next practice</p>
+                    <span className="text-xs font-semibold opacity-75">
+                      {drawnAttemptReview.recommendedPracticeQueue.length} focus area
+                      {drawnAttemptReview.recommendedPracticeQueue.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  {drawnAttemptReview.recommendedPracticeQueue.length > 0 ? (
+                    <ul className="mt-3 grid gap-2 lg:grid-cols-2">
+                      {drawnAttemptReview.recommendedPracticeQueue.map((recommendation) => (
+                        <li key={recommendation.id} className="rounded-md border border-current/10 bg-white/80 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="font-semibold">{recommendation.title}</p>
+                            <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                              {recommendation.priority}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5">{recommendation.reason}</p>
+                          <dl className="mt-2 grid gap-2 text-xs leading-5 sm:grid-cols-2">
+                            <div>
+                              <dt className="font-semibold">Weakness</dt>
+                              <dd>{recommendation.weaknessType.replaceAll("-", " ")}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-semibold">Suggested exercise</dt>
+                              <dd>{recommendation.suggestedExerciseId ?? "Coming soon"}</dd>
+                            </div>
+                          </dl>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                      Great work - no targeted practice needed from this attempt.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+              <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Adaptive practice launcher</p>
+                    <h4 className="mt-1 text-sm font-semibold">{adaptivePracticeQueue.summary.primaryFocus}</h4>
+                    <p className="mt-1 text-xs leading-5">{adaptivePracticeQueue.summary.reason}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <span className="rounded-full border border-current/20 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+                      {adaptivePracticeQueue.summary.confidenceLevel} confidence
+                    </span>
+                    <button
+                      type="button"
+                      onClick={resetAdaptivePracticeLauncher}
+                      className="rounded-md border border-current/20 px-3 py-1 text-xs font-semibold"
+                    >
+                      Reset launcher
+                    </button>
+                  </div>
+                </div>
+
+                {adaptiveLauncherMessage ? (
+                  <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-950">
+                    {adaptiveLauncherMessage}
+                  </p>
+                ) : null}
+
+                <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-2 lg:grid-cols-6">
+                  <div className="rounded-md border border-current/10 bg-white/80 p-3">
+                    <dt className="font-semibold">Latest review</dt>
+                    <dd>{adaptivePracticeQueue.signals.latestAttemptUsed ? "Used" : "Not ready"}</dd>
+                  </div>
+                  <div className="rounded-md border border-current/10 bg-white/80 p-3">
+                    <dt className="font-semibold">Weak profile</dt>
+                    <dd>{adaptivePracticeQueue.signals.weakAreaProfileUsed ? "Used" : "No repeated signals"}</dd>
+                  </div>
+                  <div className="rounded-md border border-current/10 bg-white/80 p-3">
+                    <dt className="font-semibold">Attempt trend</dt>
+                    <dd>{adaptivePracticeQueue.signals.attemptHistoryUsed ? attemptHistoryInsights.trend : "No attempts"}</dd>
+                  </div>
+                  <div className="rounded-md border border-current/10 bg-white/80 p-3">
+                    <dt className="font-semibold">Saved attempts</dt>
+                    <dd>{adaptivePracticeQueue.signals.savedAttemptsUsed ? "Used" : "No saved data"}</dd>
+                  </div>
+                  <div className="rounded-md border border-current/10 bg-white/80 p-3">
+                    <dt className="font-semibold">Outcomes</dt>
+                    <dd>{adaptivePracticeQueue.signals.outcomeFeedbackUsed ? "Used" : "No feedback yet"}</dd>
+                  </div>
+                  <div className="rounded-md border border-current/10 bg-white/80 p-3">
+                    <dt className="font-semibold">Exercises</dt>
+                    <dd>{adaptivePracticeQueue.signals.availableExerciseCount} available</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Adaptive outcome feedback</p>
+                      <p className="mt-1 text-xs leading-5">
+                        Outcome feedback is created when you mark an active launcher item complete.
+                      </p>
+                    </div>
+                    {latestAdaptiveOutcomeFeedback ? (
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${adaptiveOutcomeClass(
+                          latestAdaptiveOutcomeFeedback.outcome
+                        )}`}
+                      >
+                        {latestAdaptiveOutcomeFeedback.outcome}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {latestAdaptiveOutcomeFeedback ? (
+                    <div className="mt-3 rounded-md border border-current/10 bg-white/85 p-3 text-xs leading-5">
+                      <p className="font-semibold">
+                        {latestAdaptiveOutcomePracticeItem?.title ?? latestAdaptiveOutcomeFeedback.practiceItemId}
+                      </p>
+                      <p className="mt-1 opacity-75">Completed at {latestAdaptiveOutcomeFeedback.completedAt}</p>
+                      <p className="mt-1">{latestAdaptiveOutcomeFeedback.summary}</p>
+                      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+                        <div>
+                          <dt className="font-semibold">Score</dt>
+                          <dd>
+                            {latestAdaptiveOutcomeFeedback.evidence.scorePercent === null
+                              ? "n/a"
+                              : `${latestAdaptiveOutcomeFeedback.evidence.scorePercent.toFixed(1)}%`}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold">Pass/fail</dt>
+                          <dd>
+                            {latestAdaptiveOutcomeFeedback.evidence.passed === null
+                              ? "n/a"
+                              : latestAdaptiveOutcomeFeedback.evidence.passed
+                                ? "Pass"
+                                : "Fail"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold">Illegal movements</dt>
+                          <dd>{latestAdaptiveOutcomeFeedback.evidence.illegalMovementCount}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold">Missed restrictions</dt>
+                          <dd>{latestAdaptiveOutcomeFeedback.evidence.missedRestrictionCount}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold">Extra distance</dt>
+                          <dd>{latestAdaptiveOutcomeFeedback.evidence.extraDistance}</dd>
+                        </div>
+                      </dl>
+                      <p className="mt-3">
+                        <span className="font-semibold">Related weak areas: </span>
+                        {latestAdaptiveOutcomeFeedback.evidence.strongestWeaknessCategories.length > 0
+                          ? latestAdaptiveOutcomeFeedback.evidence.strongestWeaknessCategories
+                              .map((weakness) => weakness.replaceAll("-", " "))
+                              .join(", ")
+                          : "None"}
+                      </p>
+                      <p className="mt-2">
+                        <span className="font-semibold">Recommended next action: </span>
+                        {latestAdaptiveOutcomeFeedback.recommendedNextAction}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                      No adaptive outcome has been recorded yet. Start a recommendation, complete an attempt, then mark
+                      the item complete.
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Active practice</p>
+                      <span className="text-xs font-semibold opacity-70">
+                        {adaptiveLauncherState.practiceSessionStartedAt ?? "No session started"}
+                      </span>
+                    </div>
+                    {activeAdaptivePracticeItem ? (
+                      <ol className="mt-3 space-y-2">
+                        {renderAdaptivePracticeLauncherItem(activeAdaptivePracticeItem, "Active recommendation")}
+                      </ol>
+                    ) : (
+                      <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                        Start a recommendation below to create a focused practice session.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Recommended next</p>
+                    {recommendedAdaptivePracticeItems.length > 0 ? (
+                      <ol className="mt-3 space-y-2">
+                        {recommendedAdaptivePracticeItems.map((item, index) =>
+                          renderAdaptivePracticeLauncherItem(item, `Recommendation ${index + 1}`)
+                        )}
+                      </ol>
+                    ) : (
+                      <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                        No new recommendations are waiting. Check skipped or completed items below.
+                      </p>
+                    )}
+                  </div>
+
+                  {skippedAdaptivePracticeItems.length > 0 ? (
+                    <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Skipped</p>
+                      <ol className="mt-3 space-y-2">
+                        {skippedAdaptivePracticeItems.map((item, index) =>
+                          renderAdaptivePracticeLauncherItem(item, `Skipped item ${index + 1}`)
+                        )}
+                      </ol>
+                    </div>
+                  ) : null}
+
+                  {completedAdaptivePracticeItems.length > 0 ? (
+                    <div className="rounded-md border border-current/10 bg-white/70 p-3">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Completed / dismissed</p>
+                        <button
+                          type="button"
+                          onClick={() => setShowDismissedAdaptiveItems((currentValue) => !currentValue)}
+                          className="rounded-md border border-current/20 px-3 py-1 text-xs font-semibold"
+                        >
+                          {showDismissedAdaptiveItems ? "Hide" : "Show"}
+                        </button>
+                      </div>
+                      {showDismissedAdaptiveItems ? (
+                        <ol className="mt-3 space-y-2">
+                          {completedAdaptivePracticeItems.map((item, index) =>
+                            renderAdaptivePracticeLauncherItem(item, `Closed item ${index + 1}`)
+                          )}
+                        </ol>
+                      ) : (
+                        <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                          {completedAdaptivePracticeItems.length} completed or dismissed item
+                          {completedAdaptivePracticeItems.length === 1 ? "" : "s"} hidden.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Weak areas profile</p>
+                    <p className="mt-1 text-xs leading-5">
+                      {weakAreaProfile.attemptsReviewed} reviewed attempt
+                      {weakAreaProfile.attemptsReviewed === 1 ? "" : "s"} - {weakAreaProfile.totalWeaknessCount} tracked
+                      weak-area signal{weakAreaProfile.totalWeaknessCount === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetWeakAreaProfile}
+                    className="rounded-md border border-current/20 px-3 py-1 text-xs font-semibold"
+                  >
+                    Reset profile
+                  </button>
+                </div>
+
+                {strongestWeakAreas.length > 0 ? (
+                  <ul className="mt-3 grid gap-2 lg:grid-cols-2">
+                    {strongestWeakAreas.map((weakness) => (
+                      <li key={weakness.weaknessType} className="rounded-md border border-current/10 bg-white/80 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-semibold">{weakness.label}</p>
+                          <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                            {weakness.priority}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs leading-5">
+                          Seen {weakness.count} time{weakness.count === 1 ? "" : "s"} - last seen on attempt{" "}
+                          {weakness.lastSeenAttemptNumber}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                    No repeated weak areas have been tracked yet.
+                  </p>
+                )}
+
+                <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                  <span className="font-semibold">Recommended focus: </span>
+                  {weakAreaPracticeFocus}
+                </p>
+              </div>
+
+              <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Attempt history</p>
+                  <span className="text-xs font-semibold opacity-75">
+                    {attemptHistory.items.length} saved attempt
+                    {attemptHistory.items.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+
+                {attemptHistory.items.length > 0 ? (
+                  <>
+                    <ul className="mt-3 space-y-2">
+                      {attemptHistory.items.map((item) => {
+                        const isSelected = item.attemptNumber === selectedHistoryItem?.attemptNumber;
+
+                        return (
+                          <li key={item.id}>
+                            <button
+                              type="button"
+                              onClick={() => selectHistoryAttempt(item.attemptNumber)}
+                              className={`w-full rounded-md border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                                isSelected ? "border-blue-300 bg-blue-50" : "border-current/10 bg-white/80 hover:bg-white"
+                              }`}
+                            >
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="font-semibold">Attempt {item.attemptNumber}</p>
+                                  <p className="mt-1 text-xs leading-5 opacity-80">{item.title}</p>
+                                </div>
+                                <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                                  {item.status}
+                                </span>
+                              </div>
+                              <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-2 lg:grid-cols-6">
+                                <div>
+                                  <dt className="font-semibold">Score</dt>
+                                  <dd>{item.scoreLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Your route</dt>
+                                  <dd>{item.studentRouteDistanceLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Extra</dt>
+                                  <dd>{item.extraDistanceLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Illegal</dt>
+                                  <dd>{item.illegalMovementCount}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Missed</dt>
+                                  <dd>{item.missedRestrictionCount}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Reason</dt>
+                                  <dd>{item.primaryFailureReason ?? "None"}</dd>
+                                </div>
+                              </dl>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    {selectedHistoryItem ? (
+                      <div className="mt-3 rounded-md border border-current/10 bg-white/80 p-3">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="font-semibold">Selected attempt {selectedHistoryItem.attemptNumber}</p>
+                          <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                            {selectedHistoryItem.status}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs leading-5">{selectedHistoryItem.review.distanceLabel}</p>
+                        {selectedHistoryItem.primaryFailureReason ? (
+                          <p className="mt-2 text-xs leading-5">
+                            <span className="font-semibold">Saved reason: </span>
+                            {selectedHistoryItem.primaryFailureReason}
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-xs leading-5">Saved summary: clean attempt with no primary failure reason.</p>
+                        )}
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                    Submit a drawn route to compare attempts in this session.
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Saved attempt history</p>
+                    <p className="mt-1 text-xs leading-5">
+                      Supabase-backed route attempt reviews ordered newest first.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={refreshSavedAttemptHistory}
+                    className="rounded-md border border-current/20 px-3 py-1 text-xs font-semibold"
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                {savedAttemptHistory.state === "loading" ? (
+                  <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-950">
+                    Loading saved attempts...
+                  </p>
+                ) : null}
+
+                {savedAttemptHistory.state === "error" ? (
+                  <p className="mt-3 rounded-md border border-amber-100 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+                    {savedAttemptHistory.message ?? "Saved attempts could not be loaded."}
+                  </p>
+                ) : null}
+
+                {savedAttemptHistory.state === "loaded" && savedAttemptHistory.message ? (
+                  <p className="mt-3 rounded-md border border-slate-100 bg-slate-50 p-3 text-xs leading-5 text-slate-700">
+                    {savedAttemptHistory.message}
+                  </p>
+                ) : null}
+
+                {savedAttemptHistory.state === "loaded" && savedAttemptHistory.attempts.length === 0 ? (
+                  <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
+                    No saved route attempts yet. Submit a drawn route to save its review.
+                  </p>
+                ) : null}
+
+                {savedAttemptHistory.attempts.length > 0 ? (
+                  <>
+                    <ul className="mt-3 space-y-2">
+                      {savedAttemptHistory.attempts.map((attempt) => {
+                        const isSelected = attempt.id === savedAttemptHistory.selectedAttemptId;
+
+                        return (
+                          <li key={attempt.id}>
+                            <button
+                              type="button"
+                              onClick={() => selectSavedAttempt(attempt.id)}
+                              className={`w-full rounded-md border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                                isSelected ? "border-blue-300 bg-blue-50" : "border-current/10 bg-white/80 hover:bg-white"
+                              }`}
+                            >
+                              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div>
+                                  <p className="font-semibold">{attempt.exerciseLabel}</p>
+                                  <p className="mt-1 text-xs leading-5 opacity-80">
+                                    {attempt.dateLabel}
+                                    {attempt.exerciseLabel !== attempt.exerciseId ? (
+                                      <span className="font-mono"> - {attempt.exerciseId}</span>
+                                    ) : null}
+                                  </p>
+                                </div>
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${savedAttemptStatusClass(
+                                    attempt.statusLabel
+                                  )}`}
+                                >
+                                  {attempt.statusLabel}
+                                </span>
+                              </div>
+                              <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-3">
+                                <div>
+                                  <dt className="font-semibold">Score</dt>
+                                  <dd>{attempt.scoreLabel}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Failure reason</dt>
+                                  <dd>{attempt.failureReason}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-semibold">Review</dt>
+                                  <dd>{isSelected ? "Showing details" : "Select to review"}</dd>
+                                </div>
+                              </dl>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    {selectedSavedAttempt ? (
+                      <div className="mt-3 rounded-md border border-current/10 bg-white/80 p-3">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="font-semibold">{selectedSavedAttempt.reviewTitle}</p>
+                            <p className="mt-1 text-xs leading-5">
+                              {selectedSavedAttempt.exerciseLabel} - {selectedSavedAttempt.dateLabel}
+                            </p>
+                          </div>
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${savedAttemptStatusClass(
+                              selectedSavedAttempt.statusLabel
+                            )}`}
+                          >
+                            {selectedSavedAttempt.statusLabel}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs leading-5">
+                          <span className="font-semibold">Score: </span>
+                          {selectedSavedAttempt.scoreLabel}
+                          <span className="font-semibold"> Reason: </span>
+                          {selectedSavedAttempt.failureReason}
+                        </p>
+                        <pre className="mt-3 max-h-64 overflow-auto rounded-md bg-slate-950 p-3 text-xs leading-5 text-slate-50">
+                          {JSON.stringify(selectedSavedAttempt.reviewPayload, null, 2)}
+                        </pre>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <div>
                   <h4 className="text-sm font-semibold">Illegal movements</h4>
                   {drawnAttemptReview.illegalMovements.length > 0 ? (
                     <ul className="mt-2 space-y-2">
-                      {drawnAttemptReview.illegalMovements.map((item) => (
-                        <li key={item.id} className={`rounded-md border p-3 ${reviewItemClass(item.severity)}`}>
-                          <p className="font-semibold">{item.label}</p>
-                          {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
-                        </li>
-                      ))}
+                      {drawnAttemptReview.illegalMovements.map((item) => {
+                        const isFocused = selectedRestrictionReviewItemId === item.id;
+                        const hasMapTarget = Boolean(
+                          resolveRestrictionFocusTarget({
+                            reviewItem: item,
+                            visualItems: restrictionMapVisualItems
+                          })
+                        );
+
+                        return (
+                          <li key={item.id} className={`rounded-md border p-3 ${reviewItemClass(item.severity)}`}>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <p className="font-semibold">{item.label}</p>
+                              <button
+                                type="button"
+                                onClick={() => toggleRestrictionReviewFocus(item)}
+                                disabled={!hasMapTarget}
+                                className={`rounded-md border px-2 py-1 text-xs font-semibold ${
+                                  isFocused
+                                    ? "border-sky-300 bg-sky-50 text-sky-950"
+                                    : hasMapTarget
+                                      ? "border-red-200 bg-white text-red-900 hover:bg-red-50"
+                                      : "border-slate-200 bg-slate-50 text-slate-400"
+                                }`}
+                              >
+                                {isFocused ? "Hide map focus" : "Show on map"}
+                              </button>
+                            </div>
+                            {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p className="mt-2 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
@@ -1484,12 +3928,38 @@ export function RouteRunnerClient() {
                   <h4 className="text-sm font-semibold">Missed restrictions</h4>
                   {drawnAttemptReview.missedRestrictions.length > 0 ? (
                     <ul className="mt-2 space-y-2">
-                      {drawnAttemptReview.missedRestrictions.map((item) => (
-                        <li key={item.id} className={`rounded-md border p-3 ${reviewItemClass(item.severity)}`}>
-                          <p className="font-semibold">{item.label}</p>
-                          {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
-                        </li>
-                      ))}
+                      {drawnAttemptReview.missedRestrictions.map((item) => {
+                        const isFocused = selectedRestrictionReviewItemId === item.id;
+                        const hasMapTarget = Boolean(
+                          resolveRestrictionFocusTarget({
+                            reviewItem: item,
+                            visualItems: restrictionMapVisualItems
+                          })
+                        );
+
+                        return (
+                          <li key={item.id} className={`rounded-md border p-3 ${reviewItemClass(item.severity)}`}>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <p className="font-semibold">{item.label}</p>
+                              <button
+                                type="button"
+                                onClick={() => toggleRestrictionReviewFocus(item)}
+                                disabled={!hasMapTarget}
+                                className={`rounded-md border px-2 py-1 text-xs font-semibold ${
+                                  isFocused
+                                    ? "border-sky-300 bg-sky-50 text-sky-950"
+                                    : hasMapTarget
+                                      ? "border-amber-200 bg-white text-amber-900 hover:bg-amber-50"
+                                      : "border-slate-200 bg-slate-50 text-slate-400"
+                                }`}
+                              >
+                                {isFocused ? "Hide map focus" : "Show on map"}
+                              </button>
+                            </div>
+                            {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p className="mt-2 rounded-md border border-current/10 bg-white/70 p-3 text-xs leading-5">
@@ -1719,14 +4189,14 @@ export function RouteRunnerClient() {
           </section>
 
           {error ? (
-            <section className="rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">
+            <section className="order-4 rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">
               <h2 className="font-semibold">Runner error</h2>
               <p className="mt-2 font-mono text-xs">{error}</p>
             </section>
           ) : null}
 
           {result ? (
-            <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <section className="order-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-base font-semibold text-slate-950">Manual run result</h2>
                 <span
@@ -1804,10 +4274,130 @@ export function RouteRunnerClient() {
               </pre>
             </section>
           ) : (
-            <section className="rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
+            <section className="order-5 rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
               Run a manual node/road route to see the normalised attempt and scoring result.
             </section>
           )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Learning dashboard</p>
+            <h2 className="mt-1 text-base font-semibold text-slate-950">Adaptive queue, weak areas, and recent attempts</h2>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+            Dev session only
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-3">
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Adaptive practice queue</p>
+                <h3 className="mt-1 font-semibold text-slate-950">{adaptivePracticeQueue.summary.primaryFocus}</h3>
+              </div>
+              <span className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-800">
+                {adaptivePracticeQueue.items.length} item{adaptivePracticeQueue.items.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-600">{adaptivePracticeQueue.summary.reason}</p>
+            {recommendedAdaptivePracticeItems.length > 0 ? (
+              <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-700">
+                {recommendedAdaptivePracticeItems.slice(0, 3).map((item) => (
+                  <li key={`learning-${item.id}`} className="rounded-md border border-slate-200 bg-white p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold">{item.title}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${adaptivePriorityClass(item.priority)}`}>
+                        {item.priority}
+                      </span>
+                    </div>
+                    <p className="mt-1">{item.practiceFocus}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
+                No adaptive recommendations are waiting.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Weak areas</p>
+                <h3 className="mt-1 font-semibold text-slate-950">{weakAreaPracticeFocus}</h3>
+              </div>
+              <span className="rounded-full border border-amber-100 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                {weakAreaProfile.totalWeaknessCount} signal{weakAreaProfile.totalWeaknessCount === 1 ? "" : "s"}
+              </span>
+            </div>
+            {strongestWeakAreas.length > 0 ? (
+              <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-700">
+                {strongestWeakAreas.slice(0, 4).map((weakness) => (
+                  <li key={`learning-${weakness.weaknessType}`} className="rounded-md border border-slate-200 bg-white p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold">{weakness.label}</span>
+                      <span>{weakness.count}x</span>
+                    </div>
+                    <p className="mt-1">Last seen on attempt {weakness.lastSeenAttemptNumber}.</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
+                No repeated weak areas have been tracked yet.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent attempts</p>
+                <h3 className="mt-1 font-semibold text-slate-950">Session and saved history</h3>
+              </div>
+              <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                {attemptHistory.items.length + savedAttemptHistory.attempts.length} total
+              </span>
+            </div>
+            {attemptHistory.items.length > 0 ? (
+              <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-700">
+                {attemptHistory.items.slice(-3).map((item) => (
+                  <li key={`learning-${item.id}`} className="rounded-md border border-slate-200 bg-white p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold">Attempt {item.attemptNumber}</span>
+                      <span>{item.status}</span>
+                    </div>
+                    <p className="mt-1">
+                      {item.scoreLabel} - {item.extraDistanceLabel}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : savedAttemptHistory.attempts.length > 0 ? (
+              <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-700">
+                {savedAttemptHistory.attempts.slice(0, 3).map((attempt) => (
+                  <li key={`learning-${attempt.id}`} className="rounded-md border border-slate-200 bg-white p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold">{attempt.exerciseLabel}</span>
+                      <span>{attempt.statusLabel}</span>
+                    </div>
+                    <p className="mt-1">
+                      {attempt.scoreLabel} - {attempt.dateLabel}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-xs leading-5 text-slate-600">
+                No route attempts have been submitted in this session yet.
+              </p>
+            )}
+          </div>
         </div>
       </section>
     </div>

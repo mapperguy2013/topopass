@@ -100,6 +100,24 @@ test("checkRouteLegality detects directional and whole-road no-entry restriction
   );
 });
 
+test("checkRouteLegality detects closed or restricted roads", () => {
+  const map = withRestrictions([
+    {
+      id: "closed-road-bc",
+      type: "road_closed",
+      roadId: "road-bc"
+    }
+  ]);
+  const result = checkRouteLegality({
+    map,
+    movements: [{ roadId: "road-bc", fromNodeId: "b", toNodeId: "c" }]
+  });
+
+  assert.equal(result.automaticFail, true);
+  assert.equal(result.illegalMovements[0].type, "road_closed");
+  assert.equal(result.illegalMovements[0].restrictionId, "closed-road-bc");
+});
+
 test("checkRouteLegality detects prohibited turns", () => {
   const map = withRestrictions([
     {

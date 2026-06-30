@@ -1228,6 +1228,466 @@ MAX_BACKUP_AGE_HOURS=36
   legality, shortest-route behavior, snapping, matching, fixtures, backend
   persistence, route drawing, or exercise semantics.
 
+## Stage 72 Adaptive Practice Recommendations
+
+- Added a pure adaptive recommendation helper for `/dev/route-runner` that
+  turns the existing route attempt review and Stage 71 correction hints into
+  stable learner-facing practice focus cards.
+- Recommendations identify weak areas such as prohibited turns, no-entry roads,
+  wrong-way one-way use, restricted roads, wrong starts, wrong destinations,
+  missed checkpoints, disconnected or insufficient drawings, and legal routes
+  that are too long.
+- Each recommendation has a stable id, title, explanation, practice focus, and
+  high/medium/low priority. Illegal and route-validity problems are high
+  priority, while inefficient legal routes are medium or low depending on the
+  score.
+- The route runner review panel now shows a compact "Recommended practice"
+  section after the "Try next" hints.
+- Stage 72 is review/UI-layer only and does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend persistence,
+  restriction classification, route drawing, or exercise semantics.
+
+## Stage 73 Adaptive Practice Queue
+
+- Added a pure recommended-practice queue helper for `/dev/route-runner` that
+  converts Stage 72 recommendations into learner-facing next-practice items.
+- Queue items include a stable id, title, reason, weakness type, priority, and
+  an optional future suggested exercise id field so targeted practice launches
+  can be wired in later without changing the review data shape.
+- The route runner now shows a "Recommended next practice" panel after a
+  submitted attempt, sorted by priority with high-priority route validity and
+  illegal movement issues first.
+- The panel includes an empty state for attempts that produce no targeted queue
+  items: "Great work - no targeted practice needed from this attempt."
+- Stage 73 is review/UI-layer only and does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend persistence,
+  restriction classification, map-engine logic, route drawing, or exercise
+  semantics.
+
+## Stage 74 Persistent Learner Weak-Area Profile
+
+- Added pure helpers that extract weak-area counters from an existing route
+  attempt review and merge them into an accumulated learner weak-area profile.
+- The profile tracks repeated no-entry, one-way, prohibited-turn, restricted
+  road, wrong-start, wrong-destination, missed-checkpoint, disconnected drawing,
+  insufficient drawing, and inefficient-route signals across reviewed attempts.
+- The `/dev/route-runner` now keeps this profile in browser-local storage and
+  shows a dev-only "Weak areas profile" panel with the strongest categories,
+  attempt counts, total tracked signals, and a recommended next practice focus.
+- The profile can be reset from the dev UI and remains local-only. No backend
+  persistence, analytics storage, scoring, legality, snapping, matching,
+  routefinding, fixture, restriction classification, or exercise semantics were
+  changed.
+
+## Stage 75 Route Attempt History
+
+- Added pure in-session attempt history helpers for `/dev/route-runner` that
+  convert completed route attempt reviews into compact saved summaries.
+- The dev route runner now appends a history item after each submitted drawn
+  route and keeps the latest attempt selected automatically.
+- The review area shows an "Attempt history" panel with attempt number,
+  pass/fail/blocked status, score, student route distance, extra distance,
+  illegal movement count, missed restriction count, and the primary failure
+  reason when available.
+- Selecting an earlier attempt shows its saved review summary without
+  recalculating scoring or changing the current route result.
+- Stage 75 is review/UI-layer only and does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend persistence,
+  restriction classification, route drawing, or exercise semantics.
+
+## Stage 76.5 Attempt Storage
+
+- Added a Supabase `route_attempts` table migration for completed
+  `/dev/route-runner` attempt reviews, including score, pass/fail status,
+  failure reason, distance metrics, violations, missed restrictions, correction
+  hints, practice recommendations, matched route JSON, full review payload, and
+  review schema version.
+- Added an isolated route-attempt storage helper that maps the existing
+  `RouteAttemptReview` plus already-computed scoring/matching output into the
+  database row shape. The pure review builder remains Supabase-free.
+- The dev route runner now attempts to save a completed drawn route review after
+  feedback has been generated. Saving is non-blocking: failed or unavailable
+  Supabase persistence shows a small warning while the review remains visible.
+- Stage 76.5 stores attempt results only. It does not change scoring, legality,
+  shortest-route behavior, snapping, matching, fixtures, backend scoring,
+  restriction classification, route drawing, review semantics, teacher
+  dashboards, or history browsing.
+
+## Stage 76.6 Attempt History UI
+
+- Added a Supabase read helper for saved `/dev/route-runner` attempts. It maps
+  stored rows into learner-facing list items and queries attempts newest first,
+  with optional exercise filtering and a safe development fallback for nullable
+  user IDs.
+- Added a saved attempt history panel to the route runner review area. The panel
+  handles loading, empty, error, saved-list, refresh, and read-only review-detail
+  states, and refreshes automatically after a new drawn route attempt is saved.
+- Stage 76.6 is display/readback only. It does not replay routes or change
+  scoring, legality, shortest-route behavior, snapping, matching, fixtures,
+  backend scoring, restriction classification, or exercise semantics.
+
+## Stage 77 Adaptive Practice Queue
+
+- Added a pure adaptive practice queue builder for `/dev/route-runner`. It
+  combines the latest route review, the local weak-area profile, in-session
+  attempt-history insights, saved attempt summaries, and available development
+  exercises into one ranked practice queue.
+- Queue items include a stable id, item type, title, explanation, practice
+  focus, urgent/high/medium/low priority, numeric score, reasons, related weak
+  areas, related exercise ids, and source-signal flags for latest review,
+  weak-area profile, attempt history, and saved attempts.
+- The builder prioritises repeated mistakes, latest failed-route signals,
+  legality-critical restrictions, declining attempts, saved repeated failures,
+  and links to available route exercises. It also handles empty or malformed
+  saved attempt data safely and keeps ordering deterministic.
+- The route runner now shows a dev-friendly "Adaptive practice queue" panel
+  with the primary focus, confidence level, source signals used, ranked queue
+  items, practice focus, reasons, and related exercise ids.
+- Stage 77 does not change scoring, legality, snapping, matching,
+  shortest-route behavior, fixtures, backend schema, road restrictions,
+  restriction classification, exercise semantics, or attempt storage schema.
+
+## Stage 78 Adaptive Practice Session Launcher
+
+- Added a dev-only adaptive practice launcher to `/dev/route-runner`. It uses
+  the Stage 77 queue to let learners start, skip, dismiss, complete, and undo
+  status for recommended practice items.
+- Launcher state is stored in browser local storage under
+  `topopass.dev.routeRunner.adaptivePracticeLauncher.v1`, with safe fallback
+  handling for missing storage, malformed JSON, and older partial state.
+- Starting a launcher item selects the linked development exercise when one is
+  available, clears the current route draft and attempt result, and shows an
+  active-session summary explaining why the exercise was chosen.
+- Stage 78 is UI/session-state only. It does not change scoring, legality,
+  snapping, matching, shortest-route behavior, map-engine logic, fixtures,
+  backend behavior, Supabase behavior, exercise semantics, or restriction
+  classification.
+
+## Stage 79 Adaptive Practice Outcome Feedback Loop
+
+- Added local adaptive outcome feedback for `/dev/route-runner` launcher
+  sessions. When a learner marks an adaptive practice item complete, the route
+  runner records whether the practice resolved the focus, improved but still
+  needs work, repeated the same issue, produced mixed signals, or could not yet
+  be judged.
+- Outcome feedback compares the completed route review against the launched
+  practice focus, including score, pass/fail state, illegal movement count,
+  missed restriction count, extra distance, and strongest review weakness
+  categories.
+- Repeated issues boost the same future adaptive queue focus, resolved issues
+  lower that focus, improved-but-not-resolved outcomes keep it active at lower
+  urgency, and unknown outcomes do not materially affect queue ranking.
+- The feedback history is stored inside the Stage 78 browser-local launcher
+  state with migration-safe parsing for old or malformed localStorage values.
+- Stage 79 is dev-only feedback/session state. It does not change scoring,
+  legality, snapping, matching, shortest-route behavior, map-engine logic,
+  fixtures, backend schema, Supabase behavior, exercise semantics, or
+  restriction classification.
+
+## Stage 80 Exercise/Map Metadata Layer
+
+- Added a pure exercise and map metadata layer for `/dev/route-runner`, covering
+  stable map identity, map kind, version, area label, difficulty, estimated
+  minutes, skill tags, weak-area tags, restriction tags, route-feature tags,
+  prerequisites, and related exercises.
+- Added validation and lookup helpers for metadata catalogues, including
+  duplicate-id checks, unknown map/exercise references, missing route-exercise
+  metadata, invalid durations, missing tags, metadata indexes, and filtered
+  searches by weak area, skill, and difficulty.
+- The dev route runner now derives its adaptive practice exercise catalogue
+  from the metadata layer and shows compact selected-exercise metadata in the
+  exercise card.
+- Stage 80 is metadata/indexing only. It does not change route scoring,
+  pass/fail rules, legality, snapping, matching, shortest-route behavior, map
+  fixtures, restriction behavior, saved attempt shape, backend schema, Supabase
+  behavior, or exercise semantics.
+
+## Stage 81 Product Route Runner Layout Shell
+
+- Reworked `/dev/route-runner` into a product-style Route Runner shell with a
+  top control bar, left exercise brief, central map workspace, right attempt
+  review workspace, and bottom learning dashboard.
+- The top bar now surfaces the selected route title, exercise position,
+  difficulty, estimated time, elapsed-time placeholder, and quick Undo, Clear,
+  and Submit Attempt controls for the drawn trace.
+- The exercise brief now separates start, ordered checkpoints, finish, rules,
+  metadata, skill tags, and weak-area tags while keeping the manual route ID
+  runner available for development checks.
+- The central map panel keeps the existing dev map renderer, drawing capture,
+  snapping preview, restriction toggles, and overlay legend. The right review
+  panel keeps the existing Stage 70-79 review, diagnostics, scoring, save,
+  adaptive, weak-area, and history output.
+- Added a bottom learning dashboard summary for adaptive queue, weak areas, and
+  recent attempts using the current local/dev state. Stage 81 is layout/UI shell
+  only and does not change scoring, legality, snapping, matching, shortest-route
+  behavior, map fixtures, adaptive queue logic, attempt review semantics,
+  backend schema, Supabase behavior, or exercise semantics.
+
+## Stage 82 Synthetic Street Map Renderer
+
+- Added a pure synthetic street-map rendering adapter for `/dev/route-runner`.
+  It derives visual-only road classes, road styles, road labels, area labels,
+  stop labels, background features, route overlay styles, and legend items from
+  the existing synthetic Marlowe District map and route exercises.
+- The route runner canvas now draws soft park/water/block background shapes,
+  road casing and width hierarchy, reduced junction dots, road names, area
+  labels, clearer start/checkpoint/finish labels, and a stronger matched-route
+  overlay while preserving the existing drawing, snapping, matching, scoring,
+  restriction, and review overlays.
+- Background features are explicitly visual-only and do not enter routable graph
+  calculations, snapping, scoring, legality, shortest-route logic, or attempt
+  storage.
+- The map still uses fake/dev data only. Stage 82 does not import OSM/Overpass
+  data and does not change scoring, legality, snapping, route matching,
+  shortest-route behavior, restriction classification, exercise semantics,
+  backend schema, adaptive queue logic, attempt review logic, or attempt storage
+  logic.
+
+## Stage 83 Restriction Symbol Layer Polish
+
+- Added a pure restriction symbol-layer model for `/dev/route-runner` covering
+  no-entry, one-way, prohibited-turn, restricted-road, illegal-movement,
+  disconnected-route, selected-focus, and legend visuals.
+- The route runner canvas now uses clearer no-entry barred circles, blue
+  one-way arrows, compact turn-ban signs, amber restricted-road symbols, and
+  stronger route-issue markers on top of the Stage 82 synthetic street-map
+  renderer.
+- Review-panel route issues now support a "Show on map" focus action where a
+  matching visual target exists. The selected item receives a blue focus halo
+  without changing scoring or review semantics.
+- Stage 83 is visual/presentation-only. It does not change scoring, legality,
+  snapping, route matching, shortest-route behavior, exercise semantics,
+  backend schema, adaptive queue logic, attempt storage, or attempt review
+  reasoning.
+
+## Stage 84 Realistic Synthetic Exercise Map Fixtures
+
+- Added eight fake-but-realistic Marlowe District route exercises for
+  `/dev/route-runner`: central-grid, one-way-heavy, no-entry-heavy,
+  prohibited-turn, restricted-road, checkpoint-order, efficiency-trap, and
+  mixed-difficulty scenarios.
+- Added a Stage 84 scenario catalogue with stable exercise ids, titles, area
+  labels, difficulty, scenario tags, weak-area tags, road-name focus,
+  restriction summaries, route rules, synthetic renderer metadata, map bounds,
+  and current shortest-route distance estimates.
+- The route runner exercise brief now surfaces the selected scenario, featured
+  roads, restriction summary, ordered stop requirements, and scenario-specific
+  rules while continuing to use the existing Marlowe synthetic map and runner
+  APIs.
+- The restricted-road scenario uses an existing `road_closed` fixture type for
+  visual restricted-road training. This remains fixture/visual metadata only;
+  Stage 84 does not add new road-closure legality enforcement.
+- Stage 84 does not import London, OSM, Overpass, Mapbox routing, or external
+  route data. It does not change scoring, legality, snapping, route matching,
+  shortest-route behavior, backend schema, Supabase behavior, attempt review,
+  adaptive queue semantics, or saved attempt shape.
+
+## Stage 84.5 Immersive London-Inspired Practice Map Experience
+
+- Enlarged `/dev/route-runner` into a map-first workspace. The route runner now
+  opts into a wider app shell, makes the map the dominant full-width workspace,
+  and moves the review and supporting panels underneath the map instead of
+  squeezing the canvas with side rails.
+- The synthetic map canvas now has a much larger desktop minimum height for
+  route drawing and testing while preserving the existing canvas coordinate
+  model, pointer handling, snapping, matching, scoring, and manual route input.
+- Polished the fake Marlowe map renderer with a fictional station quarter,
+  canal basin, goods-yard block, civic quarter, extra parkland, and clearer
+  street hierarchy so it feels closer to a London route-planning practice map
+  without importing or copying real London/OSM data.
+- Stage 84.5 is UI/fixture/renderer polish only. It does not change scoring
+  semantics, legality semantics, snapping, route matching, shortest-route
+  behavior, backend schema, attempt review semantics, adaptive queue semantics,
+  saved attempt shape, or exercise scoring data.
+
+## Stage 85 Realistic Full-Size Map Rendering UI
+
+- Increased the `/dev/route-runner` map canvas to a full-size atlas-style
+  1120x760 drawing surface and gave the map panel the full available content
+  width for route testing.
+- Added pure visual renderer models for synthetic rail/context lines and
+  landmark markers. These use existing Marlowe fixture landmarks and remain
+  explicitly non-routable.
+- The canvas renderer now draws layered map context: pale base, background
+  areas, fictional rail approach, wider cased road hierarchy, landmark symbols,
+  labels with stronger halos, route/restriction overlays, and larger numbered
+  start/checkpoint/finish markers.
+- The map is still fictional and London-inspired only. Stage 85 does not import
+  OSM/Overpass/London data and does not change scoring logic, legality checks,
+  snapping, route matching, shortest-route behavior, exercise semantics,
+  restriction classification, backend/schema logic, adaptive practice logic,
+  attempt history, or saved attempt shape.
+
+## Stage 85.5 Continuous Route Drawing and Undo
+
+- Updated `/dev/route-runner` drawing state from a single reset-on-draw trace to
+  an immutable multi-stroke draft. Each pointer-down/move/up action is stored as
+  one ordered stroke, and the existing drawn-route pipeline receives the
+  flattened combined point sequence.
+- Starting a second pointer action now appends to the current route instead of
+  replacing it. Undo removes only the latest drawing stroke, while Clear drawing
+  still resets the whole draft, overlays, score, and review state.
+- The route map workspace now shows Undo next to Clear drawing. The raw orange
+  drawing overlay renders strokes independently so nearby continuation strokes
+  read as one route without forcing a large visual connector across accidental
+  far-away restarts.
+- Added a visual-only "Reveal fastest route" toggle beside the drawing controls.
+  It uses the existing shortest legal route engine for the selected exercise,
+  draws a blue dashed route overlay, and can be hidden again without modifying
+  the learner's draft route, scoring, review, saved attempt, or adaptive
+  practice state.
+- Stage 85.5 is UI/draft-state only. It does not change scoring, legality,
+  snapping, route matching, shortest-route algorithm behavior, route exercise
+  semantics, map fixture topology, restriction classification, backend/schema
+  logic, Supabase logic, adaptive practice logic, attempt history, or saved
+  attempt shape.
+
+## Stage 85.6 Map Zoom Controls and Reset View
+
+- Added map viewport controls to `/dev/route-runner`: Zoom in, Zoom out, and
+  Reset view. The default reset returns the canvas to the same Stage 85 view
+  shown when the selected exercise loads.
+- Zoom is implemented as a visual viewport transform over the existing
+  synthetic map coordinate system. User-drawn route strokes, snapped previews,
+  matched overlays, restriction symbols, and the Stage 85.5 revealed fastest
+  route all continue to render through the same zoomed viewport, so they remain
+  aligned while zooming.
+- Reset view changes only the viewport. It does not clear the learner's draft
+  route, hide a revealed fastest route, change the selected exercise, or reset
+  attempt review, saved attempts, adaptive practice, weak-area, or history
+  state. Switching exercises still resets the viewport to the default view.
+- Stage 85.6 is viewport/UI-only. It does not change scoring, legality,
+  snapping, route matching, shortest-route algorithm behavior, map fixtures,
+  exercise semantics, backend/schema logic, Supabase logic, adaptive practice
+  logic, attempt history, or saved attempt shape.
+
+## Stage 85.7 Route Restriction Correctness Bug Fix
+
+- Tightened the fastest-route/solution path so it is legal-only. The shortest
+  route engine now blocks no-entry movements, one-way wrong-direction movement,
+  prohibited turns, immediate U-turns, and modelled road-closed/restricted-road
+  sections before returning a route.
+- Added ordered-stop shortest-route search for multi-stop exercises. The search
+  keeps previous-road state across checkpoints, so the solution cannot silently
+  create an illegal U-turn or banned transition between independently calculated
+  legs.
+- The `/dev/route-runner` Reveal fastest route control now fails closed. If the
+  required start, checkpoint, or finish sequence has no legal solution, the UI
+  shows "No legal fastest route available for this exercise." and does not draw
+  an illegal fallback route.
+- Added legal reachability validation for route exercises. This flags invalid
+  exercises whose required stops cannot be completed legally under current map
+  restrictions. The current Marlowe no-entry focus exercise is treated as
+  unavailable until the fixture is corrected instead of being shown as a valid
+  legal solution.
+- Stage 85.7 does not change scoring thresholds, map rendering style,
+  backend/schema logic, Supabase logic, adaptive practice logic, attempt
+  history, or saved attempt shape.
+
+## Stage 86 Route Drawing Continuation and Undo UX
+
+- Confirmed the `/dev/route-runner` drawing flow supports repeated drawing
+  strokes: learners can release the pointer, click again, and continue the same
+  route without losing earlier strokes.
+- Added explicit map-workspace guidance beside the drawing controls:
+  "Draw in multiple strokes. Release and click again to continue."
+- Undo remains next to Clear drawing and removes only the latest stroke/action.
+  Clear drawing still removes the full draft route and resets derived overlays,
+  score, and review state.
+- The review and scoring pipeline still receives the combined flattened route
+  points from all strokes. Stage 86 does not change scoring, legality, snapping,
+  matching, shortest-route behavior, map fixtures, exercise semantics, backend
+  schema, Supabase logic, or route-engine semantics.
+
+## Stage 87 Map Pan and Drag View Controls
+
+- Added a Pan mode toggle to the `/dev/route-runner` map controls. With Pan mode
+  on, left-drag moves the map view; with Pan mode off, left-drag continues to
+  draw route strokes as before.
+- The route-runner viewport state now tracks `zoom`, `panX`, `panY`, and
+  `isPanModeEnabled`. Panning is clamped so the map cannot be dragged completely
+  out of view, while still allowing useful movement when zoomed in.
+- Pointer-to-map conversion now uses the same zoomed and panned viewport used
+  for rendering. User-drawn routes, the revealed fastest route, stop markers,
+  road labels, restriction symbols, and issue overlays remain aligned after
+  both zooming and panning.
+- Reset view restores the default zoom and pan without clearing the draft route
+  or hiding a revealed fastest route. Switching exercise resets zoom, pan, and
+  Pan mode to the default exercise view.
+- Stage 87 is viewport/UI-only. It does not change scoring, legality, snapping,
+  route matching, shortest-route algorithm behavior, restriction-engine
+  semantics, map fixtures, exercise semantics, backend/schema logic, Supabase
+  logic, adaptive practice logic, attempt history, or saved attempt shape.
+
+## Stage 87.1 In-Map Map Controls UI Polish
+
+- Moved the `/dev/route-runner` map controls into the map viewport so they feel
+  attached to the drawing workspace instead of crowding the page header.
+- Zoom now uses a compact in-map vertical control with `+` above `-`, a white
+  face, subtle border, rounded corners, and shadow. The current zoom percentage
+  remains visible as a small in-map badge.
+- Pan mode, Undo, Clear drawing, Reveal/Hide fastest route, and Reset view now
+  sit in a floating top-right map toolbar. Only the buttons capture pointer
+  events, so the rest of the canvas remains drawable or pannable.
+- Stage 87.1 is UI placement/styling only. It does not change route scoring,
+  legality, snapping, route matching, shortest-route algorithm behavior,
+  restriction-engine semantics, map fixtures, exercise semantics,
+  backend/schema logic, Supabase logic, adaptive practice logic, attempt
+  history, or saved attempt shape.
+
+## Stage 88 Exercise Validity and Reachability Guard
+
+- Added route-runner exercise availability validation that checks each selected
+  exercise has a legal route through its required start, checkpoints, and
+  finish before it is treated as a normal practice question.
+- The validation uses the existing restriction-aware shortest-route logic. It
+  respects no-entry restrictions, one-way direction rules, prohibited turns, and
+  modelled road-closed/restricted-road sections without adding a second routing
+  algorithm.
+- Invalid exercises are now labelled in the `/dev/route-runner` selector as
+  "Invalid - no legal route" and show a compact warning: "This exercise has no
+  legal route and needs fixing." The known Marlowe no-entry focus exercise is
+  currently detected as invalid/unrouteable.
+- Reveal fastest route is disabled for invalid exercises, and drawn/manual route
+  submission is blocked before scoring so an invalid fixture cannot be treated
+  as a normal failed attempt. Drawing remains available for fixture debugging.
+- Stage 88 does not change scoring logic, snapping, route matching,
+  shortest-route algorithm behavior, restriction-engine semantics, map fixtures,
+  backend/schema logic, Supabase logic, adaptive practice logic, attempt
+  history, or saved attempt shape.
+
+## Stage 89 Draw and Pan Interaction Modes
+
+- Replaced the route-runner's single pan toggle with explicit `Draw` and `Pan`
+  interaction modes inside the map viewport. `Draw` remains the default so route
+  capture works immediately.
+- In Draw mode, dragging adds multi-stroke route input and never pans the map.
+  In Pan mode, dragging moves the map view and never creates route strokes.
+- Switching modes preserves the current drawn route, fastest-route overlay,
+  restriction overlays, markers, labels, zoom, and pan alignment.
+- Cursor feedback now follows the active mode: crosshair for drawing and
+  grab/grabbing for map panning.
+- Stage 89 is UI interaction only. It does not change scoring, legality,
+  snapping, route matching, shortest-route algorithm behavior, no-entry or
+  one-way enforcement, fixtures, backend/schema logic, Supabase logic, adaptive
+  practice logic, attempt history, or saved attempt shape.
+
+## Stage 90 Bounded Pan and Viewport Polish
+
+- Tightened `/dev/route-runner` viewport pan bounds so the large synthetic map
+  cannot be dragged endlessly into blank space.
+- Pan limits are now explicit, zoom-aware, symmetrical, and safely clamped for
+  zero or invalid viewport dimensions. Zooming out reclamps existing pan offsets
+  back into the valid range.
+- Reset view restores the default zoom, centred pan position, and Draw mode, and
+  continues to clear temporary drag state in the UI.
+- The pan margin is bounded by viewport size to avoid large empty gaps while
+  still allowing useful movement when zoomed in.
+- Stage 90 is viewport/UI polish only. It does not change scoring, legality,
+  snapping, route matching, shortest-route algorithm behavior, restriction
+  semantics, map fixtures, adaptive practice logic, attempt storage, backend
+  schema, Supabase logic, or exercise semantics.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

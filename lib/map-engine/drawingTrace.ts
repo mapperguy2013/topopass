@@ -4,6 +4,15 @@ export type DrawnRouteTrace = {
   points: Vec2[];
 };
 
+export type DrawnRouteStroke = {
+  points: Vec2[];
+};
+
+export type DrawnRouteDraft = {
+  strokes: DrawnRouteStroke[];
+  activeStrokeIndex: number | null;
+};
+
 export type DrawnRouteGestureFailureReason = "not_enough_points" | "not_enough_movement";
 
 export type DrawnRouteGestureValidation = {
@@ -29,9 +38,26 @@ export type ScreenMapViewport = {
 export const DEFAULT_MINIMUM_DRAWN_GESTURE_POINT_COUNT = 3;
 export const DEFAULT_MINIMUM_DRAWN_GESTURE_DISTANCE = 10;
 
+function clonePoint(point: Vec2): Vec2 {
+  return { ...point };
+}
+
+function cloneStroke(stroke: DrawnRouteStroke): DrawnRouteStroke {
+  return {
+    points: stroke.points.map(clonePoint)
+  };
+}
+
+function cloneDraft(draft: DrawnRouteDraft): DrawnRouteDraft {
+  return {
+    strokes: draft.strokes.map(cloneStroke),
+    activeStrokeIndex: draft.activeStrokeIndex
+  };
+}
+
 export function createDrawnRouteTrace(points: readonly Vec2[] = []): DrawnRouteTrace {
   return {
-    points: points.map((point) => ({ ...point }))
+    points: points.map(clonePoint)
   };
 }
 
@@ -49,12 +75,96 @@ export function appendDrawnRoutePoint(trace: DrawnRouteTrace, point: Vec2, minim
   }
 
   return {
-    points: [...trace.points.map((existingPoint) => ({ ...existingPoint })), { ...point }]
+    points: [...trace.points.map(clonePoint), clonePoint(point)]
   };
 }
 
 export function clearDrawnRouteTrace(): DrawnRouteTrace {
   return createDrawnRouteTrace();
+}
+
+export function createEmptyRouteDraft(strokes: readonly (readonly Vec2[])[] = []): DrawnRouteDraft {
+  return {
+    strokes: strokes.map((strokePoints) => ({
+      points: strokePoints.map(clonePoint)
+    })),
+    activeStrokeIndex: null
+  };
+}
+
+export function startRouteStroke(draft: DrawnRouteDraft, point: Vec2): DrawnRouteDraft {
+  const strokes = [...draft.strokes.map(cloneStroke), { points: [clonePoint(point)] }];
+
+  return {
+    strokes,
+    activeStrokeIndex: strokes.length - 1
+  };
+}
+
+export function appendRouteDraftPoint(
+  draft: DrawnRouteDraft,
+  point: Vec2,
+  minimumPointDistance = 0
+): DrawnRouteDraft {
+  if (draft.activeStrokeIndex === null || !draft.strokes[draft.activeStrokeIndex]) {
+    return cloneDraft(draft);
+  }
+
+  const strokes = draft.strokes.map(cloneStroke);
+  const activeStroke = strokes[draft.activeStrokeIndex];
+  const previousPoint = activeStroke.points[activeStroke.points.length - 1];
+
+  if (
+    previousPoint &&
+    minimumPointDistance > 0 &&
+    Math.hypot(point.x - previousPoint.x, point.y - previousPoint.y) < minimumPointDistance
+  ) {
+    return {
+      strokes,
+      activeStrokeIndex: draft.activeStrokeIndex
+    };
+  }
+
+  activeStroke.points = [...activeStroke.points, clonePoint(point)];
+
+  return {
+    strokes,
+    activeStrokeIndex: draft.activeStrokeIndex
+  };
+}
+
+export function finishRouteStroke(draft: DrawnRouteDraft): DrawnRouteDraft {
+  return {
+    strokes: draft.strokes.map(cloneStroke),
+    activeStrokeIndex: null
+  };
+}
+
+export function undoLastRouteStroke(draft: DrawnRouteDraft): DrawnRouteDraft {
+  if (draft.strokes.length === 0) {
+    return cloneDraft(draft);
+  }
+
+  return {
+    strokes: draft.strokes.slice(0, -1).map(cloneStroke),
+    activeStrokeIndex: null
+  };
+}
+
+export function clearRouteDraft(): DrawnRouteDraft {
+  return createEmptyRouteDraft();
+}
+
+export function getFlattenedRouteDraftPoints(draft: DrawnRouteDraft): Vec2[] {
+  return draft.strokes.flatMap((stroke) => stroke.points.map(clonePoint));
+}
+
+export function hasUndoableRouteStroke(draft: DrawnRouteDraft): boolean {
+  return draft.strokes.length > 0;
+}
+
+export function routeDraftToDrawnRouteTrace(draft: DrawnRouteDraft): DrawnRouteTrace {
+  return createDrawnRouteTrace(getFlattenedRouteDraftPoints(draft));
 }
 
 export function drawnRouteTraceDistance(trace: DrawnRouteTrace): number {

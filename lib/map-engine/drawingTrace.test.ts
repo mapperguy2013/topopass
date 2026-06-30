@@ -2,13 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   appendDrawnRoutePoint,
+  appendRouteDraftPoint,
+  clearRouteDraft,
   clearDrawnRouteTrace,
+  createEmptyRouteDraft,
   createDrawnRouteTrace,
   drawnRouteTraceDistance,
+  finishRouteStroke,
+  getFlattenedRouteDraftPoints,
+  hasUndoableRouteStroke,
   isMeaningfulDrawnGesture,
   mapToScreenPoint,
+  routeDraftToDrawnRouteTrace,
   screenToMapPoint,
   simplifyDrawnRouteTrace,
+  startRouteStroke,
+  undoLastRouteStroke,
   validateDrawnRouteGesture,
   type ScreenMapViewport
 } from "./index.ts";
@@ -49,6 +58,114 @@ test("can ignore points that are too close to the previous point", () => {
 
 test("clears a drawn route trace", () => {
   assert.deepEqual(clearDrawnRouteTrace(), { points: [] });
+});
+
+test("route draft starts a second stroke without clearing the first stroke", () => {
+  const firstStroke = finishRouteStroke(
+    appendRouteDraftPoint(startRouteStroke(createEmptyRouteDraft(), { x: 0, y: 0 }), { x: 10, y: 0 })
+  );
+  const secondStroke = startRouteStroke(firstStroke, { x: 10, y: 10 });
+
+  assert.deepEqual(firstStroke.strokes, [
+    {
+      points: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 }
+      ]
+    }
+  ]);
+  assert.deepEqual(secondStroke.strokes, [
+    {
+      points: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 }
+      ]
+    },
+    {
+      points: [{ x: 10, y: 10 }]
+    }
+  ]);
+  assert.equal(secondStroke.activeStrokeIndex, 1);
+});
+
+test("route draft flattened points preserve stroke order and return defensive copies", () => {
+  const draft = finishRouteStroke(
+    appendRouteDraftPoint(
+      startRouteStroke(
+        finishRouteStroke(
+          appendRouteDraftPoint(startRouteStroke(createEmptyRouteDraft(), { x: 0, y: 0 }), { x: 5, y: 0 })
+        ),
+        { x: 5, y: 5 }
+      ),
+      { x: 10, y: 5 }
+    )
+  );
+
+  const flattened = getFlattenedRouteDraftPoints(draft);
+  const trace = routeDraftToDrawnRouteTrace(draft);
+
+  assert.deepEqual(flattened, [
+    { x: 0, y: 0 },
+    { x: 5, y: 0 },
+    { x: 5, y: 5 },
+    { x: 10, y: 5 }
+  ]);
+  assert.deepEqual(trace.points, flattened);
+
+  flattened[0].x = 999;
+  assert.equal(draft.strokes[0].points[0].x, 0);
+  assert.equal(trace.points[0].x, 0);
+});
+
+test("route draft undo removes the latest stroke only", () => {
+  const draft = finishRouteStroke(
+    appendRouteDraftPoint(
+      startRouteStroke(
+        finishRouteStroke(startRouteStroke(createEmptyRouteDraft(), { x: 1, y: 1 })),
+        { x: 2, y: 2 }
+      ),
+      { x: 3, y: 3 }
+    )
+  );
+
+  const undone = undoLastRouteStroke(draft);
+
+  assert.deepEqual(undone, {
+    strokes: [
+      {
+        points: [{ x: 1, y: 1 }]
+      }
+    ],
+    activeStrokeIndex: null
+  });
+  assert.deepEqual(draft.strokes[1].points, [
+    { x: 2, y: 2 },
+    { x: 3, y: 3 }
+  ]);
+});
+
+test("route draft clear removes all strokes", () => {
+  const draft = startRouteStroke(createEmptyRouteDraft(), { x: 1, y: 1 });
+
+  assert.deepEqual(clearRouteDraft(), {
+    strokes: [],
+    activeStrokeIndex: null
+  });
+  assert.deepEqual(draft.strokes, [
+    {
+      points: [{ x: 1, y: 1 }]
+    }
+  ]);
+});
+
+test("route draft undo availability follows stored strokes", () => {
+  const empty = createEmptyRouteDraft();
+  const started = startRouteStroke(empty, { x: 1, y: 1 });
+  const undone = undoLastRouteStroke(started);
+
+  assert.equal(hasUndoableRouteStroke(empty), false);
+  assert.equal(hasUndoableRouteStroke(started), true);
+  assert.equal(hasUndoableRouteStroke(undone), false);
 });
 
 test("calculates drawn route trace distance from consecutive points", () => {

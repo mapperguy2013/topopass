@@ -373,6 +373,12 @@ export const marloweDistrictMap: MapDefinition = {
       reason: "No entry westbound from East Dock"
     },
     {
+      id: "rc-east-dock-spur-local-access",
+      type: "road_closed",
+      roadId: "r36",
+      reason: "Restricted local-access section on East Dock Spur"
+    },
+    {
       id: "pt-baker-court-to-market-lane-east",
       type: "prohibited_turn",
       fromRoadId: "r16",
@@ -511,6 +517,46 @@ export const marloweDistrictMap: MapDefinition = {
       nearestNodeId: "n24"
     },
     {
+      id: "lm-albion-square",
+      name: "Albion Square",
+      type: "landmark",
+      x: 380,
+      y: 170,
+      nearestNodeId: "n04"
+    },
+    {
+      id: "lm-eastgate",
+      name: "Eastgate",
+      type: "custom",
+      x: 520,
+      y: 160,
+      nearestNodeId: "n05"
+    },
+    {
+      id: "lm-south-gate",
+      name: "South Gate",
+      type: "custom",
+      x: 670,
+      y: 430,
+      nearestNodeId: "n19"
+    },
+    {
+      id: "lm-brewery-lane",
+      name: "Brewery Lane",
+      type: "custom",
+      x: 315,
+      y: 590,
+      nearestNodeId: "n21"
+    },
+    {
+      id: "lm-dock-steps",
+      name: "Dock Steps",
+      type: "custom",
+      x: 630,
+      y: 575,
+      nearestNodeId: "n23"
+    },
+    {
       id: "lm-queens-yard",
       name: "Queen's Yard",
       type: "custom",
@@ -590,6 +636,93 @@ export const marloweDistrictRouteExercises: RouteExercise[] = [
       { type: "landmark", landmarkId: "lm-crown-court" },
       { type: "landmark", landmarkId: "lm-market-hall" },
       { type: "landmark", landmarkId: "lm-royal-oak-gardens" }
+    ],
+    difficulty: "hard"
+  },
+  {
+    id: "ex-central-grid-library-clocktower",
+    title: "Central grid: Westbourne Library to Clocktower via Market Hall",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-westbourne-library" },
+      { type: "landmark", landmarkId: "lm-market-hall" },
+      { type: "landmark", landmarkId: "lm-clocktower" }
+    ],
+    difficulty: "easy"
+  },
+  {
+    id: "ex-one-way-canal-station",
+    title: "One-way system: Canal Bridge West to Fox Lane Station",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-canal-bridge-west" },
+      { type: "landmark", landmarkId: "lm-fox-lane-station" }
+    ],
+    difficulty: "medium"
+  },
+  {
+    id: "ex-no-entry-eastgate-market",
+    title: "No-entry focus: Eastgate to Marlowe Market Hall",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-eastgate" },
+      { type: "landmark", landmarkId: "lm-market-hall" }
+    ],
+    difficulty: "hard"
+  },
+  {
+    id: "ex-prohibited-turn-albion-theatre",
+    title: "Prohibited turns: Albion Square to Theatre Arcade",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-albion-square" },
+      { type: "landmark", landmarkId: "lm-theatre-arcade" }
+    ],
+    difficulty: "hard"
+  },
+  {
+    id: "ex-restricted-station-south-gate",
+    title: "Restricted road awareness: Fox Lane Station to South Gate",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-fox-lane-station" },
+      { type: "landmark", landmarkId: "lm-south-gate" }
+    ],
+    difficulty: "medium"
+  },
+  {
+    id: "ex-checkpoint-order-library-dock",
+    title: "Checkpoint order: Westbourne Library to East Dock",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-westbourne-library" },
+      { type: "landmark", landmarkId: "lm-market-hall" },
+      { type: "landmark", landmarkId: "lm-civic-museum" },
+      { type: "landmark", landmarkId: "lm-exchange-house" },
+      { type: "landmark", landmarkId: "lm-east-dock" }
+    ],
+    difficulty: "hard"
+  },
+  {
+    id: "ex-efficiency-trap-gardens-hospital",
+    title: "Efficiency trap: Royal Oak Gardens to Northgate Hospital",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-royal-oak-gardens" },
+      { type: "landmark", landmarkId: "lm-northgate-hospital" }
+    ],
+    difficulty: "medium"
+  },
+  {
+    id: "ex-mixed-difficulty-church-market-theatre-dock",
+    title: "Mixed difficulty: Church to East Dock via Market and Theatre",
+    mapId: MARLOWE_DISTRICT_MAP_ID,
+    stops: [
+      { type: "landmark", landmarkId: "lm-st-anselm-church" },
+      { type: "landmark", landmarkId: "lm-market-hall" },
+      { type: "landmark", landmarkId: "lm-theatre-arcade" },
+      { type: "landmark", landmarkId: "lm-exchange-house" },
+      { type: "landmark", landmarkId: "lm-east-dock" }
     ],
     difficulty: "hard"
   }

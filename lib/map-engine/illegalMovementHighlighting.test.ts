@@ -106,6 +106,33 @@ test("buildIllegalDrawnMovementHighlights highlights wrong-way one-way movements
   );
 });
 
+test("buildIllegalDrawnMovementHighlights highlights closed road movements", () => {
+  assert.deepEqual(
+    buildHighlights([
+      {
+        type: "road_closed",
+        movementIndex: 3,
+        roadId: "road-cd",
+        fromNodeId: "c",
+        toNodeId: "d",
+        restrictionId: "road-cd-closed",
+        message: "Movement 3 uses closed or restricted road road-cd."
+      }
+    ]),
+    [
+      {
+        id: "3:closed-road:road-cd:d",
+        kind: "closed-road",
+        movementIndex: 3,
+        roadId: "road-cd",
+        fromNodeId: "c",
+        toNodeId: "d",
+        message: "Movement 3 uses closed or restricted road road-cd."
+      }
+    ]
+  );
+});
+
 test("buildIllegalDrawnMovementHighlights highlights explicit prohibited turns", () => {
   assert.deepEqual(
     buildHighlights([

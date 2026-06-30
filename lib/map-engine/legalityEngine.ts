@@ -4,6 +4,7 @@ import type { MapDefinition, MapGraph, MapRestriction, MapRoad } from "./types.t
 export const ILLEGAL_MOVEMENT_TYPES = [
   "wrong_way_one_way",
   "no_entry",
+  "road_closed",
   "prohibited_turn",
   "no_u_turn",
   "disconnected_road_jump",
@@ -53,6 +54,12 @@ function isNoEntryRestriction(
   restriction: MapRestriction
 ): restriction is Extract<MapRestriction, { type: "no_entry" }> {
   return restriction.type === "no_entry";
+}
+
+function isRoadClosedRestriction(
+  restriction: MapRestriction
+): restriction is Extract<MapRestriction, { type: "road_closed" }> {
+  return restriction.type === "road_closed";
 }
 
 function isProhibitedTurnRestriction(
@@ -143,7 +150,8 @@ function movementContext(graph: MapGraph, movement: AttemptedRouteMovement, move
 function checkSingleMovement(
   graph: MapGraph,
   context: MovementContext,
-  noEntryRestrictions: Array<Extract<MapRestriction, { type: "no_entry" }>>
+  noEntryRestrictions: Array<Extract<MapRestriction, { type: "no_entry" }>>,
+  roadClosedRestrictions: Array<Extract<MapRestriction, { type: "road_closed" }>>
 ): IllegalMovement[] {
   const illegalMovements: IllegalMovement[] = [];
   const { movement, road } = context;
@@ -198,6 +206,19 @@ function checkSingleMovement(
           "no_entry",
           context,
           `Movement ${context.movementIndex} uses no-entry road ${movement.roadId} from ${movement.fromNodeId} to ${movement.toNodeId}.`
+        ),
+        restrictionId: restriction.id
+      });
+    }
+  }
+
+  for (const restriction of roadClosedRestrictions) {
+    if (restriction.roadId === movement.roadId) {
+      illegalMovements.push({
+        ...movementIllegalBase(
+          "road_closed",
+          context,
+          `Movement ${context.movementIndex} uses closed or restricted road ${movement.roadId}.`
         ),
         restrictionId: restriction.id
       });
@@ -265,6 +286,7 @@ function checkTransition(
 export function checkRouteLegality(input: LegalityCheckInput): LegalityCheckResult {
   const graph = buildMapGraph(input.map);
   const noEntryRestrictions = input.map.restrictions.filter(isNoEntryRestriction);
+  const roadClosedRestrictions = input.map.restrictions.filter(isRoadClosedRestriction);
   const prohibitedTurnRestrictions = input.map.restrictions.filter(isProhibitedTurnRestriction);
   const contexts = input.movements.map((movement, index) => movementContext(graph, movement, index));
   const illegalMovements: IllegalMovement[] = [];
@@ -272,7 +294,7 @@ export function checkRouteLegality(input: LegalityCheckInput): LegalityCheckResu
   for (let index = 0; index < contexts.length; index += 1) {
     const context = contexts[index];
 
-    illegalMovements.push(...checkSingleMovement(graph, context, noEntryRestrictions));
+    illegalMovements.push(...checkSingleMovement(graph, context, noEntryRestrictions, roadClosedRestrictions));
 
     if (index > 0) {
       illegalMovements.push(...checkTransition(contexts[index - 1], context, prohibitedTurnRestrictions));

@@ -13,7 +13,9 @@ export type DbQueryBuilder = PromiseLike<DbQueryResult<unknown>> & {
   upsert: (values: unknown, options?: unknown) => DbQueryBuilder;
   update: (values: unknown) => DbQueryBuilder;
   eq: (column: string, value: unknown) => DbQueryBuilder;
+  is: (column: string, value: unknown) => DbQueryBuilder;
   order: (column: string, options?: unknown) => DbQueryBuilder;
+  limit: (count: number) => DbQueryBuilder;
   single: <T = unknown>() => Promise<DbQueryResult<T>>;
 };
 

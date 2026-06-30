@@ -21,6 +21,11 @@ const newsletterMigrationPath = path.join(
   "supabase/migrations/003_newsletter_signups.sql"
 );
 const newsletterMigrationSql = readFileSync(newsletterMigrationPath, "utf8");
+const routeAttemptsMigrationPath = path.join(
+  projectRoot,
+  "supabase/migrations/004_route_attempts.sql"
+);
+const routeAttemptsMigrationSql = readFileSync(routeAttemptsMigrationPath, "utf8");
 
 const requiredTables = [
   "profiles",
@@ -143,6 +148,40 @@ test("newsletter signup migration is narrow public insert only", () => {
   assert.doesNotMatch(newsletterMigrationSql, /for select/i);
 });
 
+test("route attempts migration stores dev route runner reviews safely", () => {
+  assert.match(
+    routeAttemptsMigrationSql,
+    /create table if not exists public\.route_attempts/i
+  );
+  assert.match(routeAttemptsMigrationSql, /user_id uuid references auth\.users\(id\) on delete set null/i);
+  assert.match(routeAttemptsMigrationSql, /violations jsonb/i);
+  assert.match(routeAttemptsMigrationSql, /missed_restrictions jsonb/i);
+  assert.match(routeAttemptsMigrationSql, /correction_hints jsonb/i);
+  assert.match(routeAttemptsMigrationSql, /practice_recommendations jsonb/i);
+  assert.match(routeAttemptsMigrationSql, /review_payload jsonb not null/i);
+  assert.match(routeAttemptsMigrationSql, /review_schema_version integer not null default 1/i);
+  assert.match(
+    routeAttemptsMigrationSql,
+    /alter table public\.route_attempts enable row level security/i
+  );
+});
+
+test("route attempts policies allow dev route-runner read/write access without exposing user-owned rows", () => {
+  const selectPolicy = routeAttemptsMigrationSql.match(
+    /create policy "route_attempts_select_own_or_admin"[\s\S]+?;/i
+  )?.[0] ?? "";
+
+  assert.match(
+    routeAttemptsMigrationSql,
+    /create policy "route_attempts_insert_dev_or_own"[\s\S]+?to anon, authenticated[\s\S]+?user_id is null[\s\S]+?user_id = auth\.uid\(\)/i
+  );
+  assert.match(
+    selectPolicy,
+    /create policy "route_attempts_select_own_or_admin"[\s\S]+?to anon, authenticated[\s\S]+?user_id is null[\s\S]+?user_id = auth\.uid\(\)[\s\S]+?public\.has_admin_role\(\)/i
+  );
+  assert.match(routeAttemptsMigrationSql, /grant select, insert on public\.route_attempts to anon/i);
+});
+
 test("Supabase env docs expose only public browser-safe values", () => {
   const envExample = readFileSync(path.join(projectRoot, ".env.example"), "utf8");
   const readme = readFileSync(path.join(projectRoot, "README.md"), "utf8");
@@ -175,6 +214,7 @@ test("seed and app database code do not use service role keys or legacy tables",
     "lib/db/questionImportExport.ts",
     "lib/db/practiceAttemptRepository.ts",
     "lib/db/mockAttemptRepository.ts",
+    "app/dev/route-runner/routeAttemptStorage.ts",
     "lib/db/progressRepository.ts",
     "app/admin/questions/actions.ts",
     "app/admin/questions/import-export/actions.ts",

@@ -2,13 +2,22 @@ export { buildDirectedEdges } from "./edges.ts";
 export { canSubmitDraftRoute, validateDraftRouteSelection } from "./draftRouteValidation.ts";
 export {
   appendDrawnRoutePoint,
+  appendRouteDraftPoint,
+  clearRouteDraft,
   clearDrawnRouteTrace,
+  createEmptyRouteDraft,
   createDrawnRouteTrace,
   drawnRouteTraceDistance,
+  finishRouteStroke,
+  getFlattenedRouteDraftPoints,
+  hasUndoableRouteStroke,
   isMeaningfulDrawnGesture,
   mapToScreenPoint,
+  routeDraftToDrawnRouteTrace,
   screenToMapPoint,
   simplifyDrawnRouteTrace,
+  startRouteStroke,
+  undoLastRouteStroke,
   validateDrawnRouteGesture
 } from "./drawingTrace.ts";
 export { createInsufficientDrawnGesturePipelineResult, runDrawnRoutePipeline } from "./drawnRoutePipeline.ts";
@@ -62,8 +71,8 @@ export {
 } from "./restrictionVisuals.ts";
 export { snapDrawnRouteToRoads } from "./routeSnapping.ts";
 export { scoreRouteAttempt } from "./scoringEngine.ts";
-export { findShortestLegalRoute } from "./shortestRoute.ts";
-export { validateMapDefinition, validateRouteExercise } from "./validation.ts";
+export { findShortestLegalRoute, findShortestLegalRouteThroughStops } from "./shortestRoute.ts";
+export { validateMapDefinition, validateRouteExercise, validateRouteExerciseLegalReachability } from "./validation.ts";
 export type {
   NormalisedRouteAttempt,
   RunRouteExerciseInput,
@@ -82,6 +91,8 @@ export type {
   DrawnRouteGestureFailureReason,
   DrawnRouteGestureValidation,
   DrawnRouteGestureValidationOptions,
+  DrawnRouteDraft,
+  DrawnRouteStroke,
   DrawnRouteTrace,
   ScreenMapViewport
 } from "./drawingTrace.ts";
@@ -155,7 +166,12 @@ export type {
   RouteScoreResult,
   ScoreRouteAttemptInput
 } from "./scoringEngine.ts";
-export type { FindShortestLegalRouteInput, ShortestLegalRouteResult } from "./shortestRoute.ts";
+export type {
+  FindShortestLegalRouteInput,
+  FindShortestLegalRouteThroughStopsInput,
+  ShortestLegalRouteResult,
+  ShortestLegalRouteThroughStopsResult
+} from "./shortestRoute.ts";
 export type {
   DirectedEdge,
   DirectedEdgeDirection,
@@ -173,3 +189,4 @@ export type {
   RouteStop,
   ValidationResult
 } from "./types.ts";
+export type { RouteExerciseLegalReachabilityValidationResult } from "./validation.ts";

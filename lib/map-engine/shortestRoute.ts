@@ -7,6 +7,12 @@ export type FindShortestLegalRouteInput = {
   restrictions?: MapRestriction[];
 };
 
+export type FindShortestLegalRouteThroughStopsInput = {
+  graph: MapGraph;
+  stopNodeIds: string[];
+  restrictions?: MapRestriction[];
+};
+
 export type ShortestLegalRouteResult =
   | {
       found: true;
@@ -24,6 +30,22 @@ export type ShortestLegalRouteResult =
       reason: "NO_ROUTE" | "INVALID_START_NODE" | "INVALID_END_NODE";
     };
 
+export type ShortestLegalRouteThroughStopsResult =
+  | {
+      found: true;
+      stopNodeIds: string[];
+      distanceMeters: number;
+      edgeIds: string[];
+      roadIds: string[];
+      nodeIds: string[];
+    }
+  | {
+      found: false;
+      stopNodeIds: string[];
+      reason: "NO_ROUTE" | "INVALID_STOP_NODE" | "INVALID_STOP_SEQUENCE";
+      invalidNodeId?: string;
+    };
+
 type SearchState = {
   nodeId: string;
   previousEdgeId: string | null;
@@ -31,6 +53,15 @@ type SearchState = {
 
 type QueueItem = {
   state: SearchState;
+  distanceMeters: number;
+};
+
+type OrderedStopSearchState = SearchState & {
+  nextStopIndex: number;
+};
+
+type OrderedStopQueueItem = {
+  state: OrderedStopSearchState;
   distanceMeters: number;
 };
 
@@ -60,6 +91,22 @@ function isEdgeBlockedByNoEntry(
   });
 }
 
+function isEdgeBlockedByRoadClosure(
+  edge: DirectedEdge,
+  restrictions: Array<Extract<MapRestriction, { type: "road_closed" }>>
+): boolean {
+  return restrictions.some((restriction) => restriction.roadId === edge.roadId);
+}
+
+function isImmediateUTurn(previousEdge: DirectedEdge | null, nextEdge: DirectedEdge): boolean {
+  return (
+    previousEdge !== null &&
+    previousEdge.roadId === nextEdge.roadId &&
+    previousEdge.fromNodeId === nextEdge.toNodeId &&
+    previousEdge.toNodeId === nextEdge.fromNodeId
+  );
+}
+
 function isTransitionBlockedByProhibitedTurn(
   previousEdge: DirectedEdge | null,
   nextEdge: DirectedEdge,
@@ -77,7 +124,22 @@ function isTransitionBlockedByProhibitedTurn(
   );
 }
 
-function popLowestDistance(queue: QueueItem[]): QueueItem {
+function transitionIsBlocked(input: {
+  previousEdge: DirectedEdge | null;
+  nextEdge: DirectedEdge;
+  noEntryRestrictions: Array<Extract<MapRestriction, { type: "no_entry" }>>;
+  roadClosedRestrictions: Array<Extract<MapRestriction, { type: "road_closed" }>>;
+  prohibitedTurnRestrictions: Array<Extract<MapRestriction, { type: "prohibited_turn" }>>;
+}): boolean {
+  return (
+    isEdgeBlockedByNoEntry(input.nextEdge, input.noEntryRestrictions) ||
+    isEdgeBlockedByRoadClosure(input.nextEdge, input.roadClosedRestrictions) ||
+    isImmediateUTurn(input.previousEdge, input.nextEdge) ||
+    isTransitionBlockedByProhibitedTurn(input.previousEdge, input.nextEdge, input.prohibitedTurnRestrictions)
+  );
+}
+
+function popLowestDistance<TQueueItem extends { distanceMeters: number }>(queue: TQueueItem[]): TQueueItem {
   let bestIndex = 0;
 
   for (let index = 1; index < queue.length; index += 1) {
@@ -101,6 +163,20 @@ function reconstructEdgeIds(endStateKey: string, previousByStateKey: Record<stri
   }
 
   return edgeIds.reverse();
+}
+
+function orderedStopStateKey(state: OrderedStopSearchState): string {
+  return `${state.nodeId}|${state.previousEdgeId ?? "START"}|${state.nextStopIndex}`;
+}
+
+function advanceStopIndex(nodeId: string, nextStopIndex: number, stopNodeIds: string[]): number {
+  let advancedIndex = nextStopIndex;
+
+  while (advancedIndex < stopNodeIds.length && nodeId === stopNodeIds[advancedIndex]) {
+    advancedIndex += 1;
+  }
+
+  return advancedIndex;
 }
 
 export function findShortestLegalRoute(input: FindShortestLegalRouteInput): ShortestLegalRouteResult {
@@ -138,6 +214,7 @@ export function findShortestLegalRoute(input: FindShortestLegalRouteInput): Shor
 
   const restrictions = input.restrictions ?? [];
   const noEntryRestrictions = restrictions.filter((restriction) => restriction.type === "no_entry");
+  const roadClosedRestrictions = restrictions.filter((restriction) => restriction.type === "road_closed");
   const prohibitedTurnRestrictions = restrictions.filter((restriction) => restriction.type === "prohibited_turn");
   const startState: SearchState = {
     nodeId: startNodeId,
@@ -177,11 +254,15 @@ export function findShortestLegalRoute(input: FindShortestLegalRouteInput): Shor
     const candidateEdges = graph.outgoingEdgesByNodeId[current.state.nodeId] ?? [];
 
     for (const candidateEdge of candidateEdges) {
-      if (isEdgeBlockedByNoEntry(candidateEdge, noEntryRestrictions)) {
-        continue;
-      }
-
-      if (isTransitionBlockedByProhibitedTurn(previousEdge, candidateEdge, prohibitedTurnRestrictions)) {
+      if (
+        transitionIsBlocked({
+          previousEdge,
+          nextEdge: candidateEdge,
+          noEntryRestrictions,
+          roadClosedRestrictions,
+          prohibitedTurnRestrictions
+        })
+      ) {
         continue;
       }
 
@@ -212,6 +293,115 @@ export function findShortestLegalRoute(input: FindShortestLegalRouteInput): Shor
     found: false,
     startNodeId,
     endNodeId,
+    reason: "NO_ROUTE"
+  };
+}
+
+export function findShortestLegalRouteThroughStops(
+  input: FindShortestLegalRouteThroughStopsInput
+): ShortestLegalRouteThroughStopsResult {
+  const { graph, stopNodeIds } = input;
+
+  if (stopNodeIds.length < 2) {
+    return {
+      found: false,
+      stopNodeIds: [...stopNodeIds],
+      reason: "INVALID_STOP_SEQUENCE"
+    };
+  }
+
+  for (const stopNodeId of stopNodeIds) {
+    if (!graph.nodesById[stopNodeId]) {
+      return {
+        found: false,
+        stopNodeIds: [...stopNodeIds],
+        reason: "INVALID_STOP_NODE",
+        invalidNodeId: stopNodeId
+      };
+    }
+  }
+
+  const restrictions = input.restrictions ?? [];
+  const noEntryRestrictions = restrictions.filter((restriction) => restriction.type === "no_entry");
+  const roadClosedRestrictions = restrictions.filter((restriction) => restriction.type === "road_closed");
+  const prohibitedTurnRestrictions = restrictions.filter((restriction) => restriction.type === "prohibited_turn");
+  const startState: OrderedStopSearchState = {
+    nodeId: stopNodeIds[0],
+    previousEdgeId: null,
+    nextStopIndex: advanceStopIndex(stopNodeIds[0], 1, stopNodeIds)
+  };
+  const startKey = orderedStopStateKey(startState);
+  const queue: OrderedStopQueueItem[] = [{ state: startState, distanceMeters: 0 }];
+  const distancesByStateKey: Record<string, number> = {
+    [startKey]: 0
+  };
+  const previousByStateKey: Record<string, PreviousState> = {};
+
+  while (queue.length > 0) {
+    const current = popLowestDistance(queue);
+    const currentKey = orderedStopStateKey(current.state);
+
+    if (current.distanceMeters > distancesByStateKey[currentKey]) {
+      continue;
+    }
+
+    if (current.state.nextStopIndex >= stopNodeIds.length) {
+      const edgeIds = reconstructEdgeIds(currentKey, previousByStateKey);
+      const edges = edgeIds.map((edgeId) => graph.edgesById[edgeId]);
+
+      return {
+        found: true,
+        stopNodeIds: [...stopNodeIds],
+        distanceMeters: current.distanceMeters,
+        edgeIds,
+        roadIds: edges.map((edge) => edge.roadId),
+        nodeIds: [stopNodeIds[0], ...edges.map((edge) => edge.toNodeId)]
+      };
+    }
+
+    const previousEdge = current.state.previousEdgeId ? graph.edgesById[current.state.previousEdgeId] : null;
+    const candidateEdges = graph.outgoingEdgesByNodeId[current.state.nodeId] ?? [];
+
+    for (const candidateEdge of candidateEdges) {
+      if (
+        transitionIsBlocked({
+          previousEdge,
+          nextEdge: candidateEdge,
+          noEntryRestrictions,
+          roadClosedRestrictions,
+          prohibitedTurnRestrictions
+        })
+      ) {
+        continue;
+      }
+
+      const nextState: OrderedStopSearchState = {
+        nodeId: candidateEdge.toNodeId,
+        previousEdgeId: candidateEdge.id,
+        nextStopIndex: advanceStopIndex(candidateEdge.toNodeId, current.state.nextStopIndex, stopNodeIds)
+      };
+      const nextKey = orderedStopStateKey(nextState);
+      const nextDistance = current.distanceMeters + candidateEdge.distanceMeters;
+
+      if (distancesByStateKey[nextKey] !== undefined && distancesByStateKey[nextKey] <= nextDistance) {
+        continue;
+      }
+
+      distancesByStateKey[nextKey] = nextDistance;
+      previousByStateKey[nextKey] = {
+        previousStateKey: currentKey,
+        viaEdgeId: candidateEdge.id
+      };
+      queue.push({
+        state: nextState,
+        distanceMeters: nextDistance
+      });
+    }
+  }
+
+  return {
+    found: false,
+    stopNodeIds: [...stopNodeIds],
     reason: "NO_ROUTE"
   };
 }

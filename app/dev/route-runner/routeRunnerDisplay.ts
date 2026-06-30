@@ -725,6 +725,10 @@ function illegalMovementMessage(type: string): string {
     return "The existing legality engine found a no-entry movement.";
   }
 
+  if (type === "road_closed") {
+    return "The existing legality engine found use of a closed or restricted road.";
+  }
+
   if (type === "disconnected_road_jump") {
     return "The existing legality engine found a disconnected road jump.";
   }

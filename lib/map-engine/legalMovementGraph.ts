@@ -35,6 +35,13 @@ function noEntryBlocksEdge(restriction: Extract<MapRestriction, { type: "no_entr
   return restriction.fromNodeId === edge.fromNodeId && restriction.toNodeId === edge.toNodeId;
 }
 
+function roadClosureBlocksEdge(
+  restriction: Extract<MapRestriction, { type: "road_closed" }>,
+  edge: DirectedEdge
+): boolean {
+  return restriction.roadId === edge.roadId;
+}
+
 function isProhibitedTurn(
   restrictions: Array<Extract<MapRestriction, { type: "prohibited_turn" }>>,
   fromEdge: DirectedEdge,
@@ -48,6 +55,14 @@ function isProhibitedTurn(
   );
 }
 
+function isImmediateUTurn(fromEdge: DirectedEdge, toEdge: DirectedEdge): boolean {
+  return (
+    fromEdge.roadId === toEdge.roadId &&
+    fromEdge.fromNodeId === toEdge.toNodeId &&
+    fromEdge.toNodeId === toEdge.fromNodeId
+  );
+}
+
 function emptyStringArrayIndex(nodeIds: string[]): Record<string, string[]> {
   return Object.fromEntries(nodeIds.map((nodeId) => [nodeId, []]));
 }
@@ -55,11 +70,14 @@ function emptyStringArrayIndex(nodeIds: string[]): Record<string, string[]> {
 export function buildLegalMovementGraph(map: MapDefinition): LegalMovementGraph {
   const graph = buildMapGraph(map);
   const noEntryRestrictions = map.restrictions.filter((restriction) => restriction.type === "no_entry");
+  const roadClosedRestrictions = map.restrictions.filter((restriction) => restriction.type === "road_closed");
   const prohibitedTurnRestrictions = map.restrictions.filter(
     (restriction) => restriction.type === "prohibited_turn"
   );
   const legalEdges = graph.edges.filter(
-    (edge) => !noEntryRestrictions.some((restriction) => noEntryBlocksEdge(restriction, edge))
+    (edge) =>
+      !noEntryRestrictions.some((restriction) => noEntryBlocksEdge(restriction, edge)) &&
+      !roadClosedRestrictions.some((restriction) => roadClosureBlocksEdge(restriction, edge))
   );
   const edgesById = Object.fromEntries(legalEdges.map((edge) => [edge.id, edge]));
   const nodeIds = Object.keys(graph.nodesById);
@@ -81,7 +99,7 @@ export function buildLegalMovementGraph(map: MapDefinition): LegalMovementGraph 
     for (const toEdgeId of nextEdgeIds) {
       const toEdge = edgesById[toEdgeId];
 
-      if (isProhibitedTurn(prohibitedTurnRestrictions, fromEdge, toEdge)) {
+      if (isImmediateUTurn(fromEdge, toEdge) || isProhibitedTurn(prohibitedTurnRestrictions, fromEdge, toEdge)) {
         continue;
       }
 
