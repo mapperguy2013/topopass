@@ -7,6 +7,7 @@ export {
 export {
   calculateOsmLatLonBounds,
   createOsmLocalProjection,
+  measureOsmCoordinateDistanceMeters,
   projectOsmCoordinateToLocalMeters
 } from "./osmProjection.ts";
 export { parseOverpassRoadExtract } from "./overpassImport.ts";

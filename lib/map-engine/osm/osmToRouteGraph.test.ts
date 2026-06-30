@@ -55,8 +55,8 @@ function convertLargeFixture() {
 
 function convertRealLondonPilotFixture() {
   const result = convertOverpassJsonToRouteMap(realLondonPilotFixture, {
-    mapId: "real-london-osm-pilot",
-    name: "Real London OSM Pilot"
+    mapId: "osm-real-london-pilot",
+    name: "OSM Real London Pilot"
   });
 
   assert.equal(result.ok, true, result.ok ? undefined : result.errors.join("; "));
@@ -122,8 +122,11 @@ test("local projection is deterministic and stores bounding box metadata", () =>
   const second = convertFixture();
 
   assert.deepEqual(first.metadata.projection, second.metadata.projection);
+  assert.equal(first.metadata.projection.method, "local-web-mercator");
   assert.equal(first.metadata.projection.originLat, (51.5301 + 51.5333) / 2);
   assert.equal(first.metadata.projection.originLon, (-0.1248 + -0.1175) / 2);
+  assert.equal(Number.isFinite(first.metadata.projection.originMercatorX), true);
+  assert.equal(Number.isFinite(first.metadata.projection.originMercatorY), true);
   assert.equal(first.metadata.projection.latLonBounds.minLat, 51.5301);
   assert.equal(first.metadata.projection.latLonBounds.maxLon, -0.1175);
 });
@@ -353,65 +356,91 @@ test("medium London one-way roads only generate legal directed graph edges", () 
   }
 });
 
-test("real London pilot fixture converts into a compact route graph", () => {
+test("real London pilot fixture converts into a real exported route graph", () => {
   const map = convertRealLondonPilotFixture();
 
-  assert.equal(map.id, "real-london-osm-pilot");
-  assert.equal(map.name, "Real London OSM Pilot");
-  assert.equal(map.nodes.length, 12);
-  assert.equal(map.roads.length, 20);
-  assert.equal(map.metadata.sourceRoadCount, 10);
-  assert.equal(map.metadata.convertedRoadSegmentCount, 20);
-  assert.deepEqual(map.metadata.blockedOsmWayIds, [9111]);
-  assert.deepEqual(map.metadata.ignoredRelationIds, [9201]);
+  assert.equal(map.id, "osm-real-london-pilot");
+  assert.equal(map.name, "OSM Real London Pilot");
+  assert.equal(map.nodes.length, 390);
+  assert.equal(map.roads.length, 395);
+  assert.equal(map.metadata.sourceRoadCount, 161);
+  assert.equal(map.metadata.convertedRoadSegmentCount, 395);
+  assert.deepEqual(map.metadata.blockedOsmWayIds, [58987876, 779180492]);
+  assert.deepEqual(map.metadata.ignoredRelationIds, []);
+});
+
+test("real London pilot projection uses north-up local Web Mercator axes", () => {
+  const map = convertRealLondonPilotFixture();
+  const westKeppelNode = map.nodes.find((node) => node.id === "osm-node-104302");
+  const eastKeppelNode = map.nodes.find((node) => node.id === "osm-node-107844");
+  const northernNode = map.nodes.reduce((current, candidate) =>
+    candidate.metadata.lat > current.metadata.lat ? candidate : current
+  );
+  const southernNode = map.nodes.reduce((current, candidate) =>
+    candidate.metadata.lat < current.metadata.lat ? candidate : current
+  );
+
+  assert.ok(westKeppelNode);
+  assert.ok(eastKeppelNode);
+  assert.equal(map.metadata.projection.method, "local-web-mercator");
+  assert.deepEqual(map.metadata.projection.projectedBounds, {
+    minX: -413.924829,
+    maxX: 413.924829,
+    minY: -436.462593,
+    maxY: 436.439213
+  });
+  assert.ok(eastKeppelNode.x > westKeppelNode.x, "eastward longitude should increase x");
+  assert.ok(northernNode.y < southernNode.y, "northward latitude should move toward the top of the canvas");
+});
+
+test("real London pilot segment distances stay on the local metric route scale", () => {
+  const map = convertRealLondonPilotFixture();
+  const storeStreetSegment = map.roads.find((road) => road.id === "osm-way-2644236-segment-0");
+
+  assert.ok(storeStreetSegment);
+  assert.equal(storeStreetSegment.distanceMeters, 4.45895723684103);
 });
 
 test("real London pilot fixture preserves road hierarchy metadata for rendering", () => {
   const map = convertRealLondonPilotFixture();
-  const eustonRoad = map.roads.find((road) => road.name === "Euston Road");
-  const storeStreet = map.roads.find((road) => road.name === "Store Street");
-  const gowerStreet = map.roads.find((road) => road.name === "Gower Street");
+  const cheniesStreet = map.roads.find((road) => road.name === "Chenies Street");
+  const maletStreet = map.roads.find((road) => road.name === "Malet Street");
+  const torringtonPlace = map.roads.find((road) => road.name === "Torrington Place");
 
-  assert.ok(eustonRoad);
-  assert.ok(storeStreet);
-  assert.ok(gowerStreet);
-  assert.equal(eustonRoad.metadata.highway, "primary");
-  assert.equal(storeStreet.metadata.highway, "service");
-  assert.equal(gowerStreet.metadata.highway, "secondary");
-  assert.equal(gowerStreet.metadata.originalDirection, "reverse");
-  assert.equal(gowerStreet.isOneWay, true);
+  assert.ok(cheniesStreet);
+  assert.ok(maletStreet);
+  assert.ok(torringtonPlace);
+  assert.equal(cheniesStreet.metadata.highway, "primary");
+  assert.equal(maletStreet.metadata.highway, "residential");
+  assert.equal(torringtonPlace.metadata.highway, "tertiary");
+  assert.equal(torringtonPlace.metadata.originalDirection, "forward");
+  assert.equal(torringtonPlace.isOneWay, true);
 });
 
-test("real London pilot one-way detour avoids illegal reverse Tavistock Place travel", () => {
+test("real London pilot one-way road only generates legal forward edges", () => {
   const map = convertRealLondonPilotFixture();
   const graph = buildMapGraph(map);
-  const legalEastbound = findShortestLegalRoute({
+  const legalStoreStreet = findShortestLegalRoute({
     graph,
-    startNodeId: "osm-node-9004",
-    endNodeId: "osm-node-9006",
+    startNodeId: "osm-node-333719180",
+    endNodeId: "osm-node-25472045",
     restrictions: map.restrictions
   });
-  const westboundDetour = findShortestLegalRoute({
-    graph,
-    startNodeId: "osm-node-9006",
-    endNodeId: "osm-node-9004",
-    restrictions: map.restrictions
-  });
-  const illegalReverseTavistockEdge = graph.edges.find(
-    (edge) => edge.roadId === "osm-way-9105-segment-1" && edge.fromNodeId === "osm-node-9006"
+  const illegalReverseStoreStreetEdge = graph.edges.find(
+    (edge) => edge.roadId === "osm-way-2644236-segment-2" && edge.fromNodeId === "osm-node-25472045"
   );
 
-  assert.equal(legalEastbound.found, true);
-  assert.equal(westboundDetour.found, true);
-  assert.equal(illegalReverseTavistockEdge, undefined);
+  assert.equal(legalStoreStreet.found, true);
+  assert.equal(illegalReverseStoreStreetEdge, undefined);
 
-  if (legalEastbound.found) {
-    assert.ok(legalEastbound.roadIds.every((roadId) => roadId.startsWith("osm-way-9105-")));
-  }
-
-  if (westboundDetour.found) {
-    assert.equal(westboundDetour.roadIds.some((roadId) => roadId.startsWith("osm-way-9105-")), false);
-    assert.deepEqual(westboundDetour.nodeIds, ["osm-node-9006", "osm-node-9003", "osm-node-9002", "osm-node-9004"]);
+  if (legalStoreStreet.found) {
+    assert.ok(legalStoreStreet.roadIds.every((roadId) => roadId.startsWith("osm-way-2644236-")));
+    assert.deepEqual(legalStoreStreet.nodeIds, [
+      "osm-node-333719180",
+      "osm-node-9523025798",
+      "osm-node-6355365946",
+      "osm-node-25472045"
+    ]);
   }
 });
 

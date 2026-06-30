@@ -15,8 +15,11 @@ export type OsmProjectedBounds = {
 };
 
 export type OsmLocalProjection = {
+  method: "local-web-mercator";
   originLat: number;
   originLon: number;
+  originMercatorX: number;
+  originMercatorY: number;
   metersPerDegreeLat: number;
   metersPerDegreeLon: number;
   latLonBounds: OsmLatLonBounds;
@@ -29,6 +32,9 @@ export type OsmProjectedPoint = {
 };
 
 const METERS_PER_DEGREE_LATITUDE = 111_320;
+const WEB_MERCATOR_EARTH_RADIUS_METERS = 6_378_137;
+const MAX_WEB_MERCATOR_LATITUDE = 85.05112878;
+const DEGREES_TO_RADIANS = Math.PI / 180;
 
 function roundCoordinate(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
@@ -60,13 +66,48 @@ export function calculateOsmLatLonBounds(
   };
 }
 
+function clampWebMercatorLatitude(latitude: number): number {
+  return Math.max(-MAX_WEB_MERCATOR_LATITUDE, Math.min(MAX_WEB_MERCATOR_LATITUDE, latitude));
+}
+
+function lonToWebMercatorX(longitude: number): number {
+  return WEB_MERCATOR_EARTH_RADIUS_METERS * longitude * DEGREES_TO_RADIANS;
+}
+
+function latToWebMercatorY(latitude: number): number {
+  const clampedLatitude = clampWebMercatorLatitude(latitude);
+  const latitudeRadians = clampedLatitude * DEGREES_TO_RADIANS;
+
+  return WEB_MERCATOR_EARTH_RADIUS_METERS * Math.log(Math.tan(Math.PI / 4 + latitudeRadians / 2));
+}
+
 export function projectOsmCoordinateToLocalMeters(
   coordinate: Pick<ImportedOsmRoadCoordinate, "lat" | "lon">,
-  projection: Pick<OsmLocalProjection, "originLat" | "originLon" | "metersPerDegreeLat" | "metersPerDegreeLon">
+  projection: Pick<OsmLocalProjection, "originMercatorX" | "originMercatorY">
 ): OsmProjectedPoint {
   return {
-    x: roundCoordinate((coordinate.lon - projection.originLon) * projection.metersPerDegreeLon),
-    y: roundCoordinate((projection.originLat - coordinate.lat) * projection.metersPerDegreeLat)
+    x: roundCoordinate(lonToWebMercatorX(coordinate.lon) - projection.originMercatorX),
+    y: roundCoordinate(projection.originMercatorY - latToWebMercatorY(coordinate.lat))
+  };
+}
+
+export function measureOsmCoordinateDistanceMeters(
+  fromCoordinate: Pick<ImportedOsmRoadCoordinate, "lat" | "lon">,
+  toCoordinate: Pick<ImportedOsmRoadCoordinate, "lat" | "lon">,
+  projection: Pick<OsmLocalProjection, "metersPerDegreeLat" | "metersPerDegreeLon">
+): number {
+  return Math.hypot(
+    roundCoordinate((toCoordinate.lon - fromCoordinate.lon) * projection.metersPerDegreeLon),
+    roundCoordinate((toCoordinate.lat - fromCoordinate.lat) * projection.metersPerDegreeLat)
+  );
+}
+
+function buildProjectedBounds(projectedPoints: readonly OsmProjectedPoint[]): OsmProjectedBounds {
+  return {
+    minX: Math.min(...projectedPoints.map((point) => point.x)),
+    maxX: Math.max(...projectedPoints.map((point) => point.x)),
+    minY: Math.min(...projectedPoints.map((point) => point.y)),
+    maxY: Math.max(...projectedPoints.map((point) => point.y))
   };
 }
 
@@ -83,8 +124,11 @@ export function createOsmLocalProjection(
   const originLon = (bounds.minLon + bounds.maxLon) / 2;
   const metersPerDegreeLon = METERS_PER_DEGREE_LATITUDE * Math.cos((originLat * Math.PI) / 180);
   const baseProjection = {
+    method: "local-web-mercator" as const,
     originLat,
     originLon,
+    originMercatorX: lonToWebMercatorX(originLon),
+    originMercatorY: latToWebMercatorY(originLat),
     metersPerDegreeLat: METERS_PER_DEGREE_LATITUDE,
     metersPerDegreeLon
   };
@@ -95,11 +139,6 @@ export function createOsmLocalProjection(
   return {
     ...baseProjection,
     latLonBounds: bounds,
-    projectedBounds: {
-      minX: Math.min(...projectedPoints.map((point) => point.x)),
-      maxX: Math.max(...projectedPoints.map((point) => point.x)),
-      minY: Math.min(...projectedPoints.map((point) => point.y)),
-      maxY: Math.max(...projectedPoints.map((point) => point.y))
-    }
+    projectedBounds: buildProjectedBounds(projectedPoints)
   };
 }

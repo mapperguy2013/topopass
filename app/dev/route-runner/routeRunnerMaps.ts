@@ -34,10 +34,16 @@ export type RouteRunnerMapBounds = {
 
 const OSM_FIXTURE_MAP_ID = "osm-tiny-london-prototype";
 const MEDIUM_OSM_FIXTURE_MAP_ID = "osm-medium-london-prototype";
-const REAL_LONDON_OSM_PILOT_MAP_ID = "real-london-osm-pilot";
+const REAL_LONDON_OSM_PILOT_MAP_ID = "osm-real-london-pilot";
 const LARGE_LONDON_OSM_MAP_ID = "osm-large-london";
 const DEFAULT_ROUTE_RUNNER_MAP_PADDING = 45;
 const LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.22;
+
+type MaybeOsmRouteGraphMapDefinition = MapDefinition & {
+  metadata?: {
+    source?: string;
+  };
+};
 
 function buildTinyLondonOsmMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(tinyLondonOverpassFixture, {
@@ -76,8 +82,8 @@ export const mediumLondonOsmRouteMap = buildMediumLondonOsmMap();
 function buildRealLondonOsmPilotMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(realLondonPilotOverpassFixture, {
     mapId: REAL_LONDON_OSM_PILOT_MAP_ID,
-    name: "Real London OSM Pilot",
-    description: "Dev-only compact real-world London Overpass fixture for route-runner QA checks.",
+    name: "OSM Real London Pilot",
+    description: "Dev-only real exported London Overpass fixture for route-runner QA checks.",
     version: 1
   });
 
@@ -315,97 +321,61 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
 
 export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
   {
-    id: "osm-real-euston-road",
-    title: "Real OSM pilot: Euston Road link",
+    id: "osm-real-keppel-street",
+    title: "Real OSM pilot: Keppel Street one-way segment",
     mapId: realLondonOsmPilotRouteMap.id,
     difficulty: "easy",
     stops: [
       {
         type: "node",
-        nodeId: "osm-node-9001",
-        label: "Euston Road west"
+        nodeId: "osm-node-104302",
+        label: "Keppel Street west"
       },
       {
         type: "node",
-        nodeId: "osm-node-9003",
-        label: "Euston Road east"
+        nodeId: "osm-node-107844",
+        label: "Keppel Street east"
       }
     ]
   },
   {
-    id: "osm-real-woburn-checkpoint",
-    title: "Real OSM pilot: Euston to Store Street via Woburn Place",
+    id: "osm-real-store-street",
+    title: "Real OSM pilot: Store Street one-way segment",
     mapId: realLondonOsmPilotRouteMap.id,
-    difficulty: "medium",
+    difficulty: "easy",
     stops: [
       {
         type: "node",
-        nodeId: "osm-node-9001",
-        label: "Euston Road west"
+        nodeId: "osm-node-333719180",
+        label: "Store Street west"
       },
       {
         type: "node",
-        nodeId: "osm-node-9005",
-        label: "Woburn Place and Tavistock Place"
-      },
-      {
-        type: "node",
-        nodeId: "osm-node-9011",
+        nodeId: "osm-node-25472045",
         label: "Store Street east"
       }
     ]
   },
   {
-    id: "osm-real-tavistock-one-way",
-    title: "Real OSM pilot: Tavistock Place one-way",
-    mapId: realLondonOsmPilotRouteMap.id,
-    difficulty: "easy",
-    stops: [
-      {
-        type: "node",
-        nodeId: "osm-node-9004",
-        label: "Tavistock Place west"
-      },
-      {
-        type: "node",
-        nodeId: "osm-node-9006",
-        label: "Tavistock Place east"
-      }
-    ]
-  },
-  {
-    id: "osm-real-one-way-detour",
-    title: "Real OSM pilot: one-way-aware Tavistock detour",
+    id: "osm-real-malet-checkpoint",
+    title: "Real OSM pilot: Malet Street checkpoint route",
     mapId: realLondonOsmPilotRouteMap.id,
     difficulty: "medium",
     stops: [
       {
         type: "node",
-        nodeId: "osm-node-9006",
-        label: "Tavistock Place east"
+        nodeId: "osm-node-107844",
+        label: "Malet Street north"
       },
       {
         type: "node",
-        nodeId: "osm-node-9004",
-        label: "Tavistock Place west"
-      }
-    ]
-  },
-  {
-    id: "osm-real-gower-street",
-    title: "Real OSM pilot: Gower Street northbound",
-    mapId: realLondonOsmPilotRouteMap.id,
-    difficulty: "medium",
-    stops: [
-      {
-        type: "node",
-        nodeId: "osm-node-9010",
-        label: "Store Street and Gower Street"
+        nodeId: "osm-node-1448889398",
+        label: "Malet Street checkpoint"
       },
       {
         type: "node",
-        nodeId: "osm-node-9001",
-        label: "Euston Road and Gower Street"
+        nodeId: "osm-node-108017",
+        label: "Malet Street south"
       }
     ]
   }
@@ -545,8 +515,8 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   },
   {
     id: realLondonOsmPilotRouteMap.id,
-    label: "Real London OSM Pilot",
-    description: "Small committed real-world London Overpass-style extract converted into the TOPOPASS route graph.",
+    label: "OSM Real London Pilot",
+    description: "Real exported London Overpass JSON fixture converted into the TOPOPASS route graph.",
     source: "converted-osm",
     map: realLondonOsmPilotRouteMap,
     exercises: realLondonOsmPilotRouteExercises,
@@ -573,6 +543,10 @@ export function getRouteRunnerMapOption(mapId: string): RouteRunnerMapOption | u
 
 export function isConvertedOsmRouteRunnerMap(option: RouteRunnerMapOption): boolean {
   return option.source === "converted-osm";
+}
+
+export function isConvertedOsmRouteRunnerMapDefinition(map: MapDefinition): boolean {
+  return (map as MaybeOsmRouteGraphMapDefinition).metadata?.source === "osm";
 }
 
 export function getRouteRunnerMapBounds(map: MapDefinition): RouteRunnerMapBounds {
@@ -602,7 +576,11 @@ export function getRouteRunnerMapBounds(map: MapDefinition): RouteRunnerMapBound
 }
 
 export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
-  if (map.id !== MEDIUM_OSM_FIXTURE_MAP_ID && map.id !== LARGE_LONDON_OSM_MAP_ID) {
+  if (
+    map.id !== MEDIUM_OSM_FIXTURE_MAP_ID &&
+    map.id !== REAL_LONDON_OSM_PILOT_MAP_ID &&
+    map.id !== LARGE_LONDON_OSM_MAP_ID
+  ) {
     return DEFAULT_ROUTE_RUNNER_MAP_PADDING;
   }
 
@@ -623,6 +601,68 @@ export function getRouteRunnerMapFitBounds(map: MapDefinition): RouteRunnerMapBo
     maxX: bounds.maxX + padding,
     maxY: bounds.maxY + padding
   };
+}
+
+function routeRunnerBoundsWidth(bounds: RouteRunnerMapBounds): number {
+  return bounds.maxX - bounds.minX;
+}
+
+function routeRunnerBoundsHeight(bounds: RouteRunnerMapBounds): number {
+  return bounds.maxY - bounds.minY;
+}
+
+export function fitRouteRunnerMapBoundsToViewport(
+  bounds: RouteRunnerMapBounds,
+  viewportWidth: number,
+  viewportHeight: number
+): RouteRunnerMapBounds {
+  const width = routeRunnerBoundsWidth(bounds);
+  const height = routeRunnerBoundsHeight(bounds);
+
+  if (width <= 0 || height <= 0 || viewportWidth <= 0 || viewportHeight <= 0) {
+    return { ...bounds };
+  }
+
+  const targetAspectRatio = viewportWidth / viewportHeight;
+  const boundsAspectRatio = width / height;
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+
+  if (boundsAspectRatio < targetAspectRatio) {
+    const fittedWidth = height * targetAspectRatio;
+    const halfWidth = fittedWidth / 2;
+
+    return {
+      minX: centerX - halfWidth,
+      minY: bounds.minY,
+      maxX: centerX + halfWidth,
+      maxY: bounds.maxY
+    };
+  }
+
+  const fittedHeight = width / targetAspectRatio;
+  const halfHeight = fittedHeight / 2;
+
+  return {
+    minX: bounds.minX,
+    minY: centerY - halfHeight,
+    maxX: bounds.maxX,
+    maxY: centerY + halfHeight
+  };
+}
+
+export function getRouteRunnerMapViewportBounds(
+  map: MapDefinition,
+  viewportWidth: number,
+  viewportHeight: number
+): RouteRunnerMapBounds {
+  const fitBounds = getRouteRunnerMapFitBounds(map);
+
+  if (!isConvertedOsmRouteRunnerMapDefinition(map)) {
+    return fitBounds;
+  }
+
+  return fitRouteRunnerMapBoundsToViewport(fitBounds, viewportWidth, viewportHeight);
 }
 
 export function routeRunnerMapCenter(map: MapDefinition): Vec2 {

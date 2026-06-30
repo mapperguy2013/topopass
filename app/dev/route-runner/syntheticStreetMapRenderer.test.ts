@@ -173,7 +173,7 @@ test("converted OSM road labels are optional and deduplicated by road name", () 
     id: "road-label-osm-euston-road",
     kind: "road",
     text: "Euston Road",
-    point: { x: -166.20283849999998, y: -200.376 },
+    point: { x: -267.166778, y: -322.105622 },
     angleRadians: 0,
     priority: 3
   });

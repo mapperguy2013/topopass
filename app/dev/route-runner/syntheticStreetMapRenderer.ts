@@ -166,6 +166,12 @@ function osmRoadMetadata(road: MapRoad): RoadWithOptionalOsmMetadata["metadata"]
   return metadata?.source === "osm" ? metadata : null;
 }
 
+function isOsmMap(map: MapDefinition): boolean {
+  const metadata = (map as { metadata?: { source?: unknown } }).metadata;
+
+  return metadata?.source === "osm" || map.roads.some((road) => osmRoadMetadata(road) !== null);
+}
+
 export function deriveOsmRoadVisualHierarchy(road: MapRoad): OsmRoadVisualHierarchy | null {
   const highway = osmRoadMetadata(road)?.highway;
 
@@ -568,6 +574,10 @@ function slugifyLabelId(label: string): string {
 }
 
 export function buildSyntheticLinearFeatures(map: MapDefinition): SyntheticLinearFeature[] {
+  if (isOsmMap(map)) {
+    return [];
+  }
+
   const bounds = mapBounds(map);
   const width = bounds.maxX - bounds.minX;
   const height = bounds.maxY - bounds.minY;
@@ -626,6 +636,10 @@ export function buildSyntheticLandmarkVisuals(
 }
 
 export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticBackgroundFeature[] {
+  if (isOsmMap(map)) {
+    return [];
+  }
+
   const bounds = mapBounds(map);
   const width = bounds.maxX - bounds.minX;
   const height = bounds.maxY - bounds.minY;

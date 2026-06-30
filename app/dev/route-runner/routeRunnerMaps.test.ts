@@ -4,6 +4,8 @@ import {
   buildBlockedDirectedEdgeKeys,
   buildMapGraph,
   directedEdgeKey,
+  mapToScreenPoint,
+  snapDrawnRouteToRoads,
   validateDirectedEdgePath,
   type RouteExercise
 } from "../../../lib/map-engine/index.ts";
@@ -15,6 +17,7 @@ import {
   getRouteRunnerMapBounds,
   getRouteRunnerMapFitBounds,
   getRouteRunnerMapFitPadding,
+  getRouteRunnerMapViewportBounds,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap,
   largeLondonOsmRouteExercises,
@@ -27,7 +30,33 @@ import {
   tinyLondonOsmRouteExercises,
   tinyLondonOsmRouteMap
 } from "./routeRunnerMaps.ts";
-import { buildSyntheticMapLabels, buildSyntheticRoadVisuals, deriveSyntheticRoadClass } from "./syntheticStreetMapRenderer.ts";
+import {
+  buildSyntheticBackgroundFeatures,
+  buildSyntheticLinearFeatures,
+  buildSyntheticMapLabels,
+  buildSyntheticRoadVisuals,
+  deriveSyntheticRoadClass
+} from "./syntheticStreetMapRenderer.ts";
+
+const TEST_CANVAS_WIDTH = 1120;
+const TEST_CANVAS_HEIGHT = 760;
+
+function boundsWidth(bounds: { minX: number; maxX: number }): number {
+  return bounds.maxX - bounds.minX;
+}
+
+function boundsHeight(bounds: { minY: number; maxY: number }): number {
+  return bounds.maxY - bounds.minY;
+}
+
+function assertClose(actual: number, expected: number, epsilon = 0.000001): void {
+  assert.ok(Math.abs(actual - expected) <= epsilon, `Expected ${actual} to be within ${epsilon} of ${expected}`);
+}
+
+function assertScreenPointInsideViewport(point: { x: number; y: number }, message: string): void {
+  assert.ok(point.x >= -0.000001 && point.x <= TEST_CANVAS_WIDTH + 0.000001, `${message} x=${point.x}`);
+  assert.ok(point.y >= -0.000001 && point.y <= TEST_CANVAS_HEIGHT + 0.000001, `${message} y=${point.y}`);
+}
 
 test("route runner map catalogue keeps the synthetic map as the default", () => {
   const defaultOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
@@ -116,34 +145,89 @@ test("converted OSM map exposes drawable and snappable road geometry", () => {
 });
 
 test("converted OSM map bounds and centre are deterministic", () => {
+  const center = routeRunnerMapCenter(tinyLondonOsmRouteMap);
+
   assert.deepEqual(getRouteRunnerMapBounds(tinyLondonOsmRouteMap), {
-    minX: -252.762931,
-    minY: -178.112,
-    maxX: 252.762931,
-    maxY: 178.112
+    minX: -406.316141,
+    minY: -286.319882,
+    maxX: 406.316141,
+    maxY: 286.309819
   });
-  assert.deepEqual(routeRunnerMapCenter(tinyLondonOsmRouteMap), {
-    x: 0,
-    y: 0
-  });
+  assert.equal(center.x, 0);
+  assertClose(center.y, -0.0050315);
 });
 
 test("larger converted OSM maps use a more comfortable first-load fit", () => {
   assert.equal(getRouteRunnerMapFitPadding(tinyLondonOsmRouteMap), 45);
-  assert.equal(getRouteRunnerMapFitPadding(mediumLondonOsmRouteMap), 97.5056654);
+  assert.equal(getRouteRunnerMapFitPadding(mediumLondonOsmRouteMap), 156.73784324000002);
   assert.deepEqual(getRouteRunnerMapFitBounds(mediumLondonOsmRouteMap), {
-    minX: -319.1094504,
-    minY: -297.8816654,
-    maxX: 319.1094504,
-    maxY: 297.8816654
+    minX: -512.96021424,
+    minY: -478.84346524,
+    maxX: 512.96021424,
+    maxY: 478.83072924000004
   });
-  assert.equal(getRouteRunnerMapFitPadding(largeLondonOsmRouteMap), 274.25998336);
+  assert.equal(getRouteRunnerMapFitPadding(realLondonOsmPilotRouteMap), 192.03839732000003);
+  assert.deepEqual(getRouteRunnerMapFitBounds(realLondonOsmPilotRouteMap), {
+    minX: -605.96322632,
+    minY: -628.50099032,
+    maxX: 605.96322632,
+    maxY: 628.47761032
+  });
+  assert.equal(getRouteRunnerMapFitPadding(largeLondonOsmRouteMap), 440.82518347999996);
   assert.deepEqual(getRouteRunnerMapFitBounds(largeLondonOsmRouteMap), {
-    minX: -897.5781273599999,
-    minY: -719.53998336,
-    maxX: 897.5781273599999,
-    maxY: 719.53998336
+    minX: -1442.70060048,
+    minY: -1156.5667154799999,
+    maxX: 1442.70060048,
+    maxY: 1156.50383848
   });
+});
+
+test("converted OSM viewport fit preserves aspect ratio with a uniform scale", () => {
+  const viewportBounds = getRouteRunnerMapViewportBounds(
+    realLondonOsmPilotRouteMap,
+    TEST_CANVAS_WIDTH,
+    TEST_CANVAS_HEIGHT
+  );
+  const viewportAspectRatio = TEST_CANVAS_WIDTH / TEST_CANVAS_HEIGHT;
+  const mapAspectRatio = boundsWidth(viewportBounds) / boundsHeight(viewportBounds);
+  const scaleX = TEST_CANVAS_WIDTH / boundsWidth(viewportBounds);
+  const scaleY = TEST_CANVAS_HEIGHT / boundsHeight(viewportBounds);
+
+  assertClose(mapAspectRatio, viewportAspectRatio);
+  assertClose(scaleX, scaleY);
+  assert.equal(boundsHeight(viewportBounds), boundsHeight(getRouteRunnerMapFitBounds(realLondonOsmPilotRouteMap)));
+  assert.ok(boundsWidth(viewportBounds) > boundsWidth(getRouteRunnerMapFitBounds(realLondonOsmPilotRouteMap)));
+});
+
+test("synthetic default map keeps its existing first-load fit bounds", () => {
+  const syntheticOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
+
+  assert.ok(syntheticOption);
+  assert.deepEqual(
+    getRouteRunnerMapViewportBounds(syntheticOption.map, TEST_CANVAS_WIDTH, TEST_CANVAS_HEIGHT),
+    getRouteRunnerMapFitBounds(syntheticOption.map)
+  );
+});
+
+test("all route-runner maps render nodes inside sane first-load viewport bounds", () => {
+  const maps = [
+    tinyLondonOsmRouteMap,
+    mediumLondonOsmRouteMap,
+    realLondonOsmPilotRouteMap,
+    largeLondonOsmRouteMap
+  ];
+
+  for (const map of maps) {
+    const viewport = {
+      width: TEST_CANVAS_WIDTH,
+      height: TEST_CANVAS_HEIGHT,
+      mapBounds: getRouteRunnerMapViewportBounds(map, TEST_CANVAS_WIDTH, TEST_CANVAS_HEIGHT)
+    };
+
+    for (const node of map.nodes) {
+      assertScreenPointInsideViewport(mapToScreenPoint(node, viewport), `${map.id}:${node.id}`);
+    }
+  }
 });
 
 test("converted OSM labels and road classes use preserved OSM metadata", () => {
@@ -253,38 +337,45 @@ test("medium converted OSM labels and road classes use preserved OSM metadata", 
   assert.ok(labels.some((label) => label.kind === "road" && label.text === "Euston Road"));
 });
 
-test("real London OSM pilot fixture is selectable and compact", () => {
+test("real London OSM pilot fixture is selectable from the real export", () => {
   const realOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
 
   assert.ok(realOption);
   assert.equal(ROUTE_RUNNER_MAP_OPTIONS[0]?.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
   assert.equal(realOption.source, "converted-osm");
   assert.ok(isConvertedOsmRouteRunnerMap(realOption));
-  assert.equal(realOption.label, "Real London OSM Pilot");
+  assert.equal(realOption.id, "osm-real-london-pilot");
+  assert.equal(realOption.label, "OSM Real London Pilot");
   assert.equal(realOption.attribution, "OpenStreetMap contributors");
-  assert.equal(realOption.map.nodes.length, 12);
-  assert.equal(realOption.map.roads.length, 20);
-  assert.equal(realOption.exercises.length, 5);
+  assert.equal(realOption.map.nodes.length, 390);
+  assert.equal(realOption.map.roads.length, 395);
+  assert.equal(realOption.exercises.length, 3);
 });
 
 test("real London OSM pilot labels and road classes use preserved OSM metadata", () => {
   const visuals = buildSyntheticRoadVisuals(realLondonOsmPilotRouteMap);
+  const defaultLabels = buildSyntheticMapLabels(realLondonOsmPilotRouteMap, realLondonOsmPilotRouteExercises[0]);
   const labels = buildSyntheticMapLabels(realLondonOsmPilotRouteMap, realLondonOsmPilotRouteExercises[0], {
     includeOsmRoadLabels: true
   });
-  const eustonRoad = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Euston Road");
-  const storeStreet = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Store Street");
-  const gowerStreet = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Gower Street");
+  const cheniesStreet = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Chenies Street");
+  const maletStreet = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Malet Street");
+  const torringtonPlace = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Torrington Place");
 
-  assert.ok(eustonRoad);
-  assert.ok(storeStreet);
-  assert.ok(gowerStreet);
-  assert.equal(deriveSyntheticRoadClass(realLondonOsmPilotRouteMap, eustonRoad), "major");
-  assert.equal(deriveSyntheticRoadClass(realLondonOsmPilotRouteMap, storeStreet), "service");
-  assert.equal(gowerStreet.isOneWay, true);
-  assert.ok(visuals.some((visual) => visual.name === "Euston Road"));
-  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Euston Road"));
-  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Tavistock Place"));
+  assert.ok(cheniesStreet);
+  assert.ok(maletStreet);
+  assert.ok(torringtonPlace);
+  assert.equal(deriveSyntheticRoadClass(realLondonOsmPilotRouteMap, cheniesStreet), "major");
+  assert.equal(deriveSyntheticRoadClass(realLondonOsmPilotRouteMap, maletStreet), "local");
+  assert.equal(torringtonPlace.isOneWay, true);
+  assert.ok(visuals.some((visual) => visual.name === "Keppel Street"));
+  assert.equal(defaultLabels.some((label) => label.kind === "road" && label.text === "Keppel Street"), false);
+  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Torrington Place"));
+  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Keppel Street"));
+  assert.deepEqual(buildSyntheticBackgroundFeatures(realLondonOsmPilotRouteMap), []);
+  assert.deepEqual(buildSyntheticLinearFeatures(realLondonOsmPilotRouteMap), []);
+  assert.equal(defaultLabels.some((label) => label.kind === "area"), false);
+  assert.equal(defaultLabels.some((label) => label.text === "Marlowe Canal" || label.text === "Civic Quarter"), false);
 });
 
 test("large London OSM fixture is selectable and exposes hierarchy labels", () => {
@@ -617,10 +708,10 @@ test("medium converted OSM one-way detour does not use illegal reverse one-way t
   assert.ok(overlay.nodeIds.length > 2);
 });
 
-test("real London OSM pilot one-way detour avoids illegal reverse one-way travel", () => {
+test("real London OSM pilot one-way exercise uses real Store Street edges", () => {
   const graph = buildMapGraph(realLondonOsmPilotRouteMap);
   const exercise = realLondonOsmPilotRouteExercises.find(
-    (candidate) => candidate.id === "osm-real-one-way-detour"
+    (candidate) => candidate.id === "osm-real-store-street"
   );
 
   assert.ok(exercise);
@@ -633,8 +724,65 @@ test("real London OSM pilot one-way detour avoids illegal reverse one-way travel
   });
 
   assert.equal(overlay.status, "available");
-  assert.equal(overlay.roadIds.some((roadId) => roadId.startsWith("osm-way-9105-")), false);
-  assert.deepEqual(overlay.nodeIds, ["osm-node-9006", "osm-node-9003", "osm-node-9002", "osm-node-9004"]);
+  assert.ok(overlay.roadIds.every((roadId) => roadId.startsWith("osm-way-2644236-")));
+  assert.deepEqual(overlay.nodeIds, [
+    "osm-node-333719180",
+    "osm-node-9523025798",
+    "osm-node-6355365946",
+    "osm-node-25472045"
+  ]);
+});
+
+test("real London OSM pilot snapping and reveal remain aligned after projection fit", () => {
+  const graph = buildMapGraph(realLondonOsmPilotRouteMap);
+  const exercise = realLondonOsmPilotRouteExercises.find(
+    (candidate) => candidate.id === "osm-real-store-street"
+  );
+  const storeStreetNodeIds = [
+    "osm-node-333719180",
+    "osm-node-9523025798",
+    "osm-node-6355365946",
+    "osm-node-25472045"
+  ];
+  const storeStreetPoints = storeStreetNodeIds.map((nodeId) => {
+    const node = graph.nodesById[nodeId];
+
+    assert.ok(node);
+
+    return node;
+  });
+
+  assert.ok(exercise);
+
+  const snappedRoute = snapDrawnRouteToRoads({
+    map: realLondonOsmPilotRouteMap,
+    points: storeStreetPoints,
+    snapTolerance: 1
+  });
+
+  assert.equal(snappedRoute.isValidTrace, true);
+  assert.equal(snappedRoute.hasOffRoadPoints, false);
+  assert.ok(snappedRoute.snappedPoints.every((point) => point.roadId?.startsWith("osm-way-2644236-")));
+
+  const overlay = buildFastestRouteOverlay({
+    map: realLondonOsmPilotRouteMap,
+    exercise,
+    revealState: toggleFastestRouteReveal(createHiddenFastestRouteRevealState()),
+    graph
+  });
+  const viewport = {
+    width: TEST_CANVAS_WIDTH,
+    height: TEST_CANVAS_HEIGHT,
+    mapBounds: getRouteRunnerMapViewportBounds(realLondonOsmPilotRouteMap, TEST_CANVAS_WIDTH, TEST_CANVAS_HEIGHT)
+  };
+
+  assert.equal(overlay.status, "available");
+
+  if (overlay.status === "available") {
+    for (const point of overlay.points) {
+      assertScreenPointInsideViewport(mapToScreenPoint(point, viewport), "real-pilot-reveal");
+    }
+  }
 });
 
 test("large London OSM one-way detour avoids illegal reverse one-way travel", () => {

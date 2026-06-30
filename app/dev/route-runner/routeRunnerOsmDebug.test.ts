@@ -61,16 +61,16 @@ test("medium OSM debug summary is deterministic", () => {
   assert.equal(summary.blockedOsmWayCount, 1);
   assert.deepEqual(summary.blockedOsmWayIds, ["6016"]);
   assert.deepEqual(summary.bounds, {
-    minX: -221.603785,
-    minY: -200.376,
-    maxX: 221.603785,
-    maxY: 200.376
+    minX: -356.222371,
+    minY: -322.105622,
+    maxX: 356.222371,
+    maxY: 322.092886
   });
   assert.deepEqual(summary.extent, {
-    width: 443.20757,
-    height: 400.752,
+    width: 712.444742,
+    height: 644.198508,
     centerX: 0,
-    centerY: 0
+    centerY: -0.006367999999980611
   });
   assert.equal(summary.selectedExerciseId, "osm-medium-bloomsbury-checkpoint");
   assert.deepEqual(
@@ -183,34 +183,40 @@ test("real London OSM pilot debug summary is deterministic", () => {
   const summary = buildOsmDebugSummary({
     map: realLondonOsmPilotRouteMap,
     graph: buildMapGraph(realLondonOsmPilotRouteMap),
-    exercise: realLondonOsmPilotRouteExercises[3],
+    exercise: realLondonOsmPilotRouteExercises[1],
     sourceFixtureName: "realLondonPilotOverpass.json"
   });
 
-  assert.equal(summary.mapId, "real-london-osm-pilot");
-  assert.equal(summary.mapName, "Real London OSM Pilot");
+  assert.equal(summary.mapId, "osm-real-london-pilot");
+  assert.equal(summary.mapName, "OSM Real London Pilot");
   assert.equal(summary.sourceFixtureName, "realLondonPilotOverpass.json");
   assert.equal(summary.sourceKind, "osm");
-  assert.equal(summary.nodeCount, 12);
-  assert.equal(summary.roadSegmentCount, 20);
-  assert.equal(summary.directedEdgeCount, 32);
-  assert.equal(summary.oneWayRoadSegmentCount, 8);
-  assert.equal(summary.twoWayRoadSegmentCount, 12);
-  assert.equal(summary.oneWayDirectedEdgeCount, 8);
-  assert.equal(summary.twoWayDirectedEdgeCount, 24);
-  assert.equal(summary.blockedOsmWayCount, 1);
-  assert.deepEqual(summary.blockedOsmWayIds, ["9111"]);
-  assert.equal(summary.selectedExerciseId, "osm-real-one-way-detour");
+  assert.equal(summary.nodeCount, 390);
+  assert.equal(summary.roadSegmentCount, 395);
+  assert.equal(summary.directedEdgeCount, 588);
+  assert.equal(summary.oneWayRoadSegmentCount, 202);
+  assert.equal(summary.twoWayRoadSegmentCount, 193);
+  assert.equal(summary.oneWayDirectedEdgeCount, 202);
+  assert.equal(summary.twoWayDirectedEdgeCount, 386);
+  assert.equal(summary.blockedOsmWayCount, 2);
+  assert.deepEqual(summary.blockedOsmWayIds, ["58987876", "779180492"]);
+  assert.deepEqual(summary.bounds, {
+    minX: -413.924829,
+    minY: -436.462593,
+    maxX: 413.924829,
+    maxY: 436.439213
+  });
+  assert.equal(summary.selectedExerciseId, "osm-real-store-street");
   assert.deepEqual(
     summary.stops.map((stop) => [stop.role, stop.nodeId]),
     [
-      ["start", "osm-node-9006"],
-      ["finish", "osm-node-9004"]
+      ["start", "osm-node-333719180"],
+      ["finish", "osm-node-25472045"]
     ]
   );
 });
 
-test("real London OSM pilot debug overlay exposes reverse one-way and road metadata", () => {
+test("real London OSM pilot debug overlay exposes real one-way and road metadata", () => {
   const model = buildOsmDebugOverlayModel({
     map: realLondonOsmPilotRouteMap,
     graph: buildMapGraph(realLondonOsmPilotRouteMap),
@@ -219,21 +225,21 @@ test("real London OSM pilot debug overlay exposes reverse one-way and road metad
       showIds: false
     }
   });
-  const reverseImportedEdge = model.directedEdges.find(
-    (edge) => edge.originalDirection === "reverse" && edge.roadName === "Gower Street"
-  );
-  const tavistockEdge = model.directedEdges.find((edge) => edge.roadName === "Tavistock Place");
+  const keppelEdge = model.directedEdges.find((edge) => edge.roadName === "Keppel Street");
+  const storeEdge = model.directedEdges.find((edge) => edge.roadName === "Store Street");
 
   assert.equal(model.visible, true);
-  assert.equal(model.nodes.length, 12);
-  assert.equal(model.directedEdges.length, 32);
-  assert.ok(reverseImportedEdge);
-  assert.equal(reverseImportedEdge.roadName, "Gower Street");
-  assert.equal(reverseImportedEdge.osmHighway, "secondary");
-  assert.equal(reverseImportedEdge.osmWayId, "9102");
-  assert.ok(tavistockEdge);
-  assert.equal(tavistockEdge.isOneWayRoad, true);
-  assert.equal(tavistockEdge.originalDirection, "forward");
+  assert.equal(model.nodes.length, 390);
+  assert.equal(model.directedEdges.length, 588);
+  assert.ok(keppelEdge);
+  assert.equal(keppelEdge.osmHighway, "residential");
+  assert.equal(keppelEdge.osmWayId, "2644235");
+  assert.equal(keppelEdge.isOneWayRoad, true);
+  assert.ok(storeEdge);
+  assert.equal(storeEdge.isOneWayRoad, true);
+  assert.equal(storeEdge.originalDirection, "forward");
+  assert.equal(storeEdge.osmHighway, "tertiary");
+  assert.equal(storeEdge.osmWayId, "2644236");
 });
 
 test("large London OSM debug summary is deterministic", () => {
@@ -258,16 +264,16 @@ test("large London OSM debug summary is deterministic", () => {
   assert.equal(summary.blockedOsmWayCount, 1);
   assert.deepEqual(summary.blockedOsmWayIds, ["11022"]);
   assert.deepEqual(summary.bounds, {
-    minX: -623.318144,
-    minY: -445.28,
-    maxX: 623.318144,
-    maxY: 445.28
+    minX: -1001.875417,
+    minY: -715.741532,
+    maxX: 1001.875417,
+    maxY: 715.678655
   });
   assert.deepEqual(summary.extent, {
-    width: 1246.636288,
-    height: 890.56,
+    width: 2003.750834,
+    height: 1431.4201870000002,
     centerX: 0,
-    centerY: 0
+    centerY: -0.03143849999997883
   });
   assert.equal(summary.selectedExerciseId, "osm-large-checkpoint-route");
   assert.deepEqual(

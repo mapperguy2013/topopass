@@ -14,7 +14,8 @@ const realLondonPilotFixturePath = path.join(currentDirectory, "fixtures", "real
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
 const largeFixture = JSON.parse(readFileSync(largeFixturePath, "utf8"));
 const mediumFixture = JSON.parse(readFileSync(mediumFixturePath, "utf8"));
-const realLondonPilotFixture = JSON.parse(readFileSync(realLondonPilotFixturePath, "utf8"));
+const realLondonPilotFixtureRaw = readFileSync(realLondonPilotFixturePath, "utf8");
+const realLondonPilotFixture = JSON.parse(realLondonPilotFixtureRaw);
 
 function parseFixture() {
   return parseOverpassRoadExtract(fixture);
@@ -196,56 +197,56 @@ test("medium London fixture detects one-way, reverse one-way, roundabout, and bl
   assert.equal(mediumResult.excludedWays.find((way) => way.osmWayId === 6016)?.reason, "blocked_access");
 });
 
-test("real London pilot fixture parses as a compact deterministic road extract", () => {
+test("real London pilot fixture is committed Overpass JSON, not XML GeoJSON or an error page", () => {
+  assert.equal(realLondonPilotFixtureRaw.trim().startsWith("{"), true);
+  assert.equal(realLondonPilotFixture.type, undefined);
+  assert.equal(Array.isArray(realLondonPilotFixture.features), false);
+  assert.equal(Array.isArray(realLondonPilotFixture.elements), true);
+  assert.equal(realLondonPilotFixture.elements.some((element: { type?: string }) => element.type === "node"), true);
+  assert.equal(realLondonPilotFixture.elements.some((element: { type?: string }) => element.type === "way"), true);
+  assert.match(String(realLondonPilotFixture.generator ?? ""), /Overpass/i);
+});
+
+test("real London pilot fixture parses as a real exported road extract", () => {
   const result = parseOverpassRoadExtract(realLondonPilotFixture);
 
-  assert.equal(result.nodeCount, 12);
+  assert.equal(result.nodeCount, 396);
+  assert.equal(result.roads.length, 161);
+  assert.equal(result.excludedWays.length, 2);
+  assert.equal(result.ignoredRelationIds.length, 0);
+  assert.equal(result.roads.filter((road) => road.oneWay).length, 81);
   assert.deepEqual(
-    result.roads.map((road) => road.osmWayId),
-    [9101, 9102, 9103, 9104, 9105, 9106, 9107, 9108, 9109, 9110]
-  );
-  assert.deepEqual(
-    result.roads.map((road) => road.name),
+    result.roads.slice(0, 8).map((road) => road.name),
     [
-      "Euston Road",
-      "Gower Street",
-      "Woburn Place",
-      "Judd Street",
-      "Tavistock Place",
-      "Russell Square",
+      "Keppel Street",
       "Store Street",
-      "Herbrand Street",
-      "Marchmont Street",
-      "Cartwright Gardens"
+      "Ridgmount Street",
+      "Chenies Street",
+      "Malet Street",
+      "Torrington Place",
+      "Alfred Mews",
+      "Torrington Place"
     ]
   );
-  assert.deepEqual(
-    result.excludedWays.map((way) => [way.osmWayId, way.reason]),
-    [
-      [9111, "blocked_access"],
-      [9112, "ignored_non_road"]
-    ]
-  );
-  assert.deepEqual(result.ignoredRelationIds, [9201]);
 });
 
 test("real London pilot fixture detects real-world one-way and blocked access metadata", () => {
   const result = parseOverpassRoadExtract(realLondonPilotFixture);
-  const gowerStreet = result.roads.find((road) => road.osmWayId === 9102);
-  const tavistockPlace = result.roads.find((road) => road.osmWayId === 9105);
-  const russellSquare = result.roads.find((road) => road.osmWayId === 9106);
-  const storeStreet = result.roads.find((road) => road.osmWayId === 9107);
+  const keppelStreet = result.roads.find((road) => road.osmWayId === 2644235);
+  const storeStreet = result.roads.find((road) => road.osmWayId === 2644236);
+  const maletStreet = result.roads.find((road) => road.osmWayId === 2644766);
+  const blockedAccessWay = result.excludedWays.find((way) => way.osmWayId === 58987876);
 
-  assert.ok(gowerStreet);
-  assert.ok(tavistockPlace);
-  assert.ok(russellSquare);
+  assert.ok(keppelStreet);
   assert.ok(storeStreet);
-  assert.equal(gowerStreet.direction, "reverse");
-  assert.equal(gowerStreet.oneWay, true);
-  assert.equal(tavistockPlace.direction, "forward");
-  assert.equal(russellSquare.direction, "forward");
-  assert.equal(storeStreet.oneWay, false);
-  assert.equal(result.excludedWays.find((way) => way.osmWayId === 9111)?.reason, "blocked_access");
+  assert.ok(maletStreet);
+  assert.ok(blockedAccessWay);
+  assert.equal(keppelStreet.highway, "residential");
+  assert.equal(keppelStreet.oneWay, true);
+  assert.equal(storeStreet.direction, "forward");
+  assert.equal(storeStreet.oneWay, true);
+  assert.equal(maletStreet.oneWay, false);
+  assert.equal(blockedAccessWay.reason, "blocked_access");
 });
 
 test("large London fixture parses as a larger deterministic road extract", () => {

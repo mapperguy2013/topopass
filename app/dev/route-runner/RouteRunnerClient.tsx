@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type WheelEvent } from "react";
 import {
   appendRouteDraftPoint,
   buildMapGraph,
@@ -156,12 +156,17 @@ import {
 } from "./exerciseValidation";
 import {
   applyPanToMapView,
+  applyWheelZoomToMapView,
   buildZoomedMapViewport,
+  canStartDrawingWithMapPointer,
   canZoomInMapView,
   canZoomOutMapView,
   createDefaultMapViewportState,
+  isMiddleButtonMapPanActive,
+  isMiddleButtonMapPanPointer,
   resetMapViewport,
   setMapInteractionMode,
+  shouldPreventMapWheelDefault,
   zoomInMapView,
   zoomOutMapView,
   type MapInteractionMode,
@@ -189,7 +194,7 @@ import {
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   ROUTE_RUNNER_MAP_OPTIONS,
-  getRouteRunnerMapFitBounds,
+  getRouteRunnerMapViewportBounds,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap
 } from "./routeRunnerMaps";
@@ -2046,7 +2051,7 @@ function createViewport(map: MapDefinition): ScreenMapViewport {
   return {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    mapBounds: getRouteRunnerMapFitBounds(map)
+    mapBounds: getRouteRunnerMapViewportBounds(map, CANVAS_WIDTH, CANVAS_HEIGHT)
   };
 }
 
@@ -2111,6 +2116,12 @@ export function RouteRunnerClient() {
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
   const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
+
+  useEffect(() => {
+    setShowRoadRestrictions(!isConvertedOsmMap);
+    setShowTurnRestrictions(!isConvertedOsmMap);
+  }, [activeMap.id, isConvertedOsmMap]);
+
   const baseViewport = useMemo(() => createViewport(activeMap), [activeMap]);
   const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
   const activeMapGraph = useMemo(() => buildMapGraph(activeMap), [activeMap]);
@@ -2806,7 +2817,7 @@ export function RouteRunnerClient() {
     visibleRoadRestrictionOverlays
   ]);
 
-  function pointerToMapPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: number): Vec2 | null {
+  function pointerToScreenPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: number): Vec2 | null {
     if (!canvas) {
       return null;
     }
@@ -2817,10 +2828,18 @@ export function RouteRunnerClient() {
       return null;
     }
 
-    const screenPoint = {
+    return {
       x: ((clientX - rect.left) / rect.width) * CANVAS_WIDTH,
       y: ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT
     };
+  }
+
+  function pointerToMapPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: number): Vec2 | null {
+    const screenPoint = pointerToScreenPoint(canvas, clientX, clientY);
+
+    if (!screenPoint) {
+      return null;
+    }
 
     return screenToMapPoint(screenPoint, viewport);
   }
@@ -3063,7 +3082,18 @@ export function RouteRunnerClient() {
       return;
     }
 
-    if (isPanMode) {
+    const pointerInput = {
+      button: event.button,
+      buttons: event.buttons,
+      pointerType: event.pointerType
+    };
+    const isMiddleButtonPan = isMiddleButtonMapPanPointer(pointerInput);
+
+    if (isMiddleButtonPan) {
+      event.preventDefault();
+    }
+
+    if (isPanMode || isMiddleButtonPan) {
       if (canvas.isConnected) {
         canvas.setPointerCapture(event.pointerId);
       }
@@ -3074,6 +3104,10 @@ export function RouteRunnerClient() {
       };
       setIsPanningMap(true);
       setIsDrawing(false);
+      return;
+    }
+
+    if (!canStartDrawingWithMapPointer(pointerInput)) {
       return;
     }
 
@@ -3095,6 +3129,10 @@ export function RouteRunnerClient() {
 
   function handlePointerMove(event: PointerEvent<HTMLCanvasElement>) {
     if (isPanningMap) {
+      if (isMiddleButtonMapPanActive({ buttons: event.buttons, pointerType: event.pointerType })) {
+        event.preventDefault();
+      }
+
       const previousPoint = panDragPointRef.current;
       const currentPoint = {
         clientX: event.clientX,
@@ -3142,6 +3180,10 @@ export function RouteRunnerClient() {
 
   function handlePointerEnd(event: PointerEvent<HTMLCanvasElement>) {
     if (isPanningMap) {
+      if (isMiddleButtonMapPanPointer({ button: event.button, pointerType: event.pointerType })) {
+        event.preventDefault();
+      }
+
       panDragPointRef.current = null;
       setIsPanningMap(false);
 
@@ -3178,6 +3220,30 @@ export function RouteRunnerClient() {
 
     if (canvas.hasPointerCapture(event.pointerId)) {
       canvas.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  function handleMapWheel(event: WheelEvent<HTMLCanvasElement>) {
+    if (!shouldPreventMapWheelDefault(event.deltaY)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const focusPoint = pointerToScreenPoint(event.currentTarget, event.clientX, event.clientY);
+
+    if (!focusPoint) {
+      return;
+    }
+
+    setMapViewportState((currentState) =>
+      applyWheelZoomToMapView(currentState, event.deltaY, focusPoint, baseViewport)
+    );
+  }
+
+  function handleMapAuxClick(event: MouseEvent<HTMLCanvasElement>) {
+    if (isMiddleButtonMapPanPointer({ button: event.button, pointerType: "mouse" })) {
+      event.preventDefault();
     }
   }
 
@@ -3854,12 +3920,10 @@ export function RouteRunnerClient() {
                 onPointerUp={handlePointerEnd}
                 onPointerCancel={handlePointerEnd}
                 onPointerLeave={handlePointerLeave}
+                onWheel={handleMapWheel}
+                onAuxClick={handleMapAuxClick}
                 className={`block h-full w-full touch-none ${
-                  isPanMode
-                    ? isPanningMap
-                      ? "cursor-grabbing"
-                      : "cursor-grab"
-                    : "cursor-crosshair"
+                  isPanningMap ? "cursor-grabbing" : isPanMode ? "cursor-grab" : "cursor-crosshair"
                 }`}
                 aria-label={`${activeMap.name} drawing capture canvas`}
               />

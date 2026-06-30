@@ -9,7 +9,11 @@ import type {
   OverpassRoadImportResult,
   OverpassTags
 } from "./overpassImport.ts";
-import { createOsmLocalProjection, projectOsmCoordinateToLocalMeters } from "./osmProjection.ts";
+import {
+  createOsmLocalProjection,
+  measureOsmCoordinateDistanceMeters,
+  projectOsmCoordinateToLocalMeters
+} from "./osmProjection.ts";
 import type { OsmLocalProjection } from "./osmProjection.ts";
 import { shouldIncludeOsmRoadForRouteGraph } from "./osmRoadFilters.ts";
 import type { OsmRoadFilterOptions, OsmRouteGraphHighway } from "./osmRoadFilters.ts";
@@ -138,10 +142,7 @@ function segmentDistanceMeters(
   toCoordinate: ImportedOsmRoadCoordinate,
   projection: OsmLocalProjection
 ): number {
-  const fromPoint = projectOsmCoordinateToLocalMeters(fromCoordinate, projection);
-  const toPoint = projectOsmCoordinateToLocalMeters(toCoordinate, projection);
-
-  return Math.hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y);
+  return measureOsmCoordinateDistanceMeters(fromCoordinate, toCoordinate, projection);
 }
 
 function routeGraphRestrictionForBlockedRoad(road: OsmRouteGraphRoad): MapRestriction {

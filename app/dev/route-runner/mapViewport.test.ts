@@ -17,18 +17,25 @@ import {
 } from "./fastestRouteOverlay.ts";
 import {
   applyPanToMapView,
+  applyWheelZoomToMapView,
   buildZoomedMapViewport,
   canDrawInMapInteractionMode,
   canPanInMapInteractionMode,
+  canStartDrawingWithMapPointer,
   canZoomInMapView,
   canZoomOutMapView,
   clampMapPan,
   createDefaultMapViewportState,
   getMapPanLimitsForZoom,
+  isMiddleButtonMapPanActive,
+  isMiddleButtonMapPanPointer,
   resetMapViewport,
+  ROUTE_RUNNER_MAP_ZOOM_LIMITS,
   setMapInteractionMode,
   setMapPanMode,
+  shouldPreventMapWheelDefault,
   toggleMapPanMode,
+  zoomMapViewAroundPoint,
   zoomInMapView,
   zoomOutMapView,
   type MapViewportState,
@@ -61,6 +68,10 @@ const defaultViewportState: MapViewportState = {
   panY: 0,
   interactionMode: "draw"
 };
+
+function assertClose(actual: number, expected: number, message: string): void {
+  assert(Math.abs(actual - expected) < 0.000001, `${message}: expected ${actual} to be close to ${expected}`);
+}
 
 function assertPointsRoundTrip(points: readonly Vec2[], viewport: ScreenMapViewport): void {
   for (const point of points) {
@@ -108,6 +119,57 @@ test("zoom is clamped at minimum and maximum values", () => {
   assert.equal(canZoomInMapView(maxZoom, testLimits), false);
 });
 
+test("default route-runner zoom limits allow 1000 percent maximum zoom", () => {
+  const zoomed = zoomInMapView({ ...defaultViewportState, zoom: 9.9 }, undefined, baseViewport);
+
+  assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.minZoom, 0.75);
+  assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom, 10);
+  assert.equal(zoomed.zoom, 10);
+  assert.equal(canZoomInMapView(zoomed), false);
+});
+
+test("zoom clamp prevents route-runner viewport going above 1000 percent or below minimum", () => {
+  const tooHigh = zoomInMapView({ ...defaultViewportState, zoom: 10 }, undefined, baseViewport);
+  const tooLow = zoomOutMapView({ ...defaultViewportState, zoom: 0.75 }, undefined, baseViewport);
+
+  assert.equal(tooHigh.zoom, 10);
+  assert.equal(tooLow.zoom, 0.75);
+  assert.equal(canZoomOutMapView(tooLow), false);
+});
+
+test("wheel zoom changes zoom and clamps within route-runner limits", () => {
+  const focusPoint = { x: 150, y: 70 };
+  const zoomedIn = applyWheelZoomToMapView(defaultViewportState, -100, focusPoint, baseViewport);
+  const zoomedOut = applyWheelZoomToMapView(zoomedIn, 100, focusPoint, baseViewport);
+  const maxZoom = applyWheelZoomToMapView({ ...defaultViewportState, zoom: 10 }, -100, focusPoint, baseViewport);
+  const minZoom = applyWheelZoomToMapView({ ...defaultViewportState, zoom: 0.75 }, 100, focusPoint, baseViewport);
+
+  assert.equal(zoomedIn.zoom, 1.25);
+  assert.equal(zoomedOut.zoom, 1);
+  assert.equal(maxZoom.zoom, 10);
+  assert.equal(minZoom.zoom, 0.75);
+});
+
+test("wheel zoom preserves the map point under the cursor when possible", () => {
+  const focusPoint = { x: 150, y: 75 };
+  const beforeViewport = buildZoomedMapViewport(baseViewport, defaultViewportState, testLimits);
+  const beforeMapPoint = screenToMapPoint(focusPoint, beforeViewport);
+  const zoomed = zoomMapViewAroundPoint(defaultViewportState, 1.25, focusPoint, baseViewport, testLimits);
+  const afterViewport = buildZoomedMapViewport(baseViewport, zoomed, testLimits);
+  const afterMapPoint = screenToMapPoint(focusPoint, afterViewport);
+
+  assert.equal(zoomed.zoom, 1.25);
+  assertClose(afterMapPoint.x, beforeMapPoint.x, "cursor-focused wheel zoom should preserve x");
+  assertClose(afterMapPoint.y, beforeMapPoint.y, "cursor-focused wheel zoom should preserve y");
+});
+
+test("wheel default prevention is limited to real wheel zoom deltas", () => {
+  assert.equal(shouldPreventMapWheelDefault(-1), true);
+  assert.equal(shouldPreventMapWheelDefault(1), true);
+  assert.equal(shouldPreventMapWheelDefault(0), false);
+  assert.equal(shouldPreventMapWheelDefault(Number.NaN), false);
+});
+
 test("interaction mode defaults to draw and can switch between draw and pan", () => {
   const panning = setMapInteractionMode(defaultViewportState, "pan");
   const drawing = setMapInteractionMode(panning, "draw");
@@ -125,6 +187,18 @@ test("interaction mode gates drawing and panning gestures", () => {
   assert.equal(canPanInMapInteractionMode(drawState), false);
   assert.equal(canDrawInMapInteractionMode(panState), false);
   assert.equal(canPanInMapInteractionMode(panState), true);
+});
+
+test("middle mouse enters map pan behavior without creating drawing input", () => {
+  assert.equal(isMiddleButtonMapPanPointer({ button: 1, pointerType: "mouse" }), true);
+  assert.equal(isMiddleButtonMapPanActive({ buttons: 4, pointerType: "mouse" }), true);
+  assert.equal(canStartDrawingWithMapPointer({ button: 1, pointerType: "mouse" }), false);
+});
+
+test("left mouse and touch can still start route drawing", () => {
+  assert.equal(canStartDrawingWithMapPointer({ button: 0, pointerType: "mouse" }), true);
+  assert.equal(canStartDrawingWithMapPointer({ button: 0, pointerType: "touch" }), true);
+  assert.equal(isMiddleButtonMapPanPointer({ button: 0, pointerType: "mouse" }), false);
 });
 
 test("legacy pan helpers map onto explicit interaction modes", () => {
@@ -147,6 +221,21 @@ test("dragging in pan mode changes pan offset", () => {
     panY: -16,
     interactionMode: "pan"
   });
+});
+
+test("middle mouse movement uses normal pan offset updates and release can reset pan state", () => {
+  const middlePanState = { ...defaultViewportState, zoom: 2, interactionMode: "draw" as const };
+  const panned = applyPanToMapView(middlePanState, {
+    deltaX: 18,
+    deltaY: 12
+  }, baseViewport, testLimits);
+  const reset = resetMapViewport(testLimits);
+
+  assert.equal(isMiddleButtonMapPanActive({ buttons: 4, pointerType: "mouse" }), true);
+  assert.equal(isMiddleButtonMapPanActive({ buttons: 0, pointerType: "mouse" }), false);
+  assert.equal(panned.panX, 18);
+  assert.equal(panned.panY, 12);
+  assert.deepEqual(reset, defaultViewportState);
 });
 
 test("pan is clamped at zoom-dependent limits", () => {

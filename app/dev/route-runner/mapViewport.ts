@@ -32,15 +32,28 @@ export type MapPanLimits = {
   maxPanY: number;
 };
 
+export type MapViewportScreenPoint = {
+  x: number;
+  y: number;
+};
+
+export type MapPointerInput = {
+  button: number;
+  buttons?: number;
+  pointerType?: string;
+};
+
 export const ROUTE_RUNNER_MAP_ZOOM_LIMITS: MapZoomLimits = {
   defaultZoom: 1,
   minZoom: 0.75,
-  maxZoom: 2.5,
+  maxZoom: 10,
   step: 0.25,
   panMargin: 80
 };
 
 const ZOOM_EPSILON = 0.000001;
+const MIDDLE_MOUSE_BUTTON = 1;
+const MIDDLE_MOUSE_BUTTONS_MASK = 4;
 
 function panMargin(limits: MapZoomLimits): number {
   const margin = limits.panMargin ?? 0;
@@ -66,6 +79,24 @@ function panMarginForAxis(axisSize: number, limits: MapZoomLimits): number {
 
 function normalizeZero(value: number): number {
   return Object.is(value, -0) ? 0 : value;
+}
+
+function isMouseLikePointer(input: Pick<MapPointerInput, "pointerType">): boolean {
+  return !input.pointerType || input.pointerType === "mouse";
+}
+
+function clampScreenPoint(point: MapViewportScreenPoint, bounds: MapPanBounds): MapViewportScreenPoint {
+  const width = safeAxisSize(bounds.width);
+  const height = safeAxisSize(bounds.height);
+  const fallbackX = width / 2;
+  const fallbackY = height / 2;
+  const x = safeCoordinate(point.x, fallbackX);
+  const y = safeCoordinate(point.y, fallbackY);
+
+  return {
+    x: normalizeZero(Math.min(width, Math.max(0, x))),
+    y: normalizeZero(Math.min(height, Math.max(0, y)))
+  };
 }
 
 export function getMapPanLimitsForZoom(
@@ -157,6 +188,59 @@ export function zoomOutMapView(
   return bounds ? clampMapPan(nextState, bounds, limits) : nextState;
 }
 
+export function zoomMapViewAroundPoint(
+  state: MapViewportState,
+  nextZoom: number,
+  focusPoint: MapViewportScreenPoint,
+  bounds: MapPanBounds,
+  limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS
+): MapViewportState {
+  const previousState = clampMapPan(state, bounds, limits);
+  const zoom = clampMapZoom(nextZoom, limits);
+  const width = safeAxisSize(bounds.width);
+  const height = safeAxisSize(bounds.height);
+
+  if (width === 0 || height === 0 || Math.abs(zoom - previousState.zoom) < ZOOM_EPSILON) {
+    return clampMapPan({ ...previousState, zoom }, bounds, limits);
+  }
+
+  const focus = clampScreenPoint(focusPoint, bounds);
+  const focusOffsetX = focus.x - width / 2;
+  const focusOffsetY = focus.y - height / 2;
+  const zoomRatio = zoom / previousState.zoom;
+
+  return clampMapPan(
+    {
+      ...previousState,
+      zoom,
+      panX: focusOffsetX - (focusOffsetX - previousState.panX) * zoomRatio,
+      panY: focusOffsetY - (focusOffsetY - previousState.panY) * zoomRatio
+    },
+    bounds,
+    limits
+  );
+}
+
+export function shouldPreventMapWheelDefault(deltaY: number): boolean {
+  return Number.isFinite(deltaY) && deltaY !== 0;
+}
+
+export function applyWheelZoomToMapView(
+  state: MapViewportState,
+  deltaY: number,
+  focusPoint: MapViewportScreenPoint,
+  bounds: MapPanBounds,
+  limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS
+): MapViewportState {
+  if (!shouldPreventMapWheelDefault(deltaY)) {
+    return clampMapPan(state, bounds, limits);
+  }
+
+  const zoomDirection = deltaY < 0 ? 1 : -1;
+
+  return zoomMapViewAroundPoint(state, state.zoom + limits.step * zoomDirection, focusPoint, bounds, limits);
+}
+
 export function resetMapViewport(limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS): MapViewportState {
   return createDefaultMapViewportState(limits);
 }
@@ -176,6 +260,18 @@ export function canDrawInMapInteractionMode(state: Pick<MapViewportState, "inter
 
 export function canPanInMapInteractionMode(state: Pick<MapViewportState, "interactionMode">): boolean {
   return state.interactionMode === "pan";
+}
+
+export function isMiddleButtonMapPanPointer(input: MapPointerInput): boolean {
+  return isMouseLikePointer(input) && input.button === MIDDLE_MOUSE_BUTTON;
+}
+
+export function isMiddleButtonMapPanActive(input: Pick<MapPointerInput, "buttons" | "pointerType">): boolean {
+  return isMouseLikePointer(input) && Boolean((input.buttons ?? 0) & MIDDLE_MOUSE_BUTTONS_MASK);
+}
+
+export function canStartDrawingWithMapPointer(input: MapPointerInput): boolean {
+  return !isMiddleButtonMapPanPointer(input) && (!isMouseLikePointer(input) || input.button === 0);
 }
 
 export function setMapPanMode(state: MapViewportState, isPanModeEnabled: boolean): MapViewportState {

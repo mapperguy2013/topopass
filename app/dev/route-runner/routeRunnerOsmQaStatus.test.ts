@@ -95,20 +95,21 @@ test("OSM QA status panel data is generated for the real London pilot map", () =
     map: realLondonOsmPilotRouteMap,
     graph,
     exercises: realLondonOsmPilotRouteExercises,
-    selectedExercise: realLondonOsmPilotRouteExercises[3],
+    selectedExercise: realLondonOsmPilotRouteExercises[1],
     enabled: true,
     isConvertedOsmMap: true
   });
 
   assert.ok(model);
   assert.equal(model.mapId, realLondonOsmPilotRouteMap.id);
-  assert.equal(model.mapName, "Real London OSM Pilot");
-  assert.equal(model.nodeCount, 12);
-  assert.equal(model.directedEdgeCount, 32);
-  assert.equal(model.exerciseCount, 5);
+  assert.equal(model.mapName, "OSM Real London Pilot");
+  assert.equal(model.nodeCount, 390);
+  assert.equal(model.directedEdgeCount, 588);
+  assert.equal(model.exerciseCount, 3);
   assert.equal(model.qaState, "pass");
+  assert.equal(model.passedExerciseCount, 3);
   assert.equal(model.failedExerciseCount, 0);
-  assert.equal(model.selectedExercise?.id, "osm-real-one-way-detour");
+  assert.equal(model.selectedExercise?.id, "osm-real-store-street");
   assert.ok(model.selectedExercise?.checks.every((check) => check.state === "pass"));
 });
 

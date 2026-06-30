@@ -2186,6 +2186,84 @@ out body;
   matching, shortest-route logic, saved attempts, Supabase, or analytics
   behavior.
 
+## Stage 112 Real London OSM Pilot Fixture
+
+- Replaced the oversized real pilot contents in
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` with a smaller
+  committed real exported Overpass JSON file around Tottenham Court Road,
+  Goodge Street, Store Street, Keppel Street, Gower Street, and Malet Street.
+  The fixture is validated as JSON with Overpass-style `elements`, `node`, and
+  `way` records; tests explicitly guard against accidentally committing GeoJSON,
+  XML/HTML, or an Overpass error response.
+- Registered the fixture as the dev-only `OSM Real London Pilot` map with id
+  `osm-real-london-pilot`. The Marlowe synthetic map remains the default, and
+  the tiny, medium, and large OSM QA fixtures remain selectable.
+- The real export contains 559 Overpass elements: 396 source nodes and 163
+  ways. The parser extracts 161 accepted drivable roads, excludes 2 blocked
+  access ways, and preserves 81 one-way roads and 80 two-way roads.
+- The existing OSM converter turns the export into 390 route graph nodes, 395
+  road segments, and 588 legal directed graph edges. Road hierarchy, names,
+  blocked-access metadata, and one-way direction metadata are preserved for
+  debug/QA rendering. The converted map tracks 202 one-way road segments, 193
+  two-way road segments, and blocked OSM way ids `58987876` and `779180492`.
+- Added three validated real-pilot smoke exercises:
+  `osm-real-keppel-street`, `osm-real-store-street`, and
+  `osm-real-malet-checkpoint`. Each uses stable converted OSM node ids and
+  passes the existing OSM exercise QA harness.
+- Larger converted OSM maps, including this real pilot, use the padded
+  first-load fit so the map opens in a sane route-runner viewport.
+- Converted OSM maps no longer receive synthetic Marlowe background or rail
+  features, so real OSM rendering does not show fake labels such as Marlowe
+  Canal, Station Quarter, Civic Quarter, Royal Oak Gardens, or Argent Square.
+  OSM road-name labels remain optional through the existing QA/debug label mode.
+- Stage 112 remains dev-only. It does not fetch live Overpass data, use
+  external routing APIs, add production OSM map support, replace synthetic
+  defaults, change scoring, snapping, matching, shortest-route logic, saved
+  attempts, Supabase, analytics, or weaken one-way/no-entry legality.
+- Validation for this stage is covered by `npm.cmd run test:map`,
+  `npm.cmd run lint`, `npm.cmd run build`, and focused OSM tests for
+  `overpassImport`, `osmToRouteGraph`, `routeRunnerMaps`,
+  `routeRunnerOsmDebug`, `routeRunnerOsmExerciseQa`, and
+  `routeRunnerOsmQaStatus`.
+
+## Stage 112.5 Real OSM Map Projection and Visual Fit Fix
+
+- Converted OSM route graph node coordinates now use a local Web-Mercator-style
+  projection for display: longitude maps to x, projected latitude maps to y,
+  and y is inverted for the canvas so north remains up. No manual rotation is
+  applied.
+- OSM road segment distances continue to use the existing local metric distance
+  basis so route weights, scoring, snapping, matching, one-way legality, and
+  no-entry legality are not tied to the display projection.
+- Converted OSM maps now expand first-load viewport bounds to the canvas aspect
+  ratio before rendering, preserving a uniform x/y scale instead of stretching
+  the map independently to fill width and height. The Marlowe synthetic map
+  keeps its existing default fit behavior.
+- Restriction overlays remain toggleable in `/dev/route-runner`, but converted
+  OSM maps open with road and turn restriction overlays hidden so the real
+  London pilot road geometry is the default visual focus. The OSM QA/debug
+  overlay still exposes direction and restriction inspection tools when needed.
+- Validation for this stage is covered by `npm.cmd run test:map`,
+  `npm.cmd run lint`, `npm.cmd run build`, and `git diff --check`.
+
+## Stage 112.6 Route Runner Map Zoom and Pan Controls
+
+- `/dev/route-runner` map zoom now clamps at `1000%` while preserving the
+  existing fitted default view and `75%` minimum zoom. The zoom indicator and
+  existing plus/minus controls use the same viewport state.
+- Mouse wheel input over the map zooms in or out around the pointer position
+  where the canvas size permits it, prevents page scrolling for handled wheel
+  zooms, and stays clamped within the route-runner zoom limits.
+- Pressing and dragging the middle mouse button pans the map in either Draw or
+  Pan mode, with browser autoscroll suppressed. Left mouse Draw mode still
+  draws routes, and left mouse Pan mode still pans the map.
+- Reset view clears active panning and restores the fitted default zoom, pan,
+  and Draw interaction mode without changing route graph legality, OSM
+  conversion, one-way/no-entry handling, snapping, scoring, matching, saved
+  attempts, analytics, Supabase, or production map defaults.
+- Validation for this stage is covered by `npm.cmd run test:map`,
+  `npm.cmd run lint`, `npm.cmd run build`, and `git diff --check`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
