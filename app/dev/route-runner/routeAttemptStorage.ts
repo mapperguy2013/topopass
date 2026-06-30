@@ -422,6 +422,7 @@ export function buildRouteAttemptInsert(input: SaveRouteAttemptInput): RouteAtte
     throw new Error("Cannot store a pending route attempt review.");
   }
 
+  const snapshot = input.review.versionSnapshot;
   const score = finiteNumber(input.score?.scorePercent) ?? scorePercentFromLabel(input.review.scoreLabel);
   const userDistance = finiteNumber(input.score?.userRouteDistanceMeters);
   const shortestDistance = finiteNumber(input.score?.shortestLegalRouteDistanceMeters);
@@ -430,9 +431,9 @@ export function buildRouteAttemptInsert(input: SaveRouteAttemptInput): RouteAtte
   return {
     user_id: input.userId ?? null,
     exercise_id: input.exerciseId,
-    map_id: input.mapId ?? null,
-    map_version: stringVersion(input.mapVersion),
-    exercise_version: stringVersion(input.exerciseVersion),
+    map_id: input.mapId ?? snapshot?.mapId ?? null,
+    map_version: stringVersion(input.mapVersion) ?? stringVersion(snapshot?.mapVersion),
+    exercise_version: stringVersion(input.exerciseVersion) ?? stringVersion(snapshot?.exerciseVersion),
     score,
     passed: typeof input.score?.passed === "boolean" ? input.score.passed : reviewPassed(input.review),
     is_legal: reviewLegality(input.review, input.score),

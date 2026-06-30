@@ -3,6 +3,10 @@ import type {
   IllegalDrawnMovement,
   RouteScoringFailureReason
 } from "../../../lib/map-engine/index.ts";
+import {
+  cloneRouteAttemptVersionSnapshot,
+  type RouteAttemptVersionSnapshot
+} from "./routeAttemptVersionSnapshot.ts";
 
 export type RouteAttemptReviewStatus = "pass" | "fail" | "blocked" | "pending";
 export type RouteAttemptReviewItemSeverity = "info" | "warning" | "error";
@@ -72,6 +76,7 @@ export type LearnerWeakAreaProfile = {
 
 export type RouteAttemptReview = {
   status: RouteAttemptReviewStatus;
+  versionSnapshot: RouteAttemptVersionSnapshot | null;
   title: string;
   scoreLabel: string;
   distanceLabel: string;
@@ -95,6 +100,7 @@ export type RouteAttemptHistoryItem = {
   illegalMovementCount: number;
   missedRestrictionCount: number;
   primaryFailureReason: string | null;
+  versionSnapshot: RouteAttemptVersionSnapshot | null;
   review: RouteAttemptReview;
 };
 
@@ -108,6 +114,7 @@ export type BuildRouteAttemptReviewInput = {
   pipelineResult: DrawnRoutePipelineResult;
   illegalMovements: readonly IllegalDrawnMovement[];
   isDrawing?: boolean;
+  versionSnapshot?: RouteAttemptVersionSnapshot | null;
 };
 
 function formatDistance(distanceMeters: number): string {
@@ -929,6 +936,7 @@ export function buildRouteAttemptHistoryItem(
     illegalMovementCount: review.illegalMovements.length,
     missedRestrictionCount: review.missedRestrictions.length,
     primaryFailureReason: review.suggestedFailureReason,
+    versionSnapshot: cloneRouteAttemptVersionSnapshot(review.versionSnapshot),
     review
   };
 }
@@ -990,10 +998,12 @@ function withReviewGuidance(review: RouteAttemptReviewBase): RouteAttemptReview 
 
 export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): RouteAttemptReview {
   const result = input.pipelineResult;
+  const versionSnapshot = cloneRouteAttemptVersionSnapshot(input.versionSnapshot);
 
   if (input.isDrawing) {
     return withReviewGuidance({
       status: "pending",
+      versionSnapshot,
       title: "Finish drawing to review this route",
       scoreLabel: "n/a",
       distanceLabel: "Release the pointer to run snapping, matching, and scoring.",
@@ -1014,6 +1024,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
 
     return withReviewGuidance({
       status: blocked ? "blocked" : "pending",
+      versionSnapshot,
       title: blocked ? "Route was not scored" : "Draw a route to get feedback",
       scoreLabel: "n/a",
       distanceLabel: blocked ? "The route did not reach scoring." : "No drawn route has been scored yet.",
@@ -1062,6 +1073,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
 
   return withReviewGuidance({
     status: score.passed ? "pass" : "fail",
+    versionSnapshot,
     title: score.passed ? "Route passed" : "Route failed",
     scoreLabel: `${score.scorePercent.toFixed(1)}% (${score.passed ? "pass" : "fail"})`,
     distanceLabel: `${distanceMetrics[0].label}: ${distanceMetrics[0].value}. ${distanceMetrics[1].label}: ${

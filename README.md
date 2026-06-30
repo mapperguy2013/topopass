@@ -2559,6 +2559,24 @@ out body;
   `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture with no
   live OSM/Overpass fetches or external routing APIs.
 
+## Stage 125 Route Attempt Version Snapshots
+
+- `/dev/route-runner` route attempt reviews now capture an immutable
+  `versionSnapshot` when the attempt is created, containing the selected
+  `mapId`, `mapVersion`, `exerciseId`, and `exerciseVersion`.
+- Session attempt history, saved-attempt storage input, and saved-attempt
+  review/debug display read the stored snapshot where available instead of
+  recomputing versions from the current selected map or exercise.
+- Legacy attempt-like objects with no snapshot continue to render deterministic
+  unavailable labels instead of failing.
+- The snapshot is debug/presentation metadata only. It does not change route
+  solving, snapping, matching, legality, illegal movement detection, scoring,
+  Supabase/auth/analytics behaviour, production persistence, deployment config,
+  or default map selection.
+- Marlowe remains the default map, and `osm-real-london-pilot` still uses only
+  the committed `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json`
+  fixture with no live OSM/Overpass fetches or external routing APIs.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

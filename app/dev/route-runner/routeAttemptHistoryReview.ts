@@ -1,4 +1,9 @@
 import type { SavedRouteAttemptListItem } from "./routeAttemptStorage.ts";
+import {
+  formatRouteAttemptVersionSnapshot,
+  routeAttemptVersionSnapshotFromUnknown,
+  type RouteAttemptVersionSnapshot
+} from "./routeAttemptVersionSnapshot.ts";
 
 export type SavedAttemptReviewSeverity = "info" | "warning" | "error";
 
@@ -26,6 +31,8 @@ export type SavedAttemptReviewModel = {
   id: string;
   title: string;
   subtitle: string;
+  versionSnapshot: RouteAttemptVersionSnapshot | null;
+  versionLabel: string;
   statusLabel: SavedRouteAttemptListItem["statusLabel"];
   scoreLabel: string;
   legalLabel: string;
@@ -48,6 +55,7 @@ export type SavedAttemptHistoryReviewListItem = {
   exerciseId: string;
   scoreLabel: string;
   statusLabel: SavedRouteAttemptListItem["statusLabel"];
+  versionLabel: string;
   legalLabel: string;
   userDistanceLabel: string;
   shortestDistanceLabel: string;
@@ -227,6 +235,24 @@ function buildLegBreakdown(value: SavedRouteAttemptListItem["perLegBreakdown"]):
   });
 }
 
+function snapshotFromSavedAttempt(attempt: SavedRouteAttemptListItem): RouteAttemptVersionSnapshot | null {
+  const reviewPayload = objectValue(attempt.reviewPayload);
+  const payloadSnapshot = routeAttemptVersionSnapshotFromUnknown(reviewPayload.versionSnapshot);
+  const mapId = attempt.mapId ?? payloadSnapshot?.mapId ?? null;
+  const exerciseId = attempt.exerciseId || payloadSnapshot?.exerciseId || null;
+
+  if (!mapId || !exerciseId) {
+    return null;
+  }
+
+  return {
+    mapId,
+    mapVersion: attempt.mapVersion ?? payloadSnapshot?.mapVersion ?? null,
+    exerciseId,
+    exerciseVersion: attempt.exerciseVersion ?? payloadSnapshot?.exerciseVersion ?? null
+  };
+}
+
 function scoreExplanation(input: {
   attempt: SavedRouteAttemptListItem;
   reviewPayload: Record<string, unknown>;
@@ -267,6 +293,7 @@ export function buildSavedAttemptHistoryReviewList(
       exerciseId: attempt.exerciseId,
       scoreLabel: attempt.scoreLabel,
       statusLabel: attempt.statusLabel,
+      versionLabel: formatRouteAttemptVersionSnapshot(snapshotFromSavedAttempt(attempt)).compactLabel,
       legalLabel: legalLabel(attempt.isLegal),
       userDistanceLabel: attempt.userDistanceLabel,
       shortestDistanceLabel: attempt.shortestDistanceLabel,
@@ -287,6 +314,7 @@ export function buildSavedAttemptReview(
   const missedRestrictions = routeItems(reviewPayload.missedRestrictions);
   const userRouteDistance = metricValue(reviewPayload, "student-route-distance", attempt.userDistanceLabel);
   const shortestRouteDistance = metricValue(reviewPayload, "shortest-legal-distance", attempt.shortestDistanceLabel);
+  const versionSnapshot = snapshotFromSavedAttempt(attempt);
   const exerciseDataWarning =
     attempt.exerciseLabel === attempt.exerciseId ? "Exercise title unavailable; showing the saved exercise id." : null;
 
@@ -294,6 +322,8 @@ export function buildSavedAttemptReview(
     id: attempt.id,
     title: stringValue(reviewPayload.title, attempt.reviewTitle),
     subtitle: `${attempt.exerciseLabel} - ${attempt.dateLabel}`,
+    versionSnapshot,
+    versionLabel: formatRouteAttemptVersionSnapshot(versionSnapshot).compactLabel,
     statusLabel: attempt.statusLabel,
     scoreLabel: stringValue(reviewPayload.scoreLabel, attempt.scoreLabel),
     legalLabel: legalLabel(attempt.isLegal),

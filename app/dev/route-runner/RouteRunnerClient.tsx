@@ -115,6 +115,10 @@ import {
 } from "./weakAreaAnalytics";
 import { listRouteAttempts, saveRouteAttempt, type SavedRouteAttemptListItem } from "./routeAttemptStorage";
 import {
+  createRouteAttemptVersionSnapshot,
+  formatRouteAttemptVersionSnapshot
+} from "./routeAttemptVersionSnapshot";
+import {
   createActiveDrawingPipelineResult,
   prepareTraceForRoutePipeline
 } from "./routeRunnerPerformance";
@@ -2587,9 +2591,15 @@ export function RouteRunnerClient() {
       buildRouteAttemptReview({
         pipelineResult: drawnPipelineResult,
         illegalMovements: illegalDrawnMovements,
-        isDrawing
+        isDrawing,
+        versionSnapshot: selectedExercise
+          ? createRouteAttemptVersionSnapshot({
+              map: activeMap,
+              exercise: selectedExercise
+            })
+          : null
       }),
-    [drawnPipelineResult, illegalDrawnMovements, isDrawing]
+    [activeMap, drawnPipelineResult, illegalDrawnMovements, isDrawing, selectedExercise]
   );
   const realLondonPilotPlaythroughPanel = buildRealLondonPilotPlaythroughPanelModel({
     mapId: activeMap.id,
@@ -5067,6 +5077,9 @@ export function RouteRunnerClient() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide">Route attempt review</p>
                   <h3 className="mt-1 text-base font-semibold">{drawnAttemptReview.title}</h3>
+                  <p className="mt-1 font-mono text-[11px] leading-5 opacity-75">
+                    {formatRouteAttemptVersionSnapshot(drawnAttemptReview.versionSnapshot).compactLabel}
+                  </p>
                 </div>
                 <span className="rounded-full border border-current/20 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
                   {drawnAttemptReview.status}
@@ -5733,6 +5746,9 @@ export function RouteRunnerClient() {
                           </span>
                         </div>
                         <p className="mt-2 text-xs leading-5">{selectedHistoryItem.review.distanceLabel}</p>
+                        <p className="mt-2 font-mono text-[11px] leading-5 opacity-75">
+                          {formatRouteAttemptVersionSnapshot(selectedHistoryItem.versionSnapshot).compactLabel}
+                        </p>
                         {selectedHistoryItem.primaryFailureReason ? (
                           <p className="mt-2 text-xs leading-5">
                             <span className="font-semibold">Saved reason: </span>
@@ -5885,13 +5901,16 @@ export function RouteRunnerClient() {
                               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                 <div>
                                   <p className="font-semibold">{attempt.exerciseLabel}</p>
-                                  <p className="mt-1 text-xs leading-5 opacity-80">
-                                    {attempt.dateLabel}
-                                    {attempt.exerciseLabel !== attempt.exerciseId ? (
-                                      <span className="font-mono"> - {attempt.exerciseId}</span>
-                                    ) : null}
-                                  </p>
-                                </div>
+                                <p className="mt-1 text-xs leading-5 opacity-80">
+                                  {attempt.dateLabel}
+                                  {attempt.exerciseLabel !== attempt.exerciseId ? (
+                                    <span className="font-mono"> - {attempt.exerciseId}</span>
+                                  ) : null}
+                                </p>
+                                <p className="mt-1 font-mono text-[11px] leading-5 opacity-70">
+                                  {attempt.versionLabel}
+                                </p>
+                              </div>
                                 <span
                                   className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${savedAttemptStatusClass(
                                     attempt.statusLabel
@@ -5939,6 +5958,9 @@ export function RouteRunnerClient() {
                             <p className="font-semibold">{selectedSavedAttemptReview.title}</p>
                             <p className="mt-1 text-xs leading-5">
                               {selectedSavedAttemptReview.subtitle}
+                            </p>
+                            <p className="mt-1 font-mono text-[11px] leading-5 opacity-70">
+                              {selectedSavedAttemptReview.versionLabel}
                             </p>
                           </div>
                           <span
