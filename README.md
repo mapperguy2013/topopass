@@ -2206,10 +2206,8 @@ out body;
   blocked-access metadata, and one-way direction metadata are preserved for
   debug/QA rendering. The converted map tracks 202 one-way road segments, 193
   two-way road segments, and blocked OSM way ids `58987876` and `779180492`.
-- Added three validated real-pilot smoke exercises:
-  `osm-real-keppel-street`, `osm-real-store-street`, and
-  `osm-real-malet-checkpoint`. Each uses stable converted OSM node ids and
-  passes the existing OSM exercise QA harness.
+- Added the first validated real-pilot smoke exercises using stable converted
+  OSM node ids. Stage 113 replaces these with the current QA exercise set.
 - Larger converted OSM maps, including this real pilot, use the padded
   first-load fit so the map opens in a sane route-runner viewport.
 - Converted OSM maps no longer receive synthetic Marlowe background or rail
@@ -2263,6 +2261,147 @@ out body;
   attempts, analytics, Supabase, or production map defaults.
 - Validation for this stage is covered by `npm.cmd run test:map`,
   `npm.cmd run lint`, `npm.cmd run build`, and `git diff --check`.
+
+## Stage 113 Real London Pilot Exercises
+
+- The dev-only real pilot exercise set now uses the committed local fixture
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` and map id
+  `osm-real-london-pilot`; it does not fetch live Overpass data, use external
+  routing APIs, or change the Marlowe synthetic default.
+- Added five QA-validated route exercises:
+  `osm-real-pilot-short-crossing` (`osm-node-107319` to `osm-node-107320`),
+  `osm-real-pilot-one-way-detour` (`osm-node-108034` to
+  `osm-node-108044`), `osm-real-pilot-checkpoint-route`
+  (`osm-node-14725979` to `osm-node-108025` to `osm-node-108030`),
+  `osm-real-pilot-longer-route` (`osm-node-107319` to `osm-node-273194`),
+  and `osm-real-pilot-turn-choice` (`osm-node-9791489` to
+  `osm-node-107320`).
+- The OSM QA harness validates each exercise for stable stop-node resolution,
+  ordered leg reachability, available fastest-route reveal, directed-edge
+  legality, and render-bounds sanity. Fastest routes must use known graph
+  edges and avoid blocked directed edges.
+- Route legality, one-way/no-entry handling, scoring, snapping, matching,
+  saved attempts, analytics, Supabase behavior, production map support, and
+  production defaults are unchanged.
+- Validation for this stage is covered by `npm.cmd run test:map`,
+  `npm.cmd run lint`, `npm.cmd run build`, and `git diff --check`.
+
+## Stage 113.5 Map Hover Scroll Lock
+
+- `/dev/route-runner` now confines wheel and trackpad scroll gestures to the
+  map canvas only while the pointer is over the map. Those wheel events keep
+  controlling cursor-focused map zoom and use a non-passive canvas listener so
+  page scrolling is reliably prevented for handled map zoom gestures.
+- Pointer leave and outside pointer-down clear the local map scroll-lock state,
+  so normal page scrolling resumes once the user leaves or clicks outside the
+  map. The implementation does not add body-level or page-global scroll
+  locking.
+- Draw mode, explicit Pan mode, middle-button panning, reset view, existing
+  zoom limits, route scoring, snapping, matching, saved attempts, analytics,
+  Supabase behavior, OSM conversion, exercise logic, and the default selected
+  map are unchanged.
+- Validation for this stage is covered by `npm.cmd run test:map`,
+  `npm.cmd run lint`, `npm.cmd run build`, and `git diff --check`.
+
+## Stage 114 Real London Pilot Visual QA Overlay
+
+- `/dev/route-runner` converted OSM maps now include a dev-only `Exercise QA`
+  overlay toggle beside the existing OSM QA/debug controls. It is intended for
+  inspecting `osm-real-london-pilot` exercises, and also works with the other
+  converted fixture maps where source fixture data is available.
+- The overlay draws the selected exercise start, ordered checkpoint, and finish
+  markers with explicit `Start`, `CP n`, and `Finish` labels, plus the existing
+  legality-aware fastest route returned by the Stage 108/113 OSM QA harness.
+- Access-blocked OSM ways excluded from the navigable graph are projected from
+  the committed Overpass fixture and drawn as debug-only blocked-access
+  segments. These visuals do not add edges back into the route graph or change
+  one-way/no-entry legality.
+- The converted OSM QA panel now shows selected-exercise overlay metadata:
+  map id, exercise id/title, start/checkpoint/destination ids, fastest-route
+  status, segment count, route length, render bounds, blocked/unknown route-edge
+  status, blocked visual counts, and deterministic QA failure messages.
+- The Marlowe synthetic map remains the default, and scoring, snapping,
+  matching, saved attempts, analytics, Supabase behavior, production routing,
+  and OSM graph conversion are unchanged.
+- Validation for this stage is covered by `npm.cmd run test:map` and the
+  focused `routeRunnerOsmExerciseDebugOverlay` tests; `npm.cmd run lint`,
+  `npm.cmd run build`, and `git diff --check` should remain clean.
+
+## Stage 115 Real London Pilot Exercise Lockdown
+
+- The real pilot exercise set for `osm-real-london-pilot` is now covered by a
+  deterministic QA acceptance report built from the committed local fixture
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json`. The report
+  exposes exercise id, start node, destination node, checkpoint nodes/count,
+  legal-route availability, fastest-route edge count, route distance, and
+  stable failure reason codes/messages.
+- The Stage 115 acceptance test locks the current five real pilot exercises
+  and their accepted fastest-route summaries:
+  `osm-real-pilot-short-crossing`, `osm-real-pilot-one-way-detour`,
+  `osm-real-pilot-checkpoint-route`, `osm-real-pilot-longer-route`, and
+  `osm-real-pilot-turn-choice`.
+- The acceptance pass verifies real pilot start, checkpoint, and destination
+  nodes exist, start and destination differ, ordered checkpoint legs are
+  reachable, fastest/reveal routes exist, route edges are known, legal directed
+  edges are used, blocked one-way/no-entry edges are avoided, and required stop
+  points remain inside render bounds.
+- The same acceptance report confirms tiny and medium converted OSM exercise
+  QA still passes, and a default-map guard keeps the Marlowe synthetic map as
+  the first/default route-runner option. No live Overpass data, external
+  routing APIs, manual OSM direction edits, production map defaults, scoring,
+  snapping, matching, saved attempts, analytics, or Supabase behaviour changed.
+- Validation run for this pass: focused
+  `routeRunnerOsmExerciseQa`/`routeRunnerOsmExerciseAcceptance` tests passed
+  14/14, `npm.cmd run test:map` passed 640/640, `npm.cmd run lint` passed, and
+  `npm.cmd run build` passed. `git diff --check` passed with Git's
+  LF-to-CRLF working-copy normalization warnings only.
+
+## Stage 116 Real London Pilot Exercise Polish
+
+- The five `osm-real-london-pilot` exercises now keep their internal ids and
+  stop definitions unchanged while exposing trainee-facing labels,
+  descriptions, and visual-only difficulty metadata for the dev route runner.
+  The selector now shows names such as `Goodge Street to Tottenham Court Road`
+  and `Torrington Place one-way check` instead of raw debug-style titles.
+- `/dev/route-runner` displays the selected real pilot exercise description
+  and difficulty badge in the exercise brief. The display helper falls back to
+  the exercise id, omits blank descriptions, and ignores unknown difficulty
+  values so older Marlowe/synthetic exercises remain safe without metadata.
+- Required stop markers are slightly clearer on the map canvas with stronger
+  halos, shadows, and role text (`S`, `CPn`, `F`). Marker coordinates, route
+  geometry, snapping, matching, scoring, saved attempts, analytics, Supabase
+  behaviour, production map defaults, and OSM legality rules are unchanged.
+- Stage 114 visual QA/debug overlay support is preserved: expected fastest
+  route, snapped route, checkpoint markers, blocked-access visuals, and
+  legality/debug metadata still use the existing real-pilot QA model.
+- Validation run for this pass: focused display/availability/map/debug overlay
+  tests passed 61/61, `npm.cmd run test:map` passed 645/645, and
+  `npm.cmd run lint` and `npm.cmd run build` passed.
+
+## Stage 117 Real London Pilot Manual Route Attempt QA
+
+- The real London pilot now has a dev/test-only manual attempt QA harness for
+  `osm-real-london-pilot`. It runs node/road/edge-sequence attempts through the
+  route-runner exercise feedback path, including the exercise runner, scoring
+  result, illegal movement highlighting, and attempt review summary.
+- The Stage 117 tests build accepted manual attempts from the QA-approved legal
+  fastest routes, then mutate those routes to cover rejected user-attempt cases:
+  blocked one-way movement, unknown edge, skipped checkpoint, checkpoint order,
+  incomplete route, wrong start, and an out-of-render-bounds QA guard.
+- Manual attempt failures now expose deterministic dev QA reason codes such as
+  `manual-attempt-valid`, `manual-attempt-blocked-directed-edge`,
+  `manual-attempt-unknown-edge`, `manual-attempt-skipped-checkpoint`,
+  `manual-attempt-checkpoint-order`, `manual-attempt-incomplete`,
+  `manual-attempt-missing-start`, and `manual-attempt-outside-bounds`.
+- This QA layer uses only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture. It does
+  not fetch live Overpass data, call external routing APIs, edit OSM road
+  directions, change production scoring, or make the real OSM pilot the default
+  route-runner map.
+- Validation run for this pass: focused
+  `routeRunnerOsmManualAttemptQa` tests passed 10/10,
+  `npm.cmd run test:map` passed 655/655, `npm.cmd run lint` passed, and
+  `npm.cmd run build` passed.
 
 ## Current Feature Set
 
