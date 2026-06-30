@@ -202,6 +202,11 @@ import {
   type OsmDebugOverlayStyle,
   type OsmDebugOverlayState
 } from "./routeRunnerOsmDebug";
+import {
+  buildOsmQaStatusPanelModel,
+  type OsmQaStatusPanelModel,
+  type OsmQaStatusState
+} from "./routeRunnerOsmQaStatus";
 
 const CANVAS_WIDTH = 1120;
 const CANVAS_HEIGHT = 760;
@@ -466,6 +471,40 @@ function savedAttemptStatusClass(status: SavedRouteAttemptListItem["statusLabel"
   }
 
   return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function osmQaStatusClass(state: OsmQaStatusState): string {
+  if (state === "pass") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (state === "fail") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function osmQaStatusLabel(state: OsmQaStatusState): string {
+  if (state === "pass") {
+    return "Pass";
+  }
+
+  if (state === "fail") {
+    return "Fail";
+  }
+
+  return "Not run";
+}
+
+function osmQaDistanceLabel(distanceMeters: number | null): string {
+  return distanceMeters === null ? "n/a" : `${distanceMeters.toFixed(0)} m`;
+}
+
+function osmQaSelectedSummaryLabel(selectedExercise: NonNullable<OsmQaStatusPanelModel["selectedExercise"]>): string {
+  return `${selectedExercise.routeEdgeCount} edge${selectedExercise.routeEdgeCount === 1 ? "" : "s"} | ${osmQaDistanceLabel(
+    selectedExercise.routeDistanceMeters
+  )}`;
 }
 
 function weakAreaAnalyticsPriorityClass(priority: RouteWeakAreaAnalyticsPriority): string {
@@ -2142,6 +2181,26 @@ export function RouteRunnerClient() {
       osmDebugOverlayState.visible,
       selectedExercise,
       selectedMapOption.fixtureName
+    ]
+  );
+  const osmQaStatusPanel = useMemo(
+    () =>
+      buildOsmQaStatusPanelModel({
+        map: activeMap,
+        graph: activeMapGraph,
+        exercises: activeExercises,
+        selectedExercise,
+        enabled: osmDebugOverlayAvailable && osmDebugOverlayState.visible,
+        isConvertedOsmMap
+      }),
+    [
+      activeExercises,
+      activeMap,
+      activeMapGraph,
+      isConvertedOsmMap,
+      osmDebugOverlayAvailable,
+      osmDebugOverlayState.visible,
+      selectedExercise
     ]
   );
   const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
@@ -3905,6 +3964,116 @@ export function RouteRunnerClient() {
                     ? ` Blocked OSM way IDs: ${osmDebugOverlay.summary.blockedOsmWayIds.join(", ")}.`
                     : ""}
                 </p>
+
+                {osmQaStatusPanel ? (
+                  <div className="mt-4 rounded-md border border-cyan-100 bg-white p-3">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Exercise QA status</p>
+                        <p className="mt-1 text-sm leading-5 text-cyan-900">
+                          Uses the Stage 108 harness to check stop nodes, ordered reachability, legal reveal route,
+                          directed edges, and render bounds.
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${osmQaStatusClass(
+                          osmQaStatusPanel.qaState
+                        )}`}
+                      >
+                        {osmQaStatusLabel(osmQaStatusPanel.qaState)}
+                      </span>
+                    </div>
+
+                    <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
+                      <div className="rounded border border-cyan-100 bg-cyan-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-cyan-700">Map</dt>
+                        <dd className="mt-1 font-semibold">{osmQaStatusPanel.mapName}</dd>
+                      </div>
+                      <div className="rounded border border-cyan-100 bg-cyan-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-cyan-700">Nodes</dt>
+                        <dd className="mt-1 font-semibold">{osmQaStatusPanel.nodeCount}</dd>
+                      </div>
+                      <div className="rounded border border-cyan-100 bg-cyan-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-cyan-700">Directed edges</dt>
+                        <dd className="mt-1 font-semibold">{osmQaStatusPanel.directedEdgeCount}</dd>
+                      </div>
+                      <div className="rounded border border-cyan-100 bg-cyan-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-cyan-700">Exercises</dt>
+                        <dd className="mt-1 font-semibold">{osmQaStatusPanel.exerciseCount}</dd>
+                      </div>
+                      <div className="rounded border border-cyan-100 bg-cyan-50 p-2">
+                        <dt className="font-semibold uppercase tracking-wide text-cyan-700">Pass / fail</dt>
+                        <dd className="mt-1 font-semibold">
+                          {osmQaStatusPanel.passedExerciseCount} / {osmQaStatusPanel.failedExerciseCount}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    {osmQaStatusPanel.selectedExercise ? (
+                      <div className="mt-3 rounded border border-cyan-100 bg-cyan-50 p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+                              Selected exercise QA
+                            </p>
+                            <p className="mt-1 font-semibold">{osmQaStatusPanel.selectedExercise.title}</p>
+                            <p className="mt-1 font-mono text-[11px] text-cyan-800">
+                              {osmQaStatusPanel.selectedExercise.id}
+                            </p>
+                            <p className="mt-1 text-xs text-cyan-800">
+                              {osmQaSelectedSummaryLabel(osmQaStatusPanel.selectedExercise)}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${osmQaStatusClass(
+                              osmQaStatusPanel.selectedExercise.qaState
+                            )}`}
+                          >
+                            {osmQaStatusLabel(osmQaStatusPanel.selectedExercise.qaState)}
+                          </span>
+                        </div>
+
+                        <ul className="mt-3 grid gap-2 text-xs md:grid-cols-2 xl:grid-cols-5">
+                          {osmQaStatusPanel.selectedExercise.checks.map((check) => (
+                            <li key={check.id} className="rounded border border-cyan-100 bg-white p-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-semibold text-cyan-950">{check.label}</p>
+                                <span
+                                  className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${osmQaStatusClass(
+                                    check.state
+                                  )}`}
+                                >
+                                  {osmQaStatusLabel(check.state)}
+                                </span>
+                              </div>
+                              <p className="mt-1 leading-5 text-cyan-800">{check.detail}</p>
+                            </li>
+                          ))}
+                        </ul>
+
+                        {osmQaStatusPanel.selectedExercise.failureMessages.length > 0 ? (
+                          <div className="mt-3 rounded border border-red-100 bg-red-50 p-2 text-xs text-red-950">
+                            <p className="font-semibold uppercase tracking-wide">QA failures</p>
+                            <ul className="mt-2 grid gap-1 font-mono text-[11px] leading-5">
+                              {osmQaStatusPanel.selectedExercise.failureMessages.map((message) => (
+                                <li key={message}>{message}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : (
+                          <p className="mt-3 rounded border border-green-100 bg-green-50 p-2 text-xs font-semibold text-green-950">
+                            No QA failures for the selected exercise.
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-4 rounded-md border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-cyan-800">
+                    Enable OSM QA to run exercise legality, reachability, directed-edge, and render-bounds checks for
+                    the selected converted map.
+                  </p>
+                )}
 
                 <div className="mt-4 rounded-md border border-cyan-100 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Selected exercise</p>

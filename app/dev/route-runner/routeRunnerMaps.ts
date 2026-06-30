@@ -6,7 +6,9 @@ import {
   type Vec2
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OsmRouteGraphMapDefinition } from "../../../lib/map-engine/osm/index.ts";
+import largeLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/largeLondonOverpass.json" with { type: "json" };
 import mediumLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/mediumLondonOverpass.json" with { type: "json" };
+import realLondonPilotOverpassFixture from "../../../lib/map-engine/osm/fixtures/realLondonPilotOverpass.json" with { type: "json" };
 import tinyLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/tinyLondonOverpass.json" with { type: "json" };
 
 export type RouteRunnerMapSource = "synthetic-dev" | "converted-osm";
@@ -32,8 +34,10 @@ export type RouteRunnerMapBounds = {
 
 const OSM_FIXTURE_MAP_ID = "osm-tiny-london-prototype";
 const MEDIUM_OSM_FIXTURE_MAP_ID = "osm-medium-london-prototype";
+const REAL_LONDON_OSM_PILOT_MAP_ID = "real-london-osm-pilot";
+const LARGE_LONDON_OSM_MAP_ID = "osm-large-london";
 const DEFAULT_ROUTE_RUNNER_MAP_PADDING = 45;
-const MEDIUM_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.22;
+const LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.22;
 
 function buildTinyLondonOsmMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(tinyLondonOverpassFixture, {
@@ -68,6 +72,40 @@ function buildMediumLondonOsmMap(): OsmRouteGraphMapDefinition {
 }
 
 export const mediumLondonOsmRouteMap = buildMediumLondonOsmMap();
+
+function buildRealLondonOsmPilotMap(): OsmRouteGraphMapDefinition {
+  const result = convertOverpassJsonToRouteMap(realLondonPilotOverpassFixture, {
+    mapId: REAL_LONDON_OSM_PILOT_MAP_ID,
+    name: "Real London OSM Pilot",
+    description: "Dev-only compact real-world London Overpass fixture for route-runner QA checks.",
+    version: 1
+  });
+
+  if (!result.ok) {
+    throw new Error(`Unable to build real London OSM pilot fixture map: ${result.errors.join("; ")}`);
+  }
+
+  return result.map;
+}
+
+export const realLondonOsmPilotRouteMap = buildRealLondonOsmPilotMap();
+
+function buildLargeLondonOsmMap(): OsmRouteGraphMapDefinition {
+  const result = convertOverpassJsonToRouteMap(largeLondonOverpassFixture, {
+    mapId: LARGE_LONDON_OSM_MAP_ID,
+    name: "OSM Large London",
+    description: "Dev-only larger committed London Overpass-like fixture for route-runner QA checks.",
+    version: 1
+  });
+
+  if (!result.ok) {
+    throw new Error(`Unable to build large London OSM fixture map: ${result.errors.join("; ")}`);
+  }
+
+  return result.map;
+}
+
+export const largeLondonOsmRouteMap = buildLargeLondonOsmMap();
 
 export const tinyLondonOsmRouteExercises: RouteExercise[] = [
   {
@@ -275,6 +313,202 @@ export const mediumLondonOsmRouteExercises: RouteExercise[] = [
   }
 ];
 
+export const realLondonOsmPilotRouteExercises: RouteExercise[] = [
+  {
+    id: "osm-real-euston-road",
+    title: "Real OSM pilot: Euston Road link",
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-9001",
+        label: "Euston Road west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-9003",
+        label: "Euston Road east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-woburn-checkpoint",
+    title: "Real OSM pilot: Euston to Store Street via Woburn Place",
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-9001",
+        label: "Euston Road west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-9005",
+        label: "Woburn Place and Tavistock Place"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-9011",
+        label: "Store Street east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-tavistock-one-way",
+    title: "Real OSM pilot: Tavistock Place one-way",
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-9004",
+        label: "Tavistock Place west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-9006",
+        label: "Tavistock Place east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-one-way-detour",
+    title: "Real OSM pilot: one-way-aware Tavistock detour",
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-9006",
+        label: "Tavistock Place east"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-9004",
+        label: "Tavistock Place west"
+      }
+    ]
+  },
+  {
+    id: "osm-real-gower-street",
+    title: "Real OSM pilot: Gower Street northbound",
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-9010",
+        label: "Store Street and Gower Street"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-9001",
+        label: "Euston Road and Gower Street"
+      }
+    ]
+  }
+];
+
+export const largeLondonOsmRouteExercises: RouteExercise[] = [
+  {
+    id: "osm-large-main-crossing",
+    title: "Large OSM: Euston Road main crossing",
+    mapId: largeLondonOsmRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-10000",
+        label: "Euston Road west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10006",
+        label: "Euston Road east"
+      }
+    ]
+  },
+  {
+    id: "osm-large-one-way-detour",
+    title: "Large OSM: one-way Tavistock detour",
+    mapId: largeLondonOsmRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-10026",
+        label: "Tavistock Place east"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10020",
+        label: "Tavistock Place west"
+      }
+    ]
+  },
+  {
+    id: "osm-large-checkpoint-route",
+    title: "Large OSM: Euston to Store Street via Russell Square",
+    mapId: largeLondonOsmRouteMap.id,
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-10001",
+        label: "Euston Road and Woburn Place"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10044",
+        label: "Russell Square east"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10066",
+        label: "Store Street east"
+      }
+    ]
+  },
+  {
+    id: "osm-large-service-road",
+    title: "Large OSM: Store Street service route",
+    mapId: largeLondonOsmRouteMap.id,
+    difficulty: "easy",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-10060",
+        label: "Store Street west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10066",
+        label: "Store Street east"
+      }
+    ]
+  },
+  {
+    id: "osm-large-long-route",
+    title: "Large OSM: Oxford Street to Euston Road",
+    mapId: largeLondonOsmRouteMap.id,
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-10080",
+        label: "Oxford Street west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-10006",
+        label: "Euston Road east"
+      }
+    ]
+  }
+];
+
 export const DEFAULT_ROUTE_RUNNER_MAP_ID = marloweDistrictMap.id;
 
 export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
@@ -308,6 +542,28 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     defaultExerciseId: mediumLondonOsmRouteExercises[0]?.id ?? "",
     attribution: "OpenStreetMap contributors",
     fixtureName: "mediumLondonOverpass.json"
+  },
+  {
+    id: realLondonOsmPilotRouteMap.id,
+    label: "Real London OSM Pilot",
+    description: "Small committed real-world London Overpass-style extract converted into the TOPOPASS route graph.",
+    source: "converted-osm",
+    map: realLondonOsmPilotRouteMap,
+    exercises: realLondonOsmPilotRouteExercises,
+    defaultExerciseId: realLondonOsmPilotRouteExercises[0]?.id ?? "",
+    attribution: "OpenStreetMap contributors",
+    fixtureName: "realLondonPilotOverpass.json"
+  },
+  {
+    id: largeLondonOsmRouteMap.id,
+    label: "OSM Large London",
+    description: "Larger committed London-like Overpass extract converted into the TOPOPASS route graph shape.",
+    source: "converted-osm",
+    map: largeLondonOsmRouteMap,
+    exercises: largeLondonOsmRouteExercises,
+    defaultExerciseId: largeLondonOsmRouteExercises[0]?.id ?? "",
+    attribution: "OpenStreetMap contributors",
+    fixtureName: "largeLondonOverpass.json"
   }
 ];
 
@@ -346,7 +602,7 @@ export function getRouteRunnerMapBounds(map: MapDefinition): RouteRunnerMapBound
 }
 
 export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
-  if (map.id !== MEDIUM_OSM_FIXTURE_MAP_ID) {
+  if (map.id !== MEDIUM_OSM_FIXTURE_MAP_ID && map.id !== LARGE_LONDON_OSM_MAP_ID) {
     return DEFAULT_ROUTE_RUNNER_MAP_PADDING;
   }
 
@@ -354,7 +610,7 @@ export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
   const width = Math.max(0, bounds.maxX - bounds.minX);
   const height = Math.max(0, bounds.maxY - bounds.minY);
 
-  return Math.max(DEFAULT_ROUTE_RUNNER_MAP_PADDING, Math.max(width, height) * MEDIUM_OSM_ROUTE_RUNNER_PADDING_RATIO);
+  return Math.max(DEFAULT_ROUTE_RUNNER_MAP_PADDING, Math.max(width, height) * LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO);
 }
 
 export function getRouteRunnerMapFitBounds(map: MapDefinition): RouteRunnerMapBounds {

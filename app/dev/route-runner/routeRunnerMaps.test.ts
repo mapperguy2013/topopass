@@ -17,8 +17,12 @@ import {
   getRouteRunnerMapFitPadding,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap,
+  largeLondonOsmRouteExercises,
+  largeLondonOsmRouteMap,
   mediumLondonOsmRouteExercises,
   mediumLondonOsmRouteMap,
+  realLondonOsmPilotRouteExercises,
+  realLondonOsmPilotRouteMap,
   routeRunnerMapCenter,
   tinyLondonOsmRouteExercises,
   tinyLondonOsmRouteMap
@@ -61,14 +65,18 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const convertedOptions = ROUTE_RUNNER_MAP_OPTIONS.filter((option) => option.source === "converted-osm");
   const tinyOption = getRouteRunnerMapOption(tinyLondonOsmRouteMap.id);
   const mediumOption = getRouteRunnerMapOption(mediumLondonOsmRouteMap.id);
+  const largeOption = getRouteRunnerMapOption(largeLondonOsmRouteMap.id);
 
   assert.ok(syntheticOption);
   assert.ok(tinyOption);
   assert.ok(mediumOption);
+  assert.ok(largeOption);
+  assert.ok(getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id));
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
   assert.equal(mediumOption.source, "converted-osm");
-  assert.equal(convertedOptions.length, 2);
+  assert.equal(largeOption.source, "converted-osm");
+  assert.equal(convertedOptions.length, 4);
   assert.ok(syntheticOption.exercises.every((exercise) => !exercise.id.startsWith("osm-")));
   assert.deepEqual(
     tinyOption.exercises.map((exercise) => exercise.id),
@@ -78,8 +86,22 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     mediumOption.exercises.map((exercise) => exercise.id),
     mediumLondonOsmRouteExercises.map((exercise) => exercise.id)
   );
+  assert.deepEqual(
+    getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id)?.exercises.map((exercise) => exercise.id),
+    realLondonOsmPilotRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
+    largeOption.exercises.map((exercise) => exercise.id),
+    largeLondonOsmRouteExercises.map((exercise) => exercise.id)
+  );
   assert.ok(tinyOption.exercises.every((exercise) => exercise.id.startsWith("osm-tiny-")));
   assert.ok(mediumOption.exercises.every((exercise) => exercise.id.startsWith("osm-medium-")));
+  assert.ok(
+    getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id)?.exercises.every((exercise) =>
+      exercise.id.startsWith("osm-real-")
+    )
+  );
+  assert.ok(largeOption.exercises.every((exercise) => exercise.id.startsWith("osm-large-")));
 });
 
 test("converted OSM map exposes drawable and snappable road geometry", () => {
@@ -106,7 +128,7 @@ test("converted OSM map bounds and centre are deterministic", () => {
   });
 });
 
-test("medium converted OSM map uses a more comfortable first-load fit", () => {
+test("larger converted OSM maps use a more comfortable first-load fit", () => {
   assert.equal(getRouteRunnerMapFitPadding(tinyLondonOsmRouteMap), 45);
   assert.equal(getRouteRunnerMapFitPadding(mediumLondonOsmRouteMap), 97.5056654);
   assert.deepEqual(getRouteRunnerMapFitBounds(mediumLondonOsmRouteMap), {
@@ -114,6 +136,13 @@ test("medium converted OSM map uses a more comfortable first-load fit", () => {
     minY: -297.8816654,
     maxX: 319.1094504,
     maxY: 297.8816654
+  });
+  assert.equal(getRouteRunnerMapFitPadding(largeLondonOsmRouteMap), 274.25998336);
+  assert.deepEqual(getRouteRunnerMapFitBounds(largeLondonOsmRouteMap), {
+    minX: -897.5781273599999,
+    minY: -719.53998336,
+    maxX: 897.5781273599999,
+    maxY: 719.53998336
   });
 });
 
@@ -158,10 +187,12 @@ test("converted OSM fastest-route reveal uses existing legal shortest-route logi
 test("medium converted OSM fixture is selectable without replacing existing maps", () => {
   const mediumOption = getRouteRunnerMapOption(mediumLondonOsmRouteMap.id);
   const tinyOption = getRouteRunnerMapOption(tinyLondonOsmRouteMap.id);
+  const realOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
   const syntheticOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
 
   assert.ok(mediumOption);
   assert.ok(tinyOption);
+  assert.ok(realOption);
   assert.ok(syntheticOption);
   assert.equal(ROUTE_RUNNER_MAP_OPTIONS[0]?.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
   assert.equal(mediumOption.source, "converted-osm");
@@ -169,6 +200,9 @@ test("medium converted OSM fixture is selectable without replacing existing maps
   assert.equal(mediumOption.defaultExerciseId, mediumLondonOsmRouteExercises[0].id);
   assert.equal(mediumOption.map.id, mediumLondonOsmRouteMap.id);
   assert.equal(tinyOption.map.id, tinyLondonOsmRouteMap.id);
+  assert.equal(realOption.map.id, realLondonOsmPilotRouteMap.id);
+  assert.equal(realOption.defaultExerciseId, realLondonOsmPilotRouteExercises[0].id);
+  assert.equal(realOption.fixtureName, "realLondonPilotOverpass.json");
 });
 
 test("medium converted OSM fixture is larger than tiny but compact for dev tests", () => {
@@ -178,6 +212,15 @@ test("medium converted OSM fixture is larger than tiny but compact for dev tests
   assert.equal(mediumLondonOsmRouteMap.roads.length, 48);
   assert.ok(mediumLondonOsmRouteMap.nodes.length <= 60);
   assert.ok(mediumLondonOsmRouteMap.roads.length <= 120);
+});
+
+test("large converted OSM fixture is larger than medium while staying test-sized", () => {
+  assert.ok(largeLondonOsmRouteMap.nodes.length > mediumLondonOsmRouteMap.nodes.length);
+  assert.ok(largeLondonOsmRouteMap.roads.length > mediumLondonOsmRouteMap.roads.length);
+  assert.equal(largeLondonOsmRouteMap.nodes.length, 63);
+  assert.equal(largeLondonOsmRouteMap.roads.length, 122);
+  assert.ok(largeLondonOsmRouteMap.nodes.length <= 150);
+  assert.ok(largeLondonOsmRouteMap.roads.length <= 250);
 });
 
 test("medium converted OSM map exposes drawable and snappable road geometry", () => {
@@ -208,6 +251,64 @@ test("medium converted OSM labels and road classes use preserved OSM metadata", 
   assert.equal(deriveSyntheticRoadClass(mediumLondonOsmRouteMap, storeStreet), "service");
   assert.ok(visuals.some((visual) => visual.name === "Euston Road"));
   assert.ok(labels.some((label) => label.kind === "road" && label.text === "Euston Road"));
+});
+
+test("real London OSM pilot fixture is selectable and compact", () => {
+  const realOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(realOption);
+  assert.equal(ROUTE_RUNNER_MAP_OPTIONS[0]?.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
+  assert.equal(realOption.source, "converted-osm");
+  assert.ok(isConvertedOsmRouteRunnerMap(realOption));
+  assert.equal(realOption.label, "Real London OSM Pilot");
+  assert.equal(realOption.attribution, "OpenStreetMap contributors");
+  assert.equal(realOption.map.nodes.length, 12);
+  assert.equal(realOption.map.roads.length, 20);
+  assert.equal(realOption.exercises.length, 5);
+});
+
+test("real London OSM pilot labels and road classes use preserved OSM metadata", () => {
+  const visuals = buildSyntheticRoadVisuals(realLondonOsmPilotRouteMap);
+  const labels = buildSyntheticMapLabels(realLondonOsmPilotRouteMap, realLondonOsmPilotRouteExercises[0], {
+    includeOsmRoadLabels: true
+  });
+  const eustonRoad = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Euston Road");
+  const storeStreet = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Store Street");
+  const gowerStreet = realLondonOsmPilotRouteMap.roads.find((road) => road.name === "Gower Street");
+
+  assert.ok(eustonRoad);
+  assert.ok(storeStreet);
+  assert.ok(gowerStreet);
+  assert.equal(deriveSyntheticRoadClass(realLondonOsmPilotRouteMap, eustonRoad), "major");
+  assert.equal(deriveSyntheticRoadClass(realLondonOsmPilotRouteMap, storeStreet), "service");
+  assert.equal(gowerStreet.isOneWay, true);
+  assert.ok(visuals.some((visual) => visual.name === "Euston Road"));
+  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Euston Road"));
+  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Tavistock Place"));
+});
+
+test("large London OSM fixture is selectable and exposes hierarchy labels", () => {
+  const largeOption = getRouteRunnerMapOption(largeLondonOsmRouteMap.id);
+  const visuals = buildSyntheticRoadVisuals(largeLondonOsmRouteMap);
+  const labels = buildSyntheticMapLabels(largeLondonOsmRouteMap, largeLondonOsmRouteExercises[0], {
+    includeOsmRoadLabels: true
+  });
+  const eustonRoad = largeLondonOsmRouteMap.roads.find((road) => road.name === "Euston Road");
+  const storeStreet = largeLondonOsmRouteMap.roads.find((road) => road.name === "Store Street");
+
+  assert.ok(largeOption);
+  assert.equal(ROUTE_RUNNER_MAP_OPTIONS[0]?.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
+  assert.equal(largeOption.source, "converted-osm");
+  assert.equal(largeOption.label, "OSM Large London");
+  assert.equal(largeOption.fixtureName, "largeLondonOverpass.json");
+  assert.equal(largeOption.defaultExerciseId, largeLondonOsmRouteExercises[0].id);
+  assert.ok(eustonRoad);
+  assert.ok(storeStreet);
+  assert.equal(deriveSyntheticRoadClass(largeLondonOsmRouteMap, eustonRoad), "major");
+  assert.equal(deriveSyntheticRoadClass(largeLondonOsmRouteMap, storeStreet), "service");
+  assert.ok(visuals.some((visual) => visual.name === "Euston Road"));
+  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Euston Road"));
+  assert.ok(labels.some((label) => label.kind === "road" && label.text === "Gower Street"));
 });
 
 test("every converted OSM exercise uses valid converted graph nodes", () => {
@@ -248,6 +349,44 @@ test("every medium converted OSM exercise uses valid converted graph nodes", () 
   }
 });
 
+test("every real London OSM pilot exercise uses valid converted graph nodes", () => {
+  const graph = buildMapGraph(realLondonOsmPilotRouteMap);
+
+  for (const exercise of realLondonOsmPilotRouteExercises) {
+    assert.equal(exercise.mapId, realLondonOsmPilotRouteMap.id, exercise.id);
+    assert.ok(exercise.stops.length >= 2, exercise.id);
+
+    for (const stop of exercise.stops) {
+      assert.equal(stop.type, "node", `${exercise.id} should use stable converted OSM node stops`);
+      assert.ok(graph.nodesById[stop.nodeId], `${exercise.id} references missing node ${stop.nodeId}`);
+      assert.ok(
+        (graph.outgoingEdgesByNodeId[stop.nodeId]?.length ?? 0) > 0 ||
+          (graph.incomingEdgesByNodeId[stop.nodeId]?.length ?? 0) > 0,
+        `${exercise.id} stop ${stop.nodeId} is not attached to a converted road edge`
+      );
+    }
+  }
+});
+
+test("every large London OSM exercise uses valid converted graph nodes", () => {
+  const graph = buildMapGraph(largeLondonOsmRouteMap);
+
+  for (const exercise of largeLondonOsmRouteExercises) {
+    assert.equal(exercise.mapId, largeLondonOsmRouteMap.id, exercise.id);
+    assert.ok(exercise.stops.length >= 2, exercise.id);
+
+    for (const stop of exercise.stops) {
+      assert.equal(stop.type, "node", `${exercise.id} should use stable converted OSM node stops`);
+      assert.ok(graph.nodesById[stop.nodeId], `${exercise.id} references missing node ${stop.nodeId}`);
+      assert.ok(
+        (graph.outgoingEdgesByNodeId[stop.nodeId]?.length ?? 0) > 0 ||
+          (graph.incomingEdgesByNodeId[stop.nodeId]?.length ?? 0) > 0,
+        `${exercise.id} stop ${stop.nodeId} is not attached to a converted road edge`
+      );
+    }
+  }
+});
+
 test("every converted OSM exercise is legally solvable through its required stops", () => {
   const graph = buildMapGraph(tinyLondonOsmRouteMap);
   const availabilities = validateExerciseReachabilityList({
@@ -274,6 +413,40 @@ test("every medium converted OSM exercise is legally solvable through its requir
   });
 
   assert.equal(availabilities.length, mediumLondonOsmRouteExercises.length);
+
+  for (const availability of availabilities) {
+    assert.equal(availability.isValid, true, `${availability.exerciseId}: ${availability.errors.join("; ")}`);
+    assert.ok(availability.shortestRouteDistanceMeters && availability.shortestRouteDistanceMeters > 0);
+    assert.equal(availability.missingLegs.length, 0, availability.exerciseId);
+  }
+});
+
+test("every real London OSM pilot exercise is legally solvable through its required stops", () => {
+  const graph = buildMapGraph(realLondonOsmPilotRouteMap);
+  const availabilities = validateExerciseReachabilityList({
+    map: realLondonOsmPilotRouteMap,
+    exercises: realLondonOsmPilotRouteExercises,
+    graph
+  });
+
+  assert.equal(availabilities.length, realLondonOsmPilotRouteExercises.length);
+
+  for (const availability of availabilities) {
+    assert.equal(availability.isValid, true, `${availability.exerciseId}: ${availability.errors.join("; ")}`);
+    assert.ok(availability.shortestRouteDistanceMeters && availability.shortestRouteDistanceMeters > 0);
+    assert.equal(availability.missingLegs.length, 0, availability.exerciseId);
+  }
+});
+
+test("every large London OSM exercise is legally solvable through its required stops", () => {
+  const graph = buildMapGraph(largeLondonOsmRouteMap);
+  const availabilities = validateExerciseReachabilityList({
+    map: largeLondonOsmRouteMap,
+    exercises: largeLondonOsmRouteExercises,
+    graph
+  });
+
+  assert.equal(availabilities.length, largeLondonOsmRouteExercises.length);
 
   for (const availability of availabilities) {
     assert.equal(availability.isValid, true, `${availability.exerciseId}: ${availability.errors.join("; ")}`);
@@ -358,6 +531,70 @@ test("reveal fastest route returns a validated legal route for every medium conv
   }
 });
 
+test("reveal fastest route returns a validated legal route for every real London OSM pilot exercise", () => {
+  const graph = buildMapGraph(realLondonOsmPilotRouteMap);
+  const blockedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, realLondonOsmPilotRouteMap.restrictions);
+
+  for (const exercise of realLondonOsmPilotRouteExercises) {
+    const overlay = buildFastestRouteOverlay({
+      map: realLondonOsmPilotRouteMap,
+      exercise,
+      revealState: toggleFastestRouteReveal(createHiddenFastestRouteRevealState()),
+      graph
+    });
+
+    assert.equal(overlay.status, "available", `${exercise.id}: ${overlay.message ?? "no route"}`);
+    assert.ok(overlay.edgeIds.length > 0, exercise.id);
+
+    const routeValidation = validateDirectedEdgePath({
+      graph,
+      edgeIds: overlay.edgeIds,
+      restrictions: realLondonOsmPilotRouteMap.restrictions
+    });
+
+    assert.equal(routeValidation.valid, true, `${exercise.id}: ${routeValidation.invalidEdgeKeys.join(", ")}`);
+
+    for (const edgeId of overlay.edgeIds) {
+      const edge = graph.edgesById[edgeId];
+
+      assert.ok(edge, `${exercise.id} returned unknown edge ${edgeId}`);
+      assert.equal(blockedEdgeKeys.has(directedEdgeKey(edge)), false, `${exercise.id} used blocked edge ${edgeId}`);
+    }
+  }
+});
+
+test("reveal fastest route returns a validated legal route for every large London OSM exercise", () => {
+  const graph = buildMapGraph(largeLondonOsmRouteMap);
+  const blockedEdgeKeys = buildBlockedDirectedEdgeKeys(graph, largeLondonOsmRouteMap.restrictions);
+
+  for (const exercise of largeLondonOsmRouteExercises) {
+    const overlay = buildFastestRouteOverlay({
+      map: largeLondonOsmRouteMap,
+      exercise,
+      revealState: toggleFastestRouteReveal(createHiddenFastestRouteRevealState()),
+      graph
+    });
+
+    assert.equal(overlay.status, "available", `${exercise.id}: ${overlay.message ?? "no route"}`);
+    assert.ok(overlay.edgeIds.length > 0, exercise.id);
+
+    const routeValidation = validateDirectedEdgePath({
+      graph,
+      edgeIds: overlay.edgeIds,
+      restrictions: largeLondonOsmRouteMap.restrictions
+    });
+
+    assert.equal(routeValidation.valid, true, `${exercise.id}: ${routeValidation.invalidEdgeKeys.join(", ")}`);
+
+    for (const edgeId of overlay.edgeIds) {
+      const edge = graph.edgesById[edgeId];
+
+      assert.ok(edge, `${exercise.id} returned unknown edge ${edgeId}`);
+      assert.equal(blockedEdgeKeys.has(directedEdgeKey(edge)), false, `${exercise.id} used blocked edge ${edgeId}`);
+    }
+  }
+});
+
 test("medium converted OSM one-way detour does not use illegal reverse one-way travel", () => {
   const graph = buildMapGraph(mediumLondonOsmRouteMap);
   const exercise = mediumLondonOsmRouteExercises.find(
@@ -378,6 +615,56 @@ test("medium converted OSM one-way detour does not use illegal reverse one-way t
   assert.equal(overlay.nodeIds[0], "osm-node-5015");
   assert.equal(overlay.nodeIds.at(-1), "osm-node-5011");
   assert.ok(overlay.nodeIds.length > 2);
+});
+
+test("real London OSM pilot one-way detour avoids illegal reverse one-way travel", () => {
+  const graph = buildMapGraph(realLondonOsmPilotRouteMap);
+  const exercise = realLondonOsmPilotRouteExercises.find(
+    (candidate) => candidate.id === "osm-real-one-way-detour"
+  );
+
+  assert.ok(exercise);
+
+  const overlay = buildFastestRouteOverlay({
+    map: realLondonOsmPilotRouteMap,
+    exercise,
+    revealState: toggleFastestRouteReveal(createHiddenFastestRouteRevealState()),
+    graph
+  });
+
+  assert.equal(overlay.status, "available");
+  assert.equal(overlay.roadIds.some((roadId) => roadId.startsWith("osm-way-9105-")), false);
+  assert.deepEqual(overlay.nodeIds, ["osm-node-9006", "osm-node-9003", "osm-node-9002", "osm-node-9004"]);
+});
+
+test("large London OSM one-way detour avoids illegal reverse one-way travel", () => {
+  const graph = buildMapGraph(largeLondonOsmRouteMap);
+  const exercise = largeLondonOsmRouteExercises.find(
+    (candidate) => candidate.id === "osm-large-one-way-detour"
+  );
+
+  assert.ok(exercise);
+
+  const overlay = buildFastestRouteOverlay({
+    map: largeLondonOsmRouteMap,
+    exercise,
+    revealState: toggleFastestRouteReveal(createHiddenFastestRouteRevealState()),
+    graph
+  });
+
+  assert.equal(overlay.status, "available");
+  assert.equal(overlay.roadIds.some((roadId) => roadId.startsWith("osm-way-11003-")), false);
+  assert.deepEqual(overlay.nodeIds, [
+    "osm-node-10026",
+    "osm-node-10036",
+    "osm-node-10035",
+    "osm-node-10034",
+    "osm-node-10033",
+    "osm-node-10032",
+    "osm-node-10031",
+    "osm-node-10030",
+    "osm-node-10020"
+  ]);
 });
 
 test("converted OSM one-way exercise is solvable only in the legal imported direction", () => {

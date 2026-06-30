@@ -2118,6 +2118,74 @@ out body;
   fetch live Overpass data, add map data, use external map/routing APIs, replace
   synthetic fixtures, or alter legality and routing behavior.
 
+## Stage 110 OSM Dev QA Status Panel
+
+- Surfaced the existing Stage 108 converted OSM exercise QA harness inside the
+  `/dev/route-runner` converted OSM QA panel.
+- The status panel is dev-only and appears for converted OSM maps when OSM QA is
+  enabled. Synthetic/Marlowe maps remain the default and do not receive OSM QA
+  status metadata.
+- The panel shows selected OSM map name, node count, directed edge count,
+  exercise count, pass/fail summary, and selected-exercise checks for stop-node
+  resolution, ordered leg reachability, legal reveal-route availability,
+  directed-edge legality, and render-bounds sanity.
+- QA failures are formatted with deterministic reason codes from the Stage 108
+  harness so invalid converted OSM exercises can be diagnosed visually without
+  duplicating route legality logic.
+- Stage 110 does not change scoring, snapping, matching, shortest-route logic,
+  saved attempts, Supabase behavior, analytics, production UI, live Overpass
+  fetching, or external routing behavior.
+
+## Stage 110.5 Real London OSM Fixture Pilot
+
+- Added `realLondonPilotOverpass.json`, a small committed Overpass-style
+  Bloomsbury/Tavistock/Russell Square pilot fixture with real London road names,
+  residential/service roads, multiple junctions, forward and reverse one-way
+  streets, and excluded non-drivable ways.
+- Registered the fixture as the dev-only `Real London OSM Pilot` converted OSM
+  map in `/dev/route-runner`. The Marlowe synthetic map remains the default, and
+  the tiny and medium OSM prototype maps remain selectable.
+- Added five node-based pilot exercises covering a simple Euston Road route, a
+  checkpoint route through Woburn Place, a Tavistock Place one-way route, a
+  one-way-aware detour, and a Gower Street northbound route.
+- The pilot fixture is converted through the existing Stage 101/102 parser and
+  graph converter. No special-case routing logic, live Overpass calls, external
+  routing APIs, production UI, scoring, snapping, matching, shortest-route,
+  saved-attempt, Supabase, or analytics behavior changed.
+- Tests cover parser output, graph conversion, selectable map registration,
+  deterministic road labels/rendering metadata, OSM debug metadata, legal
+  reveal-fastest routes, and Stage 108 QA harness pass status for every pilot
+  exercise.
+- Relevant checks can be run with `npm.cmd run test:map`, or by running the
+  focused OSM test files for `overpassImport`, `osmToRouteGraph`,
+  `routeRunnerMaps`, `routeRunnerOsmDebug`, and `routeRunnerOsmExerciseQa`.
+
+## Stage 111 Larger London OSM Fixture
+
+- Added `largeLondonOverpass.json`, a larger committed London-like
+  Overpass-style fixture that remains small enough for deterministic dev tests
+  while covering a broader Bloomsbury/Euston/Russell Square style street grid.
+- Registered the fixture as the dev-only `OSM Large London` converted OSM map
+  with id `osm-large-london`. The Marlowe synthetic map remains the default, and
+  the tiny, medium, and real-pilot OSM maps remain selectable.
+- The fixture parses to 63 OSM nodes and 21 accepted source roads, then converts
+  through the existing OSM graph converter into 63 route nodes, 122 road
+  segments, and 202 legal directed graph edges. One blocked vehicle-access way
+  and one ignored relation are retained in metadata for QA/debug checks.
+- Added five smoke exercises for the large map:
+  `osm-large-main-crossing`, `osm-large-one-way-detour`,
+  `osm-large-checkpoint-route`, `osm-large-service-road`, and
+  `osm-large-long-route`.
+- The existing Stage 108 OSM QA harness validates every large-map exercise for
+  stop-node resolution, ordered leg reachability, legal reveal-route
+  availability, directed-edge legality, and render-bounds sanity.
+- Larger converted OSM fixtures now reuse the padded first-load fit so the
+  medium and large maps open comfortably in `/dev/route-runner`.
+- Stage 111 is dev/test-only. It does not fetch live Overpass data, add
+  production OSM routing, use external routing APIs, change scoring, snapping,
+  matching, shortest-route logic, saved attempts, Supabase, or analytics
+  behavior.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

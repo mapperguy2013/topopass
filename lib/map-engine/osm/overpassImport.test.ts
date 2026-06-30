@@ -8,9 +8,13 @@ import { parseOverpassRoadExtract } from "./overpassImport.ts";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.join(currentDirectory, "fixtures", "tinyLondonOverpass.json");
+const largeFixturePath = path.join(currentDirectory, "fixtures", "largeLondonOverpass.json");
 const mediumFixturePath = path.join(currentDirectory, "fixtures", "mediumLondonOverpass.json");
+const realLondonPilotFixturePath = path.join(currentDirectory, "fixtures", "realLondonPilotOverpass.json");
 const fixture = JSON.parse(readFileSync(fixturePath, "utf8"));
+const largeFixture = JSON.parse(readFileSync(largeFixturePath, "utf8"));
 const mediumFixture = JSON.parse(readFileSync(mediumFixturePath, "utf8"));
+const realLondonPilotFixture = JSON.parse(readFileSync(realLondonPilotFixturePath, "utf8"));
 
 function parseFixture() {
   return parseOverpassRoadExtract(fixture);
@@ -190,6 +194,106 @@ test("medium London fixture detects one-way, reverse one-way, roundabout, and bl
   assert.equal(gyratory.direction, "forward");
   assert.equal(gyratory.oneWay, true);
   assert.equal(mediumResult.excludedWays.find((way) => way.osmWayId === 6016)?.reason, "blocked_access");
+});
+
+test("real London pilot fixture parses as a compact deterministic road extract", () => {
+  const result = parseOverpassRoadExtract(realLondonPilotFixture);
+
+  assert.equal(result.nodeCount, 12);
+  assert.deepEqual(
+    result.roads.map((road) => road.osmWayId),
+    [9101, 9102, 9103, 9104, 9105, 9106, 9107, 9108, 9109, 9110]
+  );
+  assert.deepEqual(
+    result.roads.map((road) => road.name),
+    [
+      "Euston Road",
+      "Gower Street",
+      "Woburn Place",
+      "Judd Street",
+      "Tavistock Place",
+      "Russell Square",
+      "Store Street",
+      "Herbrand Street",
+      "Marchmont Street",
+      "Cartwright Gardens"
+    ]
+  );
+  assert.deepEqual(
+    result.excludedWays.map((way) => [way.osmWayId, way.reason]),
+    [
+      [9111, "blocked_access"],
+      [9112, "ignored_non_road"]
+    ]
+  );
+  assert.deepEqual(result.ignoredRelationIds, [9201]);
+});
+
+test("real London pilot fixture detects real-world one-way and blocked access metadata", () => {
+  const result = parseOverpassRoadExtract(realLondonPilotFixture);
+  const gowerStreet = result.roads.find((road) => road.osmWayId === 9102);
+  const tavistockPlace = result.roads.find((road) => road.osmWayId === 9105);
+  const russellSquare = result.roads.find((road) => road.osmWayId === 9106);
+  const storeStreet = result.roads.find((road) => road.osmWayId === 9107);
+
+  assert.ok(gowerStreet);
+  assert.ok(tavistockPlace);
+  assert.ok(russellSquare);
+  assert.ok(storeStreet);
+  assert.equal(gowerStreet.direction, "reverse");
+  assert.equal(gowerStreet.oneWay, true);
+  assert.equal(tavistockPlace.direction, "forward");
+  assert.equal(russellSquare.direction, "forward");
+  assert.equal(storeStreet.oneWay, false);
+  assert.equal(result.excludedWays.find((way) => way.osmWayId === 9111)?.reason, "blocked_access");
+});
+
+test("large London fixture parses as a larger deterministic road extract", () => {
+  const mediumResult = parseOverpassRoadExtract(mediumFixture);
+  const result = parseOverpassRoadExtract(largeFixture);
+
+  assert.equal(result.nodeCount, 63);
+  assert.equal(result.roads.length, 21);
+  assert.ok(result.nodeCount > mediumResult.nodeCount);
+  assert.ok(result.roads.length > mediumResult.roads.length);
+  assert.deepEqual(
+    result.roads.map((road) => road.osmWayId),
+    [
+      11001, 11002, 11003, 11004, 11005, 11006, 11007, 11008, 11009, 11010, 11011, 11012, 11013,
+      11014, 11015, 11016, 11017, 11018, 11019, 11020, 11021
+    ]
+  );
+  assert.deepEqual(
+    result.excludedWays.map((way) => [way.osmWayId, way.reason]),
+    [
+      [11022, "blocked_access"],
+      [11023, "ignored_non_road"],
+      [11024, "unsupported_highway"]
+    ]
+  );
+  assert.deepEqual(result.ignoredRelationIds, [12001]);
+});
+
+test("large London fixture preserves hierarchy and one-way metadata", () => {
+  const result = parseOverpassRoadExtract(largeFixture);
+  const eustonRoad = result.roads.find((road) => road.osmWayId === 11001);
+  const gowerStreet = result.roads.find((road) => road.osmWayId === 11010);
+  const tavistockPlace = result.roads.find((road) => road.osmWayId === 11003);
+  const bedfordWay = result.roads.find((road) => road.osmWayId === 11013);
+  const storeStreet = result.roads.find((road) => road.osmWayId === 11007);
+
+  assert.ok(eustonRoad);
+  assert.ok(gowerStreet);
+  assert.ok(tavistockPlace);
+  assert.ok(bedfordWay);
+  assert.ok(storeStreet);
+  assert.equal(eustonRoad.highway, "primary");
+  assert.equal(gowerStreet.direction, "reverse");
+  assert.equal(gowerStreet.oneWay, true);
+  assert.equal(tavistockPlace.direction, "forward");
+  assert.equal(bedfordWay.direction, "forward");
+  assert.equal(storeStreet.highway, "service");
+  assert.equal(storeStreet.oneWay, false);
 });
 
 test("handles invalid or empty Overpass payloads safely", () => {

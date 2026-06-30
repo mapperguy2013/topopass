@@ -1,0 +1,219 @@
+{
+  "version": 0.6,
+  "generator": "TOPOPASS Stage 111 static large London fixture",
+  "elements": [
+    { "type": "node", "id": 10000, "lat": 51.5308, "lon": -0.139 },
+    { "type": "node", "id": 10001, "lat": 51.5308, "lon": -0.136 },
+    { "type": "node", "id": 10002, "lat": 51.5308, "lon": -0.133 },
+    { "type": "node", "id": 10003, "lat": 51.5308, "lon": -0.13 },
+    { "type": "node", "id": 10004, "lat": 51.5308, "lon": -0.127 },
+    { "type": "node", "id": 10005, "lat": 51.5308, "lon": -0.124 },
+    { "type": "node", "id": 10006, "lat": 51.5308, "lon": -0.121 },
+    { "type": "node", "id": 10010, "lat": 51.5298, "lon": -0.139 },
+    { "type": "node", "id": 10011, "lat": 51.5298, "lon": -0.136 },
+    { "type": "node", "id": 10012, "lat": 51.5298, "lon": -0.133 },
+    { "type": "node", "id": 10013, "lat": 51.5298, "lon": -0.13 },
+    { "type": "node", "id": 10014, "lat": 51.5298, "lon": -0.127 },
+    { "type": "node", "id": 10015, "lat": 51.5298, "lon": -0.124 },
+    { "type": "node", "id": 10016, "lat": 51.5298, "lon": -0.121 },
+    { "type": "node", "id": 10020, "lat": 51.5288, "lon": -0.139 },
+    { "type": "node", "id": 10021, "lat": 51.5288, "lon": -0.136 },
+    { "type": "node", "id": 10022, "lat": 51.5288, "lon": -0.133 },
+    { "type": "node", "id": 10023, "lat": 51.5288, "lon": -0.13 },
+    { "type": "node", "id": 10024, "lat": 51.5288, "lon": -0.127 },
+    { "type": "node", "id": 10025, "lat": 51.5288, "lon": -0.124 },
+    { "type": "node", "id": 10026, "lat": 51.5288, "lon": -0.121 },
+    { "type": "node", "id": 10030, "lat": 51.5278, "lon": -0.139 },
+    { "type": "node", "id": 10031, "lat": 51.5278, "lon": -0.136 },
+    { "type": "node", "id": 10032, "lat": 51.5278, "lon": -0.133 },
+    { "type": "node", "id": 10033, "lat": 51.5278, "lon": -0.13 },
+    { "type": "node", "id": 10034, "lat": 51.5278, "lon": -0.127 },
+    { "type": "node", "id": 10035, "lat": 51.5278, "lon": -0.124 },
+    { "type": "node", "id": 10036, "lat": 51.5278, "lon": -0.121 },
+    { "type": "node", "id": 10040, "lat": 51.5268, "lon": -0.139 },
+    { "type": "node", "id": 10041, "lat": 51.5268, "lon": -0.136 },
+    { "type": "node", "id": 10042, "lat": 51.5268, "lon": -0.133 },
+    { "type": "node", "id": 10043, "lat": 51.5268, "lon": -0.13 },
+    { "type": "node", "id": 10044, "lat": 51.5268, "lon": -0.127 },
+    { "type": "node", "id": 10045, "lat": 51.5268, "lon": -0.124 },
+    { "type": "node", "id": 10046, "lat": 51.5268, "lon": -0.121 },
+    { "type": "node", "id": 10050, "lat": 51.5258, "lon": -0.139 },
+    { "type": "node", "id": 10051, "lat": 51.5258, "lon": -0.136 },
+    { "type": "node", "id": 10052, "lat": 51.5258, "lon": -0.133 },
+    { "type": "node", "id": 10053, "lat": 51.5258, "lon": -0.13 },
+    { "type": "node", "id": 10054, "lat": 51.5258, "lon": -0.127 },
+    { "type": "node", "id": 10055, "lat": 51.5258, "lon": -0.124 },
+    { "type": "node", "id": 10056, "lat": 51.5258, "lon": -0.121 },
+    { "type": "node", "id": 10060, "lat": 51.5248, "lon": -0.139 },
+    { "type": "node", "id": 10061, "lat": 51.5248, "lon": -0.136 },
+    { "type": "node", "id": 10062, "lat": 51.5248, "lon": -0.133 },
+    { "type": "node", "id": 10063, "lat": 51.5248, "lon": -0.13 },
+    { "type": "node", "id": 10064, "lat": 51.5248, "lon": -0.127 },
+    { "type": "node", "id": 10065, "lat": 51.5248, "lon": -0.124 },
+    { "type": "node", "id": 10066, "lat": 51.5248, "lon": -0.121 },
+    { "type": "node", "id": 10070, "lat": 51.5238, "lon": -0.139 },
+    { "type": "node", "id": 10071, "lat": 51.5238, "lon": -0.136 },
+    { "type": "node", "id": 10072, "lat": 51.5238, "lon": -0.133 },
+    { "type": "node", "id": 10073, "lat": 51.5238, "lon": -0.13 },
+    { "type": "node", "id": 10074, "lat": 51.5238, "lon": -0.127 },
+    { "type": "node", "id": 10075, "lat": 51.5238, "lon": -0.124 },
+    { "type": "node", "id": 10076, "lat": 51.5238, "lon": -0.121 },
+    { "type": "node", "id": 10080, "lat": 51.5228, "lon": -0.139 },
+    { "type": "node", "id": 10081, "lat": 51.5228, "lon": -0.136 },
+    { "type": "node", "id": 10082, "lat": 51.5228, "lon": -0.133 },
+    { "type": "node", "id": 10083, "lat": 51.5228, "lon": -0.13 },
+    { "type": "node", "id": 10084, "lat": 51.5228, "lon": -0.127 },
+    { "type": "node", "id": 10085, "lat": 51.5228, "lon": -0.124 },
+    { "type": "node", "id": 10086, "lat": 51.5228, "lon": -0.121 },
+    {
+      "type": "way",
+      "id": 11001,
+      "nodes": [10000, 10001, 10002, 10003, 10004, 10005, 10006],
+      "tags": { "highway": "primary", "name": "Euston Road" }
+    },
+    {
+      "type": "way",
+      "id": 11002,
+      "nodes": [10010, 10011, 10012, 10013, 10014, 10015, 10016],
+      "tags": { "highway": "residential", "name": "Endsleigh Gardens" }
+    },
+    {
+      "type": "way",
+      "id": 11003,
+      "nodes": [10020, 10021, 10022, 10023, 10024, 10025, 10026],
+      "tags": { "highway": "tertiary", "name": "Tavistock Place", "oneway": "yes" }
+    },
+    {
+      "type": "way",
+      "id": 11004,
+      "nodes": [10030, 10031, 10032, 10033, 10034, 10035, 10036],
+      "tags": { "highway": "residential", "name": "Gordon Square" }
+    },
+    {
+      "type": "way",
+      "id": 11005,
+      "nodes": [10040, 10041, 10042, 10043, 10044, 10045, 10046],
+      "tags": { "highway": "secondary", "name": "Russell Square", "oneway": "yes" }
+    },
+    {
+      "type": "way",
+      "id": 11006,
+      "nodes": [10050, 10051, 10052, 10053, 10054, 10055, 10056],
+      "tags": { "highway": "tertiary", "name": "Great Russell Street" }
+    },
+    {
+      "type": "way",
+      "id": 11007,
+      "nodes": [10060, 10061, 10062, 10063, 10064, 10065, 10066],
+      "tags": { "highway": "service", "name": "Store Street" }
+    },
+    {
+      "type": "way",
+      "id": 11008,
+      "nodes": [10070, 10071, 10072, 10073, 10074, 10075, 10076],
+      "tags": { "highway": "residential", "name": "Bayley Street", "oneway": "-1" }
+    },
+    {
+      "type": "way",
+      "id": 11009,
+      "nodes": [10080, 10081, 10082, 10083, 10084, 10085, 10086],
+      "tags": { "highway": "primary", "name": "Oxford Street" }
+    },
+    {
+      "type": "way",
+      "id": 11010,
+      "nodes": [10000, 10010, 10020, 10030, 10040, 10050, 10060, 10070, 10080],
+      "tags": { "highway": "secondary", "name": "Gower Street", "oneway": "-1" }
+    },
+    {
+      "type": "way",
+      "id": 11011,
+      "nodes": [10001, 10011, 10021, 10031, 10041, 10051, 10061, 10071, 10081],
+      "tags": { "highway": "secondary", "name": "Woburn Place" }
+    },
+    {
+      "type": "way",
+      "id": 11012,
+      "nodes": [10002, 10012, 10022, 10032, 10042, 10052, 10062, 10072, 10082],
+      "tags": { "highway": "residential", "name": "Malet Street" }
+    },
+    {
+      "type": "way",
+      "id": 11013,
+      "nodes": [10003, 10013, 10023, 10033, 10043, 10053, 10063, 10073, 10083],
+      "tags": { "highway": "tertiary", "name": "Bedford Way", "oneway": "yes" }
+    },
+    {
+      "type": "way",
+      "id": 11014,
+      "nodes": [10004, 10014, 10024, 10034, 10044, 10054, 10064, 10074, 10084],
+      "tags": { "highway": "secondary", "name": "Southampton Row" }
+    },
+    {
+      "type": "way",
+      "id": 11015,
+      "nodes": [10005, 10015, 10025, 10035, 10045, 10055, 10065, 10075, 10085],
+      "tags": { "highway": "residential", "name": "Marchmont Street", "oneway": "yes" }
+    },
+    {
+      "type": "way",
+      "id": 11016,
+      "nodes": [10006, 10016, 10026, 10036, 10046, 10056, 10066, 10076, 10086],
+      "tags": { "highway": "primary", "name": "Gray's Inn Road" }
+    },
+    {
+      "type": "way",
+      "id": 11017,
+      "nodes": [10011, 10022, 10033],
+      "tags": { "highway": "residential", "name": "Cartwright Gardens" }
+    },
+    {
+      "type": "way",
+      "id": 11018,
+      "nodes": [10052, 10063, 10074],
+      "tags": { "highway": "service", "name": "Keppel Street" }
+    },
+    {
+      "type": "way",
+      "id": 11019,
+      "nodes": [10043, 10054, 10065],
+      "tags": { "highway": "service", "name": "Museum Street Link" }
+    },
+    {
+      "type": "way",
+      "id": 11020,
+      "nodes": [10021, 10032, 10043, 10054],
+      "tags": { "highway": "residential", "name": "Torrington Place" }
+    },
+    {
+      "type": "way",
+      "id": 11021,
+      "nodes": [10056, 10065, 10074, 10083],
+      "tags": { "highway": "tertiary", "name": "Bloomsbury Way" }
+    },
+    {
+      "type": "way",
+      "id": 11022,
+      "nodes": [10060, 10071],
+      "tags": { "highway": "service", "name": "Private Yard", "vehicle": "no" }
+    },
+    {
+      "type": "way",
+      "id": 11023,
+      "nodes": [10020, 10031],
+      "tags": { "highway": "footway", "name": "Gower Walk" }
+    },
+    {
+      "type": "way",
+      "id": 11024,
+      "nodes": [10000, 10086],
+      "tags": { "highway": "motorway", "name": "Motorway Test Link" }
+    },
+    {
+      "type": "relation",
+      "id": 12001,
+      "members": [],
+      "tags": { "type": "restriction" }
+    }
+  ]
+}

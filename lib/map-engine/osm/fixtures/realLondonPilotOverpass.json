@@ -1,0 +1,139 @@
+{
+  "version": 0.6,
+  "generator": "TOPOPASS Stage 110.5 static real London pilot fixture",
+  "elements": [
+    { "type": "node", "id": 9001, "lat": 51.5267, "lon": -0.1309 },
+    { "type": "node", "id": 9002, "lat": 51.5266, "lon": -0.1285 },
+    { "type": "node", "id": 9003, "lat": 51.5265, "lon": -0.1262 },
+    { "type": "node", "id": 9004, "lat": 51.5238, "lon": -0.1311 },
+    { "type": "node", "id": 9005, "lat": 51.5240, "lon": -0.1286 },
+    { "type": "node", "id": 9006, "lat": 51.5242, "lon": -0.1263 },
+    { "type": "node", "id": 9007, "lat": 51.5212, "lon": -0.1313 },
+    { "type": "node", "id": 9008, "lat": 51.5214, "lon": -0.1288 },
+    { "type": "node", "id": 9009, "lat": 51.5216, "lon": -0.1265 },
+    { "type": "node", "id": 9010, "lat": 51.5193, "lon": -0.1314 },
+    { "type": "node", "id": 9011, "lat": 51.5195, "lon": -0.1289 },
+    { "type": "node", "id": 9012, "lat": 51.5198, "lon": -0.1267 },
+    {
+      "type": "way",
+      "id": 9101,
+      "nodes": [9001, 9002, 9003],
+      "tags": {
+        "highway": "primary",
+        "name": "Euston Road"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9102,
+      "nodes": [9001, 9004, 9007, 9010],
+      "tags": {
+        "highway": "secondary",
+        "name": "Gower Street",
+        "oneway": "-1"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9103,
+      "nodes": [9002, 9005, 9008, 9011],
+      "tags": {
+        "highway": "secondary",
+        "name": "Woburn Place"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9104,
+      "nodes": [9003, 9006, 9009, 9012],
+      "tags": {
+        "highway": "tertiary",
+        "name": "Judd Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9105,
+      "nodes": [9004, 9005, 9006],
+      "tags": {
+        "highway": "residential",
+        "name": "Tavistock Place",
+        "oneway": "yes"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9106,
+      "nodes": [9007, 9008, 9009],
+      "tags": {
+        "highway": "residential",
+        "name": "Russell Square",
+        "oneway": "yes"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9107,
+      "nodes": [9010, 9011, 9012],
+      "tags": {
+        "highway": "service",
+        "name": "Store Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9108,
+      "nodes": [9005, 9008],
+      "tags": {
+        "highway": "residential",
+        "name": "Herbrand Street"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9109,
+      "nodes": [9006, 9009],
+      "tags": {
+        "highway": "residential",
+        "name": "Marchmont Street",
+        "oneway": "yes"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9110,
+      "nodes": [9002, 9004],
+      "tags": {
+        "highway": "residential",
+        "name": "Cartwright Gardens"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9111,
+      "nodes": [9007, 9012],
+      "tags": {
+        "highway": "service",
+        "name": "Private Courtyard Access",
+        "vehicle": "no"
+      }
+    },
+    {
+      "type": "way",
+      "id": 9112,
+      "nodes": [9004, 9011],
+      "tags": {
+        "highway": "footway",
+        "name": "Tavistock Square Walk"
+      }
+    },
+    {
+      "type": "relation",
+      "id": 9201,
+      "members": [],
+      "tags": {
+        "type": "restriction"
+      }
+    }
+  ]
+}
