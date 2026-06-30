@@ -1580,6 +1580,10 @@ MAX_BACKUP_AGE_HOURS=36
   restrictions. The current Marlowe no-entry focus exercise is treated as
   unavailable until the fixture is corrected instead of being shown as a valid
   legal solution.
+- Directed restriction blocking is represented as `fromNodeId->toNodeId` edge
+  keys and validated before a shortest route is returned for rendering. No-entry
+  restrictions can also split a road at distance markers so a mid-road no-entry
+  sign blocks only the illegal directed segment rather than the whole road.
 - Stage 85.7 does not change scoring thresholds, map rendering style,
   backend/schema logic, Supabase logic, adaptive practice logic, attempt
   history, or saved attempt shape.
@@ -1796,12 +1800,39 @@ MAX_BACKUP_AGE_HOURS=36
   restrictions, and Stage 94 per-leg breakdowns when available.
 - The saved review panel handles stale or missing exercise titles safely by
   falling back to the saved exercise id and showing a compact warning.
-- Visual replay is intentionally deferred; saved attempts currently show a
-  textual route summary from compact stored road/node/directed-edge IDs, with
-  the raw saved review payload retained in a collapsible debug section.
+- Saved-attempt visual replay is intentionally deferred; saved attempts
+  currently show a textual route summary from compact stored road/node/directed-
+  edge IDs, with the raw saved review payload retained in a collapsible debug
+  section.
 - Stage 96 does not change scoring rules, legality rules, snapping, route
   matching, shortest-route behavior, storage serialization semantics, backend
   schema, OSM import, dashboards, or exercise semantics.
+
+## Stage 97 Route Replay
+
+- Added pure route replay helpers for normalising route geometry, calculating
+  replay length and duration, interpolating marker positions along polylines,
+  clamping progress, resetting replay state, switching replay modes, and
+  building compare-mode markers.
+- `/dev/route-runner` now shows compact replay controls after a drawn attempt is
+  reviewed: replay my route, replay the shortest legal route, compare both,
+  play, pause, restart, and 0.5x/1x/2x speed selection.
+- Replay markers are drawn in map coordinates on the existing canvas, using the
+  same viewport transform as roads, stops, restriction icons, the snapped route,
+  and the revealed fastest route, so they stay aligned after zoom, pan, and reset
+  view.
+- Replay state is isolated from scoring, pass/fail, attempt storage, saved
+  history, matched route data, shortest-route data, adaptive practice, and weak-
+  area analytics. Starting a new drawing, undoing, clearing, or changing
+  exercises safely resets only replay playback.
+- Empty or missing geometry disables the relevant replay mode instead of
+  crashing. Compare mode is available when both snapped user-route geometry and
+  the legal shortest-route geometry exist. Saved-attempt visual replay remains a
+  future layer because saved rows intentionally store compact IDs rather than raw
+  drawing payloads.
+- Stage 97 does not change scoring rules, legality rules, snapping, route
+  matching, shortest-route behavior, map fixtures, backend schema, OSM import,
+  storage semantics, attempt history, or exercise semantics.
 
 ## Stage 98 Weak Area Analytics Upgrade
 
@@ -1840,6 +1871,128 @@ MAX_BACKUP_AGE_HOURS=36
 - Stage 100 does not change scoring rules, legality checks, snapping semantics,
   route matching semantics, shortest-route behavior, map fixtures, backend
   schema, Supabase logic, OSM import, or adaptive practice behavior.
+
+## Stage 101 Overpass / OSM Import Prototype
+
+- Added an isolated `lib/map-engine/osm` import prototype for minimal Overpass
+  JSON responses, covering node, way, and relation elements while ignoring
+  relations for Stage 101 graph conversion.
+- `parseOverpassRoadExtract()` extracts accepted road-like highway ways
+  (`primary`, `secondary`, `tertiary`, `unclassified`, `residential`,
+  `service`, and `living_street`) into a deterministic prototype road shape
+  with OSM IDs, names, highway type, direction metadata, coordinates, node
+  references, and raw tags retained for debugging.
+- Motorways, trunk roads, footways, cycleways, paths, pedestrian-only ways,
+  steps, bridleways, construction/proposed ways, buildings, railways,
+  waterways, blocked access roads, and ways with missing node references are
+  excluded rather than routed through.
+- Basic OSM direction and access tags are detected: `oneway=yes`, `true`, `1`,
+  `-1`, and `junction=roundabout`; `access=no`, `motor_vehicle=no`, and
+  `vehicle=no` are treated as blocked for this prototype.
+- Added a tiny committed London-like Overpass fixture with named roads,
+  one-way and reverse-one-way cases, a roundabout, blocked vehicle access, and
+  excluded non-drivable ways. Tests use this fixture only and do not call live
+  Overpass.
+- For manual dev experiments, use a small Overpass Turbo query like:
+
+```overpassql
+[out:json][timeout:25];
+(
+  way["highway"~"^(primary|secondary|tertiary|unclassified|residential|service|living_street)$"](51.529,-0.126,51.534,-0.117);
+);
+(._;>;);
+out body;
+```
+
+  Keep downloaded extracts small and committed fixtures synthetic or minimal
+  enough for deterministic tests.
+- Existing Marlowe/fake/dev maps remain the default. Stage 101 does not render
+  OSM data, create OSM exercises, call external routing APIs, or change scoring,
+  legality, snapping, matching, shortest-route, backend, or Supabase behavior.
+- Future OSM-derived UI must include OpenStreetMap contributor attribution.
+  Stage 102 is expected to convert this parsed output into the app graph format.
+
+## Stage 102 OSM Import to Route Graph Converter
+
+- Added a pure Stage 102 converter that consumes Stage 101 imported Overpass
+  output and emits the existing `MapDefinition` shape used by snapping,
+  legality, shortest-route, reveal-fastest-route, scoring, and route-exercise
+  code.
+- OSM node coordinates are projected into deterministic local x/y metres using
+  a small-extract bbox-centred projection, with origin, scale, lat/lon bounds,
+  and projected bounds retained in converter metadata for debugging.
+- Imported OSM ways are split into one internal road segment for each
+  consecutive OSM node pair. Stable ids use `osm-node-{id}` and
+  `osm-way-{id}-segment-{index}`, preserving road names, OSM ids, highway tags,
+  original OSM direction, segment index, node ids, and raw tags for Stage 103
+  rendering/debug work.
+- The converter default road filter includes `primary`, `primary_link`,
+  `secondary`, `secondary_link`, `tertiary`, `tertiary_link`, `residential`,
+  `unclassified`, `living_street`, `service`, and `road`; it excludes footways,
+  cycleways, paths, steps, pedestrian-only/platform/construction/proposed ways,
+  and remains configurable for later London tuning.
+- One-way OSM data is represented using existing map-engine semantics:
+  `oneway=yes`, `true`, `1`, and roundabouts become one-way generated segments;
+  `oneway=-1` reverses generated segment endpoints so existing directed-edge
+  routing only permits the legal direction. Stage 101 blocked-access ways remain
+  excluded, while imported roads with vehicle-blocking tags are converted with
+  `road_closed` restrictions.
+- The tiny Stage 101 fixture now converts into an internal route map that can be
+  passed through the existing shortest-route and legality engines. Tests prove
+  one-way, reverse-one-way, roundabout, missing-node, non-road filtering,
+  deterministic projection, and converted shortest-route behavior.
+- Stage 102 does not fetch live OSM data, render London maps, create exercises,
+  change scoring behavior, change drawing behavior, change snapping/matching
+  behavior, or alter shortest-route legality rules beyond consuming the
+  converted one-way/restricted road data through existing engine paths.
+
+## Stage 103 Render Converted OSM Route Graph in Route Runner
+
+- Added a dev-only route-runner map catalogue that keeps the Marlowe synthetic
+  map as the default and adds the converted Stage 101 tiny London OSM fixture as
+  an explicit selectable map option.
+- `/dev/route-runner` now derives exercise lists, map graph, viewport bounds,
+  restriction overlays, drawing/snapping/scoring inputs, fastest-route reveal,
+  and canvas labels from the selected `MapDefinition` instead of assuming the
+  Marlowe fixture.
+- The converted OSM fixture renders through the existing canvas street-map path
+  with Stage 102 projected coordinates. Road labels use preserved OSM road names,
+  and display styling reads preserved highway metadata for primary, secondary,
+  tertiary, residential, service, and fallback roads.
+- Added simple dev OSM fixture exercises so drawing, snapping, panning, zooming,
+  reset view, restriction display, and reveal-fastest-route can be manually
+  tested against converted graph data without fetching live Overpass data.
+- Stage 103 is integration/rendering only: it does not replace the fake/dev
+  maps, call live OSM or external routing APIs, alter scoring, alter
+  shortest-route behavior, change legality semantics, require Supabase, or wire
+  imported OSM data into production UI.
+
+## Stage 104 Converted OSM Exercise Fixtures and Solvability Validation
+
+- Added several dev-only route exercises on top of the converted Stage 102 OSM
+  fixture map: a simple start-to-finish route, a checkpoint route, a roundabout
+  checkpoint route, a one-way-aware route from the roundabout to Argyle Street,
+  and an isolated service-lane route.
+- Converted OSM exercise stops use stable converted graph node ids such as
+  `osm-node-1001`, so markers align with the rendered roads, snapping graph,
+  and fastest-route overlay without arbitrary screen-coordinate fixtures.
+- Added regression coverage proving the converted OSM exercises are registered
+  only under the converted OSM route-runner map option while the synthetic
+  Marlowe map remains the default.
+- Added solvability validation for every converted OSM exercise using the
+  existing restriction-aware shortest-route and exercise reachability helpers.
+  Tests fail if any fixture requires illegal one-way/no-entry/restricted-road
+  movement or has an unreachable checkpoint/finish.
+- Added fastest-route reveal coverage for every converted OSM exercise. Returned
+  edge sequences are validated with the existing directed-edge path validation
+  before being accepted as renderable route overlays.
+- Added a negative unreachable converted-OSM exercise test to prove invalid
+  fixtures are rejected instead of being silently treated as normal practice
+  questions.
+- Stage 104 does not fetch live OSM/Overpass data, hard-code route solutions,
+  bypass the route engine, change scoring, change legality, alter snapping,
+  modify shortest-route behavior, replace synthetic fixtures, or expose OSM maps
+  outside the dev route-runner flow.
 
 ## Current Feature Set
 
