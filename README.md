@@ -2403,6 +2403,31 @@ out body;
   `npm.cmd run test:map` passed 655/655, `npm.cmd run lint` passed, and
   `npm.cmd run build` passed.
 
+## Stage 118 Real London Pilot End-to-End Drawn Route QA
+
+- The real London pilot now has a dev/test-only drawn-route QA helper for
+  `osm-real-london-pilot`. It converts QA-approved legal fastest/reveal route
+  edges into interior road-centreline draw points, then runs those traces
+  through the same drawn-route pipeline used by `/dev/route-runner`: gesture
+  validation, simplification, snapping, matching, exercise scoring, illegal
+  movement highlighting, and review generation.
+- The Stage 118 tests prove all five real pilot exercises can pass end to end
+  from generated drawn geometry, match the expected legal directed edges,
+  preserve ordered checkpoint handling, and produce empty illegal movement
+  highlights for valid reveal routes.
+- The drawn-route QA helper returns deterministic failure codes for broken
+  cases including `drawn-route-empty`, `drawn-route-unmatched`,
+  `unknown-route-edge`, `illegal-directed-edge`, `accepted-route-expected`,
+  `unexpected-illegal-highlight`, and `non-deterministic-review`.
+- This remains dev/test-only and uses only the committed
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json` fixture. It does
+  not fetch live Overpass data, call external routing APIs, edit OSM road
+  directions, change scoring rules, or change production behaviour.
+- Validation run for this pass: focused
+  `routeRunnerOsmDrawnRouteQa` tests passed 9/9,
+  `npm.cmd run test:map` passed 664/664, `npm.cmd run lint` passed, and
+  `npm.cmd run build` passed.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
