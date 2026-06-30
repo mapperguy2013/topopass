@@ -4,13 +4,11 @@ import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import {
   appendRouteDraftPoint,
   buildMapGraph,
-  boundingBoxForPoints,
   buildIllegalDrawnMovementHighlights,
   clearRouteDraft,
   createDrawnRouteTrace,
   createEmptyRouteDraft,
   createInsufficientDrawnGesturePipelineResult,
-  expandBoundingBox,
   finishRouteStroke,
   getTurnRestrictionVisuals,
   hasUndoableRouteStroke,
@@ -47,6 +45,9 @@ import {
   type AdaptivePracticeQueuePriority,
   type AdaptivePracticeSourceSignals
 } from "./adaptivePracticeQueue";
+import {
+  buildCompactAdaptiveRecommendationDisplay
+} from "./adaptiveRecommendationDisplay";
 import {
   MARLOWE_DISTRICT_EXERCISE_METADATA,
   MARLOWE_DISTRICT_METADATA_CATALOGUE,
@@ -188,6 +189,7 @@ import {
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   ROUTE_RUNNER_MAP_OPTIONS,
+  getRouteRunnerMapFitBounds,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap
 } from "./routeRunnerMaps";
@@ -197,6 +199,7 @@ import {
   createDefaultOsmDebugOverlayState,
   type OsmDebugDirectedEdgeVisual,
   type OsmDebugOverlayModel,
+  type OsmDebugOverlayStyle,
   type OsmDebugOverlayState
 } from "./routeRunnerOsmDebug";
 
@@ -1697,10 +1700,11 @@ function drawOsmDebugDirectedEdge(
   context: CanvasRenderingContext2D,
   edge: OsmDebugDirectedEdgeVisual,
   viewport: ScreenMapViewport,
-  showIds: boolean
+  showIds: boolean,
+  style: OsmDebugOverlayStyle
 ): void {
   const [from, to] = shiftedDebugEdgePoints(edge, viewport);
-  const colour = edge.isOneWayRoad ? "#be185d" : "#0f766e";
+  const colour = edge.isOneWayRoad ? "#db2777" : "#0891b2";
   const arrowStart = {
     x: from.x + (to.x - from.x) * 0.58,
     y: from.y + (to.y - from.y) * 0.58
@@ -1711,17 +1715,21 @@ function drawOsmDebugDirectedEdge(
   };
 
   context.save();
-  context.globalAlpha = edge.isOneWayRoad ? 0.72 : 0.42;
+  context.globalAlpha = edge.isOneWayRoad ? style.oneWayEdgeAlpha : style.twoWayEdgeAlpha;
   context.strokeStyle = colour;
   context.fillStyle = colour;
-  context.lineWidth = edge.isOneWayRoad ? 2.5 : 1.7;
-  context.setLineDash(edge.isOneWayRoad ? [] : [4, 4]);
+  context.lineWidth = edge.isOneWayRoad ? style.oneWayEdgeLineWidth : style.twoWayEdgeLineWidth;
+  context.setLineDash(edge.isOneWayRoad ? [] : style.twoWayEdgeDash);
   context.beginPath();
   context.moveTo(from.x, from.y);
   context.lineTo(to.x, to.y);
   context.stroke();
   context.setLineDash([]);
-  drawArrowHead(context, arrowStart, arrowEnd);
+
+  if (edge.isOneWayRoad || style.showTwoWayDirectionArrows) {
+    drawArrowHead(context, arrowStart, arrowEnd);
+  }
+
   context.restore();
 
   if (showIds) {
@@ -1739,28 +1747,28 @@ function drawOsmDebugOverlay(
   }
 
   for (const edge of overlay.directedEdges) {
-    drawOsmDebugDirectedEdge(context, edge, viewport, overlay.showIds);
+    drawOsmDebugDirectedEdge(context, edge, viewport, overlay.showIds, overlay.style);
   }
 
   context.save();
   for (const node of overlay.nodes) {
     const point = mapToScreenPoint(node.point, viewport);
 
-    context.fillStyle = "rgba(255,255,255,0.9)";
+    context.fillStyle = "rgba(255,255,255,0.84)";
     context.strokeStyle = "#0891b2";
-    context.lineWidth = 1.8;
+    context.lineWidth = overlay.style.nodeStrokeWidth;
     context.beginPath();
-    context.arc(point.x, point.y, 4.25, 0, Math.PI * 2);
+    context.arc(point.x, point.y, overlay.style.nodeRadius, 0, Math.PI * 2);
     context.fill();
     context.stroke();
 
     context.fillStyle = "#0e7490";
     context.beginPath();
-    context.arc(point.x, point.y, 2, 0, Math.PI * 2);
+    context.arc(point.x, point.y, overlay.style.nodeInnerRadius, 0, Math.PI * 2);
     context.fill();
 
     if (overlay.showIds) {
-      drawOsmDebugLabel(context, node.id, { x: point.x, y: point.y - 11 });
+      drawOsmDebugLabel(context, node.id, { x: point.x, y: point.y - overlay.style.labelOffset });
     }
   }
   context.restore();
@@ -1991,12 +1999,10 @@ function drawRouteCanvas(input: {
 }
 
 function createViewport(map: MapDefinition): ScreenMapViewport {
-  const mapBounds = expandBoundingBox(boundingBoxForPoints(map.nodes), 45);
-
   return {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    mapBounds
+    mapBounds: getRouteRunnerMapFitBounds(map)
   };
 }
 
@@ -2050,6 +2056,7 @@ export function RouteRunnerClient() {
     readStoredAdaptivePracticeLauncherState()
   );
   const [adaptiveLauncherMessage, setAdaptiveLauncherMessage] = useState<string | null>(null);
+  const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
 
   const selectedMapOption = useMemo(
@@ -2429,6 +2436,26 @@ export function RouteRunnerClient() {
         (item) => getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id) === "recommended"
       ),
     [adaptiveLauncherState, adaptivePracticeQueue.items]
+  );
+  const recommendedAdaptivePracticeStatusById = useMemo<Record<string, AdaptivePracticeLauncherItemStatus>>(
+    () =>
+      Object.fromEntries(
+        recommendedAdaptivePracticeItems.map((item) => [
+          item.id,
+          getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id)
+        ])
+      ),
+    [adaptiveLauncherState, recommendedAdaptivePracticeItems]
+  );
+  const compactAdaptiveRecommendationDisplay = useMemo(
+    () =>
+      buildCompactAdaptiveRecommendationDisplay({
+        items: recommendedAdaptivePracticeItems,
+        selectedItemId: selectedAdaptiveRecommendationId,
+        availableExercises: ADAPTIVE_PRACTICE_EXERCISES,
+        itemStatuses: recommendedAdaptivePracticeStatusById
+      }),
+    [recommendedAdaptivePracticeItems, recommendedAdaptivePracticeStatusById, selectedAdaptiveRecommendationId]
   );
   const skippedAdaptivePracticeItems = useMemo(
     () =>
@@ -3820,7 +3847,11 @@ export function RouteRunnerClient() {
                   </div>
                 </div>
 
-                <dl className="mt-4 grid gap-3 text-xs text-cyan-950 sm:grid-cols-2 lg:grid-cols-5">
+                <dl className="mt-4 grid gap-3 text-xs text-cyan-950 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Source</dt>
+                    <dd className="mt-1 text-base font-bold uppercase">{osmDebugOverlay.summary.sourceKind}</dd>
+                  </div>
                   <div className="rounded-md border border-cyan-100 bg-white p-3">
                     <dt className="font-semibold uppercase tracking-wide text-cyan-700">Nodes</dt>
                     <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.nodeCount}</dd>
@@ -3841,7 +3872,31 @@ export function RouteRunnerClient() {
                     <dt className="font-semibold uppercase tracking-wide text-cyan-700">Two-way segments</dt>
                     <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.twoWayRoadSegmentCount}</dd>
                   </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Blocked ways</dt>
+                    <dd className="mt-1 text-base font-bold">{osmDebugOverlay.summary.blockedOsmWayCount}</dd>
+                  </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Extent</dt>
+                    <dd className="mt-1 text-sm font-bold">
+                      {osmDebugOverlay.summary.extent.width.toFixed(0)} x {osmDebugOverlay.summary.extent.height.toFixed(0)}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-cyan-100 bg-white p-3">
+                    <dt className="font-semibold uppercase tracking-wide text-cyan-700">Bounds centre</dt>
+                    <dd className="mt-1 text-sm font-bold">
+                      {osmDebugOverlay.summary.extent.centerX.toFixed(0)}, {osmDebugOverlay.summary.extent.centerY.toFixed(0)}
+                    </dd>
+                  </div>
                 </dl>
+
+                <p className="mt-3 rounded-md border border-cyan-100 bg-white/80 p-3 text-xs leading-5 text-cyan-800">
+                  Graph IDs stay hidden unless enabled. The overlay draws below route, restriction focus, replay, and
+                  start/checkpoint/finish markers so exercise markers remain visible while inspecting the graph.
+                  {osmDebugOverlay.summary.blockedOsmWayIds.length > 0
+                    ? ` Blocked OSM way IDs: ${osmDebugOverlay.summary.blockedOsmWayIds.join(", ")}.`
+                    : ""}
+                </p>
 
                 <div className="mt-4 rounded-md border border-cyan-100 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Selected exercise</p>
@@ -4435,13 +4490,188 @@ export function RouteRunnerClient() {
                   </div>
 
                   <div className="rounded-md border border-current/10 bg-white/70 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Recommended next</p>
-                    {recommendedAdaptivePracticeItems.length > 0 ? (
-                      <ol className="mt-3 space-y-2">
-                        {recommendedAdaptivePracticeItems.map((item, index) =>
-                          renderAdaptivePracticeLauncherItem(item, `Recommendation ${index + 1}`)
-                        )}
-                      </ol>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Recommended next</p>
+                      <span className="text-xs font-semibold opacity-70">
+                        {compactAdaptiveRecommendationDisplay.rows.length} recommendation
+                        {compactAdaptiveRecommendationDisplay.rows.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {compactAdaptiveRecommendationDisplay.rows.length > 0 ? (
+                      <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)]">
+                        <ol className="overflow-hidden rounded-md border border-current/10 bg-white/85">
+                          {compactAdaptiveRecommendationDisplay.rows.map((row) => (
+                            <li key={row.id} className="border-b border-current/10 last:border-b-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedAdaptiveRecommendationId(row.id)}
+                                className={`flex w-full flex-col gap-2 px-3 py-2 text-left transition hover:bg-slate-50 ${
+                                  row.isSelected ? "bg-blue-50/80 ring-1 ring-inset ring-blue-200" : "bg-white"
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-current/20 bg-white text-[11px] font-semibold">
+                                    {row.number}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-semibold">{row.title}</p>
+                                    <p className="mt-0.5 line-clamp-2 text-xs leading-5 opacity-75">{row.summary}</p>
+                                    <p className="mt-1 truncate text-[11px] font-semibold uppercase tracking-wide opacity-60">
+                                      Linked: {row.linkedExerciseLabel}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 pl-9">
+                                  <span className="rounded-full border border-current/15 bg-white/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+                                    {row.weakAreaLabel}
+                                  </span>
+                                  <span
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptivePriorityClass(
+                                      row.priority
+                                    )}`}
+                                  >
+                                    {row.priority}
+                                  </span>
+                                  <span
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveLauncherStatusClass(
+                                      row.status
+                                    )}`}
+                                  >
+                                    {adaptiveLauncherStatusLabel(row.status)}
+                                  </span>
+                                  <span
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveDifficultyClass(
+                                      row.difficulty
+                                    )}`}
+                                  >
+                                    {row.difficulty ?? "difficulty tbc"}
+                                  </span>
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ol>
+
+                        {compactAdaptiveRecommendationDisplay.detail && compactAdaptiveRecommendationDisplay.selectedItem ? (
+                          <div className="rounded-md border border-current/10 bg-white/90 p-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide opacity-60">
+                                  Selected recommendation
+                                </p>
+                                <h5 className="mt-1 text-sm font-semibold">
+                                  {compactAdaptiveRecommendationDisplay.detail.title}
+                                </h5>
+                                <p className="mt-1 text-xs leading-5 opacity-80">
+                                  {compactAdaptiveRecommendationDisplay.detail.explanation}
+                                </p>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptivePriorityClass(
+                                    compactAdaptiveRecommendationDisplay.detail.priority
+                                  )}`}
+                                >
+                                  {compactAdaptiveRecommendationDisplay.detail.priority} -{" "}
+                                  {compactAdaptiveRecommendationDisplay.detail.score}
+                                </span>
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveLauncherStatusClass(
+                                    compactAdaptiveRecommendationDisplay.detail.status
+                                  )}`}
+                                >
+                                  {adaptiveLauncherStatusLabel(compactAdaptiveRecommendationDisplay.detail.status)}
+                                </span>
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveDifficultyClass(
+                                    compactAdaptiveRecommendationDisplay.detail.difficulty
+                                  )}`}
+                                >
+                                  {compactAdaptiveRecommendationDisplay.detail.difficulty ?? "difficulty tbc"}
+                                </span>
+                              </div>
+                            </div>
+
+                            <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-2">
+                              <div>
+                                <dt className="font-semibold uppercase tracking-wide opacity-60">Practice focus</dt>
+                                <dd>{compactAdaptiveRecommendationDisplay.detail.practiceFocus}</dd>
+                              </div>
+                              <div>
+                                <dt className="font-semibold uppercase tracking-wide opacity-60">Linked exercise</dt>
+                                <dd>{compactAdaptiveRecommendationDisplay.detail.linkedExerciseLabel}</dd>
+                              </div>
+                              <div>
+                                <dt className="font-semibold uppercase tracking-wide opacity-60">Weak areas</dt>
+                                <dd>{compactAdaptiveRecommendationDisplay.detail.weakAreaLabel}</dd>
+                              </div>
+                              <div>
+                                <dt className="font-semibold uppercase tracking-wide opacity-60">Signals</dt>
+                                <dd>{compactAdaptiveRecommendationDisplay.detail.signalLabel}</dd>
+                              </div>
+                            </dl>
+
+                            <div className="mt-3 rounded-md border border-current/10 bg-slate-50/70 p-3">
+                              <p className="text-xs font-semibold uppercase tracking-wide opacity-60">Reasons</p>
+                              <ul className="mt-1 list-inside list-disc space-y-1 text-xs leading-5">
+                                {compactAdaptiveRecommendationDisplay.detail.reasons.map((reason) => (
+                                  <li key={reason}>{reason}</li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleStartAdaptivePractice(compactAdaptiveRecommendationDisplay.selectedItem!)
+                                }
+                                className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-950"
+                              >
+                                {compactAdaptiveRecommendationDisplay.detail.status === "active"
+                                  ? "Restart practice"
+                                  : "Start practice"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSkipAdaptivePractice(compactAdaptiveRecommendationDisplay.detail!.id)}
+                                className="rounded-md border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-950"
+                              >
+                                Skip
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDismissAdaptivePractice(compactAdaptiveRecommendationDisplay.detail!.id)
+                                }
+                                className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
+                              >
+                                Mark as not useful
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCompleteAdaptivePractice(compactAdaptiveRecommendationDisplay.selectedItem!)
+                                }
+                                className="rounded-md border border-green-200 px-3 py-1 text-xs font-semibold text-green-950"
+                              >
+                                Mark completed
+                              </button>
+                              {compactAdaptiveRecommendationDisplay.detail.status !== "recommended" ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUndoAdaptivePracticeStatus(compactAdaptiveRecommendationDisplay.detail!.id)
+                                  }
+                                  className="rounded-md border border-current/20 px-3 py-1 text-xs font-semibold"
+                                >
+                                  Undo status
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : (
                       <p className="mt-3 rounded-md border border-current/10 bg-white/80 p-3 text-xs leading-5">
                         No new recommendations are waiting. Check skipped or completed items below.
