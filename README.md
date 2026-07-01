@@ -2741,6 +2741,28 @@ out body;
   `npm.cmd run test:compact-real-london-panels`; it is also registered under
   `npm.cmd run test:map`.
 
+## Stage 132 Student-Facing Real London Beta Practice Screen
+
+- Added `/practice/real-london` as a beta-gated student-facing Real London
+  practice screen. When `NEXT_PUBLIC_REAL_LONDON_BETA` is disabled, the page
+  shows a safe unavailable state and keeps Marlowe as the default route-runner
+  experience.
+- When enabled, the screen labels itself as "Real London Practice - Beta",
+  shows compact exercise selection metadata, route instructions, known
+  limitations, feedback placeholder text, OSM attribution, and the route-runner
+  map legend without exposing internal QA diagnostics.
+- The page mounts the existing route-runner drawing, snapping, scoring, and
+  review flow in student beta mode. It does not duplicate or change route
+  solving, scoring, snapping, legality, OSM conversion, exercises, Supabase,
+  auth, analytics, deployment behavior, production behavior, or default map
+  selection.
+- Dev/QA surfaces stay available on `/dev/route-runner`; beta testers do not
+  see readiness panels, fixture filenames, QA pass/fail counts, metadata
+  coverage counts, raw map ids, or full restriction debug details by default.
+- Focused coverage can be run with
+  `npm.cmd run test:real-london-beta-practice-screen`; it is also registered
+  under `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

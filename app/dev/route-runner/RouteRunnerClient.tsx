@@ -282,6 +282,15 @@ type SavedAttemptHistoryState = {
   selectedAttemptId: string | null;
 };
 
+export type RouteRunnerClientMode = "dev" | "student-beta";
+
+export type RouteRunnerClientProps = {
+  initialMapOptionId?: string;
+  initialExerciseId?: string;
+  mode?: RouteRunnerClientMode;
+  allowDevQaToggle?: boolean;
+};
+
 function emptySnapPreview(): SnappedRouteTraceResult {
   return {
     isValidTrace: false,
@@ -2291,15 +2300,27 @@ function readableError(caughtError: unknown): string {
   return caughtError instanceof Error ? caughtError.message : "Route runner failed with an unknown error.";
 }
 
-export function RouteRunnerClient() {
+export function RouteRunnerClient({
+  initialMapOptionId,
+  initialExerciseId,
+  mode = "dev",
+  allowDevQaToggle = mode === "dev"
+}: RouteRunnerClientProps = {}) {
+  const initialMapOption =
+    getRouteRunnerMapOption(initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID) ?? DEFAULT_ROUTE_RUNNER_MAP_OPTION;
+  const initialSelectedExerciseId =
+    initialExerciseId && initialMapOption.exercises.some((exercise) => exercise.id === initialExerciseId)
+      ? initialExerciseId
+      : initialMapOption.defaultExerciseId;
+  const isStudentBetaRouteRunner = mode === "student-beta";
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const mapScrollLockStateRef = useRef<MapScrollLockState>(createDefaultMapScrollLockState());
   const routeReplayAnimationFrameRef = useRef<number | null>(null);
   const routeReplayStateRef = useRef<RouteReplayState>(createRouteReplayState());
-  const [mapOptionId, setMapOptionId] = useState(DEFAULT_ROUTE_RUNNER_MAP_ID);
-  const [exerciseId, setExerciseId] = useState(DEFAULT_ROUTE_RUNNER_MAP_OPTION.defaultExerciseId);
+  const [mapOptionId, setMapOptionId] = useState(initialMapOption.id);
+  const [exerciseId, setExerciseId] = useState(initialSelectedExerciseId);
   const [nodeIdsText, setNodeIdsText] = useState("");
   const [roadIdsText, setRoadIdsText] = useState("");
   const [result, setResult] = useState<RunRouteExerciseResult | null>(null);
@@ -2374,9 +2395,9 @@ export function RouteRunnerClient() {
       buildRouteRunnerPanelVisibility({
         mapId: activeMap.id,
         betaEnabled: REAL_LONDON_BETA_ENABLED,
-        devQaVisible: showDevQaPanels
+        devQaVisible: allowDevQaToggle && showDevQaPanels
       }),
-    [activeMap.id, showDevQaPanels]
+    [activeMap.id, allowDevQaToggle, showDevQaPanels]
   );
   const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
   const osmExerciseDebugOverlayAvailable = canOfferOsmExerciseDebugOverlay(selectedMapOption.source);
@@ -2393,9 +2414,15 @@ export function RouteRunnerClient() {
   );
 
   useEffect(() => {
+    if (isStudentBetaRouteRunner && isConvertedOsmMap) {
+      setShowRoadRestrictions(true);
+      setShowTurnRestrictions(false);
+      return;
+    }
+
     setShowRoadRestrictions(!isConvertedOsmMap);
     setShowTurnRestrictions(!isConvertedOsmMap);
-  }, [activeMap.id, isConvertedOsmMap]);
+  }, [activeMap.id, isConvertedOsmMap, isStudentBetaRouteRunner]);
 
   const baseViewport = useMemo(() => createViewport(activeMap), [activeMap]);
   const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
@@ -3847,13 +3874,19 @@ export function RouteRunnerClient() {
       <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">TOPOPASS / Route Runner</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+              {isStudentBetaRouteRunner ? "Real London Practice - Beta" : "TOPOPASS / Route Runner"}
+            </p>
             <h1 className="mt-1 text-xl font-bold text-slate-950">
               {selectedExerciseDisplay?.title ?? `${selectedMapOption.label} route exercise runner`}
             </h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              {exercisePositionLabel}
-              {selectedExerciseMetadata ? ` - ${selectedExerciseMetadata.difficulty} - ${selectedExerciseMetadata.estimatedMinutes} min` : ""}
+              {isStudentBetaRouteRunner
+                ? "Choose an exercise, draw your route on the map, then submit it for feedback."
+                : exercisePositionLabel}
+              {!isStudentBetaRouteRunner && selectedExerciseMetadata
+                ? ` - ${selectedExerciseMetadata.difficulty} - ${selectedExerciseMetadata.estimatedMinutes} min`
+                : ""}
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -3905,9 +3938,11 @@ export function RouteRunnerClient() {
               Data: {selectedMapOption.attribution}
             </span>
           ) : null}
-          <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
-            Source: {selectedMapOption.source.replace("-", " ")}
-          </span>
+          {!isStudentBetaRouteRunner ? (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+              Source: {selectedMapOption.source.replace("-", " ")}
+            </span>
+          ) : null}
           {selectedMapMetadata ? (
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
               {selectedMapMetadata.areaLabel ?? selectedMapMetadata.title}
@@ -3928,21 +3963,32 @@ export function RouteRunnerClient() {
                 {exercisePositionLabel}
               </span>
             </div>
-            <label htmlFor="route-map-option" className="mt-4 block text-sm font-semibold text-slate-900">
-              {realLondonBetaPanel ? "Practice map" : "Dev map"}
-            </label>
-            <select
-              id="route-map-option"
-              value={selectedMapOption.id}
-              onChange={(event) => handleMapOptionChange(event.target.value)}
-              className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            >
-              {visibleMapOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            {isStudentBetaRouteRunner ? (
+              <>
+                <p className="mt-4 text-sm font-semibold text-slate-900">Practice map</p>
+                <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
+                  {selectedMapOption.label}
+                </div>
+              </>
+            ) : (
+              <>
+                <label htmlFor="route-map-option" className="mt-4 block text-sm font-semibold text-slate-900">
+                  {realLondonBetaPanel ? "Practice map" : "Dev map"}
+                </label>
+                <select
+                  id="route-map-option"
+                  value={selectedMapOption.id}
+                  onChange={(event) => handleMapOptionChange(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  {visibleMapOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
             <p className="mt-2 text-xs leading-5 text-slate-600">{selectedMapOption.description}</p>
             {betaMapAccess.unavailableState ? (
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
@@ -3975,7 +4021,7 @@ export function RouteRunnerClient() {
                 {realLondonBetaPanel.attribution ? (
                   <p className="mt-2 font-semibold">Map data: {realLondonBetaPanel.attribution}</p>
                 ) : null}
-                {routeRunnerPanelVisibility.devQaToggleLabel ? (
+                {allowDevQaToggle && routeRunnerPanelVisibility.devQaToggleLabel ? (
                   <button
                     type="button"
                     onClick={() => setShowDevQaPanels((currentValue) => !currentValue)}
@@ -4303,8 +4349,9 @@ export function RouteRunnerClient() {
               <div>
                 <h2 className="text-base font-semibold text-slate-950">Route map workspace</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Draw with mouse, touch, or stylus on the synthetic street-map renderer. The orange trace is raw
-                  input; green preview points are snapped candidates. The panel below shows the dev-only pipeline result.
+                  {isStudentBetaRouteRunner
+                    ? "Draw with mouse, touch, or stylus. The map will check your route after you submit the attempt."
+                    : "Draw with mouse, touch, or stylus on the synthetic street-map renderer. The orange trace is raw input; green preview points are snapped candidates. The panel below shows the dev-only pipeline result."}
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:max-w-md sm:items-end">
@@ -4361,26 +4408,28 @@ export function RouteRunnerClient() {
               )}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
-              <label className="inline-flex items-center gap-2 font-medium">
-                <input
-                  type="checkbox"
-                  checked={showRoadRestrictions}
-                  onChange={(event) => setShowRoadRestrictions(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
-                />
-                Show road restrictions
-              </label>
-              <label className="inline-flex items-center gap-2 font-medium">
-                <input
-                  type="checkbox"
-                  checked={showTurnRestrictions}
-                  onChange={(event) => setShowTurnRestrictions(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
-                />
-                Show turn restrictions
-              </label>
-            </div>
+            {!isStudentBetaRouteRunner ? (
+              <div className="mt-4 flex flex-wrap gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
+                <label className="inline-flex items-center gap-2 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={showRoadRestrictions}
+                    onChange={(event) => setShowRoadRestrictions(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
+                  />
+                  Show road restrictions
+                </label>
+                <label className="inline-flex items-center gap-2 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={showTurnRestrictions}
+                    onChange={(event) => setShowTurnRestrictions(event.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
+                  />
+                  Show turn restrictions
+                </label>
+              </div>
+            ) : null}
 
             <div
               className="relative mt-4 min-h-[540px] overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] xl:min-h-[680px] 2xl:min-h-[780px]"
@@ -4429,19 +4478,21 @@ export function RouteRunnerClient() {
                 >
                   Clear drawing
                 </button>
-                <button
-                  type="button"
-                  onClick={toggleFastestRouteOverlay}
-                  disabled={selectedExerciseIsInvalid}
-                  aria-pressed={fastestRouteRevealState.visible}
-                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-sky-300 bg-white/95 px-3 py-2 text-sm font-semibold text-sky-900 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-sky-100"
-                >
-                  {selectedExerciseIsInvalid
-                    ? "Fastest route unavailable"
-                    : fastestRouteRevealState.visible
-                      ? "Hide fastest route"
-                      : "Reveal fastest route"}
-                </button>
+                {!isStudentBetaRouteRunner ? (
+                  <button
+                    type="button"
+                    onClick={toggleFastestRouteOverlay}
+                    disabled={selectedExerciseIsInvalid}
+                    aria-pressed={fastestRouteRevealState.visible}
+                    className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-sky-300 bg-white/95 px-3 py-2 text-sm font-semibold text-sky-900 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                  >
+                    {selectedExerciseIsInvalid
+                      ? "Fastest route unavailable"
+                      : fastestRouteRevealState.visible
+                        ? "Hide fastest route"
+                        : "Reveal fastest route"}
+                  </button>
+                ) : null}
                 {visibleOsmDebugOverlayAvailable ? (
                   <button
                     type="button"
@@ -5017,51 +5068,55 @@ export function RouteRunnerClient() {
               </div>
             ) : null}
 
-            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Raw points</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">{drawnTrace.points.length}</p>
-              </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simplified</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">
-                  {drawnPipelineResult.simplifiedTrace.points.length}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snapped</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">{drawnPipelineResult.snappedPoints.length}</p>
-              </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {hasUsableDrawnMatch ? "Matched roads" : "Road candidates"}
-                </p>
-                <p className="mt-1 text-lg font-bold text-slate-950">
-                  {drawnPipelineResult.matchResult?.orderedRoadIds.length ?? 0}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Off-road points</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">
-                  {snapPreview.diagnostics.filter((diagnostic) => diagnostic.code === "off_road_points").length}
-                </p>
-              </div>
-            </div>
+            {!isStudentBetaRouteRunner ? (
+              <>
+                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-5">
+                  <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Raw points</p>
+                    <p className="mt-1 text-lg font-bold text-slate-950">{drawnTrace.points.length}</p>
+                  </div>
+                  <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simplified</p>
+                    <p className="mt-1 text-lg font-bold text-slate-950">
+                      {drawnPipelineResult.simplifiedTrace.points.length}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snapped</p>
+                    <p className="mt-1 text-lg font-bold text-slate-950">{drawnPipelineResult.snappedPoints.length}</p>
+                  </div>
+                  <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {hasUsableDrawnMatch ? "Matched roads" : "Road candidates"}
+                    </p>
+                    <p className="mt-1 text-lg font-bold text-slate-950">
+                      {drawnPipelineResult.matchResult?.orderedRoadIds.length ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Off-road points</p>
+                    <p className="mt-1 text-lg font-bold text-slate-950">
+                      {snapPreview.diagnostics.filter((diagnostic) => diagnostic.code === "off_road_points").length}
+                    </p>
+                  </div>
+                </div>
 
-            <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Candidate roads</dt>
-                <dd className="mt-1">{selectedRoadNames(snapPreviewRoadIds, activeMap)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snap diagnostics</dt>
-                <dd className="mt-1">
-                  {snapPreview.diagnostics.length > 0
-                    ? snapPreview.diagnostics.map((diagnostic) => diagnostic.code).join(", ")
-                    : "None"}
-                </dd>
-              </div>
-            </dl>
+                <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Candidate roads</dt>
+                    <dd className="mt-1">{selectedRoadNames(snapPreviewRoadIds, activeMap)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snap diagnostics</dt>
+                    <dd className="mt-1">
+                      {snapPreview.diagnostics.length > 0
+                        ? snapPreview.diagnostics.map((diagnostic) => diagnostic.code).join(", ")
+                        : "None"}
+                    </dd>
+                  </div>
+                </dl>
+              </>
+            ) : null}
 
             <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-950">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -5158,16 +5213,18 @@ export function RouteRunnerClient() {
               </span>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              {pipelineStageBadges.map((badge) => (
-                <span
-                  key={badge.id}
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${stageBadgeClass(badge.state)}`}
-                >
-                  {badge.label}
-                </span>
-              ))}
-            </div>
+            {!isStudentBetaRouteRunner ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {pipelineStageBadges.map((badge) => (
+                  <span
+                    key={badge.id}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${stageBadgeClass(badge.state)}`}
+                  >
+                    {badge.label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             <div className={`mt-4 rounded-md border p-4 text-sm ${scoreStateClass(drawnScoreDisplay.state)}`}>
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -5418,7 +5475,7 @@ export function RouteRunnerClient() {
                 </div>
               ) : null}
 
-              {drawnAttemptReview.status !== "pending" ? (
+              {!isStudentBetaRouteRunner && drawnAttemptReview.status !== "pending" ? (
                 <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Recommended next practice</p>
@@ -5459,6 +5516,8 @@ export function RouteRunnerClient() {
                 </div>
               ) : null}
 
+              {!isStudentBetaRouteRunner ? (
+                <>
               <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -6320,6 +6379,8 @@ export function RouteRunnerClient() {
                   </>
                 ) : null}
               </div>
+                </>
+              ) : null}
 
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 <div>
@@ -6412,7 +6473,7 @@ export function RouteRunnerClient() {
               </div>
             </div>
 
-            {routeIssueOverlays.length > 0 ? (
+            {!isStudentBetaRouteRunner && routeIssueOverlays.length > 0 ? (
               <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-950">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <h3 className="font-semibold">Route issue overlay</h3>
@@ -6441,30 +6502,32 @@ export function RouteRunnerClient() {
               </div>
             ) : null}
 
-            <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simplified points</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">
-                  {drawnPipelineResult.simplifiedTrace.points.length}
-                </p>
+            {!isStudentBetaRouteRunner ? (
+              <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
+                <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Simplified points</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950">
+                    {drawnPipelineResult.simplifiedTrace.points.length}
+                  </p>
+                </div>
+                <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snapped points</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950">{drawnPipelineResult.snappedPoints.length}</p>
+                </div>
+                <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {hasUsableDrawnMatch ? "Matched roads" : "Road candidates"}
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-slate-950">
+                    {drawnPipelineResult.matchResult?.orderedRoadIds.length ?? 0}
+                  </p>
+                </div>
+                <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950">{scoreSummary(visibleDrawnExerciseResult)}</p>
+                </div>
               </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Snapped points</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">{drawnPipelineResult.snappedPoints.length}</p>
-              </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {hasUsableDrawnMatch ? "Matched roads" : "Road candidates"}
-                </p>
-                <p className="mt-1 text-lg font-bold text-slate-950">
-                  {drawnPipelineResult.matchResult?.orderedRoadIds.length ?? 0}
-                </p>
-              </div>
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</p>
-                <p className="mt-1 text-lg font-bold text-slate-950">{scoreSummary(visibleDrawnExerciseResult)}</p>
-              </div>
-            </div>
+            ) : null}
 
             {visibleDrawnExerciseResult ? (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -6585,48 +6648,50 @@ export function RouteRunnerClient() {
               </div>
             ) : null}
 
-            <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {hasUsableDrawnMatch ? "Matched road IDs" : "Road candidate IDs"}
-                </dt>
-                <dd className="mt-1 font-mono text-xs">
-                  {idList(drawnPipelineResult.matchResult?.orderedRoadIds ?? [])}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {hasUsableDrawnMatch ? "Matched node IDs" : "Node sequence IDs"}
-                </dt>
-                <dd className="mt-1 font-mono text-xs">{idList(drawnPipelineResult.matchResult?.nodeIds ?? [])}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Directed edge IDs</dt>
-                <dd className="mt-1 font-mono text-xs">
-                  {nullableIdList(drawnPipelineResult.matchResult?.directedEdgeSequence ?? [])}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pipeline warnings</dt>
-                <dd className="mt-1">
-                  {drawnPipelineResult.warnings.length > 0
-                    ? drawnPipelineResult.warnings
-                        .map((warning) => `${warning.source}:${warning.code}`)
-                        .join(", ")
-                    : "None"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Drawn result</dt>
-                <dd className="mt-1">
-                  {visibleDrawnExerciseResult ? resultSummary(visibleDrawnExerciseResult) : "Not scored"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Extra distance</dt>
-                <dd className="mt-1">{formatDistance(drawnExtraDistanceMeters)}</dd>
-              </div>
-            </dl>
+            {!isStudentBetaRouteRunner ? (
+              <dl className="mt-4 grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {hasUsableDrawnMatch ? "Matched road IDs" : "Road candidate IDs"}
+                  </dt>
+                  <dd className="mt-1 font-mono text-xs">
+                    {idList(drawnPipelineResult.matchResult?.orderedRoadIds ?? [])}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {hasUsableDrawnMatch ? "Matched node IDs" : "Node sequence IDs"}
+                  </dt>
+                  <dd className="mt-1 font-mono text-xs">{idList(drawnPipelineResult.matchResult?.nodeIds ?? [])}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Directed edge IDs</dt>
+                  <dd className="mt-1 font-mono text-xs">
+                    {nullableIdList(drawnPipelineResult.matchResult?.directedEdgeSequence ?? [])}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pipeline warnings</dt>
+                  <dd className="mt-1">
+                    {drawnPipelineResult.warnings.length > 0
+                      ? drawnPipelineResult.warnings
+                          .map((warning) => `${warning.source}:${warning.code}`)
+                          .join(", ")
+                      : "None"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Drawn result</dt>
+                  <dd className="mt-1">
+                    {visibleDrawnExerciseResult ? resultSummary(visibleDrawnExerciseResult) : "Not scored"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Extra distance</dt>
+                  <dd className="mt-1">{formatDistance(drawnExtraDistanceMeters)}</dd>
+                </div>
+              </dl>
+            ) : null}
 
             {pipelineIssueGroups.length > 0 ? (
               <div className="mt-5 space-y-3">
