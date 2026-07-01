@@ -26,6 +26,21 @@ test("Stage 136 review API returns unavailable when the review flag is disabled"
   assert.equal(body.reasonCode, "beta-feedback-review-disabled");
 });
 
+test("Stage 137 review API rejects unsupported methods with a stable JSON error", async () => {
+  const result = await handleBetaFeedbackReviewRequest({
+    url: "http://localhost/api/beta-feedback/review",
+    method: "POST",
+    env: { NODE_ENV: "test", BETA_FEEDBACK_REVIEW_ENABLED: "true" }
+  });
+  const body = JSON.parse(result.body) as { status: string; reasonCode: string; message: string };
+
+  assert.equal(result.status, 405);
+  assert.equal(result.contentType, "application/json");
+  assert.equal(body.status, "rejected");
+  assert.equal(body.reasonCode, "unsupported-method");
+  assert.match(body.message, /GET/);
+});
+
 test("Stage 136 review API reads local JSONL feedback in development and applies filters", async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "topopass-beta-feedback-review-api-"));
 
@@ -65,6 +80,31 @@ test("Stage 136 review API reads local JSONL feedback in development and applies
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test("Stage 137 review API failures do not leak stack traces or service secrets", async () => {
+  const result = await handleBetaFeedbackReviewRequest({
+    url: "http://localhost/api/beta-feedback/review",
+    method: "GET",
+    env: {
+      NODE_ENV: "production",
+      BETA_FEEDBACK_REVIEW_ENABLED: "true",
+      BETA_FEEDBACK_STORAGE: "supabase",
+      BETA_FEEDBACK_TABLE: "beta_feedback",
+      SUPABASE_URL: "https://example.supabase.co",
+      SUPABASE_SERVICE_ROLE_KEY: "server-secret"
+    },
+    fetcher: async () => {
+      throw new Error("server-secret stack trace from review export");
+    }
+  });
+
+  assert.equal(result.status, 500);
+  assert.equal(result.contentType, "application/json");
+  assert.doesNotMatch(result.body, /server-secret/);
+  assert.doesNotMatch(result.body, /stack trace/);
+  assert.doesNotMatch(result.body, /review export/);
+  assert.match(result.body, /feedback-review-read-failed/);
 });
 
 test("Stage 136 review API reports production unavailable when Supabase config is missing", async () => {

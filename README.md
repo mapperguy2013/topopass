@@ -2877,6 +2877,35 @@ out body;
   `npm.cmd run test:public-beta-feedback`; it is also registered under
   `npm.cmd run test:map`.
 
+## Stage 137 Beta Safety, Rate Limit, and Error Hardening
+
+- Hardened `POST /api/beta-feedback` and `GET /api/beta-feedback/review` with
+  stable JSON errors for unsupported methods, malformed JSON, unsupported
+  content types, oversized request bodies, invalid payloads, disabled feature
+  flags, rate-limited submissions, missing storage, and storage failures.
+- Feedback writes now reject before storage when the request body is too large
+  or comments exceed the configured length. Defaults are a 16 KB JSON request
+  body and 2,000 feedback-comment characters; override with
+  `BETA_FEEDBACK_REQUEST_BODY_MAX_BYTES` and
+  `BETA_FEEDBACK_COMMENTS_MAX_LENGTH` when needed.
+- Added a deterministic in-memory abuse guard for beta feedback writes. It is
+  enabled automatically in production or explicitly with
+  `BETA_FEEDBACK_RATE_LIMIT_ENABLED=true`; configure it with
+  `BETA_FEEDBACK_RATE_LIMIT_WINDOW_MS` and `BETA_FEEDBACK_RATE_LIMIT_MAX`.
+  Requests are keyed by forwarded/IP-like headers with an anonymous fallback.
+- Review/export remains gated by `BETA_FEEDBACK_REVIEW_ENABLED=true`. Unsupported
+  review methods return stable JSON, and unexpected review read failures return
+  a safe failure response instead of stack traces.
+- Safe error policy: API responses do not include stack traces, storage
+  exception details, `SUPABASE_SERVICE_ROLE_KEY`, server environment values, or
+  user-identifying feedback content in error messages. Storage failures never
+  return fake success.
+- Production limitation: the in-memory rate limiter is process-local. It is a
+  beta hardening guard, not a distributed abuse-prevention layer.
+- Focused coverage remains
+  `npm.cmd run test:public-beta-feedback`; it is also registered under
+  `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

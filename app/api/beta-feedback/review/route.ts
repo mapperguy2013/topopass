@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const result = await handleBetaFeedbackReviewRequest({
     url: request.url,
+    method: request.method,
     env: process.env
   });
 
@@ -21,3 +22,26 @@ export async function GET(request: Request) {
 
   return NextResponse.json(JSON.parse(result.body), { status: result.status });
 }
+
+function methodNotAllowed() {
+  const result = {
+    status: 405,
+    body: {
+      status: "rejected",
+      message: "Unsupported method. Use GET.",
+      reasonCode: "unsupported-method"
+    }
+  };
+
+  return NextResponse.json(result.body, {
+    status: result.status,
+    headers: {
+      Allow: "GET"
+    }
+  });
+}
+
+export const POST = methodNotAllowed;
+export const PUT = methodNotAllowed;
+export const PATCH = methodNotAllowed;
+export const DELETE = methodNotAllowed;

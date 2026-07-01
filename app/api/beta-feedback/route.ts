@@ -1,28 +1,29 @@
 import { NextResponse } from "next/server";
-import { handleBetaFeedbackSubmission } from "./betaFeedbackApi";
+import { buildBetaFeedbackMethodNotAllowedResponse, handleBetaFeedbackRequest } from "./betaFeedbackApi";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  let body: unknown;
-
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      {
-        status: "rejected",
-        message: "Feedback request body must be valid JSON.",
-        reasonCodes: ["invalid-json"]
-      },
-      { status: 400 }
-    );
-  }
-
-  const result = await handleBetaFeedbackSubmission({
-    body,
+  const result = await handleBetaFeedbackRequest({
+    request,
     env: process.env
   });
 
   return NextResponse.json(result.body, { status: result.status });
 }
+
+function methodNotAllowed() {
+  const result = buildBetaFeedbackMethodNotAllowedResponse("POST");
+
+  return NextResponse.json(result.body, {
+    status: result.status,
+    headers: {
+      Allow: "POST"
+    }
+  });
+}
+
+export const GET = methodNotAllowed;
+export const PUT = methodNotAllowed;
+export const PATCH = methodNotAllowed;
+export const DELETE = methodNotAllowed;

@@ -2,6 +2,7 @@ import {
   buildBetaFeedbackReviewReport,
   exportBetaFeedbackReviewCsv,
   exportBetaFeedbackReviewJson,
+  normaliseBetaFeedbackReviewFilters,
   type BetaFeedbackReviewEnv,
   type BetaFeedbackReviewFetch,
   type BetaFeedbackReviewFilters
@@ -15,14 +16,27 @@ export type BetaFeedbackReviewApiResult = {
 
 export async function handleBetaFeedbackReviewRequest(input: {
   url: string;
+  method?: string;
   env?: BetaFeedbackReviewEnv;
   cwd?: string;
   fetcher?: BetaFeedbackReviewFetch;
 }): Promise<BetaFeedbackReviewApiResult> {
+  if (input.method && input.method !== "GET") {
+    return {
+      status: 405,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "rejected",
+        message: "Unsupported method. Use GET.",
+        reasonCode: "unsupported-method"
+      })
+    };
+  }
+
   const requestUrl = new URL(input.url, "http://localhost");
   const format = requestUrl.searchParams.get("format")?.trim().toLowerCase() ?? "";
   const filters = readReviewFiltersFromSearchParams(requestUrl.searchParams);
-  const report = await buildBetaFeedbackReviewReport({
+  const report = await buildReviewReportSafely({
     env: input.env,
     cwd: input.cwd,
     fetcher: input.fetcher,
@@ -80,4 +94,30 @@ export function readReviewFiltersFromSearchParams(searchParams: URLSearchParams)
     rating: Number.isInteger(rating) ? rating : undefined,
     feedbackType: searchParams.get("feedbackType") ?? undefined
   };
+}
+
+async function buildReviewReportSafely(input: {
+  env?: BetaFeedbackReviewEnv;
+  cwd?: string;
+  fetcher?: BetaFeedbackReviewFetch;
+  filters: BetaFeedbackReviewFilters;
+}): ReturnType<typeof buildBetaFeedbackReviewReport> {
+  try {
+    return await buildBetaFeedbackReviewReport(input);
+  } catch {
+    return {
+      status: "failed",
+      message: "Beta feedback review could not be loaded.",
+      reasonCode: "feedback-review-read-failed",
+      storageSource: "local-jsonl",
+      storageStatus: "failed",
+      totalRecordsConsidered: 0,
+      acceptedRecordCount: 0,
+      rejectedRecordCount: 0,
+      records: [],
+      rejectedRecords: [],
+      filters: normaliseBetaFeedbackReviewFilters(input.filters),
+      hasReviewableFeedback: false
+    };
+  }
 }
