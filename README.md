@@ -2612,6 +2612,23 @@ out body;
 - Marlowe remains the default map, and production behavior, Supabase, auth,
   analytics, and deployment behavior are unchanged.
 
+## Separate Stage Mobile Route Runner QA
+
+- Added a focused dev/test-only mobile QA helper for `/dev/route-runner`, with
+  deterministic coverage registered under `npm.cmd run test:map`.
+- The helper checks semantic mobile layout and interaction readiness: required
+  controls, visible bounded map area, scroll release behavior, touch drawing,
+  zoom control reachability, selected exercise visibility, and real London
+  QA/playthrough/version/metadata panel overflow risk.
+- This mobile QA is intentionally separate from route engine work. It does not
+  run or change route solving, scoring, snapping, legality, OSM conversion,
+  attempt persistence, Supabase, auth, analytics, deployment, or production
+  behavior.
+- `osm-real-london-pilot` remains committed-fixture-only using
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json`; there are no live
+  Overpass fetches and no external routing APIs. Marlowe remains the default
+  map.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
