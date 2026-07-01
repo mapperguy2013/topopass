@@ -2954,6 +2954,53 @@ out body;
 - Focused coverage remains `npm.cmd run test:real-london-beta-practice-screen`;
   it is also registered under `npm.cmd run test:map`.
 
+## Stage 140 Phase 5 Beta Readiness Freeze and Sign-Off
+
+- Phase 5 is now frozen and signed off as **Real London beta-ready**, not final
+  production-ready. The beta remains behind the default-disabled
+  `NEXT_PUBLIC_REAL_LONDON_BETA` flag, and Marlowe remains the default
+  route-runner map for non-beta users.
+- Added a deterministic Stage 140 readiness sign-off report covering beta
+  gating, non-beta fallback behavior, committed fixture map registration, map
+  and exercise version metadata, attempt version snapshots, scoring/snapping
+  and legality QA coverage, OSM attribution, feedback storage, internal review
+  gates, mobile QA status, known limitations, and the final beta/not-production
+  readiness statement.
+- Frozen beta scope includes the two committed fixture-backed real London pilot
+  maps: `Real London pilot map` and `Real London pilot map 2`. Their official
+  registered starter exercises and versioned metadata are included. The generic
+  `OSM Large London` map remains a separate dev map and is not the beta default.
+- The beta intentionally excludes live Overpass/OSM fetches, external routing
+  APIs, new OSM data, final production exposure, production admin auth for
+  review tools, analytics instrumentation, and any route solving, scoring,
+  snapping, legality, OSM conversion, storage, auth, or deployment behavior
+  changes.
+- Feedback remains available through `/api/beta-feedback`. Local/test feedback
+  uses `.local/beta-feedback.jsonl`; production feedback uses the Stage 135
+  Supabase/PostgREST storage path when `BETA_FEEDBACK_STORAGE=supabase`,
+  `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` are configured. Missing
+  production storage fails safely rather than pretending feedback was saved.
+- Internal tools remain gated and are not public beta-user features:
+  feedback review/export uses `BETA_FEEDBACK_REVIEW_ENABLED` and
+  `/api/beta-feedback/review`; attempt review/repro export uses
+  `BETA_ATTEMPT_REVIEW_ENABLED` and `/api/beta-attempts/review`.
+- Known limitations: the beta uses committed local OSM fixtures only, covers
+  only the current pilot areas and starter exercises, still needs human beta
+  feedback triage, and is intended for beta validation rather than final public
+  production rollout.
+- Testers should report unclear route instructions, missing/confusing labels,
+  wrong-way or restriction concerns, touch/zoom/scroll/drawing issues,
+  difficulty mismatches, and feedback submission problems.
+- Phase 6 handoff: beta feedback triage, more London areas, more exercises,
+  production admin/auth hardening for review tools, optional analytics, broader
+  device QA, tester onboarding improvements, and further map styling refinements.
+- Focused coverage can be run with
+  `npm.cmd run test:phase5-beta-readiness`; it is also registered under
+  `npm.cmd run test:map`. The final validation set for this sign-off is
+  `npm.cmd run test:phase5-beta-readiness`,
+  `npm.cmd run test:public-beta-feedback`, `npm.cmd run test:map`,
+  `npm.cmd run lint`, and `npm.cmd run build`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
