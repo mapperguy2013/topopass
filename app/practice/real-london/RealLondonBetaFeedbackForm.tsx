@@ -81,7 +81,7 @@ export function RealLondonBetaFeedbackForm({
   }
 
   return (
-    <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
+    <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-6">
       <p className="text-sm font-bold uppercase tracking-wide text-road">
         Beta feedback
       </p>
@@ -95,7 +95,7 @@ export function RealLondonBetaFeedbackForm({
         <label className="text-sm font-semibold text-slate-800">
           Rating
           <select
-            className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="mt-2 block min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
             onChange={(event) => setRating(event.target.value)}
             value={rating}
           >
@@ -110,7 +110,7 @@ export function RealLondonBetaFeedbackForm({
         <label className="text-sm font-semibold text-slate-800">
           Issue type
           <select
-            className="mt-2 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="mt-2 block min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
             onChange={(event) => setIssueType(event.target.value as RealLondonBetaFeedbackIssueType)}
             value={issueType}
           >
@@ -125,7 +125,7 @@ export function RealLondonBetaFeedbackForm({
         <label className="text-sm font-semibold text-slate-800">
           Comments
           <textarea
-            className="mt-2 block min-h-28 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="mt-2 block min-h-32 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
             onChange={(event) => setComments(event.target.value)}
             placeholder="Tell us what was confusing, broken, too easy, too hard, or hard to use."
             value={comments}

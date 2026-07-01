@@ -2930,6 +2930,30 @@ out body;
 - Focused coverage is `npm.cmd run test:beta-attempt-review`; the new helper
   and API tests are also registered under `npm.cmd run test:map`.
 
+## Stage 139 Complete Real London Mobile QA Pass
+
+- Completed a mobile-only polish pass for `/practice/real-london`. The beta
+  header is more compact on narrow screens, the current task is summarized
+  first, full route instructions and known limitations are collapsed by
+  default, and the existing combined `Practice Exercises` selector remains the
+  single exercise/practice surface.
+- The route map keeps the existing touch drawing/pan/zoom logic, but now uses a
+  smaller mobile minimum map height so the exercise controls, map, attempt
+  review, and feedback form are easier to reach on phone-sized layouts.
+- Restriction information remains summary-first for beta users: one-way,
+  illegal/wrong-way, and turn/route issue highlighting stays accessible while
+  full debug details remain hidden outside dev QA mode.
+- Feedback controls received mobile-safe touch targets and the screen model now
+  records mobile QA expectations for compact instructions, feedback usability,
+  route-runner map touch behavior, and collapsed restriction details.
+- The existing Stage 131 one-way arrow visual thinning rule remains active:
+  arrows on the same rendered road group are spaced by at least 50 metres where
+  possible. This is presentation-only and does not change underlying one-way
+  data, routing, scoring, snapping, legality checks, OSM conversion, attempt
+  versioning, storage, auth, analytics, or Marlowe/default-map behavior.
+- Focused coverage remains `npm.cmd run test:real-london-beta-practice-screen`;
+  it is also registered under `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

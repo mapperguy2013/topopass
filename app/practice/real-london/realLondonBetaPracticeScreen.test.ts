@@ -8,6 +8,7 @@ import {
 } from "../../dev/route-runner/routeRunnerMaps.ts";
 import { buildLondonPilotReadinessReportForMapId } from "../../dev/route-runner/routeRunnerOsmRealPilotReadinessReport.ts";
 import { buildRouteRunnerMobileQaReport } from "../../dev/route-runner/routeRunnerMobileQa.ts";
+import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "../../dev/route-runner/restrictionMapVisuals.ts";
 import {
   REAL_LONDON_BETA_ENV_FLAG
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
@@ -143,6 +144,74 @@ test("Stage 132 mobile layout remains acceptable for the beta map", () => {
   assert.equal(model.mobileLayout.compactSelector, true);
   assert.equal(model.mobileLayout.horizontalOverflowRisk, false);
   assert.equal(mobileQa.isPassing, true, mobileQa.failures.map((failure) => failure.code).join(", "));
+});
+
+test("Stage 139 beta mobile layout exposes compact task state without duplicate practice panels", () => {
+  const model = requireAvailableModel("osm-real-pilot-checkpoint-route");
+
+  assert.equal(model.mobileLayout.compactHeader, true);
+  assert.equal(model.mobileLayout.taskSummaryVisible, true);
+  assert.equal(model.mobileLayout.compactSelector, true);
+  assert.equal(model.mobileLayout.combinedExerciseAndRecommendationPanel, true);
+  assert.equal(model.mobileLayout.duplicateRecommendedPracticePanel, false);
+  assert.equal(model.exerciseSelectorTitle, "Practice Exercises");
+  assert.equal(model.selectedExercise.mobileInstructionSummary.includes("Start at"), true);
+  assert.equal(model.selectedExercise.compactStopSummary.includes("->"), true);
+  assert.equal(model.exerciseRows.filter((row) => row.selected).length, 1);
+});
+
+test("Stage 139 mobile instructions limitations and restriction overlays are collapsed or summary-first", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.mobileLayout.instructionsCollapsedByDefault, true);
+  assert.equal(model.mobileLayout.limitationsCollapsedByDefault, true);
+  assert.equal(model.mobileLayout.restrictionSummaryFirst, true);
+  assert.equal(model.mobileLayout.restrictionDetailsCollapsedByDefault, true);
+  assert.equal(model.mobileLayout.restrictionDebugDetailsHidden, true);
+  assert.equal(model.devDiagnostics.visible, false);
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("full-restriction-debug-details"));
+});
+
+test("Stage 139 mobile feedback and map interaction affordances stay usable", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.feedback.visible, true);
+  assert.equal(model.mobileLayout.feedbackFormMobileSafe, true);
+  assert.equal(model.mobileLayout.feedbackMinTouchTargetPx, 44);
+  assert.equal(model.mobileLayout.routeRunnerMapMinHeightPx, 360);
+  assert.equal(model.mobileLayout.routeRunnerMapTouchAction, "none");
+  assert.equal(model.mapInteraction.drawingEnabled, true);
+  assert.equal(model.mapInteraction.clearActionLabel, "Clear");
+  assert.equal(model.mapInteraction.submitActionLabel, "Submit Attempt");
+});
+
+test("Stage 139 one-way arrow visual thinning remains presentation-only", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 50);
+  assert.equal(model.mobileLayout.oneWayArrowMinSpacingMeters, ONE_WAY_ARROW_MIN_SPACING_METERS);
+  assert.equal(model.routeFlow.shortestRouteFound, true);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+});
+
+test("Stage 139 mobile route-runner QA remains layout-only and passing", () => {
+  const mapOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(mapOption);
+
+  const report = buildRouteRunnerMobileQaReport({
+    mapOption,
+    viewportWidth: 390,
+    viewportHeight: 844
+  });
+
+  assert.equal(report.scope, "layout-interaction-only");
+  assert.equal(report.routeEngineChecks, "not-run");
+  assert.equal(report.touchDrawingAvailable, true);
+  assert.equal(report.zoomControlsReachable, true);
+  assert.equal(report.pageScrollAccessible, true);
+  assert.equal(report.horizontalOverflowRisk, false);
+  assert.equal(report.isPassing, true, report.failures.map((failure) => failure.code).join(", "));
 });
 
 function requireAvailableModel(selectedExerciseId?: string) {

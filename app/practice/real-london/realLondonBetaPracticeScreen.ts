@@ -14,7 +14,10 @@ import {
   type RouteRunnerMapOption
 } from "../../dev/route-runner/routeRunnerMaps.ts";
 import { buildPracticeExercisesPanelModel } from "../../dev/route-runner/routeRunnerCompactPracticePanels.ts";
-import { buildRestrictionLegendItems } from "../../dev/route-runner/restrictionMapVisuals.ts";
+import {
+  ONE_WAY_ARROW_MIN_SPACING_METERS,
+  buildRestrictionLegendItems
+} from "../../dev/route-runner/restrictionMapVisuals.ts";
 import {
   REAL_LONDON_BETA_ENV_FLAG,
   REAL_LONDON_BETA_FEEDBACK_PLACEHOLDER,
@@ -45,6 +48,8 @@ export type RealLondonBetaPracticeSelectedExercise = RealLondonBetaPracticeExerc
   startLabel: string;
   destinationLabel: string;
   checkpointLabels: string[];
+  compactStopSummary: string;
+  mobileInstructionSummary: string;
   instructionLines: string[];
   routeFlowReady: boolean;
 };
@@ -90,6 +95,20 @@ export type RealLondonBetaPracticeScreenModel =
       };
       mobileLayout: {
         compactSelector: true;
+        compactHeader: true;
+        taskSummaryVisible: true;
+        combinedExerciseAndRecommendationPanel: true;
+        duplicateRecommendedPracticePanel: false;
+        instructionsCollapsedByDefault: true;
+        limitationsCollapsedByDefault: true;
+        feedbackFormMobileSafe: true;
+        feedbackMinTouchTargetPx: 44;
+        routeRunnerMapMinHeightPx: 360;
+        routeRunnerMapTouchAction: "none";
+        restrictionSummaryFirst: true;
+        restrictionDetailsCollapsedByDefault: true;
+        restrictionDebugDetailsHidden: true;
+        oneWayArrowMinSpacingMeters: typeof ONE_WAY_ARROW_MIN_SPACING_METERS;
         horizontalOverflowRisk: false;
       };
       routeFlow: {
@@ -201,6 +220,20 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
     },
     mobileLayout: {
       compactSelector: true,
+      compactHeader: true,
+      taskSummaryVisible: true,
+      combinedExerciseAndRecommendationPanel: true,
+      duplicateRecommendedPracticePanel: false,
+      instructionsCollapsedByDefault: true,
+      limitationsCollapsedByDefault: true,
+      feedbackFormMobileSafe: true,
+      feedbackMinTouchTargetPx: 44,
+      routeRunnerMapMinHeightPx: 360,
+      routeRunnerMapTouchAction: "none",
+      restrictionSummaryFirst: true,
+      restrictionDetailsCollapsedByDefault: true,
+      restrictionDebugDetailsHidden: true,
+      oneWayArrowMinSpacingMeters: ONE_WAY_ARROW_MIN_SPACING_METERS,
       horizontalOverflowRisk: false
     },
     routeFlow
@@ -242,12 +275,23 @@ function buildSelectedExerciseModel(input: {
   const startLabel = stopLabels[0] ?? "Start";
   const destinationLabel = stopLabels.at(-1) ?? "Destination";
   const checkpointLabels = stopLabels.slice(1, -1);
+  const compactStopSummary =
+    checkpointLabels.length > 0
+      ? `${startLabel} -> ${checkpointLabels.join(" -> ")} -> ${destinationLabel}`
+      : `${startLabel} -> ${destinationLabel}`;
 
   return {
     ...row,
     startLabel,
     destinationLabel,
     checkpointLabels,
+    compactStopSummary,
+    mobileInstructionSummary:
+      checkpointLabels.length > 0
+        ? `Start at ${startLabel}, visit ${checkpointLabels.length} checkpoint${
+            checkpointLabels.length === 1 ? "" : "s"
+          }, then finish at ${destinationLabel}.`
+        : `Start at ${startLabel} and finish at ${destinationLabel}.`,
     instructionLines: [
       `Start at ${startLabel}.`,
       ...(checkpointLabels.length > 0

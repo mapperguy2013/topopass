@@ -4432,7 +4432,7 @@ export function RouteRunnerClient({
             ) : null}
 
             <div
-              className="relative mt-4 min-h-[540px] overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] xl:min-h-[680px] 2xl:min-h-[780px]"
+              className="relative mt-4 min-h-[360px] overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
             >
               <div className="pointer-events-none absolute right-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2">
