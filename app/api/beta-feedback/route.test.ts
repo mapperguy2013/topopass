@@ -24,6 +24,7 @@ test("Stage 134 API accepts valid feedback when beta is enabled and storage is a
 });
 
 test("Stage 134 API rejects invalid feedback with clear 400 response", async () => {
+  let called = false;
   const response = await handleBetaFeedbackSubmission({
     body: {
       metadata: {},
@@ -32,7 +33,12 @@ test("Stage 134 API rejects invalid feedback with clear 400 response", async () 
       comments: ""
     },
     env: { NEXT_PUBLIC_REAL_LONDON_BETA: "true", NODE_ENV: "test" },
-    store: successStore()
+    store: {
+      async storeBetaFeedback() {
+        called = true;
+        return successStoreResult(buildPayload());
+      }
+    }
   });
   const body = response.body;
 
@@ -41,19 +47,27 @@ test("Stage 134 API rejects invalid feedback with clear 400 response", async () 
   assert.ok(body.reasonCodes.includes("invalid-rating"));
   assert.ok(body.reasonCodes.includes("invalid-issue-type"));
   assert.ok(body.reasonCodes.includes("empty-comments"));
+  assert.equal(called, false);
 });
 
 test("Stage 134 API rejects beta feedback when beta flag is disabled", async () => {
+  let called = false;
   const response = await handleBetaFeedbackSubmission({
     body: buildPayload(),
     env: { NEXT_PUBLIC_REAL_LONDON_BETA: "false", NODE_ENV: "test" },
-    store: successStore()
+    store: {
+      async storeBetaFeedback() {
+        called = true;
+        return successStoreResult(buildPayload());
+      }
+    }
   });
   const body = response.body;
 
   assert.equal(response.status, 403);
   assert.equal(body.status, "unavailable");
   assert.equal(body.reasonCode, "real-london-beta-disabled");
+  assert.equal(called, false);
 });
 
 test("Stage 134 API returns unavailable when production storage is not configured", async () => {
@@ -71,13 +85,17 @@ test("Stage 134 API returns unavailable when production storage is not configure
 function successStore(): BetaFeedbackStore {
   return {
     async storeBetaFeedback(payload) {
-      return {
-        status: "stored",
-        storage: "local-jsonl",
-        submissionId: buildStableBetaFeedbackSubmissionId(payload),
-        message: "Thanks. Your beta feedback was saved."
-      };
+      return successStoreResult(payload);
     }
+  };
+}
+
+function successStoreResult(payload: RealLondonBetaFeedbackPayload) {
+  return {
+    status: "stored" as const,
+    storage: "local-jsonl" as const,
+    submissionId: buildStableBetaFeedbackSubmissionId(payload),
+    message: "Thanks. Your beta feedback was saved."
   };
 }
 

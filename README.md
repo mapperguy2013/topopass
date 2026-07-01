@@ -2811,6 +2811,44 @@ out body;
   `npm.cmd run test:public-beta-feedback`; it is also registered under
   `npm.cmd run test:map`.
 
+## Stage 135 Add Production Beta Feedback Storage
+
+- Added durable production storage for Real London public beta feedback through
+  the existing `BetaFeedbackStore` adapter. Local development and test behavior
+  remains unchanged: feedback writes to `.local/beta-feedback.jsonl`, and that
+  folder is gitignored.
+- Production storage is enabled only when these server-only environment
+  variables are configured:
+
+  ```bash
+  NEXT_PUBLIC_REAL_LONDON_BETA=true
+  BETA_FEEDBACK_STORAGE=supabase
+  SUPABASE_URL=https://your-project.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY=your-server-only-service-role-key
+  BETA_FEEDBACK_TABLE=beta_feedback
+  ```
+
+  `BETA_FEEDBACK_TABLE` is optional and defaults to `beta_feedback`. Do not use
+  `NEXT_PUBLIC_` for service-role secrets. `SUPABASE_SERVICE_ROLE_KEY` is
+  server-only and is read only by the beta feedback storage adapter.
+- Added `supabase/migrations/005_beta_feedback.sql` for the production
+  `public.beta_feedback` table. The table stores the validated feedback payload
+  faithfully in `payload jsonb` plus simple indexed metadata columns:
+  `map_id`, `exercise_id`, `rating`, and `feedback_type`. Row-level security is
+  enabled and no direct anon/authenticated table grants are added; the API uses
+  the server-side service role when configured.
+- If production storage is missing or unsupported, `POST /api/beta-feedback`
+  returns a clear unavailable response. If the Supabase/PostgREST write fails,
+  the API returns a storage failure response and never fakes success.
+- The API still validates payloads and checks `NEXT_PUBLIC_REAL_LONDON_BETA`
+  before touching storage, so disabled beta access and invalid submissions do
+  not call the production store. Marlowe remains the default practice map and
+  route scoring, snapping, legality, exercises, OSM conversion, auth, analytics,
+  and unrelated persistence are unchanged.
+- Focused coverage remains
+  `npm.cmd run test:public-beta-feedback`; it is also registered under
+  `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

@@ -26,6 +26,11 @@ const routeAttemptsMigrationPath = path.join(
   "supabase/migrations/004_route_attempts.sql"
 );
 const routeAttemptsMigrationSql = readFileSync(routeAttemptsMigrationPath, "utf8");
+const betaFeedbackMigrationPath = path.join(
+  projectRoot,
+  "supabase/migrations/005_beta_feedback.sql"
+);
+const betaFeedbackMigrationSql = readFileSync(betaFeedbackMigrationPath, "utf8");
 
 const requiredTables = [
   "profiles",
@@ -187,6 +192,29 @@ test("route attempts policies allow dev route-runner read/write access without e
   assert.match(routeAttemptsMigrationSql, /grant select, insert on public\.route_attempts to anon/i);
 });
 
+test("beta feedback migration stores public beta submissions server-side only", () => {
+  assert.match(
+    betaFeedbackMigrationSql,
+    /create table if not exists public\.beta_feedback/i
+  );
+  assert.match(betaFeedbackMigrationSql, /id uuid primary key default gen_random_uuid\(\)/i);
+  assert.match(betaFeedbackMigrationSql, /created_at timestamptz not null default now\(\)/i);
+  assert.match(betaFeedbackMigrationSql, /payload jsonb not null/i);
+  assert.match(betaFeedbackMigrationSql, /map_id text not null/i);
+  assert.match(betaFeedbackMigrationSql, /exercise_id text not null/i);
+  assert.match(betaFeedbackMigrationSql, /rating integer not null/i);
+  assert.match(betaFeedbackMigrationSql, /feedback_type text not null/i);
+  assert.match(betaFeedbackMigrationSql, /check \(rating between 1 and 5\)/i);
+  assert.match(
+    betaFeedbackMigrationSql,
+    /alter table public\.beta_feedback enable row level security/i
+  );
+  assert.match(betaFeedbackMigrationSql, /revoke all on public\.beta_feedback from anon/i);
+  assert.match(betaFeedbackMigrationSql, /revoke all on public\.beta_feedback from authenticated/i);
+  assert.doesNotMatch(betaFeedbackMigrationSql, /create policy/i);
+  assert.doesNotMatch(betaFeedbackMigrationSql, /grant .*beta_feedback to anon/i);
+});
+
 test("Supabase env docs expose only public browser-safe values", () => {
   const envExample = readFileSync(path.join(projectRoot, ".env.example"), "utf8");
   const readme = readFileSync(path.join(projectRoot, "README.md"), "utf8");
@@ -194,7 +222,9 @@ test("Supabase env docs expose only public browser-safe values", () => {
   assert.match(envExample, /NEXT_PUBLIC_SUPABASE_URL=/);
   assert.match(envExample, /NEXT_PUBLIC_SUPABASE_ANON_KEY=/);
   assert.doesNotMatch(envExample, /SERVICE_ROLE|service_role/i);
-  assert.doesNotMatch(readme, /SUPABASE_SERVICE_ROLE|SERVICE_ROLE_KEY/i);
+  assert.match(readme, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(readme, /server-only/i);
+  assert.match(readme, /Do not use `NEXT_PUBLIC_` for service-role secrets/i);
 });
 
 test("frontend Supabase helpers do not reference private server keys", () => {
@@ -248,4 +278,28 @@ test("seed and app database code do not use service role keys or legacy tables",
     seedScript,
     /\.from\(["'](?:practice_attempts|question_attempts|mock_attempts|mock_question_attempts|saved_progress)["']\)/
   );
+});
+
+test("beta feedback service-role usage stays server-only", () => {
+  const allowedServerFiles = [
+    "app/practice/real-london/betaFeedbackStore.ts",
+    "app/practice/real-london/betaFeedbackStore.test.ts"
+  ];
+  const forbiddenClientFiles = [
+    "app/practice/real-london/RealLondonBetaFeedbackForm.tsx",
+    "app/practice/real-london/realLondonBetaFeedback.ts",
+    "app/practice/real-london/page.tsx",
+    "app/beta/page.tsx",
+    "app/beta/betaTesterEntry.ts"
+  ];
+
+  for (const file of allowedServerFiles) {
+    const source = readFileSync(path.join(projectRoot, file), "utf8");
+    assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/, file);
+  }
+
+  for (const file of forbiddenClientFiles) {
+    const source = readFileSync(path.join(projectRoot, file), "utf8");
+    assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE|SERVICE_ROLE_KEY/i, file);
+  }
 });
