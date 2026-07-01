@@ -2594,6 +2594,24 @@ out body;
   Supabase, auth, analytics, deployment, or default-map behaviour changed.
   Marlowe remains the default map.
 
+## Stage 127 OSM Restriction and Legality Audit
+
+- Added a dev/test-only OSM legality audit helper for converted route-runner
+  maps, with focused coverage registered under `npm.cmd run test:map`.
+- The audit verifies legal OSM movements, one-way forward and reverse
+  traversal, blocked-edge handling through an in-memory restriction overlay,
+  unknown road/node/edge rejection, mixed legal/illegal movement ordering,
+  generated fastest-route legality, and real London manual-attempt illegal
+  feedback.
+- The audit reuses the existing legality engine, directed-edge validation,
+  fastest-route overlay, and manual-attempt QA path instead of changing route
+  solving, scoring, snapping, or review behavior.
+- This remains committed-fixture-only. `osm-real-london-pilot` still uses
+  `lib/map-engine/osm/fixtures/realLondonPilotOverpass.json`; there are no live
+  Overpass fetches and no external routing APIs.
+- Marlowe remains the default map, and production behavior, Supabase, auth,
+  analytics, and deployment behavior are unchanged.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
