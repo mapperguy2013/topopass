@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { buildPageMetadata } from "@/lib/seo";
 import { RouteRunnerClient } from "@/app/dev/route-runner/RouteRunnerClient";
+import { RealLondonBetaFeedbackForm } from "./RealLondonBetaFeedbackForm";
 import {
   REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL,
   REAL_LONDON_BETA_PRACTICE_PATH,
@@ -99,6 +100,15 @@ export default function RealLondonBetaPracticePage() {
           initialExerciseId={model.selectedExercise.id}
           initialMapOptionId={model.mapId}
           mode={model.routeRunnerMode}
+        />
+
+        <RealLondonBetaFeedbackForm
+          betaEnabled
+          exerciseId={model.selectedExercise.id}
+          exerciseTitle={model.selectedExercise.title}
+          exerciseVersion={model.selectedExercise.exerciseVersion}
+          mapId={model.mapId}
+          mapVersion={model.mapVersion}
         />
       </div>
     </AppShell>

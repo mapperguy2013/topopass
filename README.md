@@ -2763,6 +2763,28 @@ out body;
   `npm.cmd run test:real-london-beta-practice-screen`; it is also registered
   under `npm.cmd run test:map`.
 
+## Stage 133 Beta Tester Entry Point and Feedback Flow
+
+- Added `/beta` as the beta tester entry route. It clearly labels the Real
+  London practice pilot as beta, explains the limited review state, shows known
+  limitations and OSM attribution when access is enabled, and links testers into
+  `/practice/real-london`.
+- When `NEXT_PUBLIC_REAL_LONDON_BETA` is disabled, `/beta` shows a safe
+  unavailable state and links back to standard `/practice`; Marlowe remains the
+  default map and Real London is not exposed as the default route-runner
+  experience.
+- The `/practice` hub now shows a small beta entry card only when beta access is
+  enabled. Non-beta users keep the existing practice hub without a Real London
+  beta card.
+- Added a typed local-only feedback flow for the Real London beta practice
+  screen. Feedback captures rating, issue type, comments, stage `133`, map and
+  exercise ids/versions, exercise title, timestamp, and beta access state, then
+  returns a deterministic local no-op success result. It does not send, email,
+  persist, or use Supabase/auth/analytics/external services.
+- Focused coverage can be run with
+  `npm.cmd run test:real-london-beta-entry-feedback`; it is also registered
+  under `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { buildPageMetadata } from "@/lib/seo";
+import { buildBetaTesterEntryModel } from "@/app/beta/betaTesterEntry";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
@@ -109,6 +111,8 @@ function PracticeHubVisual() {
 }
 
 export default function PracticePage() {
+  const betaEntry = buildBetaTesterEntryModel();
+
   return (
     <AppShell title="Practice">
       <div className="space-y-6">
@@ -186,6 +190,24 @@ export default function PracticePage() {
             </article>
           ))}
         </section>
+
+        {betaEntry.state === "available" ? (
+          <section className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm sm:p-6">
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              {betaEntry.title}
+            </p>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">
+              Selected beta testers can try a limited real London route drawing pilot and share feedback after each
+              exercise. Marlowe remains the standard default practice experience.
+            </p>
+            <Link
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              href={betaEntry.pagePath}
+            >
+              Open beta entry
+            </Link>
+          </section>
+        ) : null}
 
         <section className="grid gap-4 md:grid-cols-3">
           <TrackedLink
