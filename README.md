@@ -2906,6 +2906,30 @@ out body;
   `npm.cmd run test:public-beta-feedback`; it is also registered under
   `npm.cmd run test:map`.
 
+## Stage 138 Beta Attempt Review and Repro Export
+
+- Added an internal attempt review surface at `/dev/beta-attempts` plus
+  `GET /api/beta-attempts/review` for stored Real London beta route attempts.
+  This is not a public beta-user feature and stays unavailable unless
+  `BETA_ATTEMPT_REVIEW_ENABLED=true` is set.
+- Development and test review reads validated local JSONL records from
+  `.local/beta-attempts.jsonl`. Production review intentionally returns a safe
+  unavailable state unless a future explicit admin-safe attempt storage path is
+  added.
+- The review page shows created time, attempt id, map/exercise ids and
+  versions, start/destination/checkpoints, exercise difficulty/type, score and
+  pass/fail status, stored legality status, route distance/summary, storage
+  source/status, and a collapsed raw snapshot preview.
+- Filtering is supported by map id, exercise id, pass/fail/blocked/unknown
+  status, and legal/illegal/unknown legality, with records ordered newest first.
+- JSON repro export (`format=json`) includes only validated stored attempts and
+  preserves the captured attempt snapshot, map/exercise versions, stored
+  drawn/manual route data, scoring summary, legality summary, failure reason,
+  and app build metadata when present. It does not expose server secrets or
+  environment variables.
+- Focused coverage is `npm.cmd run test:beta-attempt-review`; the new helper
+  and API tests are also registered under `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
