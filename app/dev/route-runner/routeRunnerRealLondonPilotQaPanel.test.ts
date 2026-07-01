@@ -33,15 +33,21 @@ test("valid Stage 119 report formats as ready for the real London pilot panel", 
   assert.equal(model.passedExerciseCount, exerciseCount);
   assert.equal(model.failedExerciseCount, 0);
   assert.equal(model.exerciseProgressText, `${exerciseCount}/${exerciseCount} passing`);
+  assert.equal(model.exerciseLayout, "compact-table");
 });
 
 test("real London pilot panel displays all expanded exercise ids in fixture order", () => {
   const model = buildRealLondonPilotQaPanelModel(buildRealLondonPilotReadinessReport());
 
   assert.equal(model.exerciseIds.length, realLondonOsmPilotRouteExercises.length);
+  assert.equal(model.exerciseRows.length, realLondonOsmPilotRouteExercises.length);
   assert.deepEqual(
     model.exerciseIds,
     realLondonOsmPilotRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
+    model.exerciseRows.map((row) => [row.id, row.exerciseVersion, row.readinessLabel, row.compactDisplay]),
+    realLondonOsmPilotRouteExercises.map((exercise) => [exercise.id, "1.0.0", "Pass", "table-row"])
   );
 });
 

@@ -2716,6 +2716,31 @@ out body;
 - Focused coverage can be run with `npm.cmd run test:map-visual-semantics`;
   it is also registered under `npm.cmd run test:map`.
 
+## Stage 131.5 Compact Real London QA and Practice Panels
+
+- Compact Real London QA exercise output now uses dense table-style rows while
+  preserving exercise id, exercise version, difficulty, route type, distance,
+  brief/complexity text, and pass/fail readiness state.
+- The route-runner exercise selector is presented as a single “Practice
+  Exercises” area, avoiding duplicate official/recommended exercise lists while
+  preserving existing exercise selection behavior.
+- Real London beta practice now defaults to a clean student-facing view labelled
+  “Real London Practice Beta” with compact exercise selection, route
+  instructions, known limitations, feedback placeholder, map legend, and OSM
+  attribution where available.
+- Internal QA/debug panels remain available for dev/QA review but are hidden by
+  default for beta-student mode: readiness diagnostics, fixture filenames,
+  pass/fail QA counts, metadata coverage counts, full restriction debug details,
+  and raw map ids are not exposed unless QA/debug panels are explicitly shown.
+- Restriction overlays are summary-first and compact by default. Full overlay
+  symbol details remain accessible for QA/debugging without changing legality,
+  scoring, snapping, OSM conversion, route solving, exercises, attempt
+  versioning, Supabase, auth, analytics, deployment behavior, production
+  behavior, or default map selection.
+- Focused coverage can be run with
+  `npm.cmd run test:compact-real-london-panels`; it is also registered under
+  `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

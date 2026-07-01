@@ -159,8 +159,7 @@ import {
   type ExerciseRouteAvailability
 } from "./exerciseValidation";
 import {
-  buildRouteExerciseDisplayModel,
-  formatRouteExerciseSelectorLabel
+  buildRouteExerciseDisplayModel
 } from "./routeRunnerExerciseDisplay";
 import {
   applyPanToMapView,
@@ -207,6 +206,7 @@ import {
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   ROUTE_RUNNER_MAP_OPTIONS,
+  getRealLondonPilotExerciseMetadata,
   getRouteRunnerMapViewportBounds,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap
@@ -217,6 +217,11 @@ import {
   isRealLondonBetaAccessEnabled,
   resolveRealLondonBetaMapAccess
 } from "./routeRunnerRealLondonBetaGate";
+import {
+  buildCompactRestrictionOverlayModel,
+  buildPracticeExercisesPanelModel,
+  buildRouteRunnerPanelVisibility
+} from "./routeRunnerCompactPracticePanels";
 import {
   buildOsmDebugOverlayModel,
   canOfferOsmDebugOverlay,
@@ -2338,6 +2343,7 @@ export function RouteRunnerClient() {
   const [adaptiveLauncherMessage, setAdaptiveLauncherMessage] = useState<string | null>(null);
   const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
+  const [showDevQaPanels, setShowDevQaPanels] = useState(false);
 
   const visibleMapOptions = useMemo(
     () => getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED }),
@@ -2363,8 +2369,28 @@ export function RouteRunnerClient() {
       }),
     [selectedMapOption]
   );
+  const routeRunnerPanelVisibility = useMemo(
+    () =>
+      buildRouteRunnerPanelVisibility({
+        mapId: activeMap.id,
+        betaEnabled: REAL_LONDON_BETA_ENABLED,
+        devQaVisible: showDevQaPanels
+      }),
+    [activeMap.id, showDevQaPanels]
+  );
   const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
   const osmExerciseDebugOverlayAvailable = canOfferOsmExerciseDebugOverlay(selectedMapOption.source);
+  const visibleOsmDebugOverlayAvailable = osmDebugOverlayAvailable && routeRunnerPanelVisibility.showInternalQaPanels;
+  const visibleOsmExerciseDebugOverlayAvailable =
+    osmExerciseDebugOverlayAvailable && routeRunnerPanelVisibility.showInternalQaPanels;
+  const practiceExercisesPanel = useMemo(
+    () =>
+      buildPracticeExercisesPanelModel({
+        exercises: activeExercises,
+        selectedExerciseId: exerciseId
+      }),
+    [activeExercises, exerciseId]
+  );
 
   useEffect(() => {
     setShowRoadRestrictions(!isConvertedOsmMap);
@@ -2425,6 +2451,10 @@ export function RouteRunnerClient() {
     () => (selectedExercise ? buildRouteExerciseDisplayModel(selectedExercise) : null),
     [selectedExercise]
   );
+  const selectedRealLondonExerciseMetadata = useMemo(
+    () => (selectedExercise ? getRealLondonPilotExerciseMetadata(selectedExercise) : null),
+    [selectedExercise]
+  );
   const osmDebugOverlay = useMemo(
     () =>
       buildOsmDebugOverlayModel({
@@ -2433,18 +2463,18 @@ export function RouteRunnerClient() {
         exercise: selectedExercise,
         sourceFixtureName: selectedMapOption.fixtureName,
         state: {
-          visible: osmDebugOverlayAvailable && osmDebugOverlayState.visible,
-          showIds: osmDebugOverlayAvailable && osmDebugOverlayState.showIds
+          visible: visibleOsmDebugOverlayAvailable && osmDebugOverlayState.visible,
+          showIds: visibleOsmDebugOverlayAvailable && osmDebugOverlayState.showIds
         }
       }),
     [
       activeMap,
       activeMapGraph,
-      osmDebugOverlayAvailable,
       osmDebugOverlayState.showIds,
       osmDebugOverlayState.visible,
       selectedExercise,
-      selectedMapOption.fixtureName
+      selectedMapOption.fixtureName,
+      visibleOsmDebugOverlayAvailable
     ]
   );
   const osmExerciseDebugOverlay = useMemo(
@@ -2453,7 +2483,7 @@ export function RouteRunnerClient() {
         map: activeMap,
         graph: activeMapGraph,
         exercise: selectedExercise,
-        enabled: osmExerciseDebugOverlayAvailable && osmExerciseDebugOverlayState.visible,
+        enabled: visibleOsmExerciseDebugOverlayAvailable && osmExerciseDebugOverlayState.visible,
         isConvertedOsmMap,
         renderBounds: baseViewport.mapBounds,
         sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
@@ -2463,10 +2493,10 @@ export function RouteRunnerClient() {
       activeMapGraph,
       baseViewport.mapBounds,
       isConvertedOsmMap,
-      osmExerciseDebugOverlayAvailable,
       osmExerciseDebugOverlayState.visible,
       selectedExercise,
-      selectedMapOption.sourceOverpassFixture
+      selectedMapOption.sourceOverpassFixture,
+      visibleOsmExerciseDebugOverlayAvailable
     ]
   );
   const osmQaStatusPanel = useMemo(
@@ -2477,7 +2507,7 @@ export function RouteRunnerClient() {
         exercises: activeExercises,
         selectedExercise,
         enabled:
-          osmDebugOverlayAvailable && (osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible),
+          visibleOsmDebugOverlayAvailable && (osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible),
         isConvertedOsmMap
       }),
     [
@@ -2485,10 +2515,10 @@ export function RouteRunnerClient() {
       activeMap,
       activeMapGraph,
       isConvertedOsmMap,
-      osmDebugOverlayAvailable,
       osmExerciseDebugOverlayState.visible,
       osmDebugOverlayState.visible,
-      selectedExercise
+      selectedExercise,
+      visibleOsmDebugOverlayAvailable
     ]
   );
   const realLondonPilotQaPanel = useMemo(
@@ -2725,6 +2755,27 @@ export function RouteRunnerClient() {
         visualItems: restrictionMapVisualItems
       }),
     [restrictionMapVisualItems, selectedRestrictionReviewItem]
+  );
+  const compactRestrictionOverlayPanel = useMemo(
+    () =>
+      buildCompactRestrictionOverlayModel({
+        roadRestrictionOverlayCount: roadRestrictionOverlays.length,
+        turnRestrictionVisualCount: turnRestrictionVisuals.length,
+        visualItems: restrictionMapVisualItems,
+        showRoadRestrictions,
+        showTurnRestrictions,
+        detailsVisible: routeRunnerPanelVisibility.showFullRestrictionDebugDetails,
+        selectedVisualItemId: selectedRestrictionFocusTarget?.visualItemId ?? null
+      }),
+    [
+      restrictionMapVisualItems,
+      roadRestrictionOverlays.length,
+      routeRunnerPanelVisibility.showFullRestrictionDebugDetails,
+      selectedRestrictionFocusTarget?.visualItemId,
+      showRoadRestrictions,
+      showTurnRestrictions,
+      turnRestrictionVisuals.length
+    ]
   );
   const selectedRestrictionHighlight = useMemo(
     () => buildSelectedRestrictionHighlight(selectedRestrictionFocusTarget),
@@ -3162,7 +3213,7 @@ export function RouteRunnerClient() {
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
       showOsmRoadLabels: isConvertedOsmMap
-        ? osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible
+        ? visibleOsmDebugOverlayAvailable && (osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible)
         : true,
       selectedExercise,
       trace: drawnTrace,
@@ -3175,8 +3226,8 @@ export function RouteRunnerClient() {
       routeIssueOverlays,
       restrictionMapVisualItems,
       selectedRestrictionHighlight,
-      osmDebugOverlay: osmDebugOverlayAvailable ? osmDebugOverlay : null,
-      osmExerciseDebugOverlay: osmExerciseDebugOverlayAvailable ? osmExerciseDebugOverlay : null
+      osmDebugOverlay: visibleOsmDebugOverlayAvailable ? osmDebugOverlay : null,
+      osmExerciseDebugOverlay: visibleOsmExerciseDebugOverlayAvailable ? osmExerciseDebugOverlay : null
     });
   }, [
     activeMap,
@@ -3186,9 +3237,7 @@ export function RouteRunnerClient() {
     fastestRouteOverlay,
     isConvertedOsmMap,
     osmDebugOverlay,
-    osmDebugOverlayAvailable,
     osmExerciseDebugOverlay,
-    osmExerciseDebugOverlayAvailable,
     osmExerciseDebugOverlayState.visible,
     osmDebugOverlayState.visible,
     restrictionMapVisualItems,
@@ -3200,6 +3249,8 @@ export function RouteRunnerClient() {
     syntheticBackgroundFeatures,
     syntheticLinearFeatures,
     syntheticRoadVisuals,
+    visibleOsmDebugOverlayAvailable,
+    visibleOsmExerciseDebugOverlayAvailable,
     viewport,
     visibleRoadRestrictionOverlays
   ]);
@@ -3870,15 +3921,15 @@ export function RouteRunnerClient() {
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Exercise brief</p>
-                <h2 className="mt-1 text-base font-semibold text-slate-950">Route assignment</h2>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Practice Exercises</p>
+                <h2 className="mt-1 text-base font-semibold text-slate-950">{practiceExercisesPanel.title}</h2>
               </div>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
                 {exercisePositionLabel}
               </span>
             </div>
             <label htmlFor="route-map-option" className="mt-4 block text-sm font-semibold text-slate-900">
-              Dev map
+              {realLondonBetaPanel ? "Practice map" : "Dev map"}
             </label>
             <select
               id="route-map-option"
@@ -3924,9 +3975,18 @@ export function RouteRunnerClient() {
                 {realLondonBetaPanel.attribution ? (
                   <p className="mt-2 font-semibold">Map data: {realLondonBetaPanel.attribution}</p>
                 ) : null}
+                {routeRunnerPanelVisibility.devQaToggleLabel ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowDevQaPanels((currentValue) => !currentValue)}
+                    className="mt-3 rounded-md border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-950 hover:bg-violet-100"
+                  >
+                    {routeRunnerPanelVisibility.devQaToggleLabel}
+                  </button>
+                ) : null}
               </div>
             ) : null}
-            {isConvertedOsmMap ? (
+            {isConvertedOsmMap && !routeRunnerPanelVisibility.isRealLondonBetaPractice ? (
               <p className="mt-2 rounded-md border border-sky-100 bg-sky-50 p-2 text-xs leading-5 text-sky-950">
                 This dev-only map is converted from the committed Stage 101 Overpass fixture and rendered through the
                 existing TOPOPASS map engine. No live OSM data or external routing service is used.
@@ -3941,14 +4001,15 @@ export function RouteRunnerClient() {
               onChange={(event) => handleExerciseChange(event.target.value)}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {activeExercises.map((exercise) => {
-                const availability = exerciseAvailabilityById[exercise.id];
+              {practiceExercisesPanel.exerciseRows.map((row) => {
+                const exercise = activeExercises.find((candidate) => candidate.id === row.id);
+                const availability = exercise ? exerciseAvailabilityById[exercise.id] : null;
 
                 return (
-                  <option key={exercise.id} value={exercise.id}>
-                    {availability
+                  <option key={row.id} value={row.id}>
+                    {exercise && availability
                       ? formatExerciseAvailabilityOptionLabel(exercise, availability)
-                      : formatRouteExerciseSelectorLabel(exercise)}
+                      : `${row.title} (${row.id})`}
                   </option>
                 );
               })}
@@ -3984,17 +4045,34 @@ export function RouteRunnerClient() {
                 {selectedExerciseDisplay?.description ? (
                   <p className="mt-2 leading-6 text-slate-700">{selectedExerciseDisplay.description}</p>
                 ) : null}
+                {selectedRealLondonExerciseMetadata ? (
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-blue-100 bg-white px-2 py-0.5 font-semibold text-blue-700">
+                      {selectedRealLondonExerciseMetadata.difficulty}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-semibold text-slate-700">
+                      {selectedRealLondonExerciseMetadata.routeType.replaceAll("-", " ")}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 font-semibold text-slate-700">
+                      {formatDistance(selectedRealLondonExerciseMetadata.estimatedDistanceMeters)}
+                    </span>
+                  </div>
+                ) : null}
                 <dl className="mt-3 space-y-3">
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise ID</dt>
-                    <dd className="mt-1 font-mono text-xs text-slate-700">{selectedExercise.id}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Versions</dt>
-                    <dd className="mt-1 font-mono text-xs text-slate-700">
-                      map {activeMap.mapVersion ?? "none"} | exercise {selectedExercise.exerciseVersion ?? "none"}
-                    </dd>
-                  </div>
+                  {routeRunnerPanelVisibility.showInternalQaPanels ? (
+                    <>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercise ID</dt>
+                        <dd className="mt-1 font-mono text-xs text-slate-700">{selectedExercise.id}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Versions</dt>
+                        <dd className="mt-1 font-mono text-xs text-slate-700">
+                          map {activeMap.mapVersion ?? "none"} | exercise {selectedExercise.exerciseVersion ?? "none"}
+                        </dd>
+                      </div>
+                    </>
+                  ) : null}
                   {selectedExerciseMetadata ? (
                     <>
                       <div>
@@ -4116,9 +4194,11 @@ export function RouteRunnerClient() {
                       Real London Pilot Playthrough
                     </p>
                     <h3 className="mt-1 font-semibold">{realLondonPilotPlaythroughPanel.title}</h3>
-                    <p className="mt-1 font-mono text-[11px] text-blue-800">
-                      {realLondonPilotPlaythroughPanel.selectedExerciseId}
-                    </p>
+                    {routeRunnerPanelVisibility.showInternalQaPanels ? (
+                      <p className="mt-1 font-mono text-[11px] text-blue-800">
+                        {realLondonPilotPlaythroughPanel.selectedExerciseId}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${realLondonPlaythroughToneClass(
@@ -4159,45 +4239,62 @@ export function RouteRunnerClient() {
             ) : null}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-950">Manual route input</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Enter comma-separated fixture IDs. If both fields are supplied, each road must connect the matching pair
-              of selected nodes.
-            </p>
+          {routeRunnerPanelVisibility.showInternalQaPanels ? (
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-950">Manual route input</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Enter comma-separated fixture IDs. If both fields are supplied, each road must connect the matching pair
+                of selected nodes.
+              </p>
 
-            <label htmlFor="node-ids" className="mt-4 block text-sm font-semibold text-slate-900">
-              Node IDs
-            </label>
-            <textarea
-              id="node-ids"
-              value={nodeIdsText}
-              onChange={(event) => setNodeIdsText(event.target.value)}
-              rows={3}
-              placeholder="n02, n03, n12, n17"
-              className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
+              <label htmlFor="node-ids" className="mt-4 block text-sm font-semibold text-slate-900">
+                Node IDs
+              </label>
+              <textarea
+                id="node-ids"
+                value={nodeIdsText}
+                onChange={(event) => setNodeIdsText(event.target.value)}
+                rows={3}
+                placeholder="n02, n03, n12, n17"
+                className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
 
-            <label htmlFor="road-ids" className="mt-4 block text-sm font-semibold text-slate-900">
-              Road IDs
-            </label>
-            <textarea
-              id="road-ids"
-              value={roadIdsText}
-              onChange={(event) => setRoadIdsText(event.target.value)}
-              rows={3}
-              placeholder="r02, r37, r24"
-              className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            />
+              <label htmlFor="road-ids" className="mt-4 block text-sm font-semibold text-slate-900">
+                Road IDs
+              </label>
+              <textarea
+                id="road-ids"
+                value={roadIdsText}
+                onChange={(event) => setRoadIdsText(event.target.value)}
+                rows={3}
+                placeholder="r02, r37, r24"
+                className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              />
 
-            <button
-              type="button"
-              onClick={handleRunRoute}
-              className="mt-5 inline-flex items-center justify-center rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
-            >
-              Run route
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={handleRunRoute}
+                className="mt-5 inline-flex items-center justify-center rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                Run route
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-950">Route instructions</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                Draw a route from the start marker to the finish marker, visiting any checkpoints in order. Follow the
+                blue one-way arrows and avoid illegal or wrong-way movements.
+              </p>
+              <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-950">
+                <p className="font-semibold">Practice beta</p>
+                <p className="mt-1">
+                  Use the feedback box to note confusing route choices, missing labels, awkward touch behavior, or any
+                  exercise that feels unclear.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="contents">
@@ -4345,7 +4442,7 @@ export function RouteRunnerClient() {
                       ? "Hide fastest route"
                       : "Reveal fastest route"}
                 </button>
-                {osmDebugOverlayAvailable ? (
+                {visibleOsmDebugOverlayAvailable ? (
                   <button
                     type="button"
                     onClick={() =>
@@ -4364,7 +4461,7 @@ export function RouteRunnerClient() {
                     {osmDebugOverlayState.visible ? "Hide OSM QA" : "OSM QA"}
                   </button>
                 ) : null}
-                {osmExerciseDebugOverlayAvailable ? (
+                {visibleOsmExerciseDebugOverlayAvailable ? (
                   <button
                     type="button"
                     onClick={() =>
@@ -4433,7 +4530,7 @@ export function RouteRunnerClient() {
               />
             </div>
 
-            {osmDebugOverlayAvailable ? (
+            {visibleOsmDebugOverlayAvailable ? (
               <div className="mt-4 rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
@@ -4584,28 +4681,56 @@ export function RouteRunnerClient() {
                     <div className="mt-3 rounded border border-white/80 bg-white p-2">
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exercises</p>
                       {realLondonPilotQaPanel.exerciseRows.length > 0 ? (
-                        <ul className="mt-2 grid gap-2 lg:grid-cols-2">
-                          {realLondonPilotQaPanel.exerciseRows.map((row) => (
-                            <li key={row.id} className="rounded border border-slate-200 bg-slate-50 p-2 text-slate-800">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-mono text-[11px] font-semibold">{row.id}</span>
-                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
-                                  v{row.exerciseVersion}
-                                </span>
-                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
-                                  {row.difficulty}
-                                </span>
-                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
-                                  {row.routeTypeLabel}
-                                </span>
-                                <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold">
-                                  {row.estimatedDistanceText}
-                                </span>
-                              </div>
-                              <p className="mt-1 text-[11px] leading-5 text-slate-600">{row.expectedComplexity}</p>
-                            </li>
-                          ))}
-                        </ul>
+                        <div className="mt-2 overflow-x-auto rounded border border-slate-200">
+                          <table className="min-w-full border-collapse text-left text-[11px] text-slate-800">
+                            <thead className="bg-slate-50 text-slate-600">
+                              <tr>
+                                <th scope="col" className="whitespace-nowrap border-b border-slate-200 px-2 py-1 font-semibold">
+                                  Exercise
+                                </th>
+                                <th scope="col" className="whitespace-nowrap border-b border-slate-200 px-2 py-1 font-semibold">
+                                  Version
+                                </th>
+                                <th scope="col" className="whitespace-nowrap border-b border-slate-200 px-2 py-1 font-semibold">
+                                  Difficulty
+                                </th>
+                                <th scope="col" className="whitespace-nowrap border-b border-slate-200 px-2 py-1 font-semibold">
+                                  Type
+                                </th>
+                                <th scope="col" className="whitespace-nowrap border-b border-slate-200 px-2 py-1 font-semibold">
+                                  Distance
+                                </th>
+                                <th scope="col" className="whitespace-nowrap border-b border-slate-200 px-2 py-1 font-semibold">
+                                  QA
+                                </th>
+                                <th scope="col" className="border-b border-slate-200 px-2 py-1 font-semibold">
+                                  Brief
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {realLondonPilotQaPanel.exerciseRows.map((row) => (
+                                <tr key={row.id} className="border-b border-slate-100 last:border-b-0">
+                                  <td className="whitespace-nowrap px-2 py-1 align-top font-mono font-semibold">{row.id}</td>
+                                  <td className="whitespace-nowrap px-2 py-1 align-top">v{row.exerciseVersion}</td>
+                                  <td className="whitespace-nowrap px-2 py-1 align-top">{row.difficulty}</td>
+                                  <td className="whitespace-nowrap px-2 py-1 align-top">{row.routeTypeLabel}</td>
+                                  <td className="whitespace-nowrap px-2 py-1 align-top">{row.estimatedDistanceText}</td>
+                                  <td className="whitespace-nowrap px-2 py-1 align-top">
+                                    <span
+                                      className={`rounded-full border px-2 py-0.5 font-semibold ${osmQaStatusClass(
+                                        row.readinessStatus
+                                      )}`}
+                                    >
+                                      {row.readinessLabel}
+                                    </span>
+                                  </td>
+                                  <td className="min-w-[16rem] px-2 py-1 align-top leading-5">{row.brief}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       ) : (
                         <ul className="mt-2 flex flex-wrap gap-2">
                           {realLondonPilotQaPanel.exerciseIds.map((exerciseId) => (
@@ -4939,43 +5064,64 @@ export function RouteRunnerClient() {
             </dl>
 
             <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-950">
-              <p className="font-semibold">Restriction overlays</p>
-              <p className="mt-1 text-xs leading-5">
-                Road-level no-entry, road-closed, one-way, junction-level banned-turn, and post-attempt route issue
-                symbols are drawn from the existing map-engine and review data. The polished symbol layer is visual
-                only; legality, scoring, matching, and review reasoning remain unchanged.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
-                {restrictionMapVisualItems.map((item) => (
-                  <span
-                    key={item.id}
-                    className={`rounded-full border px-3 py-1 ${
-                      selectedRestrictionFocusTarget?.visualItemId === item.id
-                        ? "border-sky-300 bg-sky-50 text-sky-950"
-                        : "border-red-200 bg-white text-red-900"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                ))}
-                {restrictionMapVisualItems.length === 0 ? (
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
-                    No restriction symbols visible
-                  </span>
-                ) : null}
-                {selectedRestrictionFocusTarget ? (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRestrictionReviewItemId(null)}
-                    className="rounded-full border border-sky-300 bg-white px-3 py-1 text-sky-900 hover:bg-sky-50"
-                  >
-                    Clear map focus
-                  </button>
-                ) : null}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-semibold">{compactRestrictionOverlayPanel.title}</p>
+                  <p className="mt-1 text-xs leading-5">
+                    One-way, illegal/wrong-way, banned-turn, and route issue highlighting are available. The overlay is
+                    visual-only; legality, scoring, matching, and review reasoning remain unchanged.
+                  </p>
+                </div>
+                <span className="w-fit rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold">
+                  Summary
+                </span>
               </div>
+              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                {compactRestrictionOverlayPanel.summaryRows.map((row) => (
+                  <div key={row.id} className="rounded border border-red-100 bg-white p-2">
+                    <dt className="font-semibold uppercase tracking-wide text-red-700">{row.label}</dt>
+                    <dd className="mt-1 font-semibold text-red-950">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {compactRestrictionOverlayPanel.detailsAccessible ? (
+                <details className="mt-3 rounded border border-red-100 bg-white p-2 text-xs" open={false}>
+                  <summary className="cursor-pointer font-semibold text-red-900">Restriction overlay details</summary>
+                  <div className="mt-3 flex flex-wrap gap-2 font-medium">
+                    {compactRestrictionOverlayPanel.detailItems.map((item) => (
+                      <span
+                        key={item.id}
+                        className={`rounded-full border px-3 py-1 ${
+                          item.selected ? "border-sky-300 bg-sky-50 text-sky-950" : "border-red-200 bg-white text-red-900"
+                        }`}
+                      >
+                        {item.label}
+                      </span>
+                    ))}
+                    {compactRestrictionOverlayPanel.detailItems.length === 0 ? (
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
+                        No restriction symbols visible
+                      </span>
+                    ) : null}
+                    {selectedRestrictionFocusTarget ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRestrictionReviewItemId(null)}
+                        className="rounded-full border border-sky-300 bg-white px-3 py-1 text-sky-900 hover:bg-sky-50"
+                      >
+                        Clear map focus
+                      </button>
+                    ) : null}
+                  </div>
+                </details>
+              ) : (
+                <p className="mt-2 rounded border border-red-100 bg-white p-2 text-xs leading-5 text-red-900">
+                  Full restriction overlay debug details are hidden in beta practice mode.
+                </p>
+              )}
               <p className="mt-2 text-xs leading-5 text-red-900">
                 {showRoadRestrictions || showTurnRestrictions
-                  ? "Use the review panel's Show on map buttons to emphasise a specific route issue or restriction."
+                  ? "Use Show on map from review items to emphasise a specific route issue or restriction."
                   : "Restriction toggles are off, so only post-attempt route issue symbols remain visible."}
               </p>
             </div>
@@ -5146,9 +5292,11 @@ export function RouteRunnerClient() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide">Route attempt review</p>
                   <h3 className="mt-1 text-base font-semibold">{drawnAttemptReview.title}</h3>
-                  <p className="mt-1 font-mono text-[11px] leading-5 opacity-75">
-                    {formatRouteAttemptVersionSnapshot(drawnAttemptReview.versionSnapshot).compactLabel}
-                  </p>
+                  {routeRunnerPanelVisibility.showInternalQaPanels ? (
+                    <p className="mt-1 font-mono text-[11px] leading-5 opacity-75">
+                      {formatRouteAttemptVersionSnapshot(drawnAttemptReview.versionSnapshot).compactLabel}
+                    </p>
+                  ) : null}
                 </div>
                 <span className="rounded-full border border-current/20 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
                   {drawnAttemptReview.status}

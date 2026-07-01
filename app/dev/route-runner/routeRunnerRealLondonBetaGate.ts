@@ -19,7 +19,7 @@ import {
 import { createRouteAttemptVersionSnapshot } from "./routeAttemptVersionSnapshot.ts";
 
 export const REAL_LONDON_BETA_ENV_FLAG = "NEXT_PUBLIC_REAL_LONDON_BETA";
-export const REAL_LONDON_BETA_LABEL = "Real London beta";
+export const REAL_LONDON_BETA_LABEL = "Real London Practice Beta";
 export const REAL_LONDON_BETA_FEEDBACK_PLACEHOLDER =
   "Beta testers can note route confusion, missing labels, awkward touch interactions, or fixture coverage gaps here before sharing feedback with the team.";
 

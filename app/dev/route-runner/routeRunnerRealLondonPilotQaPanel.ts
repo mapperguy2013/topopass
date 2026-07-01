@@ -3,6 +3,7 @@ import type {
   OsmPilotReadinessReport,
   OsmPilotReadinessStatus
 } from "./routeRunnerOsmRealPilotReadinessReport.ts";
+import type { OsmExerciseQaAcceptanceReport } from "./routeRunnerOsmExerciseQa.ts";
 
 export const REAL_LONDON_PILOT_QA_PANEL_MAP_ID = "osm-real-london-pilot";
 export const REAL_LONDON_PILOT_TWO_QA_PANEL_MAP_ID = "osm-real-london-pilot-2";
@@ -30,12 +31,17 @@ export type RealLondonPilotQaPanelSummaryRow = {
 };
 
 export type RealLondonPilotQaPanelExerciseRow = {
+  compactDisplay: "table-row";
   id: string;
+  title: string;
   exerciseVersion: string;
   difficulty: string;
   routeType: string;
   routeTypeLabel: string;
   estimatedDistanceText: string;
+  readinessStatus: OsmPilotReadinessStatus;
+  readinessLabel: "Pass" | "Fail";
+  brief: string;
   expectedComplexity: string;
 };
 
@@ -48,6 +54,7 @@ export type RealLondonPilotQaPanelModel = {
   passedExerciseCount: number;
   failedExerciseCount: number;
   exerciseProgressText: string;
+  exerciseLayout: "compact-table";
   status: RealLondonPilotQaPanelStatus;
   statusLabel: "Ready" | "Not ready";
   statusTone: OsmPilotReadinessStatus;
@@ -79,7 +86,12 @@ export function buildRealLondonPilotQaPanelModel(report: OsmPilotReadinessReport
   const passedExerciseCount = report.acceptanceQa.passedExerciseCount;
   const failedExerciseCount = report.acceptanceQa.failedExerciseCount;
   const exerciseIds = report.acceptanceQa.reports.map((exerciseReport) => exerciseReport.exerciseId);
-  const exerciseRows = report.exerciseMetadata.map(formatExerciseRow);
+  const acceptanceReportsByExerciseId = new Map(
+    report.acceptanceQa.reports.map((exerciseReport) => [exerciseReport.exerciseId, exerciseReport])
+  );
+  const exerciseRows = report.exerciseMetadata.map((metadata) =>
+    formatExerciseRow(metadata, acceptanceReportsByExerciseId.get(metadata.exerciseId))
+  );
   const statusLabel = report.isReady ? "Ready" : "Not ready";
   const statusTone: OsmPilotReadinessStatus = report.isReady ? "pass" : "fail";
   const failureReasons = formatFailureReasons(report.failureReasonCodes);
@@ -94,6 +106,7 @@ export function buildRealLondonPilotQaPanelModel(report: OsmPilotReadinessReport
     passedExerciseCount,
     failedExerciseCount,
     exerciseProgressText,
+    exerciseLayout: "compact-table",
     status: report.overallReadinessStatus,
     statusLabel,
     statusTone,
@@ -141,14 +154,24 @@ function statusValue(status: OsmPilotReadinessStatus): "passing" | "failing" {
   return status === "pass" ? "passing" : "failing";
 }
 
-function formatExerciseRow(metadata: OsmPilotExerciseMetadataReport): RealLondonPilotQaPanelExerciseRow {
+function formatExerciseRow(
+  metadata: OsmPilotExerciseMetadataReport,
+  acceptanceReport: OsmExerciseQaAcceptanceReport | undefined
+): RealLondonPilotQaPanelExerciseRow {
+  const readinessStatus: OsmPilotReadinessStatus = acceptanceReport?.isValid === false ? "fail" : "pass";
+
   return {
+    compactDisplay: "table-row",
     id: metadata.exerciseId,
+    title: metadata.title,
     exerciseVersion: metadata.exerciseVersion ?? "none",
     difficulty: metadata.difficulty,
     routeType: metadata.routeType,
     routeTypeLabel: formatRouteTypeLabel(metadata.routeType),
     estimatedDistanceText: `${metadata.estimatedDistanceMeters.toFixed(2)} m`,
+    readinessStatus,
+    readinessLabel: readinessStatus === "pass" ? "Pass" : "Fail",
+    brief: metadata.expectedComplexity,
     expectedComplexity: metadata.expectedComplexity
   };
 }
