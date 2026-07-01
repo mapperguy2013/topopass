@@ -2668,6 +2668,35 @@ out body;
   `npm.cmd run test:route-candidate-generator`; it is also registered under
   `npm.cmd run test:map`.
 
+## Stage 130 Real London Beta Gate and Readiness Review
+
+- Real London route-runner practice is now behind the default-disabled
+  `NEXT_PUBLIC_REAL_LONDON_BETA` feature flag. Accepted enabled values include
+  `1`, `true`, `yes`, `on`, and `enabled`.
+- Non-beta users keep the Marlowe default route-runner experience. Real London
+  pilot maps are filtered out of the visible map selector, and direct requests
+  for a real London map return a safe unavailable state explaining that access
+  is beta-gated.
+- Beta-enabled testers can access the fixture-backed real London pilot maps.
+  The dev UI shows a clear Real London beta label, known limitations, a
+  feedback placeholder, and OpenStreetMap attribution when an OSM-derived beta
+  map is shown.
+- Known limitations are explicit: committed local fixtures only, no live OSM or
+  Overpass data, limited pilot coverage, QA/beta review required before
+  production exposure, and mobile/touch interaction requiring final acceptance
+  through the separate mobile QA stage.
+- Added a deterministic Phase 5 real London beta readiness review covering beta
+  gating, beta access, non-beta default behavior, safe unavailable state, real
+  map readiness, pilot exercise QA, attempt version snapshots, student route
+  flow, OSM attribution, documented limitations, and the separate mobile QA
+  status.
+- This is a release-readiness gate only. It does not change route solving,
+  scoring, snapping, legality, official exercises, map data, Supabase, auth,
+  analytics, persistence, deployment behavior, production route behavior, or
+  default map selection.
+- Focused coverage can be run with `npm.cmd run test:real-london-beta-gate`;
+  it is also registered under `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

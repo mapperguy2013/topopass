@@ -212,6 +212,12 @@ import {
   isConvertedOsmRouteRunnerMap
 } from "./routeRunnerMaps";
 import {
+  buildRealLondonBetaPracticePanelModel,
+  getRouteRunnerVisibleMapOptions,
+  isRealLondonBetaAccessEnabled,
+  resolveRealLondonBetaMapAccess
+} from "./routeRunnerRealLondonBetaGate";
+import {
   buildOsmDebugOverlayModel,
   canOfferOsmDebugOverlay,
   createDefaultOsmDebugOverlayState,
@@ -256,6 +262,7 @@ const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
 const DEFAULT_ROUTE_RUNNER_MAP_OPTION =
   getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID) ?? ROUTE_RUNNER_MAP_OPTIONS[0];
+const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
 
 type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
@@ -2324,13 +2331,30 @@ export function RouteRunnerClient() {
   const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
 
-  const selectedMapOption = useMemo(
-    () => getRouteRunnerMapOption(mapOptionId) ?? DEFAULT_ROUTE_RUNNER_MAP_OPTION,
+  const visibleMapOptions = useMemo(
+    () => getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED }),
+    []
+  );
+  const betaMapAccess = useMemo(
+    () =>
+      resolveRealLondonBetaMapAccess({
+        requestedMapId: mapOptionId,
+        betaEnabled: REAL_LONDON_BETA_ENABLED
+      }),
     [mapOptionId]
   );
+  const selectedMapOption = betaMapAccess.selectedMapOption;
   const activeMap = selectedMapOption.map;
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
+  const realLondonBetaPanel = useMemo(
+    () =>
+      buildRealLondonBetaPracticePanelModel({
+        mapOption: selectedMapOption,
+        betaEnabled: REAL_LONDON_BETA_ENABLED
+      }),
+    [selectedMapOption]
+  );
   const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
   const osmExerciseDebugOverlayAvailable = canOfferOsmExerciseDebugOverlay(selectedMapOption.source);
 
@@ -3413,9 +3437,13 @@ export function RouteRunnerClient() {
   }
 
   function handleMapOptionChange(nextMapOptionId: string) {
-    const nextMapOption = getRouteRunnerMapOption(nextMapOptionId) ?? DEFAULT_ROUTE_RUNNER_MAP_OPTION;
+    const nextMapAccess = resolveRealLondonBetaMapAccess({
+      requestedMapId: nextMapOptionId,
+      betaEnabled: REAL_LONDON_BETA_ENABLED
+    });
+    const nextMapOption = nextMapAccess.selectedMapOption;
 
-    setMapOptionId(nextMapOption.id);
+    setMapOptionId(nextMapOptionId);
     setExerciseId(nextMapOption.defaultExerciseId);
     setNodeIdsText("");
     setRoadIdsText("");
@@ -3850,13 +3878,46 @@ export function RouteRunnerClient() {
               onChange={(event) => handleMapOptionChange(event.target.value)}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {ROUTE_RUNNER_MAP_OPTIONS.map((option) => (
+              {visibleMapOptions.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
                 </option>
               ))}
             </select>
             <p className="mt-2 text-xs leading-5 text-slate-600">{selectedMapOption.description}</p>
+            {betaMapAccess.unavailableState ? (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+                <p className="font-semibold">{betaMapAccess.unavailableState.title}</p>
+                <p className="mt-1">{betaMapAccess.unavailableState.message}</p>
+              </div>
+            ) : null}
+            {realLondonBetaPanel ? (
+              <div className="mt-2 rounded-md border border-violet-200 bg-violet-50 p-3 text-xs leading-5 text-violet-950">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-violet-300 bg-white px-2 py-0.5 font-semibold uppercase tracking-wide">
+                    {realLondonBetaPanel.label}
+                  </span>
+                  <span>{realLondonBetaPanel.statusText}</span>
+                </div>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {realLondonBetaPanel.knownLimitations.map((limitation) => (
+                    <li key={limitation}>{limitation}</li>
+                  ))}
+                </ul>
+                <label htmlFor="real-london-beta-feedback" className="mt-3 block font-semibold">
+                  Beta feedback placeholder
+                </label>
+                <textarea
+                  id="real-london-beta-feedback"
+                  rows={3}
+                  placeholder={realLondonBetaPanel.feedbackPlaceholder}
+                  className="mt-1 w-full rounded-md border border-violet-200 bg-white px-3 py-2 text-xs text-violet-950 placeholder:text-violet-400"
+                />
+                {realLondonBetaPanel.attribution ? (
+                  <p className="mt-2 font-semibold">Map data: {realLondonBetaPanel.attribution}</p>
+                ) : null}
+              </div>
+            ) : null}
             {isConvertedOsmMap ? (
               <p className="mt-2 rounded-md border border-sky-100 bg-sky-50 p-2 text-xs leading-5 text-sky-950">
                 This dev-only map is converted from the committed Stage 101 Overpass fixture and rendered through the
