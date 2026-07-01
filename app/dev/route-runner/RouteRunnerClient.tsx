@@ -225,7 +225,7 @@ import {
   type OsmQaStatusPanelModel,
   type OsmQaStatusState
 } from "./routeRunnerOsmQaStatus";
-import { buildRealLondonPilotReadinessReport } from "./routeRunnerOsmRealPilotReadinessReport";
+import { buildLondonPilotReadinessReportForMapId } from "./routeRunnerOsmRealPilotReadinessReport";
 import {
   buildRealLondonPilotQaPanelModel,
   shouldShowRealLondonPilotQaPanel
@@ -2462,7 +2462,7 @@ export function RouteRunnerClient() {
   const realLondonPilotQaPanel = useMemo(
     () =>
       shouldShowRealLondonPilotQaPanel(activeMap.id)
-        ? buildRealLondonPilotQaPanelModel(buildRealLondonPilotReadinessReport())
+        ? buildRealLondonPilotQaPanelModel(buildLondonPilotReadinessReportForMapId(activeMap.id))
         : null,
     [activeMap.id]
   );

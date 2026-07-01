@@ -2629,6 +2629,25 @@ out body;
   Overpass fetches and no external routing APIs. Marlowe remains the default
   map.
 
+## Stage 128 Second London Pilot Map and Starter Exercises
+
+- Added a second dev/test-only London pilot map, `osm-real-london-pilot-2`,
+  backed by the committed local
+  `lib/map-engine/osm/fixtures/realLondonPilotTwoOverpass.json` fixture.
+- The second pilot uses the existing OSM conversion/import path and appears as a
+  separate selectable `/dev/route-runner` map without replacing or mutating the
+  existing `osm-real-london-pilot`.
+- Added three starter exercises for the second pilot: an easy direct route, a
+  medium checkpoint route, and a medium one-way-awareness route, all with
+  deterministic difficulty/type/distance/complexity metadata plus semver map and
+  exercise versions.
+- Extended deterministic readiness/QA coverage and the real London pilot
+  dev-only QA/playthrough panels so both pilot maps are supported while unrelated
+  synthetic and non-pilot OSM maps remain excluded.
+- This remains committed-fixture-only with no live Overpass fetches, no external
+  routing APIs, and no production behavior changes. Marlowe remains the default
+  map.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

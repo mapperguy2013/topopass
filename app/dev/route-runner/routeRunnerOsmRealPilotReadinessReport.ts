@@ -13,6 +13,8 @@ import {
   getRealLondonPilotExerciseMetadata,
   realLondonOsmPilotRouteExercises,
   realLondonOsmPilotRouteMap,
+  realLondonOsmPilotTwoRouteExercises,
+  realLondonOsmPilotTwoRouteMap,
   type RealLondonPilotExerciseMetadata,
   type RouteRunnerMapBounds,
   type RouteRunnerMapOption
@@ -250,6 +252,8 @@ export type BuildOsmPilotReadinessReportInput = {
 
 const REAL_LONDON_PILOT_FIXTURE_NAME = "realLondonPilotOverpass.json";
 const REAL_LONDON_PILOT_FIXTURE_PATH = "lib/map-engine/osm/fixtures/realLondonPilotOverpass.json";
+const REAL_LONDON_PILOT_TWO_FIXTURE_NAME = "realLondonPilotTwoOverpass.json";
+const REAL_LONDON_PILOT_TWO_FIXTURE_PATH = "lib/map-engine/osm/fixtures/realLondonPilotTwoOverpass.json";
 
 const MANUAL_READINESS_FAILURE_REASON_ORDER: OsmPilotManualAttemptReadinessFailureReason[] = [
   "fastest-route-unavailable",
@@ -282,6 +286,33 @@ export function buildRealLondonPilotReadinessReport(): OsmPilotReadinessReport {
     expectedFixtureName: REAL_LONDON_PILOT_FIXTURE_NAME,
     fixturePath: REAL_LONDON_PILOT_FIXTURE_PATH
   });
+}
+
+export function buildSecondLondonPilotReadinessReport(): OsmPilotReadinessReport {
+  const option = getRouteRunnerMapOption(realLondonOsmPilotTwoRouteMap.id);
+
+  if (!option) {
+    throw new Error(`Missing route-runner map option for ${realLondonOsmPilotTwoRouteMap.id}.`);
+  }
+
+  return buildOsmPilotReadinessReport({
+    mapOption: option,
+    exercises: realLondonOsmPilotTwoRouteExercises,
+    expectedFixtureName: REAL_LONDON_PILOT_TWO_FIXTURE_NAME,
+    fixturePath: REAL_LONDON_PILOT_TWO_FIXTURE_PATH
+  });
+}
+
+export function buildLondonPilotReadinessReportForMapId(mapId: string): OsmPilotReadinessReport {
+  if (mapId === realLondonOsmPilotRouteMap.id) {
+    return buildRealLondonPilotReadinessReport();
+  }
+
+  if (mapId === realLondonOsmPilotTwoRouteMap.id) {
+    return buildSecondLondonPilotReadinessReport();
+  }
+
+  throw new Error(`No London pilot readiness report is registered for ${mapId}.`);
 }
 
 export function buildOsmPilotReadinessReport(input: BuildOsmPilotReadinessReportInput): OsmPilotReadinessReport {

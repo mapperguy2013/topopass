@@ -5,6 +5,11 @@ import type {
 } from "./routeRunnerOsmRealPilotReadinessReport.ts";
 
 export const REAL_LONDON_PILOT_QA_PANEL_MAP_ID = "osm-real-london-pilot";
+export const REAL_LONDON_PILOT_TWO_QA_PANEL_MAP_ID = "osm-real-london-pilot-2";
+const REAL_LONDON_PILOT_QA_PANEL_MAP_IDS = new Set([
+  REAL_LONDON_PILOT_QA_PANEL_MAP_ID,
+  REAL_LONDON_PILOT_TWO_QA_PANEL_MAP_ID
+]);
 
 export type RealLondonPilotQaPanelSummaryId = "acceptance-qa" | "manual-attempt-qa" | "drawn-route-qa";
 
@@ -55,7 +60,7 @@ export type RealLondonPilotQaPanelModel = {
 };
 
 export function shouldShowRealLondonPilotQaPanel(mapId: string): boolean {
-  return mapId === REAL_LONDON_PILOT_QA_PANEL_MAP_ID;
+  return REAL_LONDON_PILOT_QA_PANEL_MAP_IDS.has(mapId);
 }
 
 export function buildRealLondonPilotQaPanelModelForMap(input: {

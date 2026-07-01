@@ -10,6 +10,7 @@ import { convertOverpassJsonToRouteMap, type OsmRouteGraphMapDefinition } from "
 import largeLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/largeLondonOverpass.json" with { type: "json" };
 import mediumLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/mediumLondonOverpass.json" with { type: "json" };
 import realLondonPilotOverpassFixture from "../../../lib/map-engine/osm/fixtures/realLondonPilotOverpass.json" with { type: "json" };
+import realLondonPilotTwoOverpassFixture from "../../../lib/map-engine/osm/fixtures/realLondonPilotTwoOverpass.json" with { type: "json" };
 import tinyLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/tinyLondonOverpass.json" with { type: "json" };
 
 export type RouteRunnerMapSource = "synthetic-dev" | "converted-osm";
@@ -81,6 +82,7 @@ export function getRealLondonPilotExerciseMetadata(
 const OSM_FIXTURE_MAP_ID = "osm-tiny-london-prototype";
 const MEDIUM_OSM_FIXTURE_MAP_ID = "osm-medium-london-prototype";
 const REAL_LONDON_OSM_PILOT_MAP_ID = "osm-real-london-pilot";
+const REAL_LONDON_OSM_PILOT_TWO_MAP_ID = "osm-real-london-pilot-2";
 const LARGE_LONDON_OSM_MAP_ID = "osm-large-london";
 const DEFAULT_ROUTE_RUNNER_MAP_PADDING = 45;
 const LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.22;
@@ -141,6 +143,23 @@ function buildRealLondonOsmPilotMap(): OsmRouteGraphMapDefinition {
 }
 
 export const realLondonOsmPilotRouteMap = buildRealLondonOsmPilotMap();
+
+function buildRealLondonOsmPilotTwoMap(): OsmRouteGraphMapDefinition {
+  const result = convertOverpassJsonToRouteMap(realLondonPilotTwoOverpassFixture, {
+    mapId: REAL_LONDON_OSM_PILOT_TWO_MAP_ID,
+    name: "OSM Real London Pilot 2",
+    description: "Dev-only second London Overpass fixture for route-runner QA checks.",
+    version: 1
+  });
+
+  if (!result.ok) {
+    throw new Error(`Unable to build second real London OSM pilot fixture map: ${result.errors.join("; ")}`);
+  }
+
+  return result.map;
+}
+
+export const realLondonOsmPilotTwoRouteMap = buildRealLondonOsmPilotTwoMap();
 
 function buildLargeLondonOsmMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(largeLondonOverpassFixture, {
@@ -703,6 +722,86 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
 export const realLondonOsmPilotRouteExercises: RealLondonPilotRouteExercise[] =
   realLondonOsmPilotRouteExerciseDefinitions.map(buildRealLondonPilotRouteExercise);
 
+const realLondonOsmPilotTwoRouteExerciseDefinitions = [
+  {
+    id: "osm-real-pilot-2-euston-crossing",
+    title: "Pilot 2: Euston Road crossing",
+    mapId: realLondonOsmPilotTwoRouteMap.id,
+    description: "Start on Euston Road west and route legally to Euston Road east on the second London pilot map.",
+    difficulty: "easy",
+    exerciseVersion: "1.0.0",
+    routeType: "direct",
+    estimatedDistanceMeters: 443.21,
+    expectedComplexity: "Easy direct A to B route across the second committed London pilot fixture.",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5001",
+        label: "Euston Road west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5005",
+        label: "Euston Road east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-2-bloomsbury-checkpoint",
+    title: "Pilot 2: King's Cross to Bloomsbury via Russell Square",
+    mapId: realLondonOsmPilotTwoRouteMap.id,
+    description: "Start near King's Cross Road, pass Russell Square, then finish at Store Street east.",
+    difficulty: "medium",
+    exerciseVersion: "1.0.0",
+    routeType: "checkpoint",
+    estimatedDistanceMeters: 560.75,
+    expectedComplexity: "Medium checkpoint route with one ordered intermediate stop before the destination.",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5002",
+        label: "King's Cross Road north"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5023",
+        label: "Russell Square checkpoint"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5044",
+        label: "Store Street east"
+      }
+    ]
+  },
+  {
+    id: "osm-real-pilot-2-tavistock-one-way-detour",
+    title: "Pilot 2: Tavistock Place one-way detour",
+    mapId: realLondonOsmPilotTwoRouteMap.id,
+    description: "Start at Tavistock Place east and route legally back west without reversing a one-way edge.",
+    difficulty: "medium",
+    exerciseVersion: "1.0.0",
+    routeType: "one-way-awareness",
+    estimatedDistanceMeters: 643.58,
+    expectedComplexity: "Medium one-way-awareness route where the legal path is longer than the visual reverse trip.",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-5015",
+        label: "Tavistock Place east"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-5011",
+        label: "Tavistock Place west"
+      }
+    ]
+  }
+] satisfies RealLondonPilotRouteExerciseInput[];
+
+export const realLondonOsmPilotTwoRouteExercises: RealLondonPilotRouteExercise[] =
+  realLondonOsmPilotTwoRouteExerciseDefinitions.map(buildRealLondonPilotRouteExercise);
+
 export const largeLondonOsmRouteExercises: RouteExercise[] = [
   {
     id: "osm-large-main-crossing",
@@ -855,6 +954,18 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     sourceOverpassFixture: realLondonPilotOverpassFixture
   },
   {
+    id: realLondonOsmPilotTwoRouteMap.id,
+    label: "OSM Real London Pilot 2",
+    description: "Second real exported London Overpass JSON fixture converted into the TOPOPASS route graph.",
+    source: "converted-osm",
+    map: realLondonOsmPilotTwoRouteMap,
+    exercises: realLondonOsmPilotTwoRouteExercises,
+    defaultExerciseId: realLondonOsmPilotTwoRouteExercises[0]?.id ?? "",
+    attribution: "OpenStreetMap contributors",
+    fixtureName: "realLondonPilotTwoOverpass.json",
+    sourceOverpassFixture: realLondonPilotTwoOverpassFixture
+  },
+  {
     id: largeLondonOsmRouteMap.id,
     label: "OSM Large London",
     description: "Larger committed London-like Overpass extract converted into the TOPOPASS route graph shape.",
@@ -910,6 +1021,7 @@ export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
   if (
     map.id !== MEDIUM_OSM_FIXTURE_MAP_ID &&
     map.id !== REAL_LONDON_OSM_PILOT_MAP_ID &&
+    map.id !== REAL_LONDON_OSM_PILOT_TWO_MAP_ID &&
     map.id !== LARGE_LONDON_OSM_MAP_ID
   ) {
     return DEFAULT_ROUTE_RUNNER_MAP_PADDING;

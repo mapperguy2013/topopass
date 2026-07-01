@@ -1,4 +1,9 @@
 export const REAL_LONDON_PILOT_PLAYTHROUGH_PANEL_MAP_ID = "osm-real-london-pilot";
+export const REAL_LONDON_PILOT_TWO_PLAYTHROUGH_PANEL_MAP_ID = "osm-real-london-pilot-2";
+const REAL_LONDON_PILOT_PLAYTHROUGH_PANEL_MAP_IDS = new Set([
+  REAL_LONDON_PILOT_PLAYTHROUGH_PANEL_MAP_ID,
+  REAL_LONDON_PILOT_TWO_PLAYTHROUGH_PANEL_MAP_ID
+]);
 
 export type RealLondonPilotPlaythroughAttemptStatus = "empty" | "in-progress" | "accepted" | "rejected";
 export type RealLondonPilotPlaythroughRevealRouteStatus = "available" | "visible" | "unavailable";
@@ -50,7 +55,7 @@ export type BuildRealLondonPilotPlaythroughPanelInput = {
 };
 
 export function shouldShowRealLondonPilotPlaythroughPanel(mapId: string): boolean {
-  return mapId === REAL_LONDON_PILOT_PLAYTHROUGH_PANEL_MAP_ID;
+  return REAL_LONDON_PILOT_PLAYTHROUGH_PANEL_MAP_IDS.has(mapId);
 }
 
 export function buildRealLondonPilotPlaythroughPanelModel(

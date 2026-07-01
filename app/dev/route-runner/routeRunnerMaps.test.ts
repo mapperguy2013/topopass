@@ -26,6 +26,8 @@ import {
   mediumLondonOsmRouteMap,
   realLondonOsmPilotRouteExercises,
   realLondonOsmPilotRouteMap,
+  realLondonOsmPilotTwoRouteExercises,
+  realLondonOsmPilotTwoRouteMap,
   routeRunnerMapCenter,
   tinyLondonOsmRouteExercises,
   tinyLondonOsmRouteMap
@@ -95,17 +97,19 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const tinyOption = getRouteRunnerMapOption(tinyLondonOsmRouteMap.id);
   const mediumOption = getRouteRunnerMapOption(mediumLondonOsmRouteMap.id);
   const largeOption = getRouteRunnerMapOption(largeLondonOsmRouteMap.id);
+  const realPilotTwoOption = getRouteRunnerMapOption(realLondonOsmPilotTwoRouteMap.id);
 
   assert.ok(syntheticOption);
   assert.ok(tinyOption);
   assert.ok(mediumOption);
   assert.ok(largeOption);
   assert.ok(getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id));
+  assert.ok(realPilotTwoOption);
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
   assert.equal(mediumOption.source, "converted-osm");
   assert.equal(largeOption.source, "converted-osm");
-  assert.equal(convertedOptions.length, 4);
+  assert.equal(convertedOptions.length, 5);
   assert.ok(syntheticOption.exercises.every((exercise) => !exercise.id.startsWith("osm-")));
   assert.deepEqual(
     tinyOption.exercises.map((exercise) => exercise.id),
@@ -120,6 +124,10 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     realLondonOsmPilotRouteExercises.map((exercise) => exercise.id)
   );
   assert.deepEqual(
+    realPilotTwoOption.exercises.map((exercise) => exercise.id),
+    realLondonOsmPilotTwoRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
     largeOption.exercises.map((exercise) => exercise.id),
     largeLondonOsmRouteExercises.map((exercise) => exercise.id)
   );
@@ -130,6 +138,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
       exercise.id.startsWith("osm-real-")
     )
   );
+  assert.ok(realPilotTwoOption.exercises.every((exercise) => exercise.id.startsWith("osm-real-pilot-2-")));
   assert.ok(largeOption.exercises.every((exercise) => exercise.id.startsWith("osm-large-")));
 });
 
@@ -161,6 +170,13 @@ test("larger converted OSM maps use a more comfortable first-load fit", () => {
   assert.equal(getRouteRunnerMapFitPadding(tinyLondonOsmRouteMap), 45);
   assert.equal(getRouteRunnerMapFitPadding(mediumLondonOsmRouteMap), 156.73784324000002);
   assert.deepEqual(getRouteRunnerMapFitBounds(mediumLondonOsmRouteMap), {
+    minX: -512.96021424,
+    minY: -478.84346524,
+    maxX: 512.96021424,
+    maxY: 478.83072924000004
+  });
+  assert.equal(getRouteRunnerMapFitPadding(realLondonOsmPilotTwoRouteMap), 156.73784324000002);
+  assert.deepEqual(getRouteRunnerMapFitBounds(realLondonOsmPilotTwoRouteMap), {
     minX: -512.96021424,
     minY: -478.84346524,
     maxX: 512.96021424,
@@ -214,6 +230,7 @@ test("all route-runner maps render nodes inside sane first-load viewport bounds"
     tinyLondonOsmRouteMap,
     mediumLondonOsmRouteMap,
     realLondonOsmPilotRouteMap,
+    realLondonOsmPilotTwoRouteMap,
     largeLondonOsmRouteMap
   ];
 

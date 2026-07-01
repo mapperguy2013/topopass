@@ -17,7 +17,7 @@ import {
   isConvertedOsmRouteRunnerMap,
   type RouteRunnerMapOption
 } from "./routeRunnerMaps.ts";
-import { buildRealLondonPilotReadinessReport } from "./routeRunnerOsmRealPilotReadinessReport.ts";
+import { buildLondonPilotReadinessReportForMapId } from "./routeRunnerOsmRealPilotReadinessReport.ts";
 import {
   buildRealLondonPilotPlaythroughPanelModel,
   shouldShowRealLondonPilotPlaythroughPanel
@@ -385,7 +385,7 @@ function buildMobileQaPanelRows(input: {
   if (shouldShowRealLondonPilotQaPanel(input.mapOption.map.id)) {
     const readinessPanel = buildRealLondonPilotQaPanelModelForMap({
       mapId: input.mapOption.map.id,
-      report: buildRealLondonPilotReadinessReport()
+      report: buildLondonPilotReadinessReportForMapId(input.mapOption.map.id)
     });
 
     panels.push(
