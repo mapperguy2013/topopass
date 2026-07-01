@@ -45,6 +45,8 @@ export type SyntheticLegendTone =
   | "checkpoint"
   | "finish"
   | "road"
+  | "road-highlight"
+  | "context-road"
   | "background";
 
 export type SyntheticRoadStyle = {
@@ -790,8 +792,14 @@ export function buildSyntheticStreetMapLegendItems(): SyntheticStreetMapLegendIt
     {
       id: "major-road",
       label: "Major / secondary roads",
-      description: "Wider warm roads show the main synthetic street hierarchy.",
-      tone: "road"
+      description: "Wider orange and yellow roads highlight routable or important road geometry.",
+      tone: "road-highlight"
+    },
+    {
+      id: "context-road",
+      label: "Grey context roads",
+      description: "Grey roads are visible context or de-emphasised road geometry; use signs and route feedback to judge restrictions.",
+      tone: "context-road"
     },
     {
       id: "your-route",
@@ -820,7 +828,7 @@ export function buildSyntheticStreetMapLegendItems(): SyntheticStreetMapLegendIt
     {
       id: "one-way",
       label: "One-way",
-      description: "Blue arrows show one-way travel direction.",
+      description: "Blue arrows show permitted one-way travel direction.",
       tone: "one-way"
     },
     {

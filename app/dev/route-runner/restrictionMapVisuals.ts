@@ -72,6 +72,7 @@ export type BuildRestrictionMapVisualItemsInput = {
 };
 
 const LONG_ROAD_ARROW_THRESHOLD = 180;
+export const ONE_WAY_ARROW_MIN_SPACING_METERS = 50;
 
 function clonePoint(point: Vec2): Vec2 {
   return {
@@ -135,31 +136,47 @@ export function buildNoEntryVisualItems(overlays: readonly RoadRestrictionOverla
 }
 
 export function buildOneWayVisualItems(overlays: readonly RoadRestrictionOverlay[]): RestrictionMapVisualItem[] {
-  return roadRestrictionItemsByKind(overlays, "one-way").flatMap((overlay) => {
+  const lastRenderedPointByRoadGroup = new Map<string, Vec2>();
+  const items: RestrictionMapVisualItem[] = [];
+
+  for (const overlay of roadRestrictionItemsByKind(overlays, "one-way")) {
     const direction = overlay.direction;
 
     if (!direction) {
-      return [];
+      continue;
     }
 
     const ratios = distanceBetween(direction.from, direction.to) >= LONG_ROAD_ARROW_THRESHOLD ? [0.34, 0.66] : [0.5];
+    const roadGroupId = overlay.renderGroupId ?? overlay.roadId;
 
-    return ratios.map((ratio, index) => ({
-      id: `one-way:${overlay.roadId}:${index}`,
-      kind: "one-way" as const,
-      symbol: "one-way-arrow" as const,
-      label: overlay.label,
-      point: lerpPoint(direction.from, direction.to, ratio),
-      points: overlayPoints(overlay),
-      roadIds: [overlay.roadId],
-      priority: 20,
-      sourceId: overlay.roadId,
-      direction: {
-        from: clonePoint(direction.from),
-        to: clonePoint(direction.to)
+    ratios.forEach((ratio, index) => {
+      const point = lerpPoint(direction.from, direction.to, ratio);
+      const previousPoint = lastRenderedPointByRoadGroup.get(roadGroupId);
+
+      if (previousPoint && distanceBetween(previousPoint, point) < ONE_WAY_ARROW_MIN_SPACING_METERS) {
+        return;
       }
-    }));
-  });
+
+      lastRenderedPointByRoadGroup.set(roadGroupId, point);
+      items.push({
+        id: `one-way:${overlay.roadId}:${index}`,
+        kind: "one-way",
+        symbol: "one-way-arrow",
+        label: overlay.label,
+        point,
+        points: overlayPoints(overlay),
+        roadIds: [overlay.roadId],
+        priority: 20,
+        sourceId: overlay.roadId,
+        direction: {
+          from: clonePoint(direction.from),
+          to: clonePoint(direction.to)
+        }
+      });
+    });
+  }
+
+  return items;
 }
 
 export function buildRestrictedRoadVisualItems(overlays: readonly RoadRestrictionOverlay[]): RestrictionMapVisualItem[] {
@@ -338,6 +355,18 @@ export function buildSelectedRestrictionHighlight(
 export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
   return [
     {
+      id: "highlighted-routable-roads",
+      label: "Orange/yellow roads",
+      description: "Orange and yellow roads highlight routable or important road geometry.",
+      tone: "road-highlight"
+    },
+    {
+      id: "context-roads",
+      label: "Grey context roads",
+      description: "Grey roads are visible context or de-emphasised road geometry; use signs and route feedback to judge restrictions.",
+      tone: "context-road"
+    },
+    {
       id: "your-route",
       label: "Your route",
       description: "Orange is raw drawing; purple is the matched route.",
@@ -363,8 +392,8 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "one-way",
-      label: "One Way",
-      description: "Blue arrowheads show the legal travel direction.",
+      label: "Blue one-way arrows",
+      description: "Blue arrowheads show the permitted one-way travel direction.",
       tone: "one-way"
     },
     {

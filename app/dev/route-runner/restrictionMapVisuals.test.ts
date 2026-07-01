@@ -311,6 +311,8 @@ test("buildRestrictionLegendItems covers the polished restriction layer", () => 
   assert.deepEqual(
     legend.map((item) => item.id),
     [
+      "highlighted-routable-roads",
+      "context-roads",
       "your-route",
       "shortest-legal-route",
       "illegal-movement",

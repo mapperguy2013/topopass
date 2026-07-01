@@ -53,6 +53,7 @@ export type RoadRestrictionOverlayKind = "no-entry" | "one-way" | "restricted";
 
 export type RoadRestrictionOverlay = {
   roadId: string;
+  renderGroupId?: string;
   kind: RoadRestrictionOverlayKind;
   label: string;
   points: Vec2[];
@@ -167,6 +168,27 @@ function roadMidpoint(from: Vec2, to: Vec2): Vec2 {
   };
 }
 
+type RoadWithOptionalOsmMetadata = MapRoad & {
+  metadata?: {
+    source?: string;
+    osmWayId?: string | number;
+  };
+};
+
+function roadRestrictionRenderGroupId(road: MapRoad): string | undefined {
+  const metadata = (road as RoadWithOptionalOsmMetadata).metadata;
+
+  if (metadata?.source !== "osm") {
+    return undefined;
+  }
+
+  if (typeof metadata.osmWayId !== "string" && typeof metadata.osmWayId !== "number") {
+    return undefined;
+  }
+
+  return `osm-way:${String(metadata.osmWayId)}`;
+}
+
 function directionFromNodeIds(map: MapDefinition, fromNodeId: string, toNodeId: string): RoadRestrictionOverlay["direction"] {
   const from = map.nodes.find((node) => node.id === fromNodeId);
   const to = map.nodes.find((node) => node.id === toNodeId);
@@ -181,9 +203,16 @@ function directionFromNodeIds(map: MapDefinition, fromNodeId: string, toNodeId: 
   };
 }
 
-function roadOverlayBase(road: MapRoad, from: Vec2, to: Vec2): Pick<RoadRestrictionOverlay, "roadId" | "points" | "midpoint"> {
+function roadOverlayBase(
+  road: MapRoad,
+  from: Vec2,
+  to: Vec2
+): Pick<RoadRestrictionOverlay, "roadId" | "renderGroupId" | "points" | "midpoint"> {
+  const renderGroupId = roadRestrictionRenderGroupId(road);
+
   return {
     roadId: road.id,
+    ...(renderGroupId ? { renderGroupId } : {}),
     points: [
       { x: from.x, y: from.y },
       { x: to.x, y: to.y }

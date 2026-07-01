@@ -2697,6 +2697,25 @@ out body;
 - Focused coverage can be run with `npm.cmd run test:real-london-beta-gate`;
   it is also registered under `npm.cmd run test:map`.
 
+## Stage 131 Map Visual Semantics and One-Way Arrow Density
+
+- `/dev/route-runner` now applies a deterministic one-way arrow spacing rule:
+  arrows on the same road/rendered OSM way group are kept at least 50 metres
+  apart, while nearby arrows on different roads are left alone.
+- Short one-way roads still get a single permitted-direction arrow when the
+  renderer would otherwise show one, and arrow direction metadata is preserved.
+- The compact route-runner legend now clarifies that blue arrows mean permitted
+  one-way travel direction, orange/yellow roads highlight routable or important
+  road geometry, and grey roads are context/de-emphasised geometry rather than
+  automatically unavailable roads.
+- This stage is presentation-only. It does not change route solving, scoring,
+  snapping, legality, exercise definitions, OSM fixtures, Supabase, auth,
+  analytics, deployment behavior, production behavior, or default map
+  selection. Marlowe remains the default route-runner map, and the real London
+  pilot maps remain committed-fixture-only.
+- Focused coverage can be run with `npm.cmd run test:map-visual-semantics`;
+  it is also registered under `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

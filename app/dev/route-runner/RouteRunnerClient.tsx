@@ -724,6 +724,14 @@ function syntheticLegendToneClass(tone: SyntheticStreetMapLegendItem["tone"]): s
     return "border-amber-200 bg-amber-50 text-amber-950";
   }
 
+  if (tone === "road-highlight") {
+    return "border-yellow-200 bg-yellow-50 text-yellow-950";
+  }
+
+  if (tone === "context-road" || tone === "road") {
+    return "border-slate-200 bg-white text-slate-800";
+  }
+
   if (tone === "finish") {
     return "border-slate-300 bg-slate-100 text-slate-950";
   }

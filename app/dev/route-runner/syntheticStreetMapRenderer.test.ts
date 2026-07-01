@@ -280,6 +280,8 @@ test("synthetic street map legend covers route restrictions stops and background
   const legendItems = buildSyntheticStreetMapLegendItems();
   const ids = legendItems.map((item) => item.id);
 
+  assert.ok(ids.includes("major-road"));
+  assert.ok(ids.includes("context-road"));
   assert.ok(ids.includes("your-route"));
   assert.ok(ids.includes("shortest-legal-route"));
   assert.ok(ids.includes("illegal-movement"));
