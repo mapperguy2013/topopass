@@ -2828,8 +2828,8 @@ out body;
   BETA_FEEDBACK_TABLE=beta_feedback
   ```
 
-  `BETA_FEEDBACK_TABLE` is optional and defaults to `beta_feedback`. Do not use
-  `NEXT_PUBLIC_` for service-role secrets. `SUPABASE_SERVICE_ROLE_KEY` is
+  `BETA_FEEDBACK_TABLE` is optional and defaults to `beta_feedback`.
+  Do not use `NEXT_PUBLIC_` for service-role secrets. `SUPABASE_SERVICE_ROLE_KEY` is
   server-only and is read only by the beta feedback storage adapter.
 - Added `supabase/migrations/005_beta_feedback.sql` for the production
   `public.beta_feedback` table. The table stores the validated feedback payload
@@ -2845,6 +2845,33 @@ out body;
   not call the production store. Marlowe remains the default practice map and
   route scoring, snapping, legality, exercises, OSM conversion, auth, analytics,
   and unrelated persistence are unchanged.
+- Focused coverage remains
+  `npm.cmd run test:public-beta-feedback`; it is also registered under
+  `npm.cmd run test:map`.
+
+## Stage 136 Add Beta Feedback Review and Export Tool
+
+- Added an internal review surface at `/dev/beta-feedback` for stored Real
+  London beta feedback. It is not a public beta-user feature and stays
+  unavailable unless `BETA_FEEDBACK_REVIEW_ENABLED=true` is set.
+- The review tool reuses the Stage 135 storage configuration. In development
+  and test it reads validated local JSONL records from
+  `.local/beta-feedback.jsonl`. In production it reads the configured
+  Supabase/PostgREST `beta_feedback` table only when the server-only storage
+  variables are present; missing production config returns a safe unavailable
+  state.
+- The page and `GET /api/beta-feedback/review` show created time, map id,
+  exercise id, rating, feedback type, notes, map/exercise version metadata,
+  storage source/status, and a collapsed raw payload preview. Filtering is
+  supported by map id, exercise id, rating, and feedback type, with results
+  ordered newest first.
+- CSV (`format=csv`) and JSON (`format=json`) exports include only validated
+  stored feedback records. Invalid stored rows are skipped with deterministic
+  review reason codes and are not exported.
+- Security limitations: do not expose this route to beta testers. Do not use `NEXT_PUBLIC_`
+  for service-role secrets. `SUPABASE_SERVICE_ROLE_KEY` remains
+  server-only, is not read by the review page client surface, and is never
+  returned in review API responses or exports.
 - Focused coverage remains
   `npm.cmd run test:public-beta-feedback`; it is also registered under
   `npm.cmd run test:map`.

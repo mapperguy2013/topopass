@@ -289,6 +289,7 @@ test("beta feedback service-role usage stays server-only", () => {
     "app/practice/real-london/RealLondonBetaFeedbackForm.tsx",
     "app/practice/real-london/realLondonBetaFeedback.ts",
     "app/practice/real-london/page.tsx",
+    "app/dev/beta-feedback/page.tsx",
     "app/beta/page.tsx",
     "app/beta/betaTesterEntry.ts"
   ];
