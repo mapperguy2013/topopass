@@ -2785,6 +2785,32 @@ out body;
   `npm.cmd run test:real-london-beta-entry-feedback`; it is also registered
   under `npm.cmd run test:map`.
 
+## Stage 134 Store Public Beta Feedback
+
+- Replaced the Stage 133 local/no-op feedback submission with
+  `POST /api/beta-feedback`. The API validates the typed beta feedback payload
+  server-side, rejects invalid submissions with stable `400` responses, rejects
+  submissions while `NEXT_PUBLIC_REAL_LONDON_BETA` is disabled, and returns
+  explicit unavailable responses when feedback storage is not configured.
+- Real London beta access is public when enabled with
+  `NEXT_PUBLIC_REAL_LONDON_BETA=true`; it is not invite-only and does not
+  require login, auth, analytics, email delivery, Supabase writes, or external
+  feedback services. Real London still remains behind the public beta flag and
+  Marlowe remains the default practice map.
+- Added a small `BetaFeedbackStore` abstraction. In local development and test
+  environments, feedback is written as JSONL to `.local/beta-feedback.jsonl`;
+  `.local/` is gitignored and stored feedback must not be committed.
+- Production currently returns a clear not-configured/unavailable response
+  unless a durable production store is added later. The frontend surfaces that
+  failure and keeps the user's typed comments instead of pretending feedback was
+  saved.
+- Feedback payloads preserve Stage 133 context with `sourceStage: 133` and now
+  submit as Stage `134`, including map/exercise ids and versions, exercise
+  title, timestamp, beta access state, rating, issue type, and comments.
+- Focused coverage can be run with
+  `npm.cmd run test:public-beta-feedback`; it is also registered under
+  `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning

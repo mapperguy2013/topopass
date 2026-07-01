@@ -4,7 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import {
   REAL_LONDON_BETA_FEEDBACK_ISSUE_TYPES,
   buildRealLondonBetaFeedbackMetadata,
-  submitRealLondonBetaFeedbackLocally,
+  submitRealLondonBetaFeedbackToApi,
   type RealLondonBetaFeedbackIssueType,
   type RealLondonBetaFeedbackSubmissionResult
 } from "./realLondonBetaFeedback";
@@ -40,6 +40,7 @@ export function RealLondonBetaFeedbackForm({
   const [issueType, setIssueType] = useState<RealLondonBetaFeedbackIssueType>("route-unclear");
   const [comments, setComments] = useState("");
   const [result, setResult] = useState<RealLondonBetaFeedbackSubmissionResult | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const metadataPreview = useMemo(
     () => ({
@@ -51,8 +52,9 @@ export function RealLondonBetaFeedbackForm({
     [exerciseId, exerciseVersion, mapId, mapVersion]
   );
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSubmitting(true);
     const metadata = buildRealLondonBetaFeedbackMetadata({
       mapId,
       mapVersion,
@@ -62,16 +64,20 @@ export function RealLondonBetaFeedbackForm({
       betaEnabled
     });
 
-    setResult(
-      submitRealLondonBetaFeedbackLocally({
+    try {
+      const submitResult = await submitRealLondonBetaFeedbackToApi({
         metadata,
         draft: {
           rating: Number(rating),
           issueType,
           comments
         }
-      })
-    );
+      });
+
+      setResult(submitResult);
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -81,8 +87,8 @@ export function RealLondonBetaFeedbackForm({
       </p>
       <h2 className="mt-2 text-xl font-bold text-ink">Share what happened</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
-        This form captures feedback locally in the browser session only. It is ready for future backend wiring, but it
-        does not send, email, or persist feedback today.
+        This form saves feedback through the beta feedback API when storage is available. If storage is unavailable,
+        your typed comment stays here so you can try again later.
       </p>
 
       <form className="mt-4 grid gap-4 lg:grid-cols-[220px_260px_minmax(0,1fr)]" onSubmit={handleSubmit}>
@@ -152,10 +158,12 @@ export function RealLondonBetaFeedbackForm({
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:col-span-3">
           <button
+            aria-busy={isSubmitting}
             className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+            disabled={isSubmitting}
             type="submit"
           >
-            Submit beta feedback
+            {isSubmitting ? "Saving feedback..." : "Submit beta feedback"}
           </button>
           {result ? (
             <p

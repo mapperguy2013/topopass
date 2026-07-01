@@ -197,8 +197,8 @@ export default function PracticePage() {
               {betaEntry.title}
             </p>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">
-              Selected beta testers can try a limited real London route drawing pilot and share feedback after each
-              exercise. Marlowe remains the standard default practice experience.
+              Public beta users can try a limited real London route drawing pilot and share feedback after each
+              exercise while the beta flag is enabled. Marlowe remains the standard default practice experience.
             </p>
             <Link
               className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"

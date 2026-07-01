@@ -71,7 +71,7 @@ export function buildBetaTesterEntryModel(input: {
       reasonCode: "real-london-beta-disabled",
       unavailableTitle: "Real London beta is not available",
       unavailableMessage:
-        "Real London practice is limited to beta-enabled testers while the pilot map and exercises remain under review. Standard Marlowe practice remains the default experience.",
+        "Real London practice is available when the public beta flag is enabled while the pilot map and exercises remain under review. Standard Marlowe practice remains the default experience.",
       ctaLabel: "Go to standard practice",
       isDefaultExperience: false
     };
@@ -92,7 +92,7 @@ export function buildBetaTesterEntryModel(input: {
     attribution: "OpenStreetMap contributors",
     knownLimitations: [...REAL_LONDON_BETA_KNOWN_LIMITATIONS],
     betaCopy:
-      "Real London practice is a limited beta using committed local OSM fixture data. Try the pilot exercises, then share feedback from the practice screen.",
+      "Real London practice is a public beta using committed local OSM fixture data. Try the pilot exercises, then share feedback from the practice screen.",
     ctaLabel: "Start Real London beta practice",
     isDefaultExperience: false
   };

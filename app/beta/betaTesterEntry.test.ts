@@ -28,7 +28,7 @@ test("Stage 133 beta entry exposes the real London CTA when beta access is enabl
   assert.equal(model.mapId, realLondonOsmPilotRouteMap.id);
   assert.equal(model.mapVersion, "1.0.0");
   assert.equal(model.attribution, "OpenStreetMap contributors");
-  assert.match(model.betaCopy, /limited beta/i);
+  assert.match(model.betaCopy, /public beta/i);
   assert.ok(model.knownLimitations.some((limitation) => limitation.includes("committed local OSM fixtures only")));
   assert.equal(model.isDefaultExperience, false);
 });
@@ -40,7 +40,7 @@ test("Stage 133 beta entry shows a safe unavailable state when beta access is di
   assert.equal(model.reasonCode, "real-london-beta-disabled");
   assert.equal(model.defaultPracticeHref, "/practice");
   assert.equal(model.defaultMapId, DEFAULT_ROUTE_RUNNER_MAP_ID);
-  assert.match(model.unavailableMessage, /beta-enabled testers/);
+  assert.match(model.unavailableMessage, /public beta flag is enabled/);
   assert.match(model.unavailableMessage, /Marlowe practice remains the default/);
   assert.equal(model.isDefaultExperience, false);
 });
