@@ -2648,6 +2648,26 @@ out body;
   routing APIs, and no production behavior changes. Marlowe remains the default
   map.
 
+## Stage 129 Dev Exercise Candidate Generator
+
+- Added a dev/test-only route-runner exercise candidate generator that proposes
+  review candidates from committed map data without registering them as official
+  playable exercises.
+- The generator produces deterministic candidate IDs, start/destination nodes,
+  optional checkpoint nodes, estimated route distance, fastest-route edge count,
+  difficulty/type estimates, review status, notes, warnings, and stable
+  rejection reason codes.
+- Added deterministic QA review output with map/version metadata, accepted and
+  rejected counts, grouped rejection reasons, grouped warnings, and a
+  `hasReviewableCandidates` flag for human inspection.
+- Candidate generation reuses existing legal route helpers and remains bounded,
+  fixture-only, and review-only. It does not change route solving, scoring,
+  snapping, legality, official exercises, Supabase, auth, analytics, deployment,
+  production behavior, or default map selection.
+- Focused coverage can be run with
+  `npm.cmd run test:route-candidate-generator`; it is also registered under
+  `npm.cmd run test:map`.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
