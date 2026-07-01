@@ -188,7 +188,7 @@ test("real London OSM pilot debug summary is deterministic", () => {
   });
 
   assert.equal(summary.mapId, "osm-real-london-pilot");
-  assert.equal(summary.mapName, "OSM Real London Pilot");
+  assert.equal(summary.mapName, "Real London pilot map");
   assert.equal(summary.sourceFixtureName, "realLondonPilotOverpass.json");
   assert.equal(summary.sourceKind, "osm");
   assert.equal(summary.nodeCount, 390);

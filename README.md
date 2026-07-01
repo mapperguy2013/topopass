@@ -2195,7 +2195,7 @@ out body;
   The fixture is validated as JSON with Overpass-style `elements`, `node`, and
   `way` records; tests explicitly guard against accidentally committing GeoJSON,
   XML/HTML, or an Overpass error response.
-- Registered the fixture as the dev-only `OSM Real London Pilot` map with id
+- Registered the fixture as the dev-only `Real London pilot map` with id
   `osm-real-london-pilot`. The Marlowe synthetic map remains the default, and
   the tiny, medium, and large OSM QA fixtures remain selectable.
 - The real export contains 559 Overpass elements: 396 source nodes and 163
@@ -2635,8 +2635,9 @@ out body;
   backed by the committed local
   `lib/map-engine/osm/fixtures/realLondonPilotTwoOverpass.json` fixture.
 - The second pilot uses the existing OSM conversion/import path and appears as a
-  separate selectable `/dev/route-runner` map without replacing or mutating the
-  existing `osm-real-london-pilot`.
+  separate selectable `/dev/route-runner` map labelled `Real London pilot map 2`
+  without replacing or mutating the existing `Real London pilot map`. The
+  generic `OSM Large London` fixture remains separately selectable.
 - Added three starter exercises for the second pilot: an easy direct route, a
   medium checkpoint route, and a medium one-way-awareness route, all with
   deterministic difficulty/type/distance/complexity metadata plus semver map and

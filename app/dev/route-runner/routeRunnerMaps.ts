@@ -130,7 +130,7 @@ export const mediumLondonOsmRouteMap = buildMediumLondonOsmMap();
 function buildRealLondonOsmPilotMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(realLondonPilotOverpassFixture, {
     mapId: REAL_LONDON_OSM_PILOT_MAP_ID,
-    name: "OSM Real London Pilot",
+    name: "Real London pilot map",
     description: "Dev-only real exported London Overpass fixture for route-runner QA checks.",
     version: 1
   });
@@ -147,7 +147,7 @@ export const realLondonOsmPilotRouteMap = buildRealLondonOsmPilotMap();
 function buildRealLondonOsmPilotTwoMap(): OsmRouteGraphMapDefinition {
   const result = convertOverpassJsonToRouteMap(realLondonPilotTwoOverpassFixture, {
     mapId: REAL_LONDON_OSM_PILOT_TWO_MAP_ID,
-    name: "OSM Real London Pilot 2",
+    name: "Real London pilot map 2",
     description: "Dev-only second London Overpass fixture for route-runner QA checks.",
     version: 1
   });
@@ -943,7 +943,7 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   },
   {
     id: realLondonOsmPilotRouteMap.id,
-    label: "OSM Real London Pilot",
+    label: "Real London pilot map",
     description: "Real exported London Overpass JSON fixture converted into the TOPOPASS route graph.",
     source: "converted-osm",
     map: realLondonOsmPilotRouteMap,
@@ -955,7 +955,7 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   },
   {
     id: realLondonOsmPilotTwoRouteMap.id,
-    label: "OSM Real London Pilot 2",
+    label: "Real London pilot map 2",
     description: "Second real exported London Overpass JSON fixture converted into the TOPOPASS route graph.",
     source: "converted-osm",
     map: realLondonOsmPilotTwoRouteMap,

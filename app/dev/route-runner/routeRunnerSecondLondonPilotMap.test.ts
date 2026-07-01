@@ -62,7 +62,7 @@ test("Stage 128 second London pilot fixture imports through the existing OSM pat
   assert.ok(imported.roads.length > 0);
   assert.ok(imported.nodeCount > 0);
   assert.equal(option.map.id, "osm-real-london-pilot-2");
-  assert.equal(option.map.name, "OSM Real London Pilot 2");
+  assert.equal(option.map.name, "Real London pilot map 2");
   assert.ok(option.map.nodes.length > 0);
   assert.ok(option.map.roads.length > 0);
 });

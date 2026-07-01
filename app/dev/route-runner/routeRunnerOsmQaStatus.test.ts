@@ -102,7 +102,7 @@ test("OSM QA status panel data is generated for the real London pilot map", () =
 
   assert.ok(model);
   assert.equal(model.mapId, realLondonOsmPilotRouteMap.id);
-  assert.equal(model.mapName, "OSM Real London Pilot");
+  assert.equal(model.mapName, "Real London pilot map");
   assert.equal(model.nodeCount, 390);
   assert.equal(model.directedEdgeCount, 588);
   assert.equal(model.exerciseCount, realLondonOsmPilotRouteExercises.length);

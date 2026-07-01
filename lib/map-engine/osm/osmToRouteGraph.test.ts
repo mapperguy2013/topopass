@@ -56,7 +56,7 @@ function convertLargeFixture() {
 function convertRealLondonPilotFixture() {
   const result = convertOverpassJsonToRouteMap(realLondonPilotFixture, {
     mapId: "osm-real-london-pilot",
-    name: "OSM Real London Pilot"
+    name: "Real London pilot map"
   });
 
   assert.equal(result.ok, true, result.ok ? undefined : result.errors.join("; "));
@@ -360,7 +360,7 @@ test("real London pilot fixture converts into a real exported route graph", () =
   const map = convertRealLondonPilotFixture();
 
   assert.equal(map.id, "osm-real-london-pilot");
-  assert.equal(map.name, "OSM Real London Pilot");
+  assert.equal(map.name, "Real London pilot map");
   assert.equal(map.nodes.length, 390);
   assert.equal(map.roads.length, 395);
   assert.equal(map.metadata.sourceRoadCount, 161);

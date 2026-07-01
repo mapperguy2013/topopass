@@ -96,20 +96,36 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const convertedOptions = ROUTE_RUNNER_MAP_OPTIONS.filter((option) => option.source === "converted-osm");
   const tinyOption = getRouteRunnerMapOption(tinyLondonOsmRouteMap.id);
   const mediumOption = getRouteRunnerMapOption(mediumLondonOsmRouteMap.id);
+  const realPilotOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
   const largeOption = getRouteRunnerMapOption(largeLondonOsmRouteMap.id);
   const realPilotTwoOption = getRouteRunnerMapOption(realLondonOsmPilotTwoRouteMap.id);
 
   assert.ok(syntheticOption);
   assert.ok(tinyOption);
   assert.ok(mediumOption);
+  assert.ok(realPilotOption);
   assert.ok(largeOption);
-  assert.ok(getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id));
   assert.ok(realPilotTwoOption);
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
   assert.equal(mediumOption.source, "converted-osm");
+  assert.equal(realPilotOption.source, "converted-osm");
   assert.equal(largeOption.source, "converted-osm");
+  assert.equal(realPilotTwoOption.source, "converted-osm");
   assert.equal(convertedOptions.length, 5);
+  assert.deepEqual(
+    [realPilotOption.id, realPilotTwoOption.id, largeOption.id],
+    ["osm-real-london-pilot", "osm-real-london-pilot-2", "osm-large-london"]
+  );
+  assert.equal(new Set([realPilotOption.id, realPilotTwoOption.id, largeOption.id]).size, 3);
+  assert.deepEqual(
+    [realPilotOption.fixtureName, realPilotTwoOption.fixtureName, largeOption.fixtureName],
+    ["realLondonPilotOverpass.json", "realLondonPilotTwoOverpass.json", "largeLondonOverpass.json"]
+  );
+  assert.deepEqual(
+    [realPilotOption.label, realPilotTwoOption.label, largeOption.label],
+    ["Real London pilot map", "Real London pilot map 2", "OSM Large London"]
+  );
   assert.ok(syntheticOption.exercises.every((exercise) => !exercise.id.startsWith("osm-")));
   assert.deepEqual(
     tinyOption.exercises.map((exercise) => exercise.id),
@@ -120,7 +136,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     mediumLondonOsmRouteExercises.map((exercise) => exercise.id)
   );
   assert.deepEqual(
-    getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id)?.exercises.map((exercise) => exercise.id),
+    realPilotOption.exercises.map((exercise) => exercise.id),
     realLondonOsmPilotRouteExercises.map((exercise) => exercise.id)
   );
   assert.deepEqual(
@@ -134,9 +150,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.ok(tinyOption.exercises.every((exercise) => exercise.id.startsWith("osm-tiny-")));
   assert.ok(mediumOption.exercises.every((exercise) => exercise.id.startsWith("osm-medium-")));
   assert.ok(
-    getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id)?.exercises.every((exercise) =>
-      exercise.id.startsWith("osm-real-")
-    )
+    realPilotOption.exercises.every((exercise) => exercise.id.startsWith("osm-real-"))
   );
   assert.ok(realPilotTwoOption.exercises.every((exercise) => exercise.id.startsWith("osm-real-pilot-2-")));
   assert.ok(largeOption.exercises.every((exercise) => exercise.id.startsWith("osm-large-")));
@@ -362,7 +376,7 @@ test("real London OSM pilot fixture is selectable from the real export", () => {
   assert.equal(realOption.source, "converted-osm");
   assert.ok(isConvertedOsmRouteRunnerMap(realOption));
   assert.equal(realOption.id, "osm-real-london-pilot");
-  assert.equal(realOption.label, "OSM Real London Pilot");
+  assert.equal(realOption.label, "Real London pilot map");
   assert.equal(realOption.attribution, "OpenStreetMap contributors");
   assert.equal(realOption.map.nodes.length, 390);
   assert.equal(realOption.map.roads.length, 395);
