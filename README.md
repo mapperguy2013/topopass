@@ -837,6 +837,14 @@ The current committed Real London Overpass fixtures audit to zero for those
 non-road context categories, so the renderer still does not invent unavailable
 landmarks or restrictions; routing, legality, scoring, exercises, beta gates,
 feedback, and route attempts are unchanged.
+Stage 151 adds a dev-only synthetic Phase 6 visual QA scenario that combines
+dense London-like streets, hierarchy, parks, water, rail, station, landmarks,
+area names, objective stops, one-way arrows, and a turn-restriction warning in
+one inspectable map option. It also strengthens central objective-overlay
+tokens so start, destination, first required via point, checkpoints, optional
+snap hints, and selected/matched nodes read above the base map without changing
+route logic, legality, scoring, exercises, beta gates, feedback, or OSM
+conversion behaviour.
 
 ## Current Feature Set
 

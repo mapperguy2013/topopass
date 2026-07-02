@@ -8,6 +8,7 @@ import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   ROUTE_RUNNER_MAP_OPTIONS,
   getRouteRunnerMapOption,
+  isDevOnlyRouteRunnerMapOption,
   realLondonOsmPilotRouteMap,
   realLondonOsmPilotTwoRouteMap,
   type RouteRunnerMapOption
@@ -117,7 +118,9 @@ export function getRouteRunnerVisibleMapOptions(input: {
   const betaEnabled = input.betaEnabled ?? isRealLondonBetaAccessEnabled(input.env);
   const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
 
-  return mapOptions.filter((option) => betaEnabled || !isRealLondonBetaMapId(option.map.id));
+  return mapOptions.filter(
+    (option) => !isDevOnlyRouteRunnerMapOption(option) && (betaEnabled || !isRealLondonBetaMapId(option.map.id))
+  );
 }
 
 export function getRouteRunnerDevQaMapOptions(
@@ -136,7 +139,9 @@ export function resolveRealLondonBetaMapAccess(input: {
   const betaEnabled = input.betaEnabled ?? isRealLondonBetaAccessEnabled(input.env);
   const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
   const defaultMapId = input.defaultMapId ?? DEFAULT_ROUTE_RUNNER_MAP_ID;
-  const requestedMapOption = mapOptions.find((option) => option.map.id === input.requestedMapId);
+  const requestedMapOption = mapOptions.find(
+    (option) => option.map.id === input.requestedMapId && !isDevOnlyRouteRunnerMapOption(option)
+  );
   const defaultMapOption =
     mapOptions.find((option) => option.map.id === defaultMapId) ?? getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
 

@@ -8,6 +8,7 @@ import {
   realLondonOsmPilotRouteMap,
   realLondonOsmPilotTwoRouteMap
 } from "./routeRunnerMaps.ts";
+import { phase6RealLondonVisualQaRouteMap } from "./realLondonVisualQaScenario.ts";
 import { buildRealLondonPilotReadinessReport } from "./routeRunnerOsmRealPilotReadinessReport.ts";
 import { createRouteAttemptVersionSnapshot } from "./routeAttemptVersionSnapshot.ts";
 import {
@@ -45,6 +46,7 @@ test("Stage 130 non-beta users do not see real London maps in route-runner optio
   assert.equal(visibleMapIds[0], DEFAULT_ROUTE_RUNNER_MAP_ID);
   assert.equal(visibleMapIds.includes(realLondonOsmPilotRouteMap.id), false);
   assert.equal(visibleMapIds.includes(realLondonOsmPilotTwoRouteMap.id), false);
+  assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
   assert.ok(visibleMapIds.includes("osm-tiny-london-prototype"));
   assert.ok(visibleMapIds.includes("osm-medium-london-prototype"));
 });
@@ -59,6 +61,7 @@ test("Stage 130 beta users can access real London practice maps", () => {
 
   assert.equal(visibleMapIds.includes(realLondonOsmPilotRouteMap.id), true);
   assert.equal(visibleMapIds.includes(realLondonOsmPilotTwoRouteMap.id), true);
+  assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
   assert.equal(access.state, "available");
   assert.equal(access.selectedMapOption.map.id, realLondonOsmPilotRouteMap.id);
   assert.equal(access.unavailableState, null);
@@ -74,6 +77,18 @@ test("dev QA route-runner map options expose every registered map regardless of 
   assert.equal(devQaMapIds.includes(realLondonOsmPilotRouteMap.id), true);
   assert.equal(devQaMapIds.includes(realLondonOsmPilotTwoRouteMap.id), true);
   assert.equal(devQaMapIds.includes("osm-large-london"), true);
+  assert.equal(devQaMapIds.includes(phase6RealLondonVisualQaRouteMap.id), true);
+});
+
+test("Stage 151 visual QA scenario is dev-only and resolves unavailable outside dev QA mode", () => {
+  const access = resolveRealLondonBetaMapAccess({
+    requestedMapId: phase6RealLondonVisualQaRouteMap.id,
+    betaEnabled: true
+  });
+
+  assert.equal(access.state, "unknown-map");
+  assert.equal(access.selectedMapOption.map.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
+  assert.equal(access.unavailableState?.reasonCode, "unknown-map");
 });
 
 test("Stage 130 requesting real London while disabled returns safe unavailable state", () => {

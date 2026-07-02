@@ -12,6 +12,12 @@ import mediumLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/me
 import realLondonPilotOverpassFixture from "../../../lib/map-engine/osm/fixtures/realLondonPilotOverpass.json" with { type: "json" };
 import realLondonPilotTwoOverpassFixture from "../../../lib/map-engine/osm/fixtures/realLondonPilotTwoOverpass.json" with { type: "json" };
 import tinyLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/tinyLondonOverpass.json" with { type: "json" };
+import {
+  PHASE_6_VISUAL_QA_FIXTURE_NAME,
+  phase6RealLondonVisualQaOverpassFixture,
+  phase6RealLondonVisualQaRouteExercises,
+  phase6RealLondonVisualQaRouteMap
+} from "./realLondonVisualQaScenario.ts";
 
 export type RouteRunnerMapSource = "synthetic-dev" | "converted-osm";
 
@@ -26,6 +32,7 @@ export type RouteRunnerMapOption = {
   attribution?: string;
   fixtureName?: string;
   sourceOverpassFixture?: unknown;
+  devOnly?: boolean;
 };
 
 export type RouteRunnerMapBounds = {
@@ -976,6 +983,20 @@ export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
     attribution: "OpenStreetMap contributors",
     fixtureName: "largeLondonOverpass.json",
     sourceOverpassFixture: largeLondonOverpassFixture
+  },
+  {
+    id: phase6RealLondonVisualQaRouteMap.id,
+    label: "Phase 6 visual QA scenario",
+    description:
+      "Dev-only synthetic OSM-style scenario for checking combined Real London map readability, objective overlays, context, one-way arrows, and restrictions.",
+    source: "converted-osm",
+    map: phase6RealLondonVisualQaRouteMap,
+    exercises: phase6RealLondonVisualQaRouteExercises,
+    defaultExerciseId: phase6RealLondonVisualQaRouteExercises[0]?.id ?? "",
+    attribution: "Synthetic TOPOPASS QA fixture; not real-world OSM data",
+    fixtureName: PHASE_6_VISUAL_QA_FIXTURE_NAME,
+    sourceOverpassFixture: phase6RealLondonVisualQaOverpassFixture,
+    devOnly: true
   }
 ];
 
@@ -985,6 +1006,10 @@ export function getRouteRunnerMapOption(mapId: string): RouteRunnerMapOption | u
 
 export function isConvertedOsmRouteRunnerMap(option: RouteRunnerMapOption): boolean {
   return option.source === "converted-osm";
+}
+
+export function isDevOnlyRouteRunnerMapOption(option: RouteRunnerMapOption): boolean {
+  return option.devOnly === true;
 }
 
 export function isConvertedOsmRouteRunnerMapDefinition(map: MapDefinition): boolean {

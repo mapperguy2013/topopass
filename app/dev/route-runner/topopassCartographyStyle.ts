@@ -271,12 +271,16 @@ export type TopopassStreetAtlasStyle = {
     shadowOffsetY: number;
     start: { fillColor: string; radius: number; text: string; font: string };
     checkpoint: { fillColor: string; radius: number; textPrefix: string; font: string };
+    requiredVia: { fillColor: string; radius: number; textPrefix: string; font: string };
     destination: { fillColor: string; radius: number; text: string; font: string };
   };
   hints: {
     snapPreview: TopopassLineStyle;
     snappedPointMatchedColor: string;
     snappedPointUnmatchedColor: string;
+    snappedPointHaloColor: string;
+    snappedPointStrokeColor: string;
+    snappedPointStrokeWidth: number;
     snappedPointRadius: number;
   };
   restrictions: {
@@ -392,6 +396,10 @@ export type TopopassStreetAtlasStyle = {
     matchedStartColor: string;
     matchedNodeColor: string;
     matchedNodeRadius: number;
+    matchedNodeStrokeColor: string;
+    matchedNodeStrokeWidth: number;
+    matchedNodeHaloColor: string;
+    matchedNodeHaloRadiusPadding: number;
   };
   zoom: {
     thresholds: TopopassZoomThresholds;
@@ -1025,26 +1033,31 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   exerciseMarkers: {
     haloFillColor: "rgba(255,255,255,0.96)",
     textColor: "#ffffff",
-    haloRadiusPadding: 5,
-    reservationPadding: 14,
-    minSeparation: 28,
-    strokeWidth: 3,
-    shadowColor: "rgba(15,23,42,0.24)",
-    shadowBlur: 10,
+    haloRadiusPadding: 6,
+    reservationPadding: 16,
+    minSeparation: 34,
+    strokeWidth: 3.5,
+    shadowColor: "rgba(15,23,42,0.28)",
+    shadowBlur: 12,
     shadowOffsetY: 2,
-    start: { fillColor: "#15803d", radius: 14, text: "S", font: "800 12px Arial, sans-serif" },
-    checkpoint: { fillColor: "#f97316", radius: 12, textPrefix: "CP", font: "800 9px Arial, sans-serif" },
-    destination: { fillColor: "#6d28d9", radius: 14, text: "F", font: "800 12px Arial, sans-serif" }
+    start: { fillColor: "#047857", radius: 18, text: "START", font: "800 9px Arial, sans-serif" },
+    checkpoint: { fillColor: "#f97316", radius: 15, textPrefix: "CP", font: "800 9px Arial, sans-serif" },
+    requiredVia: { fillColor: "#d97706", radius: 16, textPrefix: "VIA", font: "800 8px Arial, sans-serif" },
+    destination: { fillColor: "#be123c", radius: 18, text: "END", font: "800 10px Arial, sans-serif" }
   },
   hints: {
     snapPreview: {
-      strokeColor: "#22c55e",
-      strokeWidth: 2,
+      strokeColor: "#0d9488",
+      strokeWidth: 2.4,
+      alpha: 0.82,
       dash: [5, 5]
     },
     snappedPointMatchedColor: "#16a34a",
     snappedPointUnmatchedColor: "#dc2626",
-    snappedPointRadius: 3
+    snappedPointHaloColor: "rgba(255,255,255,0.9)",
+    snappedPointStrokeColor: "rgba(15,23,42,0.42)",
+    snappedPointStrokeWidth: 1.5,
+    snappedPointRadius: 4
   },
   restrictions: {
     overlay: {
@@ -1178,7 +1191,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     radius: 2.25,
     matchedStartColor: "#2563eb",
     matchedNodeColor: "#7c3aed",
-    matchedNodeRadius: 7
+    matchedNodeRadius: 7,
+    matchedNodeStrokeColor: "#ffffff",
+    matchedNodeStrokeWidth: 2,
+    matchedNodeHaloColor: "rgba(124,58,237,0.22)",
+    matchedNodeHaloRadiusPadding: 5
   },
   zoom: {
     thresholds: {

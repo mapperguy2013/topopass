@@ -217,6 +217,41 @@ categories. The learner benefit today is a clearer, testable pipeline and
 baseline for fixture-backed context rendering; visible new context still
 depends on future committed fixture data containing those OSM tags.
 
+## Stage 151 Visual QA And Learner Readability Checklist
+
+Stage 151 validates the combined Phase 6 styling through a dev-only synthetic
+visual QA scenario and central objective-overlay token changes. It remains
+visual/readability work only: route logic, legality checks, scoring, exercise
+generation logic, beta gates, feedback tooling, and OSM conversion behaviour
+are unchanged.
+
+Use the Phase 6 visual QA scenario in the dev route-runner to judge whether:
+
+- [ ] Roads are distinguishable by hierarchy in a dense London-like street grid.
+- [ ] Street labels are readable at normal learner zoom levels.
+- [ ] Labels do not overwhelm dense streets or learner objectives.
+- [ ] Parks, water, rail, and station context help orientation.
+- [ ] Landmarks and area names make the map feel grounded where fixture data
+      exists.
+- [ ] Route overlays remain clear above the base map.
+- [ ] Start, destination, first required via point, checkpoints, and optional
+      hints are immediately identifiable.
+- [ ] Selected road and selected/matched node styling is visible but not
+      confused with required stops.
+- [ ] Restrictions and one-way arrows are useful but do not overpower learner
+      objectives.
+- [ ] Route-review warnings remain visible through decluttering.
+- [ ] Low zoom suppresses non-essential detail.
+- [ ] Normal learner zoom feels materially clearer than the Phase 6 baseline.
+- [ ] The combined Phase 6 styling feels coherent rather than disconnected
+      across roads, labels, context, restrictions, and learner overlays.
+
+The visual QA scenario is explicitly synthetic test fixture data, not a real
+OSM export. It exists to make parks, water, rail, stations, landmarks,
+one-way arrows, a turn restriction, route stops, and objective overlays visible
+in one place while committed real pilot fixtures still have limited non-road
+context coverage.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

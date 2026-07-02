@@ -182,6 +182,38 @@ categories. The benefit is a reliable coverage baseline and a single typed
 adapter path for future fixture-backed context data; the renderer still does
 not invent landmarks, stations, bridges, water, area names, or restrictions.
 
+## Stage 151 Visual QA And Objective Overlay Pass
+
+Stage 151 adds a dev-only synthetic Phase 6 visual QA scenario under
+`osm-phase-6-real-london-visual-qa`. The scenario is explicitly marked as
+synthetic TOPOPASS QA fixture data, not real-world OSM data. It is registered
+only for dev QA map selection and is filtered out of non-dev/student map
+visibility and direct student map resolution.
+
+The scenario gives reviewers one inspectable map that combines dense
+London-like streets, major/secondary/residential/service hierarchy, a park,
+water basin, canal, rail line, station, landmarks, an area label, a pedestrian
+square, a one-way route, a prohibited-turn warning, route start/destination,
+the first required via point, and checkpoints. This makes Phase 6 readability
+easier to judge without relying on live APIs or inventing data inside the real
+pilot fixtures.
+
+Objective overlays now use stronger central tokens: start markers read
+`START`, destination markers read `END`, the first intermediate objective uses
+a `VIA` treatment, later checkpoints retain compact `CP` labels, optional snap
+hints use quieter teal dashed styling with small haloed points, and
+selected/matched route nodes now use tokenised halo and stroke styling. Canvas
+draw order keeps optional hints and raw route strokes below objective markers
+and stop labels, so learner-critical stops remain visible above context,
+restrictions, one-way arrows, roads, and labels.
+
+Known limitations remain: the QA scenario is synthetic and is for visual
+inspection only; real pilot context still depends on committed fixture tags;
+mobile visual QA still needs manual device review; and dense overlapping review
+states may need future non-colour cues. This stage does not change routing,
+legality, scoring, exercise generation, beta gates, feedback tooling, or OSM
+conversion behaviour.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -201,6 +233,8 @@ not invent landmarks, stations, bridges, water, area names, or restrictions.
 - `app/dev/route-runner/realLondonContextData.ts` audits committed Real London
   context coverage and normalises fixture/source OSM context into typed
   render-ready features for the synthetic street-map renderer.
+- `app/dev/route-runner/realLondonVisualQaScenario.ts` defines the dev-only
+  synthetic Phase 6 visual QA scenario for combined readability inspection.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.
@@ -358,11 +392,14 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - The revealed shortest legal route is blue dashed with a white halo.
 - Route issue overlays use red or rose styling, with dashed treatment for
   disconnected gaps.
-- Start markers are green, checkpoints orange, and destinations purple. They
-  draw above the base map and are labelled with compact text.
-- Hints are currently represented mainly through the snap preview, correction
-  panels, fastest-route reveal, and review text rather than a dedicated hint
-  map layer.
+- Start markers are green and labelled `START`; destinations are rose and
+  labelled `END`; the first required intermediate objective uses a `VIA`
+  marker; later checkpoints are orange `CP` markers. They draw above the base
+  map, optional hints, raw route strokes, one-way arrows, restriction symbols,
+  and context labels.
+- Optional hints are represented by the snap preview, haloed snap points,
+  correction panels, fastest-route reveal, and review text rather than a large
+  dedicated hint layer.
 
 ## Restriction Cartography
 
@@ -441,6 +478,9 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Base restriction symbols now avoid learner overlay reservations and
   lower-priority symbol collisions while preserving route-review warnings.
 - One-way arrows already have deterministic density suppression.
+- Stage 151 adds a dev-only combined visual QA scenario so roads, labels,
+  context, restrictions, objective markers, hints, and selected-route overlays
+  can be judged together.
 - OSM attribution is surfaced in the beta practice page and related panel
   models.
 - Stage 142 centralises current style values into named tokens, making future
@@ -466,10 +506,11 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   category-specific label and marker hooks for available named context data,
   but any individual Real London pilot map still depends on what its committed
   fixture actually contains.
-- Learner overlays: start, destination, checkpoint, route, restriction, and
-  review overlays are visible above the base map, and base restriction symbols
-  now avoid their reservations, but some meanings still rely strongly on colour
-  and compact text panels.
+- Learner overlays: start, destination, required via, checkpoint, route,
+  optional hint, selected-node, restriction, and review overlays are visible
+  above the base map, and base restriction symbols now avoid their
+  reservations. Some meanings still rely on compact text and colour, so future
+  manual QA should continue checking non-colour cues.
 - Route review clarity: route review overlays and route issue symbols now stay
   visible through zoom decluttering and reserve label space, but overlapping
   route geometries and dense central London streets still need clearer
@@ -487,12 +528,11 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
    base label hierarchy has been validated in learner QA.
 2. Expand fixture coverage for broader non-road context where future committed
    OSM extracts safely include it.
-3. Add zoom-based decluttering for restrictions and learner aids.
-4. Strengthen route review cartography with non-colour cues for missed,
+3. Strengthen route review cartography with non-colour cues for missed,
    illegal, correct, and user-drawn sections.
-5. Run a mobile-specific Real London readability pass after labels and context
+4. Run a mobile-specific Real London readability pass after labels and context
    features exist.
-6. Add performance checks for large Real London fixtures after any new
+5. Add performance checks for large Real London fixtures after any new
    label/context layer is introduced.
 
 ## Stage 142 Scope Confirmation

@@ -1015,11 +1015,28 @@ function drawNodeMarker(input: {
   point: Vec2;
   fillStyle: string;
   radius: number;
+  strokeStyle?: string;
+  strokeWidth?: number;
+  haloColor?: string;
+  haloRadiusPadding?: number;
 }): void {
+  if (input.haloColor && input.haloRadiusPadding) {
+    input.context.fillStyle = input.haloColor;
+    input.context.beginPath();
+    input.context.arc(input.point.x, input.point.y, input.radius + input.haloRadiusPadding, 0, Math.PI * 2);
+    input.context.fill();
+  }
+
   input.context.fillStyle = input.fillStyle;
   input.context.beginPath();
   input.context.arc(input.point.x, input.point.y, input.radius, 0, Math.PI * 2);
   input.context.fill();
+
+  if (input.strokeStyle && input.strokeWidth) {
+    input.context.strokeStyle = input.strokeStyle;
+    input.context.lineWidth = input.strokeWidth;
+    input.context.stroke();
+  }
 }
 
 function drawExerciseStopMarker(input: {
@@ -1030,14 +1047,22 @@ function drawExerciseStopMarker(input: {
 }): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
   const markerStyle =
-    input.role === "start" ? style.start : input.role === "finish" ? style.destination : style.checkpoint;
+    input.role === "start"
+      ? style.start
+      : input.role === "finish"
+        ? style.destination
+        : input.index === 1
+          ? style.requiredVia
+          : style.checkpoint;
   const fillStyle = markerStyle.fillColor;
   const markerText =
     input.role === "start"
       ? style.start.text
       : input.role === "finish"
         ? style.destination.text
-        : `${style.checkpoint.textPrefix}${input.index}`;
+        : input.index === 1
+          ? style.requiredVia.textPrefix
+          : `${style.checkpoint.textPrefix}${input.index}`;
   const radius = markerStyle.radius;
 
   input.context.save();
@@ -2413,7 +2438,9 @@ function buildLabelReservationBoxes(input: {
       ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start
       : isFinish
         ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination
-        : TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint;
+        : index === 1
+          ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia
+          : TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint;
 
     boxes.push(
       screenPointReservationBox({
@@ -2634,6 +2661,7 @@ function drawRouteCanvas(input: {
 
   input.pipelineResult.matchResult?.nodeIds.forEach((nodeId, index) => {
     const node = nodeById(nodeId, input.map);
+    const nodeStyle = TOPOPASS_STREET_ATLAS_STYLE.nodes;
 
     if (!node) {
       return;
@@ -2643,47 +2671,23 @@ function drawRouteCanvas(input: {
       context,
       point: mapToScreenPoint(node, input.viewport),
       fillStyle: index === 0
-        ? TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedStartColor
-        : TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedNodeColor,
-      radius: TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedNodeRadius
+        ? nodeStyle.matchedStartColor
+        : nodeStyle.matchedNodeColor,
+      radius: nodeStyle.matchedNodeRadius,
+      strokeStyle: nodeStyle.matchedNodeStrokeColor,
+      strokeWidth: nodeStyle.matchedNodeStrokeWidth,
+      haloColor: nodeStyle.matchedNodeHaloColor,
+      haloRadiusPadding: nodeStyle.matchedNodeHaloRadiusPadding
     });
-  });
-
-  const selectedExercise = input.selectedExercise;
-
-  if (selectedExercise) {
-    selectedExercise.stops.forEach((stop, index) => {
-      const node = resolveStopNode(stop, input.map);
-
-      if (!node) {
-        return;
-      }
-
-      const point = mapToScreenPoint(node, input.viewport);
-      const role =
-        index === 0 ? "start" : index === selectedExercise.stops.length - 1 ? "finish" : "checkpoint";
-
-      drawExerciseStopMarker({
-        context,
-        point,
-        role,
-        index
-      });
-    });
-  }
-
-  drawSyntheticStopLabels({
-    context,
-    map: input.map,
-    viewport: input.viewport,
-    selectedExercise: input.selectedExercise
   });
 
   if (input.snapPreview.snappedPoints.length > 0) {
     const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview;
 
+    context.save();
     context.strokeStyle = hintStyle.strokeColor;
     context.lineWidth = hintStyle.strokeWidth;
+    context.globalAlpha = hintStyle.alpha ?? 1;
     context.setLineDash([...(hintStyle.dash ?? [])]);
     input.snapPreview.snappedPoints.forEach((point, index) => {
       const screenPoint = mapToScreenPoint(point.snappedPoint, input.viewport);
@@ -2697,6 +2701,7 @@ function drawRouteCanvas(input: {
     });
     context.stroke();
     context.setLineDash([]);
+    context.restore();
   }
 
   const visibleRawStrokes = visibleRawRouteStrokes(input.routeDraft, input.trace);
@@ -2728,13 +2733,52 @@ function drawRouteCanvas(input: {
 
   input.snapPreview.snappedPoints.forEach((point) => {
     const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
+    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.hints;
+
+    context.fillStyle = hintStyle.snappedPointHaloColor;
+    context.beginPath();
+    context.arc(screenPoint.x, screenPoint.y, hintStyle.snappedPointRadius + 2, 0, Math.PI * 2);
+    context.fill();
 
     context.fillStyle = point.roadId
-      ? TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointMatchedColor
-      : TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointUnmatchedColor;
+      ? hintStyle.snappedPointMatchedColor
+      : hintStyle.snappedPointUnmatchedColor;
+    context.strokeStyle = hintStyle.snappedPointStrokeColor;
+    context.lineWidth = hintStyle.snappedPointStrokeWidth;
     context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointRadius, 0, Math.PI * 2);
+    context.arc(screenPoint.x, screenPoint.y, hintStyle.snappedPointRadius, 0, Math.PI * 2);
     context.fill();
+    context.stroke();
+  });
+
+  const selectedExercise = input.selectedExercise;
+
+  if (selectedExercise) {
+    selectedExercise.stops.forEach((stop, index) => {
+      const node = resolveStopNode(stop, input.map);
+
+      if (!node) {
+        return;
+      }
+
+      const point = mapToScreenPoint(node, input.viewport);
+      const role =
+        index === 0 ? "start" : index === selectedExercise.stops.length - 1 ? "finish" : "checkpoint";
+
+      drawExerciseStopMarker({
+        context,
+        point,
+        role,
+        index
+      });
+    });
+  }
+
+  drawSyntheticStopLabels({
+    context,
+    map: input.map,
+    viewport: input.viewport,
+    selectedExercise: input.selectedExercise
   });
 
   for (const marker of input.routeReplayMarkers) {

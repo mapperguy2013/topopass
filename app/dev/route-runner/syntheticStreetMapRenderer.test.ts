@@ -70,10 +70,11 @@ test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () 
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe9cd");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#6b7280");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#dc2626");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#15803d");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#6d28d9");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#047857");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#be123c");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#f97316");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#22c55e");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.fillColor, "#d97706");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#0d9488");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.color, "#1d4ed8");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute.route.strokeColor, "#0284c7");
 });
@@ -211,6 +212,24 @@ test("Stage 142 zoom and decluttering tokens are ordered finite and used by help
 test("Stage 142 style tokens are deterministic primitive render values", () => {
   assertPrimitiveRenderValues(TOPOPASS_STREET_ATLAS_STYLE);
   assert.deepEqual(TOPOPASS_STREET_ATLAS_STYLE, TOPOPASS_STREET_ATLAS_STYLE);
+});
+
+test("Stage 151 objective and hint overlays use learner-priority central tokens", () => {
+  const markers = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
+  const hints = TOPOPASS_STREET_ATLAS_STYLE.hints;
+  const selectedRoad = roadInteractionStyleForState("selected");
+
+  assert.equal(markers.start.text, "START");
+  assert.equal(markers.destination.text, "END");
+  assert.equal(markers.requiredVia.textPrefix, "VIA");
+  assert.ok(markers.start.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.tipDistance);
+  assert.ok(markers.destination.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius);
+  assert.ok(markers.requiredVia.radius > markers.checkpoint.radius);
+  assert.ok(markers.reservationPadding > TOPOPASS_STREET_ATLAS_STYLE.labels.collision.markerPadding);
+  assert.ok(hints.snapPreview.strokeWidth < TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth);
+  assert.ok(hints.snappedPointRadius < markers.checkpoint.radius);
+  assert.ok(selectedRoad.haloWidth > TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedNodeHaloRadiusPadding > hints.snappedPointRadius);
 });
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {

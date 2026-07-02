@@ -20,6 +20,7 @@ import {
   getRouteRunnerMapViewportBounds,
   getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap,
+  isDevOnlyRouteRunnerMapOption,
   largeLondonOsmRouteExercises,
   largeLondonOsmRouteMap,
   mediumLondonOsmRouteExercises,
@@ -32,6 +33,12 @@ import {
   tinyLondonOsmRouteExercises,
   tinyLondonOsmRouteMap
 } from "./routeRunnerMaps.ts";
+import { auditRealLondonContextCoverage } from "./realLondonContextData.ts";
+import {
+  buildPhase6VisualQaScenarioSummary,
+  phase6RealLondonVisualQaRouteExercises,
+  phase6RealLondonVisualQaRouteMap
+} from "./realLondonVisualQaScenario.ts";
 import {
   buildSyntheticBackgroundFeatures,
   buildSyntheticLinearFeatures,
@@ -39,6 +46,7 @@ import {
   buildSyntheticRoadVisuals,
   deriveSyntheticRoadClass
 } from "./syntheticStreetMapRenderer.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 const TEST_CANVAS_WIDTH = 1120;
 const TEST_CANVAS_HEIGHT = 760;
@@ -99,6 +107,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const realPilotOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
   const largeOption = getRouteRunnerMapOption(largeLondonOsmRouteMap.id);
   const realPilotTwoOption = getRouteRunnerMapOption(realLondonOsmPilotTwoRouteMap.id);
+  const phase6QaOption = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
 
   assert.ok(syntheticOption);
   assert.ok(tinyOption);
@@ -106,13 +115,16 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.ok(realPilotOption);
   assert.ok(largeOption);
   assert.ok(realPilotTwoOption);
+  assert.ok(phase6QaOption);
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
   assert.equal(mediumOption.source, "converted-osm");
   assert.equal(realPilotOption.source, "converted-osm");
   assert.equal(largeOption.source, "converted-osm");
   assert.equal(realPilotTwoOption.source, "converted-osm");
-  assert.equal(convertedOptions.length, 5);
+  assert.equal(phase6QaOption.source, "converted-osm");
+  assert.equal(isDevOnlyRouteRunnerMapOption(phase6QaOption), true);
+  assert.equal(convertedOptions.length, 6);
   assert.deepEqual(
     [realPilotOption.id, realPilotTwoOption.id, largeOption.id],
     ["osm-real-london-pilot", "osm-real-london-pilot-2", "osm-large-london"]
@@ -147,6 +159,10 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     largeOption.exercises.map((exercise) => exercise.id),
     largeLondonOsmRouteExercises.map((exercise) => exercise.id)
   );
+  assert.deepEqual(
+    phase6QaOption.exercises.map((exercise) => exercise.id),
+    phase6RealLondonVisualQaRouteExercises.map((exercise) => exercise.id)
+  );
   assert.ok(tinyOption.exercises.every((exercise) => exercise.id.startsWith("osm-tiny-")));
   assert.ok(mediumOption.exercises.every((exercise) => exercise.id.startsWith("osm-medium-")));
   assert.ok(
@@ -154,6 +170,81 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   );
   assert.ok(realPilotTwoOption.exercises.every((exercise) => exercise.id.startsWith("osm-real-pilot-2-")));
   assert.ok(largeOption.exercises.every((exercise) => exercise.id.startsWith("osm-large-")));
+  assert.ok(phase6QaOption.exercises.every((exercise) => exercise.id.startsWith("osm-phase-6-")));
+});
+
+test("Stage 151 visual QA scenario demonstrates combined Phase 6 map styling deterministically", () => {
+  const option = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
+
+  assert.ok(option);
+  assert.equal(option.devOnly, true);
+  assert.equal(option.fixtureName, "syntheticPhase6VisualQaOverpassFixture");
+  assert.match(option.attribution ?? "", /Synthetic TOPOPASS QA fixture/);
+  assert.deepEqual(buildPhase6VisualQaScenarioSummary(), {
+    mapId: "osm-phase-6-real-london-visual-qa",
+    roadCount: 33,
+    nodeCount: 24,
+    restrictionCount: 1,
+    exerciseCount: 1,
+    fixtureName: "syntheticPhase6VisualQaOverpassFixture",
+    synthetic: true
+  });
+  assert.deepEqual(
+    option.exercises[0]?.stops.map((stop) => ("nodeId" in stop ? stop.nodeId : "")),
+    ["osm-node-1011", "osm-node-1023", "osm-node-1034", "osm-node-1045"]
+  );
+  assert.ok(option.map.restrictions.some((restriction) => restriction.type === "prohibited_turn"));
+});
+
+test("Stage 151 visual QA scenario provides context features for visual inspection without live data", () => {
+  const option = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
+
+  assert.ok(option);
+
+  const audit = auditRealLondonContextCoverage(option.sourceOverpassFixture);
+  const backgrounds = buildSyntheticBackgroundFeatures(option.map, {
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const linearFeatures = buildSyntheticLinearFeatures(option.map, {
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const labels = buildSyntheticMapLabels(option.map, option.exercises[0], {
+    backgroundFeatures: backgrounds,
+    linearFeatures,
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+
+  assert.deepEqual(audit.counts, {
+    railFeatures: 1,
+    subwayRailFeatures: 0,
+    stationFeatures: 1,
+    namedStationFeatures: 1,
+    bridgeFeatures: 1,
+    namedBridgeFeatures: 1,
+    crossingFeatures: 0,
+    landmarkLikeFeatures: 2,
+    parkOpenSpaceFeatures: 1,
+    waterFeatures: 2,
+    namedWaterFeatures: 2,
+    areaContextLabelFeatures: 1
+  });
+  assert.ok(backgrounds.some((feature) => feature.kind === "park" && feature.label === "QA Garden"));
+  assert.ok(backgrounds.some((feature) => feature.kind === "water" && feature.label === "QA Basin"));
+  assert.ok(backgrounds.some((feature) => feature.kind === "pedestrian-area" && feature.label === "QA Pedestrian Square"));
+  assert.ok(linearFeatures.some((feature) => feature.kind === "rail" && feature.label === "QA North Line"));
+  assert.ok(linearFeatures.some((feature) => feature.kind === "bridge" && feature.label === "QA Bridge Street"));
+  assert.ok(linearFeatures.some((feature) => feature.kind === "waterway" && feature.label === "QA Cut"));
+  assert.ok(labels.some((label) => label.kind === "station" && label.text === "QA Central Station"));
+  assert.ok(labels.some((label) => label.kind === "public_building" && label.text === "QA Library"));
+  assert.ok(labels.some((label) => label.kind === "landmark" && label.text === "QA Hospital"));
+  assert.ok(labels.some((label) => label.kind === "area" && label.text === "QA Fitzrovia"));
+  assert.deepEqual(
+    option.exercises[0]?.stops.map((stop) => ("label" in stop ? stop.label : "")),
+    ["QA start", "QA required via point", "QA checkpoint", "QA destination"]
+  );
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.text, "START");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.textPrefix, "VIA");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text, "END");
 });
 
 test("converted OSM map exposes drawable and snappable road geometry", () => {
