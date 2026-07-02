@@ -137,6 +137,23 @@ implementation.
 - [ ] Any future Real London map styling still preserves required attribution
       for committed OSM-derived fixtures.
 
+## Stage 148 Context Rendering Evidence
+
+Stage 148 addresses the parks/water/rail/stations/bridges/landmarks/context
+part of this checklist through visual-only renderer changes. Rail corridors,
+subway-tagged rail corridors, bridge/crossing indicators, station markers,
+landmark markers, and bridge labels are generated only from existing map
+landmarks or the selected map option's committed raw Overpass fixture. Missing
+fixture data, unsupported tags, and unknown fields are safe no-ops.
+
+The Stage 148 renderer keeps context below learner overlays by drawing context
+lines before roads, filtering station/landmark markers against learner overlay
+reservation boxes, fading or suppressing rail and bridge/crossing context by
+viewport scale, and leaving route, review, restriction, start, checkpoint,
+destination, hint, and replay layers above the base map. Underground-specific
+styling is intentionally not claimed: `railway=subway` can render as rail
+context when present, but no separate Underground distinction is invented.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

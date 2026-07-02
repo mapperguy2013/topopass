@@ -129,12 +129,16 @@ import {
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
   buildRoadRenderPasses,
+  filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
   roadInteractionStyleForState,
   roadJunctionRadiusForVisual,
   roadStyleForViewport,
+  shouldShowSyntheticLinearFeatureForViewport,
   sortRoadVisualsForBaseRender,
+  syntheticLandmarkVisualAlphaForViewport,
+  syntheticLinearFeatureAlphaForViewport,
   type SyntheticBackgroundFeature,
   type SyntheticLabelCollisionBox,
   type SyntheticLandmarkVisual,
@@ -1093,7 +1097,8 @@ function drawSyntheticBackgroundFeature(
 function drawSyntheticLinearFeature(
   context: CanvasRenderingContext2D,
   feature: SyntheticLinearFeature,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  alpha = 1
 ): void {
   if (feature.points.length < 2) {
     return;
@@ -1102,6 +1107,7 @@ function drawSyntheticLinearFeature(
   const screenPoints = feature.points.map((point) => mapToScreenPoint(point, viewport));
 
   context.save();
+  context.globalAlpha = alpha;
   context.lineCap = "round";
   context.lineJoin = "round";
   context.setLineDash([]);
@@ -1267,11 +1273,13 @@ function drawSyntheticRoadInteractionFocus(
 function drawSyntheticLandmarkVisual(
   context: CanvasRenderingContext2D,
   visual: SyntheticLandmarkVisual,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  alpha = 1
 ): void {
   const point = mapToScreenPoint(visual.point, viewport);
 
   context.save();
+  context.globalAlpha = alpha;
   context.fillStyle = visual.haloColor;
   context.beginPath();
   context.arc(point.x, point.y, visual.radius + 8, 0, Math.PI * 2);
@@ -1383,15 +1391,33 @@ function drawSyntheticStreetMapBase(input: {
   }
 
   for (const feature of input.linearFeatures) {
-    drawSyntheticLinearFeature(input.context, feature, input.viewport);
+    if (!shouldShowSyntheticLinearFeatureForViewport(feature, input.viewport)) {
+      continue;
+    }
+
+    drawSyntheticLinearFeature(
+      input.context,
+      feature,
+      input.viewport,
+      syntheticLinearFeatureAlphaForViewport(feature, input.viewport)
+    );
   }
 
   drawSyntheticRoadVisualsByHierarchy(input.context, input.roadVisuals, input.viewport);
   drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.hoveredRoadIds, "hovered");
   drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.selectedRoadIds, "selected");
 
-  for (const visual of buildSyntheticLandmarkVisuals(input.map, input.selectedExercise)) {
-    drawSyntheticLandmarkVisual(input.context, visual, input.viewport);
+  for (const visual of filterSyntheticLandmarkVisualsForViewport({
+    visuals: buildSyntheticLandmarkVisuals(input.map, input.selectedExercise),
+    viewport: input.viewport,
+    reservedBoxes: input.labelReservedBoxes
+  })) {
+    drawSyntheticLandmarkVisual(
+      input.context,
+      visual,
+      input.viewport,
+      syntheticLandmarkVisualAlphaForViewport(visual, input.viewport)
+    );
   }
 
   const labels = filterSyntheticMapLabelsForViewport({

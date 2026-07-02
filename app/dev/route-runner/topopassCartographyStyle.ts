@@ -7,6 +7,21 @@ export type TopopassLineStyle = {
   alpha?: number;
 };
 
+export type TopopassContextLineStyle = TopopassLineStyle & {
+  minViewportScale: number;
+  lowZoomAlpha: number;
+  mediumZoomAlpha: number;
+  highZoomAlpha: number;
+};
+
+export type TopopassContextMarkerStyle = {
+  minViewportScale: number;
+  lowZoomAlpha: number;
+  mediumZoomAlpha: number;
+  highZoomAlpha: number;
+  collisionPadding: number;
+};
+
 export type TopopassRoadClassStyle = {
   casingColor: string;
   strokeColor: string;
@@ -137,7 +152,7 @@ export type TopopassStreetAtlasStyle = {
     roadHierarchy: Record<"major" | "secondary" | "minor" | "restricted" | "service", TopopassRoadLabelStyle>;
     area: TopopassLabelStyle;
     landmark: TopopassLabelStyle;
-    context: Record<"station" | "landmark" | "park" | "water" | "area", TopopassContextLabelStyle>;
+    context: Record<"station" | "landmark" | "park" | "water" | "area" | "bridge", TopopassContextLabelStyle>;
     stop: TopopassLabelStyle;
     collision: {
       defaultPadding: number;
@@ -153,6 +168,7 @@ export type TopopassStreetAtlasStyle = {
       landmark: number;
       park: number;
       water: number;
+      bridge: number;
       area: number;
       exerciseStop: number;
     };
@@ -178,6 +194,12 @@ export type TopopassStreetAtlasStyle = {
     polygonStrokeWidth: number;
   };
   rail: TopopassLineStyle;
+  contextFeatures: {
+    rail: TopopassContextLineStyle;
+    bridge: TopopassContextLineStyle;
+    stationMarker: TopopassContextMarkerStyle;
+    landmarkMarker: TopopassContextMarkerStyle;
+  };
   station: {
     radius: number;
     fillColor: string;
@@ -644,6 +666,19 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         minViewportScale: 0.58,
         collisionPadding: 5
       },
+      bridge: {
+        font: "650 10.5px Arial, sans-serif",
+        fontSize: 10.5,
+        approximateCharacterWidth: 5.8,
+        color: "rgba(88,64,44,0.66)",
+        haloColor: "rgba(255,255,255,0.82)",
+        haloWidth: 3,
+        shadowColor: "rgba(255,255,255,0.34)",
+        shadowBlur: 1,
+        shadowOffsetY: 0,
+        minViewportScale: 0.72,
+        collisionPadding: 5
+      },
       area: {
         font: "600 12px Arial, sans-serif",
         fontSize: 12,
@@ -676,6 +711,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       landmark: 6,
       park: 7,
       water: 7,
+      bridge: 6,
       area: 8,
       exerciseStop: 10
     }
@@ -711,6 +747,44 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     casingWidth: 9,
     strokeWidth: 4,
     dash: [8, 7]
+  },
+  contextFeatures: {
+    rail: {
+      casingColor: "rgba(255,255,255,0.8)",
+      strokeColor: "#6b7280",
+      casingWidth: 9,
+      strokeWidth: 4,
+      dash: [8, 7],
+      minViewportScale: 0.16,
+      lowZoomAlpha: 0.32,
+      mediumZoomAlpha: 0.56,
+      highZoomAlpha: 0.78
+    },
+    bridge: {
+      casingColor: "rgba(255,255,255,0.82)",
+      strokeColor: "#8b6f47",
+      casingWidth: 11,
+      strokeWidth: 4,
+      dash: [10, 6],
+      minViewportScale: 0.52,
+      lowZoomAlpha: 0.36,
+      mediumZoomAlpha: 0.62,
+      highZoomAlpha: 0.76
+    },
+    stationMarker: {
+      minViewportScale: 0.42,
+      lowZoomAlpha: 0.7,
+      mediumZoomAlpha: 0.88,
+      highZoomAlpha: 1,
+      collisionPadding: 7
+    },
+    landmarkMarker: {
+      minViewportScale: 0.74,
+      lowZoomAlpha: 0.56,
+      mediumZoomAlpha: 0.78,
+      highZoomAlpha: 0.92,
+      collisionPadding: 6
+    }
   },
   station: {
     radius: 10,

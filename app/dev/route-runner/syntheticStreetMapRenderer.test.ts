@@ -13,6 +13,7 @@ import {
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
   deriveSyntheticRoadClass,
+  filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
   roadInteractionStyleForState,
@@ -22,6 +23,9 @@ import {
   roadStyleForOsmHierarchy,
   roadStyleForViewport,
   roadStyleForSyntheticClass,
+  shouldShowSyntheticLinearFeatureForViewport,
+  syntheticLandmarkVisualAlphaForViewport,
+  syntheticLinearFeatureAlphaForViewport,
   sortRoadVisualsForBaseRender,
   type SyntheticMapLabel,
   type SyntheticRoadVisual
@@ -145,6 +149,7 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "landmark",
     "park",
     "water",
+    "bridge",
     "area"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.collision), [
@@ -161,8 +166,15 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "landmark",
     "park",
     "water",
+    "bridge",
     "area",
     "exerciseStop"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures), [
+    "rail",
+    "bridge",
+    "stationMarker",
+    "landmarkMarker"
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
@@ -844,6 +856,106 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
   assert.ok(contextLabels.some((label) => label.kind === "water" && label.text === "Pilot Cut"));
   assert.ok(contextLabels.some((label) => label.kind === "area" && label.text === "Main Line"));
   assert.ok(backgroundFeatures.every((feature) => feature.routable === false));
+});
+
+test("Stage 148 OSM rail bridge and crossing context is visual only and fixture backed", () => {
+  const contextFixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.52018, lon: -0.1397 },
+      { type: "node", id: 3, lat: 51.5199, lon: -0.13995 },
+      { type: "node", id: 4, lat: 51.5201, lon: -0.13925 },
+      { type: "node", id: 5, lat: 51.5198, lon: -0.1397 },
+      { type: "node", id: 6, lat: 51.5202, lon: -0.1394 },
+      { type: "way", id: 100, nodes: [1, 2], tags: { highway: "primary", bridge: "yes", name: "Pilot Bridge" } },
+      { type: "way", id: 101, nodes: [3, 4], tags: { railway: "subway", name: "Central Line" } },
+      { type: "way", id: 102, nodes: [5, 6], tags: { highway: "secondary", bridge: "no", name: "Ground Road" } }
+    ]
+  };
+  const converted = convertOverpassJsonToRouteMap(contextFixture, {
+    mapId: "stage-148-context-map",
+    name: "Stage 148 Context Map"
+  });
+
+  if (!converted.ok) {
+    throw new Error(`Expected context fixture to convert: ${converted.errors.join("; ")}`);
+  }
+
+  const withoutFixture = buildSyntheticLinearFeatures(converted.map);
+  const linearFeatures = buildSyntheticLinearFeatures(converted.map, {
+    sourceOverpassFixture: contextFixture
+  });
+  const labels = buildSyntheticMapLabels(converted.map, undefined, { linearFeatures });
+
+  assert.deepEqual(withoutFixture, []);
+  assert.equal(converted.map.roads.length, 2);
+  assert.deepEqual(
+    linearFeatures.map((feature) => [feature.kind, feature.label, feature.routable]),
+    [
+      ["bridge", "Pilot Bridge", false],
+      ["rail", "Central Line", false]
+    ]
+  );
+  assert.ok(labels.some((label) => label.kind === "bridge" && label.text === "Pilot Bridge"));
+  assert.ok(labels.some((label) => label.kind === "area" && label.text === "Central Line"));
+});
+
+test("Stage 148 context line visibility fades by zoom without overpowering route overlays", () => {
+  const rail = buildSyntheticLinearFeatures(marloweDistrictMap)[0];
+  const lowViewport = { width: 120, height: 120, mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 } };
+  const mediumViewport = { width: 650, height: 650, mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 } };
+  const highViewport = { width: 1200, height: 1200, mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 } };
+
+  assert.equal(shouldShowSyntheticLinearFeatureForViewport(rail, lowViewport), false);
+  assert.equal(shouldShowSyntheticLinearFeatureForViewport(rail, mediumViewport), true);
+  assert.equal(syntheticLinearFeatureAlphaForViewport(rail, mediumViewport), TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha);
+  assert.equal(syntheticLinearFeatureAlphaForViewport(rail, highViewport), TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.highZoomAlpha);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.highZoomAlpha < 1);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute.strokeWidth > rail.strokeWidth);
+});
+
+test("Stage 148 station and landmark markers declutter against learner overlay reservations", () => {
+  const station = buildSyntheticLandmarkVisuals(marloweDistrictMap).find((visual) => visual.kind === "station");
+
+  if (!station) {
+    throw new Error("Expected a station landmark visual.");
+  }
+
+  const highViewport = {
+    width: 200,
+    height: 200,
+    mapBounds: {
+      minX: station.point.x - 100,
+      minY: station.point.y - 100,
+      maxX: station.point.x + 100,
+      maxY: station.point.y + 100
+    }
+  };
+  const lowViewport = {
+    width: 80,
+    height: 80,
+    mapBounds: {
+      minX: station.point.x - 400,
+      minY: station.point.y - 400,
+      maxX: station.point.x + 400,
+      maxY: station.point.y + 400
+    }
+  };
+  const reservedBoxes = [{ id: "route-marker", minX: 78, minY: 78, maxX: 122, maxY: 122 }];
+
+  assert.deepEqual(filterSyntheticLandmarkVisualsForViewport({ visuals: [station], viewport: lowViewport }), []);
+  assert.deepEqual(
+    filterSyntheticLandmarkVisualsForViewport({ visuals: [station], viewport: highViewport, reservedBoxes }),
+    []
+  );
+  assert.deepEqual(
+    filterSyntheticLandmarkVisualsForViewport({ visuals: [station], viewport: highViewport }).map((visual) => visual.id),
+    [station.id]
+  );
+  assert.equal(
+    syntheticLandmarkVisualAlphaForViewport(station, highViewport),
+    TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.stationMarker.highZoomAlpha
+  );
 });
 
 test("converted OSM road labels are optional and deduplicated by road name", () => {

@@ -36,7 +36,7 @@ export type SyntheticRoadClass =
 
 export type SyntheticBackgroundFeatureKind = "park" | "water" | "land-block" | "open-space" | "pedestrian-area";
 
-export type SyntheticLinearFeatureKind = "rail" | "waterway";
+export type SyntheticLinearFeatureKind = "rail" | "waterway" | "bridge";
 
 export type SyntheticLandmarkVisualKind =
   | "station"
@@ -49,7 +49,7 @@ export type SyntheticLandmarkVisualKind =
   | "dock"
   | "generic";
 
-export type SyntheticContextMapLabelKind = "area" | "park" | "water" | "station" | "landmark";
+export type SyntheticContextMapLabelKind = "area" | "park" | "water" | "station" | "landmark" | "bridge";
 
 export type SyntheticMapLabelKind = "road" | SyntheticContextMapLabelKind | "start" | "checkpoint" | "finish";
 
@@ -190,6 +190,12 @@ export type SyntheticLabelCollisionBox = {
 
 export type FilterSyntheticMapLabelsOptions = {
   labels: readonly SyntheticMapLabel[];
+  viewport: ScreenMapViewport;
+  reservedBoxes?: readonly SyntheticLabelCollisionBox[];
+};
+
+export type FilterSyntheticLandmarkVisualsOptions = {
+  visuals: readonly SyntheticLandmarkVisual[];
   viewport: ScreenMapViewport;
   reservedBoxes?: readonly SyntheticLabelCollisionBox[];
 };
@@ -551,7 +557,7 @@ export function roadStyleForViewport(visual: SyntheticRoadVisual, viewport: Scre
     ...(visual.style.dash ? { dash: [...visual.style.dash] } : {})
   };
   const geometry = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry;
-  const viewportScale = labelViewportScale(viewport);
+  const viewportScale = syntheticMapViewportScale(viewport);
 
   if (viewportScale >= geometry.lowZoomViewportScale) {
     return style;
@@ -811,7 +817,7 @@ export function filterSyntheticMapLabelsForViewport(
   const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? [])];
   const acceptedLabels: SyntheticMapLabel[] = [];
   const roadLabelPointsByText = new Map<string, Vec2[]>();
-  const viewportScale = labelViewportScale(options.viewport);
+  const viewportScale = syntheticMapViewportScale(options.viewport);
 
   for (const label of [...options.labels].sort(compareLabelsForLayout)) {
     if (label.kind === "road" && !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText)) {
@@ -844,6 +850,92 @@ export function filterSyntheticMapLabelsForViewport(
   return acceptedLabels.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
+export function filterSyntheticLandmarkVisualsForViewport(
+  options: FilterSyntheticLandmarkVisualsOptions
+): SyntheticLandmarkVisual[] {
+  const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? [])];
+  const acceptedVisuals: SyntheticLandmarkVisual[] = [];
+
+  for (const visual of [...options.visuals].sort(compareLandmarkVisualsForLayout)) {
+    if (!shouldShowSyntheticLandmarkVisualForViewport(visual, options.viewport)) {
+      continue;
+    }
+
+    const box = landmarkVisualCollisionBox(visual, options.viewport);
+
+    if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
+      continue;
+    }
+
+    placedBoxes.push(box);
+    acceptedVisuals.push(visual);
+  }
+
+  return acceptedVisuals.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+export function shouldShowSyntheticLinearFeatureForViewport(
+  feature: SyntheticLinearFeature,
+  viewport: ScreenMapViewport
+): boolean {
+  const style = contextLineStyleForFeature(feature);
+
+  return syntheticMapViewportScale(viewport) >= style.minViewportScale;
+}
+
+export function syntheticLinearFeatureAlphaForViewport(
+  feature: SyntheticLinearFeature,
+  viewport: ScreenMapViewport
+): number {
+  const style = contextLineStyleForFeature(feature);
+  const scale = syntheticMapViewportScale(viewport);
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+
+  if (scale < decluttering.lowDetailViewportScale) {
+    return style.lowZoomAlpha;
+  }
+
+  if (scale >= decluttering.highDetailViewportScale) {
+    return style.highZoomAlpha;
+  }
+
+  return style.mediumZoomAlpha;
+}
+
+export function shouldShowSyntheticLandmarkVisualForViewport(
+  visual: SyntheticLandmarkVisual,
+  viewport: ScreenMapViewport
+): boolean {
+  if (visual.isExerciseStop) {
+    return true;
+  }
+
+  return syntheticMapViewportScale(viewport) >= contextMarkerStyleForVisual(visual).minViewportScale;
+}
+
+export function syntheticLandmarkVisualAlphaForViewport(
+  visual: SyntheticLandmarkVisual,
+  viewport: ScreenMapViewport
+): number {
+  if (visual.isExerciseStop) {
+    return 1;
+  }
+
+  const style = contextMarkerStyleForVisual(visual);
+  const scale = syntheticMapViewportScale(viewport);
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+
+  if (scale < decluttering.lowDetailViewportScale) {
+    return style.lowZoomAlpha;
+  }
+
+  if (scale >= decluttering.highDetailViewportScale) {
+    return style.highZoomAlpha;
+  }
+
+  return style.mediumZoomAlpha;
+}
+
 function compareLabelsForLayout(left: SyntheticMapLabel, right: SyntheticMapLabel): number {
   const priorityDifference = left.priority - right.priority;
 
@@ -862,7 +954,45 @@ function compareLabelsForLayout(left: SyntheticMapLabel, right: SyntheticMapLabe
   return left.id.localeCompare(right.id);
 }
 
-function labelViewportScale(viewport: ScreenMapViewport): number {
+function compareLandmarkVisualsForLayout(left: SyntheticLandmarkVisual, right: SyntheticLandmarkVisual): number {
+  const priorityDifference = left.priority - right.priority;
+
+  if (priorityDifference !== 0) {
+    return priorityDifference;
+  }
+
+  if (left.isExerciseStop !== right.isExerciseStop) {
+    return left.isExerciseStop ? -1 : 1;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+function contextLineStyleForFeature(feature: SyntheticLinearFeature) {
+  if (feature.kind === "bridge") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.bridge;
+  }
+
+  if (feature.kind === "rail") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail;
+  }
+
+  return {
+    ...TOPOPASS_STREET_ATLAS_STYLE.background.water.linear,
+    minViewportScale: 0.28,
+    lowZoomAlpha: 0.52,
+    mediumZoomAlpha: 0.72,
+    highZoomAlpha: 0.88
+  };
+}
+
+function contextMarkerStyleForVisual(visual: SyntheticLandmarkVisual) {
+  return visual.kind === "station"
+    ? TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.stationMarker
+    : TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.landmarkMarker;
+}
+
+export function syntheticMapViewportScale(viewport: ScreenMapViewport): number {
   const width = viewport.mapBounds.maxX - viewport.mapBounds.minX;
   const height = viewport.mapBounds.maxY - viewport.mapBounds.minY;
   const scaleX = width > 0 ? viewport.width / width : 0;
@@ -930,6 +1060,20 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
   };
 }
 
+function landmarkVisualCollisionBox(visual: SyntheticLandmarkVisual, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
+  const point = mapToScreenPoint(visual.point, viewport);
+  const markerStyle = contextMarkerStyleForVisual(visual);
+  const radius = visual.radius + markerStyle.collisionPadding;
+
+  return {
+    id: `landmark-marker-${visual.id}`,
+    minX: point.x - radius,
+    minY: point.y - radius,
+    maxX: point.x + radius,
+    maxY: point.y + radius
+  };
+}
+
 function estimatedLabelTextWidth(text: string, style: TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle): number {
   const characterWidth = "approximateCharacterWidth" in style ? style.approximateCharacterWidth : labelFontSize(style) * 0.58;
 
@@ -963,7 +1107,7 @@ function distanceBetweenPoints(left: Vec2, right: Vec2): number {
 }
 
 function isContextMapLabelKind(kind: SyntheticMapLabelKind): kind is SyntheticContextMapLabelKind {
-  return kind === "area" || kind === "park" || kind === "water" || kind === "station" || kind === "landmark";
+  return kind === "area" || kind === "park" || kind === "water" || kind === "station" || kind === "landmark" || kind === "bridge";
 }
 
 function contextLabelKindForBackgroundFeature(feature: SyntheticBackgroundFeature): SyntheticContextMapLabelKind {
@@ -979,7 +1123,15 @@ function contextLabelKindForBackgroundFeature(feature: SyntheticBackgroundFeatur
 }
 
 function contextLabelKindForLinearFeature(feature: SyntheticLinearFeature): SyntheticContextMapLabelKind {
-  return feature.kind === "waterway" ? "water" : "area";
+  if (feature.kind === "waterway") {
+    return "water";
+  }
+
+  if (feature.kind === "bridge") {
+    return "bridge";
+  }
+
+  return "area";
 }
 
 function contextLabelPriority(kind: SyntheticContextMapLabelKind): number {
@@ -999,6 +1151,10 @@ function contextLabelPriority(kind: SyntheticContextMapLabelKind): number {
 
   if (kind === "water") {
     return priorities.water;
+  }
+
+  if (kind === "bridge") {
+    return priorities.bridge;
   }
 
   return priorities.area;
@@ -1093,6 +1249,19 @@ function namedContextLabel(tags: OverpassTags): string | undefined {
   const name = tags.name?.trim();
 
   return name && name.length > 0 ? name : undefined;
+}
+
+function bridgeContextLabel(tags: OverpassTags): string | undefined {
+  const bridgeName = tags["bridge:name"]?.trim();
+
+  return namedContextLabel(tags) ?? (bridgeName && bridgeName.length > 0 ? bridgeName : undefined);
+}
+
+function hasBridgeContextTag(tags: OverpassTags): boolean {
+  const bridge = tags.bridge?.trim().toLowerCase();
+  const manMade = tags.man_made?.trim().toLowerCase();
+
+  return (Boolean(bridge) && bridge !== "no") || manMade === "bridge";
 }
 
 function osmBackgroundStyleForTags(tags: OverpassTags): Pick<
@@ -1190,15 +1359,31 @@ function osmLinearFeatureStyleForTags(tags: OverpassTags): Pick<
   SyntheticLinearFeature,
   "kind" | "casingColor" | "strokeColor" | "casingWidth" | "strokeWidth" | "dash" | "label"
 > | null {
-  if (tags.railway === "rail" || tags.railway === "light_rail") {
+  if (hasBridgeContextTag(tags) && Boolean(tags.highway)) {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.bridge;
+
+    return {
+      kind: "bridge",
+      label: bridgeContextLabel(tags),
+      casingColor: style.casingColor ?? "",
+      strokeColor: style.strokeColor,
+      casingWidth: style.casingWidth ?? 0,
+      strokeWidth: style.strokeWidth,
+      dash: [...(style.dash ?? [])]
+    };
+  }
+
+  if (tags.railway === "rail" || tags.railway === "light_rail" || tags.railway === "subway") {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail;
+
     return {
       kind: "rail",
       label: namedContextLabel(tags),
-      casingColor: TOPOPASS_STREET_ATLAS_STYLE.rail.casingColor ?? "",
-      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor,
-      casingWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.casingWidth ?? 0,
-      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeWidth,
-      dash: [...(TOPOPASS_STREET_ATLAS_STYLE.rail.dash ?? [])]
+      casingColor: style.casingColor ?? "",
+      strokeColor: style.strokeColor,
+      casingWidth: style.casingWidth ?? 0,
+      strokeWidth: style.strokeWidth,
+      dash: [...(style.dash ?? [])]
     };
   }
 
@@ -1278,11 +1463,11 @@ export function buildSyntheticLinearFeatures(
         { x: bounds.minX + width * 0.57, y: bounds.minY + height * 0.34 },
         { x: bounds.maxX + width * 0.1, y: bounds.minY + height * 0.43 }
       ],
-      casingColor: TOPOPASS_STREET_ATLAS_STYLE.rail.casingColor ?? "",
-      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor,
-      casingWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.casingWidth ?? 0,
-      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeWidth,
-      dash: [...(TOPOPASS_STREET_ATLAS_STYLE.rail.dash ?? [])],
+      casingColor: TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.casingColor ?? "",
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.strokeColor,
+      casingWidth: TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.casingWidth ?? 0,
+      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.strokeWidth,
+      dash: [...(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.dash ?? [])],
       routable: false
     }
   ];

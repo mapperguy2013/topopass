@@ -811,6 +811,12 @@ Stage 147 adds central zoom decluttering and legal-restriction cartography so
 low zoom suppresses minor symbols, high zoom reveals one-way/restriction detail,
 and route-review issue markers remain visible without changing routing,
 legality, scoring, exercises, or beta behaviour.
+Stage 148 improves fixture-backed Real London context rendering for rail
+corridors, station/landmark markers, bridge/crossing indicators, and bridge
+labels where the committed data supports them. Context lines and markers now
+fade or filter by zoom and avoid learner overlay reservations; the renderer
+does not fabricate unavailable landmarks or change routing, legality, scoring,
+exercises, beta gates, feedback, or route attempts.
 
 ## Current Feature Set
 
