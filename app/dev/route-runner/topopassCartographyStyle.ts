@@ -79,6 +79,24 @@ export type TopopassZoomThresholds = {
   panMargin: number;
 };
 
+export type TopopassZoomDeclutteringStyle = {
+  osmRoadLabelsRequireQaOverlay: boolean;
+  oneWayArrowMinSpacingMeters: number;
+  longRoadArrowThresholdMeters: number;
+  lowDetailViewportScale: number;
+  highDetailViewportScale: number;
+  mediumOneWayMinRoadLengthMeters: number;
+  lowRestrictionSymbolAlpha: number;
+  mediumRestrictionSymbolAlpha: number;
+  highRestrictionSymbolAlpha: number;
+  lowRestrictionSymbolScale: number;
+  mediumRestrictionSymbolScale: number;
+  highRestrictionSymbolScale: number;
+  lowRestrictionOverlayAlphaMultiplier: number;
+  mediumRestrictionOverlayAlphaMultiplier: number;
+  highRestrictionOverlayAlphaMultiplier: number;
+};
+
 export type TopopassStreetAtlasStyle = {
   canvas: {
     backgroundColor: string;
@@ -306,11 +324,7 @@ export type TopopassStreetAtlasStyle = {
   };
   zoom: {
     thresholds: TopopassZoomThresholds;
-    decluttering: {
-      osmRoadLabelsRequireQaOverlay: boolean;
-      oneWayArrowMinSpacingMeters: number;
-      longRoadArrowThresholdMeters: number;
-    };
+    decluttering: TopopassZoomDeclutteringStyle;
   };
 };
 
@@ -945,7 +959,19 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     decluttering: {
       osmRoadLabelsRequireQaOverlay: false,
       oneWayArrowMinSpacingMeters: 50,
-      longRoadArrowThresholdMeters: 180
+      longRoadArrowThresholdMeters: 180,
+      lowDetailViewportScale: 0.5,
+      highDetailViewportScale: 0.95,
+      mediumOneWayMinRoadLengthMeters: 180,
+      lowRestrictionSymbolAlpha: 0.42,
+      mediumRestrictionSymbolAlpha: 0.78,
+      highRestrictionSymbolAlpha: 1,
+      lowRestrictionSymbolScale: 0.82,
+      mediumRestrictionSymbolScale: 0.92,
+      highRestrictionSymbolScale: 1,
+      lowRestrictionOverlayAlphaMultiplier: 0.32,
+      mediumRestrictionOverlayAlphaMultiplier: 0.68,
+      highRestrictionOverlayAlphaMultiplier: 1
     }
   }
 } as const satisfies TopopassStreetAtlasStyle;

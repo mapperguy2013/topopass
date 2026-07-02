@@ -150,7 +150,10 @@ import {
   buildRestrictionLegendItems,
   buildRestrictionMapVisualItems,
   buildSelectedRestrictionHighlight,
+  filterRestrictionMapVisualItemsForViewport,
+  restrictionMapVisualStyleForViewport,
   resolveRestrictionFocusTarget,
+  roadRestrictionOverlayAlphaForViewport,
   type RestrictionFocusReviewItem,
   type RestrictionMapVisualItem,
   type SelectedRestrictionHighlight
@@ -1505,7 +1508,7 @@ function drawRoadRestrictionOverlay(
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
-  context.globalAlpha = overlayStyle.alpha ?? 1;
+  context.globalAlpha = (overlayStyle.alpha ?? 1) * roadRestrictionOverlayAlphaForViewport(overlay, viewport);
   context.lineWidth = overlayStyle.strokeWidth;
   context.setLineDash([...(overlayStyle.dash ?? [])]);
   context.beginPath();
@@ -1555,19 +1558,21 @@ function drawTurnArrowSymbol(context: CanvasRenderingContext2D, turnKind: TurnRe
   context.stroke();
 }
 
-function drawNoEntryMapSymbol(context: CanvasRenderingContext2D, point: Vec2, radius = 14): void {
+function drawNoEntryMapSymbol(context: CanvasRenderingContext2D, point: Vec2, scale = 1, alpha = 1): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.noEntryMarker;
+  const radius = style.radius * scale;
 
   context.save();
+  context.globalAlpha = alpha;
   context.fillStyle = style.fillColor;
   context.strokeStyle = style.strokeColor;
-  context.lineWidth = style.strokeWidth;
+  context.lineWidth = style.strokeWidth * scale;
   context.beginPath();
   context.arc(point.x, point.y, radius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.strokeStyle = style.strokeColor;
-  context.lineWidth = style.barWidth;
+  context.lineWidth = style.barWidth * scale;
   context.lineCap = "round";
   context.beginPath();
   context.moveTo(point.x - radius * style.barRadiusRatio, point.y);
@@ -1579,7 +1584,9 @@ function drawNoEntryMapSymbol(context: CanvasRenderingContext2D, point: Vec2, ra
 function drawOneWayMapSymbol(
   context: CanvasRenderingContext2D,
   point: Vec2,
-  direction: RestrictionMapVisualItem["direction"]
+  direction: RestrictionMapVisualItem["direction"],
+  scale = 1,
+  alpha = 1
 ): void {
   if (!direction) {
     return;
@@ -1588,18 +1595,19 @@ function drawOneWayMapSymbol(
   const angle = Math.atan2(direction.to.y - direction.from.y, direction.to.x - direction.from.x);
   const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay;
   const tip = {
-    x: point.x + style.tipDistance * Math.cos(angle),
-    y: point.y + style.tipDistance * Math.sin(angle)
+    x: point.x + style.tipDistance * scale * Math.cos(angle),
+    y: point.y + style.tipDistance * scale * Math.sin(angle)
   };
   const tail = {
-    x: point.x - style.tailDistance * Math.cos(angle),
-    y: point.y - style.tailDistance * Math.sin(angle)
+    x: point.x - style.tailDistance * scale * Math.cos(angle),
+    y: point.y - style.tailDistance * scale * Math.sin(angle)
   };
 
   context.save();
+  context.globalAlpha = alpha;
   context.strokeStyle = style.color;
   context.fillStyle = style.color;
-  context.lineWidth = style.lineWidth;
+  context.lineWidth = style.lineWidth * scale;
   context.lineCap = "round";
   context.beginPath();
   context.moveTo(tail.x, tail.y);
@@ -1609,31 +1617,33 @@ function drawOneWayMapSymbol(
   context.restore();
 }
 
-function drawRestrictedRoadMapSymbol(context: CanvasRenderingContext2D, point: Vec2): void {
+function drawRestrictedRoadMapSymbol(context: CanvasRenderingContext2D, point: Vec2, scale = 1, alpha = 1): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.restrictedMarker;
+  const radius = style.radius * scale;
 
   context.save();
+  context.globalAlpha = alpha;
   context.fillStyle = style.fillColor;
   context.strokeStyle = style.strokeColor;
-  context.lineWidth = style.strokeWidth;
+  context.lineWidth = style.strokeWidth * scale;
   context.beginPath();
-  context.moveTo(point.x, point.y - style.radius);
-  context.lineTo(point.x + style.radius, point.y);
-  context.lineTo(point.x, point.y + style.radius);
-  context.lineTo(point.x - style.radius, point.y);
+  context.moveTo(point.x, point.y - radius);
+  context.lineTo(point.x + radius, point.y);
+  context.lineTo(point.x, point.y + radius);
+  context.lineTo(point.x - radius, point.y);
   context.closePath();
   context.fill();
   context.stroke();
   context.strokeStyle = style.symbolColor;
-  context.lineWidth = style.symbolLineWidth;
+  context.lineWidth = style.symbolLineWidth * scale;
   context.lineCap = "round";
   context.beginPath();
-  context.moveTo(point.x, point.y - 7);
-  context.lineTo(point.x, point.y + 2);
+  context.moveTo(point.x, point.y - 7 * scale);
+  context.lineTo(point.x, point.y + 2 * scale);
   context.stroke();
   context.fillStyle = style.symbolColor;
   context.beginPath();
-  context.arc(point.x, point.y + 7, style.dotRadius, 0, Math.PI * 2);
+  context.arc(point.x, point.y + 7 * scale, style.dotRadius * scale, 0, Math.PI * 2);
   context.fill();
   context.restore();
 }
@@ -1641,19 +1651,23 @@ function drawRestrictedRoadMapSymbol(context: CanvasRenderingContext2D, point: V
 function drawTurnBanMapSymbol(
   context: CanvasRenderingContext2D,
   point: Vec2,
-  turnKind: TurnRestrictionVisual["turnKind"] | undefined
+  turnKind: TurnRestrictionVisual["turnKind"] | undefined,
+  scale = 1,
+  alpha = 1
 ): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker;
 
   context.save();
+  context.globalAlpha = alpha;
   context.fillStyle = style.fillColor;
   context.strokeStyle = style.strokeColor;
-  context.lineWidth = style.strokeWidth;
+  context.lineWidth = style.strokeWidth * scale;
   context.beginPath();
-  context.arc(point.x, point.y, style.radius, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.radius * scale, 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.translate(point.x, point.y);
+  context.scale(scale, scale);
   drawTurnArrowSymbol(context, turnKind ?? "no-left-turn");
   context.strokeStyle = style.strokeColor;
   context.lineWidth = style.strokeWidth;
@@ -1730,6 +1744,7 @@ function drawRestrictionMapVisualItem(
   viewport: ScreenMapViewport
 ): void {
   const point = mapToScreenPoint(item.point, viewport);
+  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport);
   const direction = item.direction
     ? {
         from: mapToScreenPoint(item.direction.from, viewport),
@@ -1738,22 +1753,22 @@ function drawRestrictionMapVisualItem(
     : undefined;
 
   if (item.symbol === "one-way-arrow") {
-    drawOneWayMapSymbol(context, point, direction);
+    drawOneWayMapSymbol(context, point, direction, zoomStyle.scale, zoomStyle.alpha);
     return;
   }
 
   if (item.symbol === "no-entry-sign") {
-    drawNoEntryMapSymbol(context, point);
+    drawNoEntryMapSymbol(context, point, zoomStyle.scale, zoomStyle.alpha);
     return;
   }
 
   if (item.symbol === "restricted-road-sign") {
-    drawRestrictedRoadMapSymbol(context, point);
+    drawRestrictedRoadMapSymbol(context, point, zoomStyle.scale, zoomStyle.alpha);
     return;
   }
 
   if (item.symbol === "turn-ban-sign") {
-    drawTurnBanMapSymbol(context, point, item.turnKind);
+    drawTurnBanMapSymbol(context, point, item.turnKind, zoomStyle.scale, zoomStyle.alpha);
     return;
   }
 
@@ -2514,7 +2529,7 @@ function drawRouteCanvas(input: {
     drawRouteIssueOverlay(context, overlay, input.viewport, input.map);
   }
 
-  for (const item of input.restrictionMapVisualItems) {
+  for (const item of filterRestrictionMapVisualItemsForViewport(input.restrictionMapVisualItems, input.viewport)) {
     drawRestrictionMapVisualItem(context, item, input.viewport);
   }
 

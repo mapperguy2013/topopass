@@ -440,6 +440,17 @@ const lowZoomRoadViewport = {
   }
 };
 
+const highZoomRoadViewport = {
+  width: 1200,
+  height: 1200,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
+
 test("Stage 145.5 road render passes keep all casings below all fills in hierarchy order", () => {
   const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
   const ordered = sortRoadVisualsForBaseRender(visuals);
@@ -474,6 +485,17 @@ test("Stage 145.5 low-zoom road styling thins minor roads without weakening majo
   assert.ok(roadStyleForViewport(residential, lowZoomRoadViewport).strokeWidth < residential.style.strokeWidth);
   assert.ok((roadStyleForViewport(residential, lowZoomRoadViewport).alpha ?? 1) < (residential.style.alpha ?? 1));
   assert.ok(roadStyleForViewport(service, lowZoomRoadViewport).strokeWidth < roadStyleForViewport(residential, lowZoomRoadViewport).strokeWidth);
+});
+
+test("Stage 147 high zoom restores residential road detail", () => {
+  const residential = roadVisual({
+    roadClass: "local",
+    osmHierarchy: "residential",
+    style: roadStyleForOsmHierarchy("residential")
+  });
+
+  assert.ok(roadStyleForViewport(residential, lowZoomRoadViewport).strokeWidth < residential.style.strokeWidth);
+  assert.deepEqual(roadStyleForViewport(residential, highZoomRoadViewport), residential.style);
 });
 
 test("Stage 145.5 inactive and restricted roads stay quieter than active residential streets", () => {

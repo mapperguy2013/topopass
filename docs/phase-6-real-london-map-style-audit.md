@@ -78,6 +78,26 @@ present. The current Real London pilot fixtures remain mostly road-only, so
 Stage 146 adds hooks and tests for parks, water, rail-line context, stations,
 and landmarks without inventing unavailable Real London places.
 
+## Stage 147 Zoom And Restriction Decluttering
+
+Stage 147 adds central zoom-decluttering rules and legal-restriction
+cartography without changing routing, legality, scoring, exercise generation,
+OSM conversion, beta behaviour, feedback, or persistence. Viewport scale now
+maps to deterministic low, medium, and high detail tiers. Low zoom keeps major
+roads, area orientation, route overlays, and route-review issue symbols
+dominant while suppressing base one-way/restriction symbols. Medium zoom brings
+back useful no-entry, restricted-road, prohibited-turn, and long-road one-way
+symbols with reduced alpha/scale. High zoom reveals residential/local road
+detail, one-way arrows, no-entry markers, restricted-road signs, and turn-ban
+markers.
+
+Restriction rendering continues to use only existing road restriction overlays,
+turn restriction visuals, and route issue overlays. If turn-restriction render
+data is unavailable, the restriction helper returns no visuals instead of
+fabricating junction rules. Route-review issue symbols remain visible across
+zoom tiers so one-way, no-entry, restricted-road, disconnected, and turn-rule
+mistakes can still be explained visually.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -139,7 +159,8 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
    parks, water, rail-line context, and area names are filtered by category
    priority, zoom scale, road segment fit, repeated-name spacing, collisions,
    and reserved overlay/marker areas before drawing.
-11. Road restriction overlays, when enabled.
+11. Road restriction overlays, when enabled. Their alpha is reduced at lower
+   zoom tiers by central decluttering tokens.
 12. OSM debug directed-edge overlays, when enabled.
 13. Fastest/shortest legal route overlay, when revealed.
 14. OSM exercise debug route and blocked-edge overlays, when enabled.
@@ -147,7 +168,8 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 16. Route issue overlays for illegal, disconnected, prohibited-turn, and
     no-U-turn review state.
 17. Restriction map symbols for one-way arrows, no-entry signs, restricted
-    road signs, turn-ban signs, and route issue symbols.
+    road signs, turn-ban signs, and route issue symbols. Base restriction
+    symbols are filtered by zoom tier; route-review issue symbols remain visible.
 18. Selected restriction/review focus highlight.
 19. Small graph node dots.
 20. Matched route node markers.
@@ -164,9 +186,10 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   road casing colours, widths, road geometry, junction blends, road interaction
   focus, hierarchy-specific road label fonts/colours/halos, context label
   fonts/colours/halos, label visibility thresholds, label collision spacing,
-  background features, rail, station/landmark markers, route overlays, exercise markers, hints,
-  restrictions, review overlays, replay markers, node markers, zoom thresholds,
-  and decluttering thresholds.
+  background features, rail, station/landmark markers, route overlays,
+  exercise markers, hints, restrictions, review overlays, replay markers, node
+  markers, zoom thresholds, and zoom decluttering thresholds for roads, labels,
+  one-way arrows, restriction overlays, and restriction symbols.
 - `syntheticStreetMapRenderer.ts` now reads road hierarchy, synthetic road
   styles, OSM road styles, background feature colours, rail styling, landmark
   styling, road/context label priorities, label visibility, and route overlay
@@ -202,6 +225,8 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Junction clarity uses deterministic casing/fill passes plus same-colour
   endpoint blends, so graph-segment endpoints read more like continuous streets
   without modifying the route graph.
+- Zoom decluttering thins and quiets minor road geometry at lower viewport
+  scales and restores residential/local road detail at higher viewport scales.
 - No-entry and road-closed restrictions override the general road class for
   visual modelling.
 - Real London road geometry is graph-segment based, so long real-world OSM ways
@@ -245,6 +270,23 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Hints are currently represented mainly through the snap preview, correction
   panels, fastest-route reveal, and review text rather than a dedicated hint
   map layer.
+
+## Restriction Cartography
+
+- One-way arrows are generated from existing one-way road overlay geometry and
+  continue to follow the road direction where direction data is available.
+- Low zoom hides base one-way, no-entry, restricted-road, and turn-ban symbols
+  so the map does not become symbol-heavy. Route-review issue symbols remain
+  visible even at low zoom.
+- Medium zoom shows no-entry, restricted-road, prohibited-turn, and long one-way
+  indicators with reduced alpha and scale.
+- High zoom shows the full legal-restriction symbol layer, including one-way
+  arrows, no-entry signs, restricted-road signs, and turn-ban signs where the
+  current data already exposes them.
+- Road restriction overlay lines are not legal logic; they are visual hints
+  derived from existing overlays and are faded at lower zoom tiers.
+- Missing turn-restriction visual data is a safe no-op; the renderer does not
+  invent banned turns or access rules.
 
 ## Restrictions and One-Way Rendering
 
@@ -310,8 +352,10 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   hooks with hierarchy, zoom, fit, repeat, priority, collision, and
   reserved-area rules. Future work still needs full curved placement and richer
   collision handling for dense parallel roads.
-- Zoom decluttering: road labels and one-way arrows now have explicit
-  decluttering. Most non-label layers still do not respond to zoom level.
+- Zoom decluttering: road labels, minor road detail, one-way arrows,
+  restriction overlays, and restriction symbols now respond to central
+  decluttering tiers. Some non-label context layers still have limited zoom
+  behaviour.
 - Parks/water/rail/stations/bridges/landmarks/area names: the renderer now has
   category-specific label hooks for available context data, but the current
   Real London base maps are still mostly road-only because the committed pilot
@@ -319,9 +363,10 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Learner overlays: start, destination, checkpoint, route, restriction, and
   review overlays are visible above the base map, but some meanings still rely
   strongly on colour and compact text panels.
-- Route review clarity: route review overlays exist, but overlapping route
-  geometries and dense central London streets still need clearer hierarchy,
-  non-colour cues, and review-state composition.
+- Route review clarity: route review overlays and route issue symbols now stay
+  visible through zoom decluttering, but overlapping route geometries and dense
+  central London streets still need clearer non-colour cues and review-state
+  composition.
 - Mobile map usability: mobile layout is practical for beta testing, but dense
   map symbols and hidden labels limit learner orientation on small screens.
 - Performance: current fixture-backed rendering is stable, but future labels

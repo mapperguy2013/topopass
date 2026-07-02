@@ -807,6 +807,10 @@ Stage 146 adds a broader deterministic label system for the Canvas learner map:
 road labels, station labels, landmark labels, parks, water, rail-line context,
 and area/context names now use central TOPOPASS label tokens, zoom visibility,
 priority ordering, collision checks, and reserved overlay areas.
+Stage 147 adds central zoom decluttering and legal-restriction cartography so
+low zoom suppresses minor symbols, high zoom reveals one-way/restriction detail,
+and route-review issue markers remain visible without changing routing,
+legality, scoring, exercises, or beta behaviour.
 
 ## Current Feature Set
 

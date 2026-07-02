@@ -1,4 +1,4 @@
-import type { TurnRestrictionVisual, TurnRestrictionVisualKind, Vec2 } from "../../../lib/map-engine/index.ts";
+import type { ScreenMapViewport, TurnRestrictionVisual, TurnRestrictionVisualKind, Vec2 } from "../../../lib/map-engine/index.ts";
 import type { RoadRestrictionOverlay, RouteIssueOverlay } from "./routeRunnerDisplay.ts";
 import type { SyntheticStreetMapLegendItem } from "./syntheticStreetMapRenderer.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
@@ -40,6 +40,13 @@ export type RestrictionMapVisualItem = {
   };
 };
 
+export type RestrictionZoomTier = "low" | "medium" | "high";
+
+export type RestrictionMapVisualZoomStyle = {
+  alpha: number;
+  scale: number;
+};
+
 export type RestrictionFocusReviewItem = {
   id: string;
   label: string;
@@ -76,6 +83,31 @@ const LONG_ROAD_ARROW_THRESHOLD = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.
 export const ONE_WAY_ARROW_MIN_SPACING_METERS =
   TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.oneWayArrowMinSpacingMeters;
 
+function viewportScale(viewport: ScreenMapViewport): number {
+  const width = viewport.mapBounds.maxX - viewport.mapBounds.minX;
+  const height = viewport.mapBounds.maxY - viewport.mapBounds.minY;
+  const scaleX = width > 0 ? viewport.width / width : 0;
+  const scaleY = height > 0 ? viewport.height / height : 0;
+  const scale = Math.min(scaleX, scaleY);
+
+  return Number.isFinite(scale) ? scale : 0;
+}
+
+export function restrictionZoomTierForViewport(viewport: ScreenMapViewport): RestrictionZoomTier {
+  const scale = viewportScale(viewport);
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+
+  if (scale < decluttering.lowDetailViewportScale) {
+    return "low";
+  }
+
+  if (scale >= decluttering.highDetailViewportScale) {
+    return "high";
+  }
+
+  return "medium";
+}
+
 function clonePoint(point: Vec2): Vec2 {
   return {
     x: point.x,
@@ -85,6 +117,10 @@ function clonePoint(point: Vec2): Vec2 {
 
 function distanceBetween(from: Vec2, to: Vec2): number {
   return Math.hypot(to.x - from.x, to.y - from.y);
+}
+
+function polylineLength(points: readonly Vec2[]): number {
+  return points.slice(1).reduce((sum, point, index) => sum + distanceBetween(points[index], point), 0);
 }
 
 function lerpPoint(from: Vec2, to: Vec2, ratio: number): Vec2 {
@@ -229,6 +265,12 @@ export function buildProhibitedTurnVisualItems(
   return items;
 }
 
+export function buildTurnRestrictionVisualItemsOrEmpty(
+  visuals?: readonly TurnRestrictionVisual[] | null
+): RestrictionMapVisualItem[] {
+  return buildProhibitedTurnVisualItems(visuals ?? []);
+}
+
 function routeIssueSymbol(overlay: RouteIssueOverlay): RestrictionMapVisualSymbol {
   return overlay.kind === "disconnected" ? "disconnected-gap" : "illegal-route-section";
 }
@@ -255,9 +297,94 @@ export function buildRestrictionMapVisualItems(
     ...buildNoEntryVisualItems(input.roadRestrictionOverlays),
     ...buildOneWayVisualItems(input.roadRestrictionOverlays),
     ...buildRestrictedRoadVisualItems(input.roadRestrictionOverlays),
-    ...buildProhibitedTurnVisualItems(input.turnRestrictionVisuals),
+    ...buildTurnRestrictionVisualItemsOrEmpty(input.turnRestrictionVisuals),
     ...buildIllegalMovementVisualItems(input.routeIssueOverlays)
   ].sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+function isRouteReviewVisualItem(item: RestrictionMapVisualItem): boolean {
+  return item.kind === "illegal-movement" || item.kind === "missed-restriction";
+}
+
+export function shouldShowRestrictionMapVisualItemAtZoom(
+  item: RestrictionMapVisualItem,
+  viewport: ScreenMapViewport
+): boolean {
+  const tier = restrictionZoomTierForViewport(viewport);
+
+  if (isRouteReviewVisualItem(item)) {
+    return true;
+  }
+
+  if (tier === "low") {
+    return false;
+  }
+
+  if (tier === "high") {
+    return true;
+  }
+
+  if (item.kind === "one-way") {
+    return polylineLength(item.points) >= TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.mediumOneWayMinRoadLengthMeters;
+  }
+
+  return item.kind === "no-entry" || item.kind === "restricted-road" || item.kind === "prohibited-turn";
+}
+
+export function filterRestrictionMapVisualItemsForViewport(
+  items: readonly RestrictionMapVisualItem[],
+  viewport: ScreenMapViewport
+): RestrictionMapVisualItem[] {
+  return items.filter((item) => shouldShowRestrictionMapVisualItemAtZoom(item, viewport));
+}
+
+export function restrictionMapVisualStyleForViewport(
+  item: RestrictionMapVisualItem,
+  viewport: ScreenMapViewport
+): RestrictionMapVisualZoomStyle {
+  if (isRouteReviewVisualItem(item)) {
+    return { alpha: 1, scale: 1 };
+  }
+
+  const tier = restrictionZoomTierForViewport(viewport);
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+
+  if (tier === "low") {
+    return {
+      alpha: decluttering.lowRestrictionSymbolAlpha,
+      scale: decluttering.lowRestrictionSymbolScale
+    };
+  }
+
+  if (tier === "medium") {
+    return {
+      alpha: decluttering.mediumRestrictionSymbolAlpha,
+      scale: decluttering.mediumRestrictionSymbolScale
+    };
+  }
+
+  return {
+    alpha: decluttering.highRestrictionSymbolAlpha,
+    scale: decluttering.highRestrictionSymbolScale
+  };
+}
+
+export function roadRestrictionOverlayAlphaForViewport(
+  overlay: RoadRestrictionOverlay,
+  viewport: ScreenMapViewport
+): number {
+  const tier = restrictionZoomTierForViewport(viewport);
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+
+  if (tier === "low") {
+    return overlay.kind === "no-entry" ? decluttering.mediumRestrictionOverlayAlphaMultiplier : decluttering.lowRestrictionOverlayAlphaMultiplier;
+  }
+
+  if (tier === "medium") {
+    return decluttering.mediumRestrictionOverlayAlphaMultiplier;
+  }
+
+  return decluttering.highRestrictionOverlayAlphaMultiplier;
 }
 
 function reviewItemText(item: RestrictionFocusReviewItem): string {

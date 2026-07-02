@@ -11,8 +11,14 @@ import {
   buildRestrictionLegendItems,
   buildRestrictionMapVisualItems,
   buildSelectedRestrictionHighlight,
+  buildTurnRestrictionVisualItemsOrEmpty,
+  filterRestrictionMapVisualItemsForViewport,
+  roadRestrictionOverlayAlphaForViewport,
+  restrictionMapVisualStyleForViewport,
+  restrictionZoomTierForViewport,
   resolveRestrictionFocusTarget
 } from "./restrictionMapVisuals.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 const roadRestrictionOverlays: RoadRestrictionOverlay[] = [
   {
@@ -108,6 +114,39 @@ const routeIssueOverlays: RouteIssueOverlay[] = [
     roadIds: ["r-a", "r-b"]
   }
 ];
+
+const lowZoomViewport = {
+  width: 160,
+  height: 160,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
+
+const mediumZoomViewport = {
+  width: 700,
+  height: 700,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
+
+const highZoomViewport = {
+  width: 1200,
+  height: 1200,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
 
 test("buildNoEntryVisualItems creates clear no-entry symbols from existing overlays", () => {
   const items = buildNoEntryVisualItems(roadRestrictionOverlays);
@@ -230,6 +269,101 @@ test("buildRestrictionMapVisualItems returns deterministic priority ordering wit
 
   items[0].points[0].x = 999;
   assert.equal(originalPoint.x, 0);
+});
+
+test("Stage 147 zoom tier helper classifies restriction detail deterministically", () => {
+  assert.equal(restrictionZoomTierForViewport(lowZoomViewport), "low");
+  assert.equal(restrictionZoomTierForViewport(mediumZoomViewport), "medium");
+  assert.equal(restrictionZoomTierForViewport(highZoomViewport), "high");
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering), [
+    "osmRoadLabelsRequireQaOverlay",
+    "oneWayArrowMinSpacingMeters",
+    "longRoadArrowThresholdMeters",
+    "lowDetailViewportScale",
+    "highDetailViewportScale",
+    "mediumOneWayMinRoadLengthMeters",
+    "lowRestrictionSymbolAlpha",
+    "mediumRestrictionSymbolAlpha",
+    "highRestrictionSymbolAlpha",
+    "lowRestrictionSymbolScale",
+    "mediumRestrictionSymbolScale",
+    "highRestrictionSymbolScale",
+    "lowRestrictionOverlayAlphaMultiplier",
+    "mediumRestrictionOverlayAlphaMultiplier",
+    "highRestrictionOverlayAlphaMultiplier"
+  ]);
+});
+
+test("Stage 147 low zoom hides base restriction symbols while preserving route review symbols", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays
+  });
+
+  assert.deepEqual(
+    filterRestrictionMapVisualItemsForViewport(items, lowZoomViewport).map((item) => item.kind),
+    ["missed-restriction", "illegal-movement"]
+  );
+});
+
+test("Stage 147 high zoom reveals one-way and restriction detail", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays
+  });
+
+  assert.deepEqual(
+    filterRestrictionMapVisualItemsForViewport(items, highZoomViewport).map((item) => item.kind),
+    [
+      "one-way",
+      "one-way",
+      "no-entry",
+      "restricted-road",
+      "prohibited-turn",
+      "missed-restriction",
+      "illegal-movement"
+    ]
+  );
+});
+
+test("Stage 147 medium zoom shows useful restriction symbols and reduces their style", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays: []
+  });
+  const visibleItems = filterRestrictionMapVisualItemsForViewport(items, mediumZoomViewport);
+  const oneWayItem = visibleItems.find((item) => item.kind === "one-way");
+  const noEntryItem = visibleItems.find((item) => item.kind === "no-entry");
+
+  assert.ok(oneWayItem);
+  assert.ok(noEntryItem);
+  assert.deepEqual(restrictionMapVisualStyleForViewport(noEntryItem, mediumZoomViewport), {
+    alpha: TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.mediumRestrictionSymbolAlpha,
+    scale: TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.mediumRestrictionSymbolScale
+  });
+  assert.ok(
+    restrictionMapVisualStyleForViewport(noEntryItem, mediumZoomViewport).alpha <
+      restrictionMapVisualStyleForViewport(noEntryItem, highZoomViewport).alpha
+  );
+});
+
+test("Stage 147 road restriction overlay alpha declutters at low zoom", () => {
+  assert.ok(
+    roadRestrictionOverlayAlphaForViewport(roadRestrictionOverlays[0], lowZoomViewport) <
+      roadRestrictionOverlayAlphaForViewport(roadRestrictionOverlays[0], highZoomViewport)
+  );
+  assert.ok(
+    roadRestrictionOverlayAlphaForViewport(roadRestrictionOverlays[1], lowZoomViewport) >=
+      roadRestrictionOverlayAlphaForViewport(roadRestrictionOverlays[0], lowZoomViewport)
+  );
+});
+
+test("Stage 147 missing turn restriction render data is a safe no-op", () => {
+  assert.deepEqual(buildTurnRestrictionVisualItemsOrEmpty(), []);
+  assert.deepEqual(buildTurnRestrictionVisualItemsOrEmpty(null), []);
 });
 
 test("resolveRestrictionFocusTarget finds illegal movements by review movement index", () => {
