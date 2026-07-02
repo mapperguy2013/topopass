@@ -91,6 +91,11 @@ test("Stage 132 beta screen hides dev QA diagnostics", () => {
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("internal-readiness-diagnostics"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("full-restriction-debug-details"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("converted-osm-qa"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("restriction-overlays"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("pipeline-debug-result"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("manual-route-input"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("osm-debug"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-debug-output"));
   assert.equal("fixtureName" in model, false);
 });
 
@@ -102,6 +107,7 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
   assert.match(model.feedback.placeholder, /Beta testers can note/);
   assert.ok(model.knownLimitations.some((limitation) => limitation.includes("committed local OSM fixtures only")));
   assert.ok(model.knownLimitations.some((limitation) => limitation.includes("does not fetch live OSM")));
+  assert.ok(model.knownLimitations.every((limitation) => !limitation.includes("QA")));
   assert.ok(model.legendItems.some((item) => item.id === "one-way" && /one-way/i.test(item.description)));
   assert.ok(model.legendItems.some((item) => item.id === "context-roads" && /context/i.test(item.description)));
 });

@@ -214,6 +214,11 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         "metadata-coverage-counts",
         "internal-readiness-diagnostics",
         "full-restriction-debug-details",
+        "restriction-overlays",
+        "pipeline-debug-result",
+        "manual-route-input",
+        "osm-debug",
+        "raw-debug-output",
         "raw-map-id",
         "converted-osm-qa"
       ]

@@ -223,6 +223,9 @@ import {
   buildPracticeExercisesPanelModel,
   buildRouteRunnerPanelVisibility
 } from "./routeRunnerCompactPracticePanels";
+import {
+  buildRouteRunnerPracticeModePanelVisibility
+} from "./routeRunnerPracticeModePanels";
 import { createRouteRunnerInitialHydrationState } from "./routeRunnerInitialState";
 import {
   buildOsmDebugOverlayModel,
@@ -2375,6 +2378,11 @@ export function RouteRunnerClient({
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
   const [showDevQaPanels, setShowDevQaPanels] = useState(false);
   const isDevRouteRunner = mode === "dev";
+  const practiceModePanelVisibility = useMemo(
+    () => buildRouteRunnerPracticeModePanelVisibility({ mode }),
+    [mode]
+  );
+  const showDeveloperPanels = practiceModePanelVisibility.showDeveloperPanels;
 
   const visibleMapOptions = useMemo(
     () =>
@@ -5165,68 +5173,72 @@ export function RouteRunnerClient({
               </>
             ) : null}
 
-            <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-950">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="font-semibold">{compactRestrictionOverlayPanel.title}</p>
-                  <p className="mt-1 text-xs leading-5">
-                    One-way, illegal/wrong-way, banned-turn, and route issue highlighting are available. The overlay is
-                    visual-only; legality, scoring, matching, and review reasoning remain unchanged.
-                  </p>
+            {showDeveloperPanels ? (
+              <div className="mt-4 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-950">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-semibold">{compactRestrictionOverlayPanel.title}</p>
+                    <p className="mt-1 text-xs leading-5">
+                      One-way, illegal/wrong-way, banned-turn, and route issue highlighting are available. The overlay is
+                      visual-only; legality, scoring, matching, and review reasoning remain unchanged.
+                    </p>
+                  </div>
+                  <span className="w-fit rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold">
+                    Summary
+                  </span>
                 </div>
-                <span className="w-fit rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold">
-                  Summary
-                </span>
-              </div>
-              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                {compactRestrictionOverlayPanel.summaryRows.map((row) => (
-                  <div key={row.id} className="rounded border border-red-100 bg-white p-2">
-                    <dt className="font-semibold uppercase tracking-wide text-red-700">{row.label}</dt>
-                    <dd className="mt-1 font-semibold text-red-950">{row.value}</dd>
-                  </div>
-                ))}
-              </dl>
-              {compactRestrictionOverlayPanel.detailsAccessible ? (
-                <details className="mt-3 rounded border border-red-100 bg-white p-2 text-xs" open={false}>
-                  <summary className="cursor-pointer font-semibold text-red-900">Restriction overlay details</summary>
-                  <div className="mt-3 flex flex-wrap gap-2 font-medium">
-                    {compactRestrictionOverlayPanel.detailItems.map((item) => (
-                      <span
-                        key={item.id}
-                        className={`rounded-full border px-3 py-1 ${
-                          item.selected ? "border-sky-300 bg-sky-50 text-sky-950" : "border-red-200 bg-white text-red-900"
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-                    ))}
-                    {compactRestrictionOverlayPanel.detailItems.length === 0 ? (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
-                        No restriction symbols visible
-                      </span>
-                    ) : null}
-                    {selectedRestrictionFocusTarget ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRestrictionReviewItemId(null)}
-                        className="rounded-full border border-sky-300 bg-white px-3 py-1 text-sky-900 hover:bg-sky-50"
-                      >
-                        Clear map focus
-                      </button>
-                    ) : null}
-                  </div>
-                </details>
-              ) : (
-                <p className="mt-2 rounded border border-red-100 bg-white p-2 text-xs leading-5 text-red-900">
-                  Full restriction overlay debug details are hidden in beta practice mode.
+                <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                  {compactRestrictionOverlayPanel.summaryRows.map((row) => (
+                    <div key={row.id} className="rounded border border-red-100 bg-white p-2">
+                      <dt className="font-semibold uppercase tracking-wide text-red-700">{row.label}</dt>
+                      <dd className="mt-1 font-semibold text-red-950">{row.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {compactRestrictionOverlayPanel.detailsAccessible ? (
+                  <details className="mt-3 rounded border border-red-100 bg-white p-2 text-xs" open={false}>
+                    <summary className="cursor-pointer font-semibold text-red-900">Restriction overlay details</summary>
+                    <div className="mt-3 flex flex-wrap gap-2 font-medium">
+                      {compactRestrictionOverlayPanel.detailItems.map((item) => (
+                        <span
+                          key={item.id}
+                          className={`rounded-full border px-3 py-1 ${
+                            item.selected
+                              ? "border-sky-300 bg-sky-50 text-sky-950"
+                              : "border-red-200 bg-white text-red-900"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      ))}
+                      {compactRestrictionOverlayPanel.detailItems.length === 0 ? (
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
+                          No restriction symbols visible
+                        </span>
+                      ) : null}
+                      {selectedRestrictionFocusTarget ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRestrictionReviewItemId(null)}
+                          className="rounded-full border border-sky-300 bg-white px-3 py-1 text-sky-900 hover:bg-sky-50"
+                        >
+                          Clear map focus
+                        </button>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : (
+                  <p className="mt-2 rounded border border-red-100 bg-white p-2 text-xs leading-5 text-red-900">
+                    Full restriction overlay debug details are hidden in beta practice mode.
+                  </p>
+                )}
+                <p className="mt-2 text-xs leading-5 text-red-900">
+                  {showRoadRestrictions || showTurnRestrictions
+                    ? "Use Show on map from review items to emphasise a specific route issue or restriction."
+                    : "Restriction toggles are off, so only post-attempt route issue symbols remain visible."}
                 </p>
-              )}
-              <p className="mt-2 text-xs leading-5 text-red-900">
-                {showRoadRestrictions || showTurnRestrictions
-                  ? "Use Show on map from review items to emphasise a specific route issue or restriction."
-                  : "Restriction toggles are off, so only post-attempt route issue symbols remain visible."}
-              </p>
-            </div>
+              </div>
+            ) : null}
 
             <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-700">
               {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
@@ -5247,8 +5259,9 @@ export function RouteRunnerClient({
               <div>
                 <h2 className="text-base font-semibold text-slate-950">Attempt review</h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
-                  Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner
-                  when the match is usable.
+                  {isStudentBetaRouteRunner
+                    ? "Submit your drawn route to see score, distance, and route feedback."
+                    : "Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner when the match is usable."}
                 </p>
               </div>
               <span
@@ -6761,23 +6774,29 @@ export function RouteRunnerClient({
               </div>
             ) : (
               <div className="mt-5 rounded-md border border-green-100 bg-green-50 p-3 text-sm text-green-900">
-                No pipeline warnings for the current drawn attempt.
+                {isStudentBetaRouteRunner
+                  ? "No route warnings for the current attempt."
+                  : "No pipeline warnings for the current drawn attempt."}
               </div>
             )}
 
-            {visibleDrawnExerciseResult ? (
+            {showDeveloperPanels ? (
               <>
-                <h3 className="mt-5 text-sm font-semibold text-slate-950">Drawn route score result</h3>
-                <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-100">
-                  {JSON.stringify(visibleDrawnExerciseResult.score, null, 2)}
+                {visibleDrawnExerciseResult ? (
+                  <>
+                    <h3 className="mt-5 text-sm font-semibold text-slate-950">Drawn route score result</h3>
+                    <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-100">
+                      {JSON.stringify(visibleDrawnExerciseResult.score, null, 2)}
+                    </pre>
+                  </>
+                ) : null}
+
+                <h3 className="mt-5 text-sm font-semibold text-slate-950">Pipeline debug result</h3>
+                <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-100">
+                  {JSON.stringify(visibleDrawnPipelineResult, null, 2)}
                 </pre>
               </>
             ) : null}
-
-            <h3 className="mt-5 text-sm font-semibold text-slate-950">Pipeline debug result</h3>
-            <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-100">
-              {JSON.stringify(visibleDrawnPipelineResult, null, 2)}
-            </pre>
           </section>
 
           {error ? (

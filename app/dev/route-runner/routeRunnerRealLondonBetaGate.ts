@@ -89,8 +89,8 @@ const BETA_ENABLED_VALUES = new Set(["1", "true", "yes", "on", "enabled"]);
 export const REAL_LONDON_BETA_KNOWN_LIMITATIONS = [
   "Uses committed local OSM fixtures only; it does not fetch live OSM or Overpass data.",
   "Pilot coverage is limited to the current real London fixture areas and starter exercises.",
-  "QA and beta review are required before any production exposure.",
-  "Mobile and touch interaction have separate QA coverage and still need final acceptance before public rollout."
+  "Team review is required before any production exposure.",
+  "Mobile and touch interaction are still being checked before wider rollout."
 ] as const;
 
 export function isRealLondonBetaAccessEnabled(env: RealLondonBetaAccessEnv = process.env): boolean {
