@@ -65,11 +65,14 @@ export type TopopassStreetAtlasStyle = {
     water: {
       canal: { fillColor: string; strokeColor: string };
       basin: { fillColor: string; strokeColor: string };
+      linear: TopopassLineStyle;
     };
     park: {
       garden: { fillColor: string; strokeColor: string };
       square: { fillColor: string; strokeColor: string };
     };
+    openSpace: { fillColor: string; strokeColor: string };
+    pedestrianArea: { fillColor: string; strokeColor: string };
     landBlock: {
       stationQuarter: { fillColor: string; strokeColor: string };
       goodsYard: { fillColor: string; strokeColor: string };
@@ -235,7 +238,7 @@ export type TopopassStreetAtlasStyle = {
 
 export const TOPOPASS_STREET_ATLAS_STYLE = {
   canvas: {
-    backgroundColor: "#eef3f8"
+    backgroundColor: "#f5f0e5"
   },
   roads: {
     syntheticThresholds: {
@@ -245,83 +248,83 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     synthetic: {
       major: {
-        casingColor: "#fff7ed",
-        strokeColor: "#f3c44f",
+        casingColor: "#fff8e8",
+        strokeColor: "#d9a63a",
         casingWidth: 15,
         strokeWidth: 9
       },
       secondary: {
-        casingColor: "#ffffff",
-        strokeColor: "#f6d58a",
+        casingColor: "#fffdf5",
+        strokeColor: "#e8c66a",
         casingWidth: 12,
         strokeWidth: 7
       },
       oneWay: {
-        casingColor: "#ffffff",
-        strokeColor: "#bfdbfe",
+        casingColor: "#fffdf5",
+        strokeColor: "#9fc7e7",
         casingWidth: 11,
         strokeWidth: 6
       },
       noEntry: {
-        casingColor: "#fee2e2",
-        strokeColor: "#fecaca",
+        casingColor: "#ffe8dd",
+        strokeColor: "#f6b5a3",
         casingWidth: 11,
         strokeWidth: 6
       },
       restricted: {
-        casingColor: "#fed7aa",
-        strokeColor: "#fdba74",
+        casingColor: "#ffe5c2",
+        strokeColor: "#e7a94f",
         casingWidth: 11,
         strokeWidth: 5,
         dash: [10, 6]
       },
       service: {
-        casingColor: "#ffffff",
-        strokeColor: "#dbe2ea",
+        casingColor: "#fffdf8",
+        strokeColor: "#ddd5c8",
         casingWidth: 8,
         strokeWidth: 3
       },
       local: {
-        casingColor: "#ffffff",
-        strokeColor: "#cbd5e1",
+        casingColor: "#fffdf8",
+        strokeColor: "#cfc6b6",
         casingWidth: 9,
         strokeWidth: 4.5
       }
     },
     osm: {
       primary: {
-        casingColor: "#fff7ed",
-        strokeColor: "#f5c84c",
-        casingWidth: 14,
-        strokeWidth: 8
+        casingColor: "#fff8e8",
+        strokeColor: "#d9a63a",
+        casingWidth: 16,
+        strokeWidth: 9
       },
       secondary: {
-        casingColor: "#ffffff",
-        strokeColor: "#f4d27c",
-        casingWidth: 11,
-        strokeWidth: 6
+        casingColor: "#fffdf5",
+        strokeColor: "#e6c25f",
+        casingWidth: 13,
+        strokeWidth: 7
       },
       tertiary: {
-        casingColor: "#ffffff",
-        strokeColor: "#f4d27c",
+        casingColor: "#fffdf5",
+        strokeColor: "#ead68b",
         casingWidth: 11,
-        strokeWidth: 6
+        strokeWidth: 5.5
       },
       residential: {
-        casingColor: "#ffffff",
-        strokeColor: "#cbd5e1",
+        casingColor: "#fffdf8",
+        strokeColor: "#cfc6b6",
         casingWidth: 8,
         strokeWidth: 4
       },
       service: {
-        casingColor: "#ffffff",
-        strokeColor: "#d8e0ea",
+        casingColor: "#fffdf8",
+        strokeColor: "#ddd5c8",
         casingWidth: 6,
         strokeWidth: 2.5
       },
       unknown: {
-        casingColor: "#ffffff",
-        strokeColor: "#cbd5e1",
+        casingColor: "#fffdf8",
+        strokeColor: "#d5ccbd",
         casingWidth: 7,
         strokeWidth: 3.5
       }
@@ -364,24 +367,32 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   },
   background: {
     water: {
-      canal: { fillColor: "#dbeafe", strokeColor: "#bfdbfe" },
-      basin: { fillColor: "#c7ddf8", strokeColor: "#93c5fd" }
+      canal: { fillColor: "#cfe8f3", strokeColor: "#a8d3e4" },
+      basin: { fillColor: "#bddfed", strokeColor: "#8ac3d9" },
+      linear: {
+        casingColor: "rgba(255,255,255,0.74)",
+        strokeColor: "#9dccdd",
+        casingWidth: 8,
+        strokeWidth: 4
+      }
     },
     park: {
-      garden: { fillColor: "#dcfce7", strokeColor: "#bbf7d0" },
-      square: { fillColor: "#bbf7d0", strokeColor: "#86efac" }
+      garden: { fillColor: "#dbe9cd", strokeColor: "#bfd3ad" },
+      square: { fillColor: "#cfe0bf", strokeColor: "#abc593" }
     },
+    openSpace: { fillColor: "#e5ead4", strokeColor: "#c8d3ad" },
+    pedestrianArea: { fillColor: "#eee7d8", strokeColor: "#d9cfbe" },
     landBlock: {
-      stationQuarter: { fillColor: "#e0e7ff", strokeColor: "#c7d2fe" },
-      goodsYard: { fillColor: "#f1f5f9", strokeColor: "#cbd5e1" },
-      marketQuarter: { fillColor: "#f8fafc", strokeColor: "#e2e8f0" },
-      civicQuarter: { fillColor: "#e0f2fe", strokeColor: "#bae6fd" }
+      stationQuarter: { fillColor: "#e6dfd0", strokeColor: "#d4c9b9" },
+      goodsYard: { fillColor: "#eee8dc", strokeColor: "#d8cebd" },
+      marketQuarter: { fillColor: "#f2ead9", strokeColor: "#ded2bf" },
+      civicQuarter: { fillColor: "#e8e1d2", strokeColor: "#d4c9b6" }
     },
     polygonStrokeWidth: 1.5
   },
   rail: {
-    casingColor: "rgba(255,255,255,0.86)",
-    strokeColor: "#64748b",
+    casingColor: "rgba(255,255,255,0.8)",
+    strokeColor: "#6b7280",
     casingWidth: 9,
     strokeWidth: 4,
     dash: [8, 7]

@@ -10,6 +10,21 @@ map behavior.
 This audit should be read with the Phase 6 acceptance contract in
 [docs/phase-6-map-styling-acceptance.md](phase-6-map-styling-acceptance.md).
 
+## Stage 143 Styling Application
+
+Stage 143 applies the first TOPOPASS street-atlas base map styling pass. The
+canvas now uses a warmer paper-like land colour, OSM road hierarchy tokens have
+stronger primary/secondary/local/service contrast, and Marlowe context colours
+were moved into the same warmer atlas palette. The route, legality, scoring,
+exercise, beta-gate, fixture, and OSM conversion behavior is unchanged.
+
+The renderer can now draw non-routable OSM context polygons and lines directly
+from a map option's raw Overpass fixture when those tags are present: parks,
+gardens, open space, pedestrian areas, water polygons, waterway lines, and rail
+lines render below roads and learner overlays. The current Real London pilot
+fixtures remain road-only, so Stage 143 does not fabricate parks, water, rail,
+stations, landmarks, or new roads for those maps.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -22,9 +37,9 @@ This audit should be read with the Phase 6 acceptance contract in
   map controls, route drawing interaction, route/review overlays, restriction
   overlays, OSM debug overlays, replay markers, and compact/dev panels.
 - `app/dev/route-runner/syntheticStreetMapRenderer.ts` builds visual models for
-  roads, OSM road hierarchy metadata, optional OSM road labels, synthetic-only
-  parks/water/land blocks, synthetic rail, landmarks, route overlays, and the
-  route-runner legend.
+  roads, OSM road hierarchy metadata, optional OSM road labels, synthetic
+  parks/water/land blocks, fixture-derived OSM context where available,
+  synthetic rail, landmarks, route overlays, and the route-runner legend.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.
@@ -39,18 +54,19 @@ This audit should be read with the Phase 6 acceptance contract in
 - `lib/map-engine/osm/osmToRouteGraph.ts` preserves OSM highway, way id, and
   metadata that the renderer uses for visual hierarchy. Stage 142 does not
   change this conversion.
-- `app/dev/route-runner/topopassCartographyStyle.ts` now centralises the
-  current TOPOPASS cartography tokens without intentional visual changes.
+- `app/dev/route-runner/topopassCartographyStyle.ts` centralises the TOPOPASS
+  cartography tokens, including the Stage 143 base-map colour and hierarchy
+  changes.
 
 ## Current Layer Inventory
 
 Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 1. Canvas background fill.
-2. Synthetic background polygons for Marlowe only. Converted OSM/Real London
-   maps currently receive no park, water, land-block, rail, station-area,
-   bridge, landmark, or area polygon layer from OSM.
-3. Synthetic rail/context lines for Marlowe only.
+2. Synthetic background polygons for Marlowe and fixture-derived OSM context
+   polygons where the selected fixture contains supported non-road tags.
+3. Synthetic rail/context lines for Marlowe and fixture-derived OSM rail or
+   waterway lines where available.
 4. Road visuals from `buildSyntheticRoadVisuals`. Real London roads are
    straight graph-segment lines derived from OSM route graph nodes.
 5. Landmark visuals from map landmarks. Real London pilot maps currently have
@@ -105,9 +121,9 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 - OSM road hierarchy is derived from preserved `highway` metadata:
   `primary`, `secondary`, `tertiary`, `residential`, `service`, and `unknown`.
-- `primary` roads render as the strongest yellow/orange roads. Secondary and
-  tertiary roads share a lighter yellow treatment. Residential and unknown
-  roads render as grey/white context roads. Service roads render thinner and
+- `primary` roads render as the strongest warm yellow/orange roads. Secondary
+  and tertiary roads use distinct lighter warm treatments. Residential and
+  unknown roads render as pale local streets. Service roads render thinner and
   more subdued.
 - No-entry and road-closed restrictions override the general road class for
   visual modelling.
@@ -159,9 +175,10 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 - Synthetic Marlowe has parks, water, land-blocks, rail, landmarks, and area
   labels.
-- Real London converted OSM maps currently do not render OSM-derived parks,
-  water, rail, station footprints, bridges, landmarks, or area names as base
-  context layers.
+- Real London converted OSM maps can render OSM-derived parks, water, rail, and
+  open-space context when the selected raw fixture includes those tags. The
+  current Real London pilot fixtures do not include them, so those maps still
+  rely primarily on the street hierarchy and atlas land background for context.
 - OSM attribution is shown in the beta page and route-runner panels where
   OSM-derived Real London data is presented.
 

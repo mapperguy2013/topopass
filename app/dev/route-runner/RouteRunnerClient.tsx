@@ -1287,7 +1287,8 @@ function drawSyntheticStreetMapBase(input: {
   }
 
   const labels = buildSyntheticMapLabels(input.map, input.selectedExercise, {
-    includeOsmRoadLabels: input.showOsmRoadLabels
+    includeOsmRoadLabels: input.showOsmRoadLabels,
+    backgroundFeatures: input.backgroundFeatures
   });
 
   for (const label of labels) {
@@ -2547,12 +2548,18 @@ export function RouteRunnerClient({
   const roadRestrictionOverlays = useMemo(() => buildRoadRestrictionOverlays(activeMap), [activeMap]);
   const turnRestrictionVisuals = useMemo(() => getTurnRestrictionVisuals(activeMap), [activeMap]);
   const syntheticBackgroundFeatures = useMemo(
-    () => (isConvertedOsmMap ? [] : buildSyntheticBackgroundFeatures(activeMap)),
-    [activeMap, isConvertedOsmMap]
+    () =>
+      buildSyntheticBackgroundFeatures(activeMap, {
+        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+      }),
+    [activeMap, selectedMapOption.sourceOverpassFixture]
   );
   const syntheticLinearFeatures = useMemo(
-    () => (isConvertedOsmMap ? [] : buildSyntheticLinearFeatures(activeMap)),
-    [activeMap, isConvertedOsmMap]
+    () =>
+      buildSyntheticLinearFeatures(activeMap, {
+        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+      }),
+    [activeMap, selectedMapOption.sourceOverpassFixture]
   );
   const syntheticRoadVisuals = useMemo(() => buildSyntheticRoadVisuals(activeMap), [activeMap]);
   const visibleRoadRestrictionOverlays = useMemo(

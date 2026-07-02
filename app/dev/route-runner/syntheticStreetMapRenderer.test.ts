@@ -23,6 +23,7 @@ import {
   marloweDistrictRouteExercises,
   type MapDefinition
 } from "../../../lib/map-engine/index.ts";
+import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
 import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
 
 function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
@@ -48,11 +49,11 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#f5c84c");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#f3c44f");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#d9a63a");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#d9a63a");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dcfce7");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#64748b");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe9cd");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#6b7280");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#dc2626");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#15803d");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#6d28d9");
@@ -112,14 +113,14 @@ test("Stage 142 style tokens are deterministic primitive render values", () => {
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#fff7ed",
-    strokeColor: "#f5c84c",
-    casingWidth: 14,
-    strokeWidth: 8
+    casingColor: "#fff8e8",
+    strokeColor: "#d9a63a",
+    casingWidth: 16,
+    strokeWidth: 9
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
-    casingColor: "#fed7aa",
-    strokeColor: "#fdba74",
+    casingColor: "#ffe5c2",
+    strokeColor: "#e7a94f",
     casingWidth: 11,
     strokeWidth: 5,
     dash: [10, 6]
@@ -273,7 +274,7 @@ test("synthetic road styling keeps a clear London-inspired hierarchy", () => {
 
   assert.ok(majorStyle.casingWidth > localStyle.casingWidth);
   assert.ok(localStyle.strokeWidth > serviceStyle.strokeWidth);
-  assert.equal(oneWayStyle.strokeColor, "#bfdbfe");
+  assert.equal(oneWayStyle.strokeColor, "#9fc7e7");
 });
 
 test("converted OSM road visuals expose deterministic hierarchy metadata", () => {
@@ -294,9 +295,71 @@ test("converted OSM road visuals expose deterministic hierarchy metadata", () =>
 
 test("converted OSM hierarchy maps to expected road style widths", () => {
   assert.ok(roadStyleForOsmHierarchy("primary").strokeWidth > roadStyleForOsmHierarchy("secondary").strokeWidth);
-  assert.ok(roadStyleForOsmHierarchy("secondary").strokeWidth > roadStyleForOsmHierarchy("residential").strokeWidth);
+  assert.ok(roadStyleForOsmHierarchy("secondary").strokeWidth > roadStyleForOsmHierarchy("tertiary").strokeWidth);
+  assert.ok(roadStyleForOsmHierarchy("tertiary").strokeWidth > roadStyleForOsmHierarchy("residential").strokeWidth);
   assert.ok(roadStyleForOsmHierarchy("residential").strokeWidth > roadStyleForOsmHierarchy("service").strokeWidth);
-  assert.equal(roadStyleForOsmHierarchy("tertiary").strokeWidth, roadStyleForOsmHierarchy("secondary").strokeWidth);
+});
+
+test("Stage 143 OSM context rendering uses raw fixture tags without adding routable graph features", () => {
+  const contextFixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.52, lon: -0.139 },
+      { type: "node", id: 3, lat: 51.52008, lon: -0.1399 },
+      { type: "node", id: 4, lat: 51.52008, lon: -0.1397 },
+      { type: "node", id: 5, lat: 51.51992, lon: -0.1397 },
+      { type: "node", id: 6, lat: 51.51992, lon: -0.1399 },
+      { type: "node", id: 7, lat: 51.52006, lon: -0.13945 },
+      { type: "node", id: 8, lat: 51.52006, lon: -0.13925 },
+      { type: "node", id: 9, lat: 51.51994, lon: -0.13925 },
+      { type: "node", id: 10, lat: 51.51994, lon: -0.13945 },
+      { type: "node", id: 11, lat: 51.5199, lon: -0.13995 },
+      { type: "node", id: 12, lat: 51.5201, lon: -0.13925 },
+      { type: "node", id: 13, lat: 51.51986, lon: -0.1398 },
+      { type: "node", id: 14, lat: 51.52012, lon: -0.1396 },
+      { type: "way", id: 100, nodes: [1, 2], tags: { highway: "residential", name: "Context Road" } },
+      { type: "way", id: 200, nodes: [3, 4, 5, 6, 3], tags: { leisure: "park", name: "Fitzroy Garden" } },
+      { type: "way", id: 201, nodes: [7, 8, 9, 10, 7], tags: { natural: "water", name: "Pilot Basin" } },
+      { type: "way", id: 202, nodes: [11, 12], tags: { railway: "rail", name: "Main Line" } },
+      { type: "way", id: 203, nodes: [13, 14], tags: { waterway: "canal", name: "Pilot Cut" } }
+    ]
+  };
+  const converted = convertOverpassJsonToRouteMap(contextFixture, {
+    mapId: "stage-143-context-map",
+    name: "Stage 143 Context Map"
+  });
+
+  if (!converted.ok) {
+    throw new Error(`Expected context fixture to convert: ${converted.errors.join("; ")}`);
+  }
+
+  const backgroundFeatures = buildSyntheticBackgroundFeatures(converted.map, {
+    sourceOverpassFixture: contextFixture
+  });
+  const linearFeatures = buildSyntheticLinearFeatures(converted.map, {
+    sourceOverpassFixture: contextFixture
+  });
+  const areaLabels = buildSyntheticMapLabels(converted.map, undefined, {
+    backgroundFeatures
+  }).filter((label) => label.kind === "area");
+
+  assert.equal(converted.map.roads.length, 1);
+  assert.deepEqual(
+    backgroundFeatures.map((feature) => [feature.kind, feature.label]),
+    [
+      ["park", "Fitzroy Garden"],
+      ["water", "Pilot Basin"]
+    ]
+  );
+  assert.deepEqual(
+    linearFeatures.map((feature) => [feature.kind, feature.label, feature.routable]),
+    [
+      ["rail", "Main Line", false],
+      ["waterway", "Pilot Cut", false]
+    ]
+  );
+  assert.ok(areaLabels.some((label) => label.text === "Fitzroy Garden"));
+  assert.ok(backgroundFeatures.every((feature) => feature.routable === false));
 });
 
 test("converted OSM road labels are optional and deduplicated by road name", () => {

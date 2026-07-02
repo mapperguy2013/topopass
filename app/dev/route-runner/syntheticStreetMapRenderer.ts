@@ -1,4 +1,13 @@
 import type { Landmark, MapDefinition, MapRoad, RouteExercise, RouteStop, Vec2 } from "../../../lib/map-engine/index.ts";
+import { projectOsmCoordinateToLocalMeters } from "../../../lib/map-engine/osm/index.ts";
+import type {
+  OsmLocalProjection,
+  OverpassElementId,
+  OverpassJsonResponse,
+  OverpassNodeElement,
+  OverpassTags,
+  OverpassWayElement
+} from "../../../lib/map-engine/osm/index.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 export type SyntheticRoadClass =
@@ -10,9 +19,9 @@ export type SyntheticRoadClass =
   | "no-entry"
   | "restricted";
 
-export type SyntheticBackgroundFeatureKind = "park" | "water" | "land-block";
+export type SyntheticBackgroundFeatureKind = "park" | "water" | "land-block" | "open-space" | "pedestrian-area";
 
-export type SyntheticLinearFeatureKind = "rail";
+export type SyntheticLinearFeatureKind = "rail" | "waterway";
 
 export type SyntheticLandmarkVisualKind =
   | "station"
@@ -153,6 +162,11 @@ export type SyntheticStreetMapLegendItem = {
 
 export type BuildSyntheticMapLabelOptions = {
   includeOsmRoadLabels?: boolean;
+  backgroundFeatures?: readonly SyntheticBackgroundFeature[];
+};
+
+export type BuildSyntheticContextOptions = {
+  sourceOverpassFixture?: unknown;
 };
 
 type RoadWithOptionalOsmMetadata = MapRoad & {
@@ -173,6 +187,74 @@ function isOsmMap(map: MapDefinition): boolean {
   const metadata = (map as { metadata?: { source?: unknown } }).metadata;
 
   return metadata?.source === "osm" || map.roads.some((road) => osmRoadMetadata(road) !== null);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isTagRecord(value: unknown): value is OverpassTags {
+  return (
+    isRecord(value) &&
+    Object.values(value).every((tagValue) => typeof tagValue === "string")
+  );
+}
+
+function isOverpassNodeElement(value: unknown): value is OverpassNodeElement {
+  return (
+    isRecord(value) &&
+    value.type === "node" &&
+    typeof value.id === "number" &&
+    typeof value.lat === "number" &&
+    typeof value.lon === "number"
+  );
+}
+
+function isOverpassWayElement(value: unknown): value is OverpassWayElement {
+  return (
+    isRecord(value) &&
+    value.type === "way" &&
+    typeof value.id === "number" &&
+    Array.isArray(value.nodes) &&
+    value.nodes.every((nodeId) => typeof nodeId === "number") &&
+    (value.tags === undefined || isTagRecord(value.tags))
+  );
+}
+
+function isOverpassJsonResponse(value: unknown): value is OverpassJsonResponse {
+  return isRecord(value) && Array.isArray(value.elements);
+}
+
+function osmProjectionForMap(map: MapDefinition): OsmLocalProjection | null {
+  const metadata = (map as { metadata?: { source?: unknown; projection?: unknown } }).metadata;
+  const projection = metadata?.projection;
+
+  if (metadata?.source !== "osm" || !isRecord(projection)) {
+    return null;
+  }
+
+  return projection as OsmLocalProjection;
+}
+
+function overpassContextFromFixture(
+  fixture: unknown
+): { nodesById: Map<OverpassElementId, OverpassNodeElement>; ways: OverpassWayElement[] } | null {
+  if (!isOverpassJsonResponse(fixture)) {
+    return null;
+  }
+
+  const nodesById = new Map<OverpassElementId, OverpassNodeElement>();
+  const ways: OverpassWayElement[] = [];
+
+  for (const element of fixture.elements) {
+    if (isOverpassNodeElement(element)) {
+      nodesById.set(element.id, element);
+    } else if (isOverpassWayElement(element)) {
+      ways.push(element);
+    }
+  }
+
+  return { nodesById, ways };
 }
 
 export function deriveOsmRoadVisualHierarchy(road: MapRoad): OsmRoadVisualHierarchy | null {
@@ -424,7 +506,7 @@ export function buildSyntheticMapLabels(
     labels.push(...buildOsmRoadLabels(roadVisuals));
   }
 
-  for (const feature of buildSyntheticBackgroundFeatures(map)) {
+  for (const feature of options.backgroundFeatures ?? buildSyntheticBackgroundFeatures(map)) {
     if (!feature.label) {
       continue;
     }
@@ -535,9 +617,197 @@ function slugifyLabelId(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unnamed";
 }
 
-export function buildSyntheticLinearFeatures(map: MapDefinition): SyntheticLinearFeature[] {
-  if (isOsmMap(map)) {
+function projectedWayPoints(input: {
+  way: OverpassWayElement;
+  nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>;
+  projection: OsmLocalProjection;
+}): Vec2[] {
+  return input.way.nodes.flatMap((nodeId) => {
+    const node = input.nodesById.get(nodeId);
+
+    if (!node) {
+      return [];
+    }
+
+    return [projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, input.projection)];
+  });
+}
+
+function isClosedWay(way: OverpassWayElement): boolean {
+  return way.nodes.length >= 4 && way.nodes[0] === way.nodes[way.nodes.length - 1];
+}
+
+function namedContextLabel(tags: OverpassTags): string | undefined {
+  const name = tags.name?.trim();
+
+  return name && name.length > 0 ? name : undefined;
+}
+
+function osmBackgroundStyleForTags(tags: OverpassTags): Pick<
+  SyntheticBackgroundFeature,
+  "kind" | "fillColor" | "strokeColor" | "label"
+> | null {
+  const background = TOPOPASS_STREET_ATLAS_STYLE.background;
+
+  if (tags.natural === "water" || tags.water) {
+    return {
+      kind: "water",
+      label: namedContextLabel(tags),
+      fillColor: background.water.basin.fillColor,
+      strokeColor: background.water.basin.strokeColor
+    };
+  }
+
+  if (tags.leisure === "park" || tags.leisure === "garden") {
+    return {
+      kind: "park",
+      label: namedContextLabel(tags),
+      fillColor: background.park.garden.fillColor,
+      strokeColor: background.park.garden.strokeColor
+    };
+  }
+
+  if (
+    tags.leisure === "recreation_ground" ||
+    tags.landuse === "grass" ||
+    tags.landuse === "recreation_ground" ||
+    tags.landuse === "village_green" ||
+    tags.landuse === "meadow" ||
+    tags.landuse === "forest" ||
+    tags.natural === "wood" ||
+    tags.natural === "grassland"
+  ) {
+    return {
+      kind: "open-space",
+      label: namedContextLabel(tags),
+      fillColor: background.openSpace.fillColor,
+      strokeColor: background.openSpace.strokeColor
+    };
+  }
+
+  if (tags.highway === "pedestrian" && tags.area === "yes") {
+    return {
+      kind: "pedestrian-area",
+      label: namedContextLabel(tags),
+      fillColor: background.pedestrianArea.fillColor,
+      strokeColor: background.pedestrianArea.strokeColor
+    };
+  }
+
+  return null;
+}
+
+function buildOsmBackgroundFeatures(map: MapDefinition, fixture: unknown): SyntheticBackgroundFeature[] {
+  const projection = osmProjectionForMap(map);
+  const overpassContext = overpassContextFromFixture(fixture);
+
+  if (!projection || !overpassContext) {
     return [];
+  }
+
+  return overpassContext.ways.flatMap((way) => {
+    const tags = way.tags ?? {};
+    const style = osmBackgroundStyleForTags(tags);
+
+    if (!style || !isClosedWay(way)) {
+      return [];
+    }
+
+    const points = projectedWayPoints({
+      way,
+      nodesById: overpassContext.nodesById,
+      projection
+    });
+
+    if (points.length < 4) {
+      return [];
+    }
+
+    return [
+      {
+        id: `osm-context-way-${way.id}`,
+        ...style,
+        points,
+        routable: false as const
+      }
+    ];
+  });
+}
+
+function osmLinearFeatureStyleForTags(tags: OverpassTags): Pick<
+  SyntheticLinearFeature,
+  "kind" | "casingColor" | "strokeColor" | "casingWidth" | "strokeWidth" | "dash" | "label"
+> | null {
+  if (tags.railway === "rail" || tags.railway === "light_rail") {
+    return {
+      kind: "rail",
+      label: namedContextLabel(tags),
+      casingColor: TOPOPASS_STREET_ATLAS_STYLE.rail.casingColor ?? "",
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor,
+      casingWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.casingWidth ?? 0,
+      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeWidth,
+      dash: [...(TOPOPASS_STREET_ATLAS_STYLE.rail.dash ?? [])]
+    };
+  }
+
+  if (tags.waterway && !tags.area) {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.background.water.linear;
+
+    return {
+      kind: "waterway",
+      label: namedContextLabel(tags),
+      casingColor: style.casingColor ?? "",
+      strokeColor: style.strokeColor,
+      casingWidth: style.casingWidth ?? 0,
+      strokeWidth: style.strokeWidth
+    };
+  }
+
+  return null;
+}
+
+function buildOsmLinearFeatures(map: MapDefinition, fixture: unknown): SyntheticLinearFeature[] {
+  const projection = osmProjectionForMap(map);
+  const overpassContext = overpassContextFromFixture(fixture);
+
+  if (!projection || !overpassContext) {
+    return [];
+  }
+
+  return overpassContext.ways.flatMap((way) => {
+    const style = osmLinearFeatureStyleForTags(way.tags ?? {});
+
+    if (!style || isClosedWay(way)) {
+      return [];
+    }
+
+    const points = projectedWayPoints({
+      way,
+      nodesById: overpassContext.nodesById,
+      projection
+    });
+
+    if (points.length < 2) {
+      return [];
+    }
+
+    return [
+      {
+        id: `osm-context-way-${way.id}`,
+        ...style,
+        points,
+        routable: false as const
+      }
+    ];
+  });
+}
+
+export function buildSyntheticLinearFeatures(
+  map: MapDefinition,
+  options: BuildSyntheticContextOptions = {}
+): SyntheticLinearFeature[] {
+  if (isOsmMap(map)) {
+    return buildOsmLinearFeatures(map, options.sourceOverpassFixture);
   }
 
   const bounds = mapBounds(map);
@@ -597,9 +867,12 @@ export function buildSyntheticLandmarkVisuals(
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
-export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticBackgroundFeature[] {
+export function buildSyntheticBackgroundFeatures(
+  map: MapDefinition,
+  options: BuildSyntheticContextOptions = {}
+): SyntheticBackgroundFeature[] {
   if (isOsmMap(map)) {
-    return [];
+    return buildOsmBackgroundFeatures(map, options.sourceOverpassFixture);
   }
 
   const bounds = mapBounds(map);
