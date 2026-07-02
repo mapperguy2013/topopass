@@ -38,7 +38,33 @@ export type RealLondonVisualReadabilityScenarioId =
   | "bridge-crossing-context"
   | "landmark-area-orientation"
   | "learner-route-overlay-review"
-  | "one-way-restriction-declutter";
+  | "one-way-restriction-declutter"
+  | "complete-phase-6-stack-integration";
+
+export type RealLondonFinalPhase6Layer =
+  | "land-background"
+  | "water"
+  | "parks-open-spaces"
+  | "rail"
+  | "bridges-crossings"
+  | "stations"
+  | "landmarks"
+  | "area-names"
+  | "road-casings"
+  | "road-fills"
+  | "road-hierarchy"
+  | "street-labels"
+  | "one-way-arrows"
+  | "restriction-symbols"
+  | "correct-reference-route"
+  | "accepted-alternative-route"
+  | "attempted-route"
+  | "illegal-warning-overlays"
+  | "start-destination-markers"
+  | "checkpoints"
+  | "hints"
+  | "review-callouts"
+  | "selected-focused-overlays";
 
 export type RealLondonLearnerOverlayState =
   | "start-marker"
@@ -71,6 +97,7 @@ export type RealLondonVisualViewport = {
 };
 
 export type RealLondonVisualExpectedCategories = {
+  phase6Layers: RealLondonFinalPhase6Layer[];
   roadHierarchies: OsmRoadVisualHierarchy[];
   labelKinds: ("road" | SyntheticContextMapLabelKind | "start" | "checkpoint" | "finish")[];
   backgroundKinds: SyntheticBackgroundFeatureKind[];
@@ -175,6 +202,32 @@ const noObjectiveMarkers: RealLondonVisualExpectedCategories["objectiveMarkers"]
 const noLearnerOverlayStates: RealLondonVisualExpectedCategories["learnerOverlayStates"] = [];
 const noRestrictionSymbols: RealLondonVisualExpectedCategories["restrictionSymbols"] = [];
 
+export const FINAL_PHASE_6_REAL_LONDON_LAYER_STACK: RealLondonFinalPhase6Layer[] = [
+  "land-background",
+  "water",
+  "parks-open-spaces",
+  "rail",
+  "bridges-crossings",
+  "stations",
+  "landmarks",
+  "area-names",
+  "road-casings",
+  "road-fills",
+  "road-hierarchy",
+  "street-labels",
+  "one-way-arrows",
+  "restriction-symbols",
+  "correct-reference-route",
+  "accepted-alternative-route",
+  "attempted-route",
+  "illegal-warning-overlays",
+  "start-destination-markers",
+  "checkpoints",
+  "hints",
+  "review-callouts",
+  "selected-focused-overlays"
+];
+
 export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabilityScenario[] = [
   {
     id: "dense-central-readability",
@@ -190,6 +243,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "learner"
     },
     expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "area-names", "one-way-arrows"],
       roadHierarchies: ["primary", "secondary", "residential"],
       labelKinds: ["road", "area"],
       backgroundKinds: ["pedestrian-area"],
@@ -215,6 +269,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "learner"
     },
     expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows"],
       roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
       labelKinds: ["road"],
       backgroundKinds: ["pedestrian-area"],
@@ -240,6 +295,17 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "detail"
     },
     expected: {
+      phase6Layers: [
+        "land-background",
+        "water",
+        "parks-open-spaces",
+        "rail",
+        "stations",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels"
+      ],
       roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
       labelKinds: ["road", "water", "station"],
       backgroundKinds: ["park", "water"],
@@ -265,6 +331,18 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "detail"
     },
     expected: {
+      phase6Layers: [
+        "land-background",
+        "water",
+        "bridges-crossings",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "restriction-symbols",
+        "illegal-warning-overlays",
+        "review-callouts"
+      ],
       roadHierarchies: ["secondary", "residential"],
       labelKinds: ["road", "bridge", "water"],
       backgroundKinds: ["water"],
@@ -290,6 +368,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "detail"
     },
     expected: {
+      phase6Layers: ["land-background", "landmarks", "area-names", "road-casings", "road-fills", "road-hierarchy", "street-labels"],
       roadHierarchies: ["secondary", "tertiary", "residential"],
       labelKinds: ["road", "landmark", "public_building", "area"],
       backgroundKinds: ["pedestrian-area"],
@@ -315,6 +394,26 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "learner"
     },
     expected: {
+      phase6Layers: [
+        "land-background",
+        "water",
+        "bridges-crossings",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "restriction-symbols",
+        "correct-reference-route",
+        "accepted-alternative-route",
+        "attempted-route",
+        "illegal-warning-overlays",
+        "start-destination-markers",
+        "checkpoints",
+        "hints",
+        "review-callouts",
+        "selected-focused-overlays"
+      ],
       roadHierarchies: ["secondary", "tertiary", "residential"],
       labelKinds: ["road", "start", "checkpoint", "finish"],
       backgroundKinds: ["water", "pedestrian-area"],
@@ -371,6 +470,20 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "overview"
     },
     expected: {
+      phase6Layers: [
+        "land-background",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "area-names",
+        "one-way-arrows",
+        "restriction-symbols",
+        "accepted-alternative-route",
+        "illegal-warning-overlays",
+        "checkpoints",
+        "review-callouts"
+      ],
       roadHierarchies: ["secondary", "residential"],
       labelKinds: ["road", "area"],
       backgroundKinds: ["pedestrian-area"],
@@ -389,6 +502,63 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
       decluttering: ["overview", "learner"]
     }
+  },
+  {
+    id: "complete-phase-6-stack-integration",
+    label: "Complete Phase 6 stack integration",
+    description:
+      "Final Phase 6 QA viewport covering base context, hierarchy, labels, restrictions, learner route, review warnings, hints, callouts, and selected focus.",
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay", "route-review-readability"],
+    viewport: {
+      center: { x: 22, y: -46 },
+      bounds: { minX: -210, minY: -255, maxX: 255, maxY: 165 },
+      zoom: 1.8,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
+      roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
+      labelKinds: ["road", "start", "checkpoint", "finish", "station", "landmark", "public_building", "area", "bridge", "water"],
+      backgroundKinds: ["park", "water", "pedestrian-area"],
+      linearKinds: ["rail", "bridge", "waterway"],
+      routeOverlayKinds: [
+        "raw-route",
+        "snapped-route",
+        "matched-route",
+        "shortest-legal-route",
+        "accepted-alternative-route",
+        "inefficient-section",
+        "backtrack-section",
+        "illegal-movement"
+      ],
+      objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
+      learnerOverlayStates: [
+        "start-marker",
+        "destination-marker",
+        "required-checkpoint",
+        "upcoming-checkpoint",
+        "active-checkpoint",
+        "completed-checkpoint",
+        "missed-checkpoint",
+        "focused-checkpoint",
+        "hint-available",
+        "hint-revealed",
+        "hint-callout",
+        "next-road-suggestion",
+        "wrong-turn-warning",
+        "restricted-manoeuvre-warning",
+        "illegal-segment-callout",
+        "inefficient-callout",
+        "backtrack-callout",
+        "accepted-alternative-callout",
+        "checkpoint-reached",
+        "route-completed",
+        "selected-focus"
+      ],
+      restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
+      decluttering: ["overview", "learner", "detail"]
+    }
   }
 ];
 
@@ -405,6 +575,7 @@ export function buildRealLondonVisualComparisonScenarioSummary() {
     comparisonModeIds: REAL_LONDON_VISUAL_COMPARISON_MODES.map((mode) => mode.id),
     scenarioIds: REAL_LONDON_VISUAL_READABILITY_SCENARIOS.map((scenario) => scenario.id),
     viewportBounds: qaMapBounds,
+    finalPhase6LayerStack: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
     exerciseId: qaExercise?.id ?? null,
     synthetic: true
   };

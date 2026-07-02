@@ -360,6 +360,55 @@ alternative logic, checkpoint logic, hints, restrictions, landmarks, or OSM
 conversion behaviour. Review callouts only reflect existing review/restriction
 items exposed to the renderer.
 
+## Stage 154 Final Readability Integration And Practice Layout
+
+Stage 154 completes the Phase 6 visual-readability pass by checking the full
+Real London map stack as one TOPOPASS system. The final stack is documented in
+the visual comparison fixture metadata as:
+
+1. land/background
+2. water
+3. parks/open spaces
+4. rail
+5. bridges/crossings
+6. stations
+7. landmarks
+8. area names
+9. road casings
+10. road fills
+11. road hierarchy
+12. street labels
+13. one-way arrows
+14. restriction symbols
+15. correct/reference routes
+16. accepted alternative routes where fixture/review data represents them
+17. attempted route
+18. illegal/warning overlays
+19. start/destination markers
+20. checkpoints
+21. hints
+22. review callouts
+23. selected/focused learner overlays
+
+Stage 154 consolidates selected/focused review highlighting onto the central
+learner overlay tokens, keeps route-review warnings above route lines, and adds
+`complete-phase-6-stack-integration` to the deterministic visual QA scenario
+set. Existing low/learner/detail decluttering metadata remains the visibility
+contract for labels, context features, restrictions, and learner overlays.
+
+Stage 154.5 makes the Real London practice layout more map-first without
+changing product flow: beta base restriction overlays are quiet by default,
+route-review issue symbols remain available after attempts, map controls use
+more compact labels, the beta map receives a taller preferred workspace, and
+practice-screen metadata records the map-first layout intent.
+
+Known limitations: QA scenarios are synthetic, deterministic inspection
+fixtures. Real pilot maps still depend on the committed OSM fixture data for
+landmarks, bridge names, restrictions, context features, and hint/review states.
+This pass does not add route-engine alternative handling, new scoring, new
+legality checks, exercise generation, beta gates, feedback tooling, live OSM
+fetching, or Phase 7 product-flow work.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

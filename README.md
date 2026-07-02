@@ -867,6 +867,12 @@ come from central TOPOPASS learner overlay tokens. The Stage 152 visual QA
 scenario metadata records those learner states for inspection. This is
 visual-only and does not change routing, legality, scoring, exercise generation,
 beta gates, feedback tooling, or OSM conversion.
+Stage 154 completes the Phase 6 visual integration pass with a final
+`complete-phase-6-stack-integration` QA scenario, exported final layer-stack
+metadata, selected/focused review highlighting consolidated onto learner overlay
+tokens, quieter base restriction overlays in beta practice, and a more
+map-first Real London practice layout. This remains a visual/readability pass,
+not Phase 7 or route-engine work.
 
 ## Current Feature Set
 

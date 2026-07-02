@@ -259,6 +259,9 @@ test("Stage 153 learner overlay marker hint and callout tokens are complete and 
   assert.ok(learnerOverlays.reviewCallouts.missedCheckpoint.strokeWidth > learnerOverlays.reviewCallouts.inefficient.strokeWidth);
   assert.notEqual(learnerOverlays.warnings.backtrack.strokeColor, learnerOverlays.warnings.inefficientSection.strokeColor);
   assert.ok(learnerOverlays.warnings.illegalSegment.strokeWidth > learnerOverlays.warnings.wrongTurn.strokeWidth);
+  assert.ok(learnerOverlays.selectedFocus.routeLineWidth > learnerOverlays.warnings.illegalSegment.strokeWidth);
+  assert.ok(learnerOverlays.selectedFocus.outerRadius > learnerOverlays.selectedFocus.innerRadius);
+  assert.ok(learnerOverlays.selectedFocus.routeAlpha > 0.8);
 });
 
 test("Stage 142 zoom and decluttering tokens are ordered finite and used by helpers", () => {

@@ -287,6 +287,38 @@ alternative callout, checkpoint reached, route completed, and selected focus.
 Those categories are visual QA metadata only; they do not create new fixture
 restrictions or landmarks.
 
+## Stage 154 Final Visual Integration Pass
+
+Stage 154 audits the Phase 6 visual stack as a complete map system rather than
+as individual layer changes. The fixed comparison metadata now exports
+`FINAL_PHASE_6_REAL_LONDON_LAYER_STACK` and a
+`complete-phase-6-stack-integration` scenario that represents land, water,
+parks, rail, bridges, stations, landmarks, area names, road casing/fill
+hierarchy, street labels, one-way arrows, restriction symbols, reference and
+attempted routes, warning overlays, objective markers, checkpoints, hints,
+review callouts, and selected/focused overlays.
+
+The selected/focused review highlight now draws from
+`TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.selectedFocus`, so the final
+learner overlay drawn last uses the same central token family as markers,
+hints, warnings, and callouts. Base restriction overlays are quiet by default in
+student beta mode; route-review issue symbols and selected issue focus remain
+available from existing review data after submission.
+
+Stage 154.5 keeps the Real London practice screen map-first: the beta map
+workspace has a taller preferred minimum, the instruction strip is less dense,
+map control labels are shorter, and the beta practice screen model records
+map-first layout, compact controls, and quiet base restriction overlays. These
+layout changes are local presentation changes and do not alter route logic,
+legality checks, scoring, exercise generation, beta gates, feedback tooling, or
+OSM conversion.
+
+Known limitations remain data-driven. The committed pilot fixtures may not
+contain every useful landmark, bridge name, area label, restriction, hint, or
+review state a real learner would benefit from. The QA fixture demonstrates the
+visual system where those categories exist; it does not invent real pilot OSM
+data or begin Phase 7 product-flow work.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -311,8 +343,9 @@ restrictions or landmarks.
 - `app/dev/route-runner/realLondonVisualQaScenario.ts` defines the dev-only
   synthetic Phase 6 visual QA scenario for combined readability inspection.
 - `app/dev/route-runner/realLondonVisualComparisonScenarios.ts` defines the
-  Stage 152 fixed visual comparison modes, viewports, and expected readability
-  categories for dev/test inspection.
+  Stage 152 fixed visual comparison modes, viewports, expected readability
+  categories, and Stage 154 final Phase 6 layer-stack metadata for dev/test
+  inspection.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.

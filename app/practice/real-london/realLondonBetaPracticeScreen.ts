@@ -96,18 +96,22 @@ export type RealLondonBetaPracticeScreenModel =
       mobileLayout: {
         compactSelector: true;
         compactHeader: true;
+        mapFirstLayout: true;
         taskSummaryVisible: true;
         combinedExerciseAndRecommendationPanel: true;
         duplicateRecommendedPracticePanel: false;
+        compactMapControls: true;
         instructionsCollapsedByDefault: true;
         limitationsCollapsedByDefault: true;
         feedbackFormMobileSafe: true;
         feedbackMinTouchTargetPx: 44;
         routeRunnerMapMinHeightPx: 360;
+        routeRunnerMapPreferredMinHeightPx: 420;
         routeRunnerMapTouchAction: "none";
         restrictionSummaryFirst: true;
         restrictionDetailsCollapsedByDefault: true;
         restrictionDebugDetailsHidden: true;
+        baseRestrictionOverlaysDefaultVisible: false;
         oneWayArrowMinSpacingMeters: typeof ONE_WAY_ARROW_MIN_SPACING_METERS;
         horizontalOverflowRisk: false;
       };
@@ -226,18 +230,22 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
     mobileLayout: {
       compactSelector: true,
       compactHeader: true,
+      mapFirstLayout: true,
       taskSummaryVisible: true,
       combinedExerciseAndRecommendationPanel: true,
       duplicateRecommendedPracticePanel: false,
+      compactMapControls: true,
       instructionsCollapsedByDefault: true,
       limitationsCollapsedByDefault: true,
       feedbackFormMobileSafe: true,
       feedbackMinTouchTargetPx: 44,
       routeRunnerMapMinHeightPx: 360,
+      routeRunnerMapPreferredMinHeightPx: 420,
       routeRunnerMapTouchAction: "none",
       restrictionSummaryFirst: true,
       restrictionDetailsCollapsedByDefault: true,
       restrictionDebugDetailsHidden: true,
+      baseRestrictionOverlaysDefaultVisible: false,
       oneWayArrowMinSpacingMeters: ONE_WAY_ARROW_MIN_SPACING_METERS,
       horizontalOverflowRisk: false
     },

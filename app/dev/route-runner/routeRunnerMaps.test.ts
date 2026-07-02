@@ -41,6 +41,7 @@ import {
   phase6RealLondonVisualQaRouteMap
 } from "./realLondonVisualQaScenario.ts";
 import {
+  FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
   REAL_LONDON_VISUAL_COMPARISON_MODES,
   REAL_LONDON_VISUAL_READABILITY_SCENARIOS,
   buildRealLondonVisualComparisonScenarioSummary,
@@ -289,8 +290,10 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
     "bridge-crossing-context",
     "landmark-area-orientation",
     "learner-route-overlay-review",
-    "one-way-restriction-declutter"
+    "one-way-restriction-declutter",
+    "complete-phase-6-stack-integration"
   ]);
+  assert.deepEqual(comparisonSummary.finalPhase6LayerStack, FINAL_PHASE_6_REAL_LONDON_LAYER_STACK);
   assert.equal(comparisonSummary.mapId, phase6RealLondonVisualQaRouteMap.id);
   assert.equal(comparisonSummary.fixtureName, "syntheticPhase6VisualQaOverpassFixture");
   assert.equal(comparisonSummary.exerciseId, "osm-phase-6-visual-qa-checkpoint-route");
@@ -385,6 +388,7 @@ test("Stage 152 visual comparison scenarios cover expected Real London readabili
     })
   );
   const objectiveMarkers = new Set(["start", "required-via", "checkpoint", "destination"]);
+  const finalPhase6Layers = new Set(FINAL_PHASE_6_REAL_LONDON_LAYER_STACK);
   const configuredLearnerOverlayStates = new Set([
     "start-marker",
     "destination-marker",
@@ -416,8 +420,16 @@ test("Stage 152 visual comparison scenarios cover expected Real London readabili
     getRealLondonVisualReadabilityScenario("learner-route-overlay-review")?.expected.learnerOverlayStates,
     [...configuredLearnerOverlayStates]
   );
+  assert.deepEqual(
+    getRealLondonVisualReadabilityScenario("complete-phase-6-stack-integration")?.expected.phase6Layers,
+    FINAL_PHASE_6_REAL_LONDON_LAYER_STACK
+  );
 
   for (const scenario of REAL_LONDON_VISUAL_READABILITY_SCENARIOS) {
+    for (const phase6Layer of scenario.expected.phase6Layers) {
+      assert.ok(finalPhase6Layers.has(phase6Layer), `${scenario.id} expected Phase 6 layer ${phase6Layer}`);
+    }
+
     for (const hierarchy of scenario.expected.roadHierarchies) {
       assert.ok(roadHierarchies.has(hierarchy), `${scenario.id} expected road hierarchy ${hierarchy}`);
     }

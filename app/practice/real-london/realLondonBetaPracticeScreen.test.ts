@@ -156,10 +156,12 @@ test("Stage 139 beta mobile layout exposes compact task state without duplicate 
   const model = requireAvailableModel("osm-real-pilot-checkpoint-route");
 
   assert.equal(model.mobileLayout.compactHeader, true);
+  assert.equal(model.mobileLayout.mapFirstLayout, true);
   assert.equal(model.mobileLayout.taskSummaryVisible, true);
   assert.equal(model.mobileLayout.compactSelector, true);
   assert.equal(model.mobileLayout.combinedExerciseAndRecommendationPanel, true);
   assert.equal(model.mobileLayout.duplicateRecommendedPracticePanel, false);
+  assert.equal(model.mobileLayout.compactMapControls, true);
   assert.equal(model.exerciseSelectorTitle, "Practice Exercises");
   assert.equal(model.selectedExercise.mobileInstructionSummary.includes("Start at"), true);
   assert.equal(model.selectedExercise.compactStopSummary.includes("->"), true);
@@ -174,6 +176,7 @@ test("Stage 139 mobile instructions limitations and restriction overlays are col
   assert.equal(model.mobileLayout.restrictionSummaryFirst, true);
   assert.equal(model.mobileLayout.restrictionDetailsCollapsedByDefault, true);
   assert.equal(model.mobileLayout.restrictionDebugDetailsHidden, true);
+  assert.equal(model.mobileLayout.baseRestrictionOverlaysDefaultVisible, false);
   assert.equal(model.devDiagnostics.visible, false);
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("full-restriction-debug-details"));
 });
@@ -185,6 +188,7 @@ test("Stage 139 mobile feedback and map interaction affordances stay usable", ()
   assert.equal(model.mobileLayout.feedbackFormMobileSafe, true);
   assert.equal(model.mobileLayout.feedbackMinTouchTargetPx, 44);
   assert.equal(model.mobileLayout.routeRunnerMapMinHeightPx, 360);
+  assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, 420);
   assert.equal(model.mobileLayout.routeRunnerMapTouchAction, "none");
   assert.equal(model.mapInteraction.drawingEnabled, true);
   assert.equal(model.mapInteraction.clearActionLabel, "Clear");

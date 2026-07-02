@@ -2100,10 +2100,10 @@ function drawSelectedRestrictionHighlight(
   const point = mapToScreenPoint(highlight.point, viewport);
 
   context.save();
-  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.selectedFocus;
+  const style = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.selectedFocus;
 
   context.strokeStyle = style.strokeColor;
-  context.fillStyle = style.fillColor;
+  context.fillStyle = style.haloColor;
   context.lineWidth = style.strokeWidth;
   context.setLineDash([]);
 
@@ -3133,7 +3133,7 @@ export function RouteRunnerClient({
 
   useEffect(() => {
     if (isStudentBetaRouteRunner && isConvertedOsmMap) {
-      setShowRoadRestrictions(true);
+      setShowRoadRestrictions(false);
       setShowTurnRestrictions(false);
       return;
     }
@@ -5090,7 +5090,11 @@ export function RouteRunnerClient({
         </div>
 
         <div className="contents">
-          <section className="order-1 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <section
+            className={`order-1 rounded-lg border border-slate-200 bg-white shadow-sm ${
+              isStudentBetaRouteRunner ? "p-3 sm:p-4" : "p-4 sm:p-5"
+            }`}
+          >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-slate-950">Route map workspace</h2>
@@ -5138,7 +5142,11 @@ export function RouteRunnerClient({
               </div>
             </div>
 
-            <div className="mt-4 flex min-h-[76px] items-center rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
+            <div
+              className={`mt-4 flex items-center rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950 ${
+                isStudentBetaRouteRunner ? "min-h-[56px]" : "min-h-[76px]"
+              }`}
+            >
               {isDrawing ? (
                 <p className="font-medium">Drawing active. Release the pointer to score the captured route.</p>
               ) : drawnDisplayStatus === "no drawing" ? (
@@ -5178,7 +5186,11 @@ export function RouteRunnerClient({
             ) : null}
 
             <div
-              className="relative mt-4 min-h-[360px] overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
+              className={`relative mt-4 overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
+                isStudentBetaRouteRunner
+                  ? "min-h-[420px] sm:min-h-[560px] lg:min-h-[660px] xl:min-h-[760px] 2xl:min-h-[820px]"
+                  : "min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
+              }`}
               style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
             >
               <div className="pointer-events-none absolute right-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2">
@@ -5222,7 +5234,7 @@ export function RouteRunnerClient({
                   disabled={drawnTrace.points.length === 0 && !isDrawing}
                   className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
-                  Clear drawing
+                  {isStudentBetaRouteRunner ? "Clear" : "Clear drawing"}
                 </button>
                 {!isStudentBetaRouteRunner ? (
                   <button
@@ -5281,7 +5293,7 @@ export function RouteRunnerClient({
                   onClick={resetRouteMapView}
                   className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
-                  Reset view
+                  {isStudentBetaRouteRunner ? "Reset" : "Reset view"}
                 </button>
               </div>
               <div className="pointer-events-auto absolute right-4 top-24 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md">

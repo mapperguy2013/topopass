@@ -406,6 +406,9 @@ export type TopopassStreetAtlasStyle = {
       strokeColor: string;
       strokeWidth: number;
       routeLineWidth: number;
+      routeAlpha: number;
+      innerRadius: number;
+      outerRadius: number;
       markerRadiusPadding: number;
     };
   };
@@ -1686,6 +1689,9 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       strokeColor: "#0284c7",
       strokeWidth: 4,
       routeLineWidth: 9,
+      routeAlpha: 0.86,
+      innerRadius: 24,
+      outerRadius: 31,
       markerRadiusPadding: 13
     }
   },
