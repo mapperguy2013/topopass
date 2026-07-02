@@ -128,14 +128,20 @@ import {
   buildSyntheticLinearFeatures,
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
+  buildRoadRenderPasses,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
+  roadInteractionStyleForState,
+  roadJunctionRadiusForVisual,
+  roadStyleForViewport,
   sortRoadVisualsForBaseRender,
   type SyntheticBackgroundFeature,
   type SyntheticLabelCollisionBox,
   type SyntheticLandmarkVisual,
   type SyntheticLinearFeature,
   type SyntheticMapLabel,
+  type SyntheticRoadInteractionState,
+  type SyntheticRoadRenderLayer,
   type SyntheticRoadVisual,
   type SyntheticStreetMapLegendItem
 } from "./syntheticStreetMapRenderer";
@@ -1125,25 +1131,28 @@ function drawSyntheticRoadVisualLayer(
   context: CanvasRenderingContext2D,
   visual: SyntheticRoadVisual,
   viewport: ScreenMapViewport,
-  layer: "casing" | "fill"
+  layer: SyntheticRoadRenderLayer
 ): void {
   if (visual.points.length < 2) {
     return;
   }
 
   const screenPoints = visual.points.map((point) => mapToScreenPoint(point, viewport));
-  const lineWidth = layer === "casing" ? visual.style.casingWidth : visual.style.strokeWidth;
+  const style = roadStyleForViewport(visual, viewport);
+  const geometry = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry;
+  const lineWidth = layer === "casing" ? style.casingWidth : style.strokeWidth;
 
   if (lineWidth <= 0) {
     return;
   }
 
   context.save();
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.globalAlpha = visual.style.alpha ?? 1;
-  context.setLineDash(layer === "fill" ? visual.style.dash ?? [] : []);
-  context.strokeStyle = layer === "casing" ? visual.style.casingColor : visual.style.strokeColor;
+  context.lineCap = geometry.lineCap;
+  context.lineJoin = geometry.lineJoin;
+  context.miterLimit = geometry.miterLimit;
+  context.globalAlpha = style.alpha ?? 1;
+  context.setLineDash(layer === "fill" ? style.dash ?? [] : []);
+  context.strokeStyle = layer === "casing" ? style.casingColor : style.strokeColor;
   context.lineWidth = lineWidth;
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
@@ -1157,19 +1166,98 @@ function drawSyntheticRoadVisualLayer(
   context.restore();
 }
 
+function drawSyntheticRoadJunctionCaps(
+  context: CanvasRenderingContext2D,
+  visual: SyntheticRoadVisual,
+  viewport: ScreenMapViewport,
+  layer: SyntheticRoadRenderLayer
+): void {
+  if (visual.points.length < 2) {
+    return;
+  }
+
+  const style = roadStyleForViewport(visual, viewport);
+  const radius = roadJunctionRadiusForVisual(visual, viewport, layer);
+
+  if (radius <= 0) {
+    return;
+  }
+
+  const first = mapToScreenPoint(visual.points[0], viewport);
+  const last = mapToScreenPoint(visual.points[visual.points.length - 1], viewport);
+
+  context.save();
+  context.globalAlpha = style.alpha ?? 1;
+  context.fillStyle = layer === "casing" ? style.casingColor : style.strokeColor;
+
+  for (const point of [first, last]) {
+    context.beginPath();
+    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  context.restore();
+}
+
 function drawSyntheticRoadVisualsByHierarchy(
   context: CanvasRenderingContext2D,
   roadVisuals: readonly SyntheticRoadVisual[],
   viewport: ScreenMapViewport
 ): void {
-  const orderedRoadVisuals = sortRoadVisualsForBaseRender(roadVisuals);
+  for (const pass of buildRoadRenderPasses(roadVisuals)) {
+    drawSyntheticRoadVisualLayer(context, pass.visual, viewport, pass.layer);
+    drawSyntheticRoadJunctionCaps(context, pass.visual, viewport, pass.layer);
+  }
+}
 
-  for (const visual of orderedRoadVisuals) {
-    drawSyntheticRoadVisualLayer(context, visual, viewport, "casing");
+function drawSyntheticRoadInteractionFocus(
+  context: CanvasRenderingContext2D,
+  roadVisuals: readonly SyntheticRoadVisual[],
+  viewport: ScreenMapViewport,
+  roadIds: readonly string[],
+  state: SyntheticRoadInteractionState
+): void {
+  if (roadIds.length === 0) {
+    return;
   }
 
-  for (const visual of orderedRoadVisuals) {
-    drawSyntheticRoadVisualLayer(context, visual, viewport, "fill");
+  const roadIdSet = new Set(roadIds);
+  const focusVisuals = sortRoadVisualsForBaseRender(roadVisuals).filter((visual) => roadIdSet.has(visual.roadId));
+  const style = roadInteractionStyleForState(state);
+
+  for (const visual of focusVisuals) {
+    if (visual.points.length < 2) {
+      continue;
+    }
+
+    const screenPoints = visual.points.map((point) => mapToScreenPoint(point, viewport));
+
+    context.save();
+    context.lineCap = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.lineCap;
+    context.lineJoin = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.lineJoin;
+    context.globalAlpha = style.alpha;
+    context.setLineDash([]);
+    context.strokeStyle = style.haloColor;
+    context.lineWidth = style.haloWidth;
+    context.beginPath();
+    context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+    for (const point of screenPoints.slice(1)) {
+      context.lineTo(point.x, point.y);
+    }
+
+    context.stroke();
+    context.strokeStyle = style.strokeColor;
+    context.lineWidth = style.strokeWidth;
+    context.beginPath();
+    context.moveTo(screenPoints[0].x, screenPoints[0].y);
+
+    for (const point of screenPoints.slice(1)) {
+      context.lineTo(point.x, point.y);
+    }
+
+    context.stroke();
+    context.restore();
   }
 }
 
@@ -1283,6 +1371,8 @@ function drawSyntheticStreetMapBase(input: {
   roadVisuals: SyntheticRoadVisual[];
   labelReservedBoxes: SyntheticLabelCollisionBox[];
   showOsmRoadLabels: boolean;
+  selectedRoadIds: readonly string[];
+  hoveredRoadIds: readonly string[];
   selectedExercise?: RouteExercise;
 }): void {
   for (const feature of input.backgroundFeatures) {
@@ -1294,6 +1384,8 @@ function drawSyntheticStreetMapBase(input: {
   }
 
   drawSyntheticRoadVisualsByHierarchy(input.context, input.roadVisuals, input.viewport);
+  drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.hoveredRoadIds, "hovered");
+  drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.selectedRoadIds, "selected");
 
   for (const visual of buildSyntheticLandmarkVisuals(input.map, input.selectedExercise)) {
     drawSyntheticLandmarkVisual(input.context, visual, input.viewport);
@@ -1301,8 +1393,8 @@ function drawSyntheticStreetMapBase(input: {
 
   const labels = filterSyntheticMapLabelsForViewport({
     labels: buildSyntheticMapLabels(input.map, input.selectedExercise, {
-    includeOsmRoadLabels: input.showOsmRoadLabels,
-    backgroundFeatures: input.backgroundFeatures
+      includeOsmRoadLabels: input.showOsmRoadLabels,
+      backgroundFeatures: input.backgroundFeatures
     }),
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes
@@ -2354,6 +2446,10 @@ function drawRouteCanvas(input: {
     roadVisuals: input.roadVisuals,
     labelReservedBoxes,
     showOsmRoadLabels: input.showOsmRoadLabels,
+    selectedRoadIds: input.pipelineResult.matchResult?.orderedRoadIds ?? [],
+    hoveredRoadIds: uniqueOrdered(
+      input.snapPreview.snappedPoints.map((point) => point.roadId).filter((roadId): roadId is string => Boolean(roadId))
+    ),
     selectedExercise: input.selectedExercise
   });
 

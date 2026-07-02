@@ -799,6 +799,10 @@ Stage 145 improves street label readability with hierarchy-based typography,
 zoom and segment-fit filtering, repeated-label throttling, and simple
 screen-space reservations around learner routes, hints, checkpoints, starts,
 and destinations.
+Stage 145.5 improves dense Real London street geometry by making road joins,
+caps, junction blends, low-zoom minor-road quieting, and selected/candidate
+road focus explicit in the renderer; route generation, snapping, scoring,
+legality, exercises, and beta gating are unchanged.
 
 ## Current Feature Set
 

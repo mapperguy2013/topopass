@@ -48,6 +48,19 @@ overlays, snapped hints, review lines, checkpoints, starts, and destinations.
 Converted OSM street labels are now allowed into the learner renderer, with the
 decluttering pass deciding which labels are readable enough to draw.
 
+## Stage 145.5 Junction Clarity
+
+Stage 145.5 improves dense Real London road geometry only. Road render passes
+are now explicit and deterministic: all hierarchy-sorted casings draw before
+all hierarchy-sorted fills, using rounded caps, rounded joins, and small
+same-colour endpoint blends to reduce graph-segment seams at junctions. Minor,
+service, restricted, and inactive roads are thinned or quieted at low zoom so
+primary, secondary, and tertiary roads remain visually dominant. Existing
+matched and snap-preview road ids can draw a subtle selected/candidate focus
+below labels and learner route overlays. Routing, snapping, scoring, legality,
+exercise generation, OSM conversion, beta gating, feedback, and persistence are
+unchanged.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -93,39 +106,46 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 4. Road casing visuals from `buildSyntheticRoadVisuals`, sorted by hierarchy.
    Real London roads are straight graph-segment lines derived from OSM route
    graph nodes.
-5. Road fill visuals from `buildSyntheticRoadVisuals`, sorted by hierarchy.
+5. Road casing junction blends at road segment endpoints, using the same
+   hierarchy order and casing colours.
+6. Road fill visuals from `buildSyntheticRoadVisuals`, sorted by hierarchy.
    Service, restricted, inactive, pedestrian, and local roads draw before
    tertiary, secondary, and primary roads.
-6. Landmark visuals from map landmarks. Real London pilot maps currently have
+7. Road fill junction blends at road segment endpoints, using the same
+   hierarchy order and fill colours.
+8. Selected/candidate road focus strokes for existing matched route and
+   snap-preview road ids.
+9. Landmark visuals from map landmarks. Real London pilot maps currently have
    limited landmark/context support compared with the synthetic Marlowe map.
-7. Base labels. Synthetic and converted OSM road labels are filtered by road
+10. Base labels. Synthetic and converted OSM road labels are filtered by road
    hierarchy, zoom scale, segment fit, repeated-name spacing, and reserved
    overlay/marker areas before drawing.
-8. Road restriction overlays, when enabled.
-9. OSM debug directed-edge overlays, when enabled.
-10. Fastest/shortest legal route overlay, when revealed.
-11. OSM exercise debug route and blocked-edge overlays, when enabled.
-12. Matched attempted movement overlay from the drawn pipeline.
-13. Route issue overlays for illegal, disconnected, prohibited-turn, and
+11. Road restriction overlays, when enabled.
+12. OSM debug directed-edge overlays, when enabled.
+13. Fastest/shortest legal route overlay, when revealed.
+14. OSM exercise debug route and blocked-edge overlays, when enabled.
+15. Matched attempted movement overlay from the drawn pipeline.
+16. Route issue overlays for illegal, disconnected, prohibited-turn, and
     no-U-turn review state.
-14. Restriction map symbols for one-way arrows, no-entry signs, restricted
+17. Restriction map symbols for one-way arrows, no-entry signs, restricted
     road signs, turn-ban signs, and route issue symbols.
-15. Selected restriction/review focus highlight.
-16. Small graph node dots.
-17. Matched route node markers.
-18. Exercise stop markers for start, destination, and checkpoints.
-19. Exercise stop labels.
-20. Snapped route preview line.
-21. Raw drawn route strokes.
-22. Snapped original-point dots.
-23. Route replay markers.
+18. Selected restriction/review focus highlight.
+19. Small graph node dots.
+20. Matched route node markers.
+21. Exercise stop markers for start, destination, and checkpoints.
+22. Exercise stop labels.
+23. Snapped route preview line.
+24. Raw drawn route strokes.
+25. Snapped original-point dots.
+26. Route replay markers.
 
 ## Current Styling Source Inventory
 
 - `topopassCartographyStyle.ts` contains named tokens for current road colours,
-  road casing colours, widths, hierarchy-specific label fonts/colours/halos,
-  label visibility thresholds, label collision spacing, background features,
-  rail, station/landmark markers, route overlays, exercise markers, hints,
+  road casing colours, widths, road geometry, junction blends, road interaction
+  focus, hierarchy-specific label fonts/colours/halos, label visibility
+  thresholds, label collision spacing, background features, rail,
+  station/landmark markers, route overlays, exercise markers, hints,
   restrictions, review overlays, replay markers, node markers, zoom thresholds,
   and decluttering thresholds.
 - `syntheticStreetMapRenderer.ts` now reads road hierarchy, synthetic road
@@ -155,6 +175,13 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   lighter warm treatments. Residential and unknown roads render as pale local
   streets with quieter grey casings. Service, pedestrian, restricted, and
   inactive roads render thinner and more subdued.
+- At low zoom, residential and unknown roads are slightly thinned and quieted;
+  service, pedestrian, restricted, and inactive roads are thinned or faded more
+  aggressively. Primary, secondary, and tertiary hierarchy remains unchanged at
+  those zoom levels.
+- Junction clarity uses deterministic casing/fill passes plus same-colour
+  endpoint blends, so graph-segment endpoints read more like continuous streets
+  without modifying the route graph.
 - No-entry and road-closed restrictions override the general road class for
   visual modelling.
 - Real London road geometry is graph-segment based, so long real-world OSM ways
@@ -247,9 +274,11 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 ## Current Weaknesses Against Stage 141
 
-- Road hierarchy: major, secondary, residential, service, one-way, no-entry, and
-  restricted roads are distinguished, but Real London still reads as graph
-  segments rather than a polished street-atlas base map.
+- Road hierarchy: Stage 144 and Stage 145.5 distinguish major, secondary,
+  residential, service, one-way, no-entry, restricted, inactive, and selected
+  candidate roads with explicit pass ordering, junction blends, low-zoom
+  quieting, and focus strokes. Future work still needs fully generalized
+  cartographic generalisation for long OSM ways and merged multi-segment roads.
 - Label readability: Stage 145 adds learner-visible OSM road labels with
   hierarchy, zoom, fit, repeat, and reserved-area rules. Future work still needs
   full curved placement and richer collision handling for dense parallel roads.

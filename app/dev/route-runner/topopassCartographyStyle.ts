@@ -16,6 +16,33 @@ export type TopopassRoadClassStyle = {
   alpha?: number;
 };
 
+export type TopopassRoadGeometryStyle = {
+  lineCap: "butt" | "round" | "square";
+  lineJoin: "round" | "bevel" | "miter";
+  miterLimit: number;
+  lowZoomViewportScale: number;
+  minorLowZoomWidthMultiplier: number;
+  minorLowZoomAlphaMultiplier: number;
+  serviceLowZoomWidthMultiplier: number;
+  serviceLowZoomAlphaMultiplier: number;
+  restrictedLowZoomAlphaMultiplier: number;
+};
+
+export type TopopassRoadJunctionStyle = {
+  majorRadiusMultiplier: number;
+  secondaryRadiusMultiplier: number;
+  minorRadiusMultiplier: number;
+  quietRadiusMultiplier: number;
+};
+
+export type TopopassRoadInteractionStyle = {
+  haloColor: string;
+  haloWidth: number;
+  strokeColor: string;
+  strokeWidth: number;
+  alpha: number;
+};
+
 export type TopopassLabelStyle = {
   font: string;
   color: string;
@@ -67,6 +94,12 @@ export type TopopassStreetAtlasStyle = {
       activeColor: string;
       quietColor: string;
       restrictedColor: string;
+    };
+    geometry: TopopassRoadGeometryStyle;
+    junctions: TopopassRoadJunctionStyle;
+    interaction: {
+      selected: TopopassRoadInteractionStyle;
+      hovered: TopopassRoadInteractionStyle;
     };
     zoomScaledWidths: {
       referenceZoom: number;
@@ -394,6 +427,39 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       activeColor: "#d8d0c2",
       quietColor: "#d8d1c7",
       restrictedColor: "#e2caa6"
+    },
+    geometry: {
+      lineCap: "round",
+      lineJoin: "round",
+      miterLimit: 2,
+      lowZoomViewportScale: 0.5,
+      minorLowZoomWidthMultiplier: 0.82,
+      minorLowZoomAlphaMultiplier: 0.82,
+      serviceLowZoomWidthMultiplier: 0.72,
+      serviceLowZoomAlphaMultiplier: 0.68,
+      restrictedLowZoomAlphaMultiplier: 0.78
+    },
+    junctions: {
+      majorRadiusMultiplier: 0.54,
+      secondaryRadiusMultiplier: 0.52,
+      minorRadiusMultiplier: 0.48,
+      quietRadiusMultiplier: 0.43
+    },
+    interaction: {
+      selected: {
+        haloColor: "rgba(14,165,233,0.2)",
+        haloWidth: 13,
+        strokeColor: "rgba(2,132,199,0.58)",
+        strokeWidth: 5.6,
+        alpha: 1
+      },
+      hovered: {
+        haloColor: "rgba(56,189,248,0.16)",
+        haloWidth: 9,
+        strokeColor: "rgba(14,165,233,0.4)",
+        strokeWidth: 4,
+        alpha: 1
+      }
     },
     zoomScaledWidths: {
       referenceZoom: 1,

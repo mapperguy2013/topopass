@@ -8,18 +8,23 @@ import {
   buildSyntheticRoadVisuals,
   buildSyntheticRouteOverlayVisuals,
   buildSyntheticStreetMapLegendItems,
+  buildRoadRenderPasses,
   deriveOsmRoadRenderMetadata,
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
   deriveSyntheticRoadClass,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
+  roadInteractionStyleForState,
+  roadJunctionRadiusForVisual,
   roadRenderRank,
   roadLabelTier,
   roadStyleForOsmHierarchy,
+  roadStyleForViewport,
   roadStyleForSyntheticClass,
   sortRoadVisualsForBaseRender,
-  type SyntheticMapLabel
+  type SyntheticMapLabel,
+  type SyntheticRoadVisual
 } from "./syntheticStreetMapRenderer.ts";
 import { ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
 import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "./restrictionMapVisuals.ts";
@@ -101,6 +106,27 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "activeColor",
     "quietColor",
     "restrictedColor"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry), [
+    "lineCap",
+    "lineJoin",
+    "miterLimit",
+    "lowZoomViewportScale",
+    "minorLowZoomWidthMultiplier",
+    "minorLowZoomAlphaMultiplier",
+    "serviceLowZoomWidthMultiplier",
+    "serviceLowZoomAlphaMultiplier",
+    "restrictedLowZoomAlphaMultiplier"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.junctions), [
+    "majorRadiusMultiplier",
+    "secondaryRadiusMultiplier",
+    "minorRadiusMultiplier",
+    "quietRadiusMultiplier"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.interaction), [
+    "selected",
+    "hovered"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.zoomScaledWidths), [
     "referenceZoom",
@@ -360,6 +386,141 @@ test("Stage 144 road visual sorting draws quieter roads before major roads", () 
   assert.ok(primaryIndex >= 0);
   assert.ok(serviceIndex >= 0);
   assert.ok(serviceIndex < primaryIndex);
+});
+
+function roadVisual(overrides: Partial<SyntheticRoadVisual>): SyntheticRoadVisual {
+  return {
+    roadId: "road",
+    name: "Road",
+    roadClass: "local",
+    source: "osm",
+    osmHighway: "residential",
+    osmHierarchy: "residential",
+    points: [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 }
+    ],
+    midpoint: { x: 50, y: 0 },
+    labelAngleRadians: 0,
+    isOneWay: false,
+    hasNoEntryRestriction: false,
+    hasRoadClosedRestriction: false,
+    style: roadStyleForOsmHierarchy("residential"),
+    ...overrides
+  };
+}
+
+const lowZoomRoadViewport = {
+  width: 160,
+  height: 160,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
+
+test("Stage 145.5 road render passes keep all casings below all fills in hierarchy order", () => {
+  const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
+  const ordered = sortRoadVisualsForBaseRender(visuals);
+  const passes = buildRoadRenderPasses(visuals);
+
+  assert.equal(passes.length, visuals.length * 2);
+  assert.deepEqual(passes.slice(0, visuals.length).map((pass) => pass.layer), ordered.map(() => "casing"));
+  assert.deepEqual(passes.slice(visuals.length).map((pass) => pass.layer), ordered.map(() => "fill"));
+  assert.deepEqual(passes.slice(0, visuals.length).map((pass) => pass.visual.roadId), ordered.map((visual) => visual.roadId));
+});
+
+test("Stage 145.5 low-zoom road styling thins minor roads without weakening major roads", () => {
+  const primary = roadVisual({
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const residential = roadVisual({
+    roadClass: "local",
+    osmHierarchy: "residential",
+    style: roadStyleForOsmHierarchy("residential")
+  });
+  const service = roadVisual({
+    roadClass: "service",
+    osmHighway: "service",
+    osmHierarchy: "service",
+    style: roadStyleForOsmHierarchy("service")
+  });
+
+  assert.deepEqual(roadStyleForViewport(primary, lowZoomRoadViewport), primary.style);
+  assert.ok(roadStyleForViewport(residential, lowZoomRoadViewport).strokeWidth < residential.style.strokeWidth);
+  assert.ok((roadStyleForViewport(residential, lowZoomRoadViewport).alpha ?? 1) < (residential.style.alpha ?? 1));
+  assert.ok(roadStyleForViewport(service, lowZoomRoadViewport).strokeWidth < roadStyleForViewport(residential, lowZoomRoadViewport).strokeWidth);
+});
+
+test("Stage 145.5 inactive and restricted roads stay quieter than active residential streets", () => {
+  const residential = roadVisual({
+    roadClass: "local",
+    osmHierarchy: "residential",
+    style: roadStyleForOsmHierarchy("residential")
+  });
+  const restricted = roadVisual({
+    roadClass: "restricted",
+    osmHierarchy: "restricted",
+    style: roadStyleForOsmHierarchy("restricted")
+  });
+  const inactive = roadVisual({
+    roadClass: "local",
+    osmHierarchy: "inactive",
+    style: roadStyleForOsmHierarchy("inactive")
+  });
+
+  const residentialAlpha = roadStyleForViewport(residential, lowZoomRoadViewport).alpha ?? 1;
+
+  assert.ok((roadStyleForViewport(restricted, lowZoomRoadViewport).alpha ?? 1) < residentialAlpha);
+  assert.ok((roadStyleForViewport(inactive, lowZoomRoadViewport).alpha ?? 1) < residentialAlpha);
+});
+
+test("Stage 145.5 junction and interaction tokens make major and selected roads visually stronger", () => {
+  const primary = roadVisual({
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const service = roadVisual({
+    roadClass: "service",
+    osmHighway: "service",
+    osmHierarchy: "service",
+    style: roadStyleForOsmHierarchy("service")
+  });
+  const selected = roadInteractionStyleForState("selected");
+  const hovered = roadInteractionStyleForState("hovered");
+
+  assert.ok(roadJunctionRadiusForVisual(primary, lowZoomRoadViewport, "casing") > roadJunctionRadiusForVisual(service, lowZoomRoadViewport, "casing"));
+  assert.ok(selected.haloWidth > hovered.haloWidth);
+  assert.notEqual(selected.strokeColor, hovered.strokeColor);
+});
+
+test("Stage 145.5 dense road rendering helpers are deterministic", () => {
+  const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
+  const passSignature = buildRoadRenderPasses(visuals).map((pass) => `${pass.layer}:${pass.visual.roadId}`);
+  const styleSignature = visuals.map((visual) => [
+    visual.roadId,
+    roadStyleForViewport(visual, lowZoomRoadViewport).casingWidth,
+    roadStyleForViewport(visual, lowZoomRoadViewport).strokeWidth,
+    roadStyleForViewport(visual, lowZoomRoadViewport).alpha ?? 1
+  ]);
+
+  assert.deepEqual(buildRoadRenderPasses(visuals).map((pass) => `${pass.layer}:${pass.visual.roadId}`), passSignature);
+  assert.deepEqual(
+    visuals.map((visual) => [
+      visual.roadId,
+      roadStyleForViewport(visual, lowZoomRoadViewport).casingWidth,
+      roadStyleForViewport(visual, lowZoomRoadViewport).strokeWidth,
+      roadStyleForViewport(visual, lowZoomRoadViewport).alpha ?? 1
+    ]),
+    styleSignature
+  );
 });
 
 function roadLabel(overrides: Partial<SyntheticMapLabel>): SyntheticMapLabel {

@@ -17,7 +17,12 @@ import type {
   OverpassTags,
   OverpassWayElement
 } from "../../../lib/map-engine/osm/index.ts";
-import { TOPOPASS_STREET_ATLAS_STYLE, type TopopassLabelStyle, type TopopassRoadLabelStyle } from "./topopassCartographyStyle.ts";
+import {
+  TOPOPASS_STREET_ATLAS_STYLE,
+  type TopopassLabelStyle,
+  type TopopassRoadInteractionStyle,
+  type TopopassRoadLabelStyle
+} from "./topopassCartographyStyle.ts";
 
 export type SyntheticRoadClass =
   | "major"
@@ -76,6 +81,15 @@ export type SyntheticRoadStyle = {
   dash?: number[];
   alpha?: number;
 };
+
+export type SyntheticRoadRenderLayer = "casing" | "fill";
+
+export type SyntheticRoadRenderPass = {
+  layer: SyntheticRoadRenderLayer;
+  visual: SyntheticRoadVisual;
+};
+
+export type SyntheticRoadInteractionState = "selected" | "hovered";
 
 export type OsmRoadVisualHierarchy =
   | "primary"
@@ -516,6 +530,84 @@ export function sortRoadVisualsForBaseRender(roadVisuals: readonly SyntheticRoad
       left.name.localeCompare(right.name) ||
       left.roadId.localeCompare(right.roadId)
   );
+}
+
+export function buildRoadRenderPasses(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticRoadRenderPass[] {
+  const orderedRoadVisuals = sortRoadVisualsForBaseRender(roadVisuals);
+
+  return [
+    ...orderedRoadVisuals.map((visual) => ({ layer: "casing" as const, visual })),
+    ...orderedRoadVisuals.map((visual) => ({ layer: "fill" as const, visual }))
+  ];
+}
+
+export function roadStyleForViewport(visual: SyntheticRoadVisual, viewport: ScreenMapViewport): SyntheticRoadStyle {
+  const style = {
+    ...visual.style,
+    ...(visual.style.dash ? { dash: [...visual.style.dash] } : {})
+  };
+  const geometry = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry;
+  const viewportScale = labelViewportScale(viewport);
+
+  if (viewportScale >= geometry.lowZoomViewportScale) {
+    return style;
+  }
+
+  const rank = roadRenderRank(visual);
+
+  if (rank <= 0) {
+    return {
+      ...style,
+      alpha: (style.alpha ?? 1) * geometry.restrictedLowZoomAlphaMultiplier
+    };
+  }
+
+  if (rank === 1) {
+    return {
+      ...style,
+      casingWidth: style.casingWidth * geometry.serviceLowZoomWidthMultiplier,
+      strokeWidth: style.strokeWidth * geometry.serviceLowZoomWidthMultiplier,
+      alpha: (style.alpha ?? 1) * geometry.serviceLowZoomAlphaMultiplier
+    };
+  }
+
+  if (rank === 2) {
+    return {
+      ...style,
+      casingWidth: style.casingWidth * geometry.minorLowZoomWidthMultiplier,
+      strokeWidth: style.strokeWidth * geometry.minorLowZoomWidthMultiplier,
+      alpha: (style.alpha ?? 1) * geometry.minorLowZoomAlphaMultiplier
+    };
+  }
+
+  return style;
+}
+
+export function roadJunctionRadiusForVisual(
+  visual: SyntheticRoadVisual,
+  viewport: ScreenMapViewport,
+  layer: SyntheticRoadRenderLayer
+): number {
+  const style = roadStyleForViewport(visual, viewport);
+  const lineWidth = layer === "casing" ? style.casingWidth : style.strokeWidth;
+  const rank = roadRenderRank(visual);
+  const junctions = TOPOPASS_STREET_ATLAS_STYLE.roads.junctions;
+  const radiusMultiplier =
+    rank >= 5
+      ? junctions.majorRadiusMultiplier
+      : rank >= 4
+        ? junctions.secondaryRadiusMultiplier
+        : rank >= 2
+          ? junctions.minorRadiusMultiplier
+          : junctions.quietRadiusMultiplier;
+
+  return lineWidth * radiusMultiplier;
+}
+
+export function roadInteractionStyleForState(state: SyntheticRoadInteractionState): TopopassRoadInteractionStyle {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.roads.interaction[state];
+
+  return { ...style };
 }
 
 export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisual[] {
