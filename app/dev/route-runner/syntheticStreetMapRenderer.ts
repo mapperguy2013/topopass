@@ -1,4 +1,5 @@
 import type { Landmark, MapDefinition, MapRoad, RouteExercise, RouteStop, Vec2 } from "../../../lib/map-engine/index.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 export type SyntheticRoadClass =
   | "major"
@@ -241,7 +242,27 @@ function roadClassFromOsmHighway(road: MapRoad): SyntheticRoadClass | null {
   return "local";
 }
 
+function cloneRoadStyle(style: TopopassRoadStyleToken): SyntheticRoadStyle {
+  return {
+    casingColor: style.casingColor,
+    strokeColor: style.strokeColor,
+    casingWidth: style.casingWidth,
+    strokeWidth: style.strokeWidth,
+    ...(style.dash ? { dash: [...style.dash] } : {})
+  };
+}
+
+type TopopassRoadStyleToken = {
+  casingColor: string;
+  strokeColor: string;
+  casingWidth: number;
+  strokeWidth: number;
+  dash?: readonly number[];
+};
+
 export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): SyntheticRoadClass {
+  const thresholds = TOPOPASS_STREET_ATLAS_STYLE.roads.syntheticThresholds;
+
   if (hasRoadClosedRestriction(map, road.id)) {
     return "restricted";
   }
@@ -260,15 +281,15 @@ export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): Syn
     return "one-way";
   }
 
-  if (road.distanceMeters >= 155) {
+  if (road.distanceMeters >= thresholds.majorMinDistanceMeters) {
     return "major";
   }
 
-  if (road.distanceMeters >= 135) {
+  if (road.distanceMeters >= thresholds.secondaryMinDistanceMeters) {
     return "secondary";
   }
 
-  if (road.distanceMeters <= 126) {
+  if (road.distanceMeters <= thresholds.serviceMaxDistanceMeters) {
     return "service";
   }
 
@@ -277,111 +298,50 @@ export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): Syn
 
 export function roadStyleForOsmHierarchy(hierarchy: OsmRoadVisualHierarchy): SyntheticRoadStyle {
   if (hierarchy === "primary") {
-    return {
-      casingColor: "#fff7ed",
-      strokeColor: "#f5c84c",
-      casingWidth: 14,
-      strokeWidth: 8
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary);
   }
 
   if (hierarchy === "secondary" || hierarchy === "tertiary") {
-    return {
-      casingColor: "#ffffff",
-      strokeColor: "#f4d27c",
-      casingWidth: 11,
-      strokeWidth: 6
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm[hierarchy]);
   }
 
   if (hierarchy === "service") {
-    return {
-      casingColor: "#ffffff",
-      strokeColor: "#d8e0ea",
-      casingWidth: 6,
-      strokeWidth: 2.5
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.service);
   }
 
   if (hierarchy === "residential") {
-    return {
-      casingColor: "#ffffff",
-      strokeColor: "#cbd5e1",
-      casingWidth: 8,
-      strokeWidth: 4
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential);
   }
 
-  return {
-    casingColor: "#ffffff",
-    strokeColor: "#cbd5e1",
-    casingWidth: 7,
-    strokeWidth: 3.5
-  };
+  return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.unknown);
 }
 
 export function roadStyleForSyntheticClass(roadClass: SyntheticRoadClass): SyntheticRoadStyle {
   if (roadClass === "major") {
-    return {
-      casingColor: "#fff7ed",
-      strokeColor: "#f3c44f",
-      casingWidth: 15,
-      strokeWidth: 9
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major);
   }
 
   if (roadClass === "secondary") {
-    return {
-      casingColor: "#ffffff",
-      strokeColor: "#f6d58a",
-      casingWidth: 12,
-      strokeWidth: 7
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.secondary);
   }
 
   if (roadClass === "one-way") {
-    return {
-      casingColor: "#ffffff",
-      strokeColor: "#bfdbfe",
-      casingWidth: 11,
-      strokeWidth: 6
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.oneWay);
   }
 
   if (roadClass === "no-entry") {
-    return {
-      casingColor: "#fee2e2",
-      strokeColor: "#fecaca",
-      casingWidth: 11,
-      strokeWidth: 6
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.noEntry);
   }
 
   if (roadClass === "restricted") {
-    return {
-      casingColor: "#fed7aa",
-      strokeColor: "#fdba74",
-      casingWidth: 11,
-      strokeWidth: 5,
-      dash: [10, 6]
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.restricted);
   }
 
   if (roadClass === "service") {
-    return {
-      casingColor: "#ffffff",
-      strokeColor: "#dbe2ea",
-      casingWidth: 8,
-      strokeWidth: 3
-    };
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.service);
   }
 
-  return {
-    casingColor: "#ffffff",
-    strokeColor: "#cbd5e1",
-    casingWidth: 9,
-    strokeWidth: 4.5
-  };
+  return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.local);
 }
 
 export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisual[] {
@@ -474,7 +434,7 @@ export function buildSyntheticMapLabels(
       kind: "area",
       text: feature.label,
       point: polygonCenter(feature.points),
-      priority: 2
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.area
     });
   }
 
@@ -506,7 +466,7 @@ export function buildSyntheticMapLabels(
         kind: isStart ? "start" : isFinish ? "finish" : "checkpoint",
         text: isStart ? "START" : isFinish ? "FINISH" : `CHECKPOINT ${index}`,
         point,
-        priority: 10
+        priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.exerciseStop
       });
     });
   }
@@ -596,11 +556,11 @@ export function buildSyntheticLinearFeatures(map: MapDefinition): SyntheticLinea
         { x: bounds.minX + width * 0.57, y: bounds.minY + height * 0.34 },
         { x: bounds.maxX + width * 0.1, y: bounds.minY + height * 0.43 }
       ],
-      casingColor: "rgba(255,255,255,0.86)",
-      strokeColor: "#64748b",
-      casingWidth: 9,
-      strokeWidth: 4,
-      dash: [8, 7],
+      casingColor: TOPOPASS_STREET_ATLAS_STYLE.rail.casingColor ?? "",
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor,
+      casingWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.casingWidth ?? 0,
+      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.rail.strokeWidth,
+      dash: [...(TOPOPASS_STREET_ATLAS_STYLE.rail.dash ?? [])],
       routable: false
     }
   ];
@@ -652,6 +612,7 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
   const stationMaxX = bounds.minX + width * 0.31;
   const stationMinY = bounds.minY + height * 0.18;
   const stationMaxY = bounds.minY + height * 0.31;
+  const background = TOPOPASS_STREET_ATLAS_STYLE.background;
 
   return [
     {
@@ -664,8 +625,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.maxX + width * 0.05, y: topWaterMaxY },
         { x: bounds.minX - width * 0.08, y: topWaterMaxY + height * 0.04 }
       ],
-      fillColor: "#dbeafe",
-      strokeColor: "#bfdbfe",
+      fillColor: background.water.canal.fillColor,
+      strokeColor: background.water.canal.strokeColor,
       routable: false
     },
     {
@@ -678,8 +639,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.maxX + width * 0.05, y: bounds.minY + height * 0.31 },
         { x: bounds.maxX - width * 0.22, y: bounds.minY + height * 0.3 }
       ],
-      fillColor: "#c7ddf8",
-      strokeColor: "#93c5fd",
+      fillColor: background.water.basin.fillColor,
+      strokeColor: background.water.basin.strokeColor,
       routable: false
     },
     {
@@ -692,8 +653,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: stationMaxX + width * 0.02, y: stationMaxY },
         { x: stationMinX - width * 0.01, y: stationMaxY + height * 0.02 }
       ],
-      fillColor: "#e0e7ff",
-      strokeColor: "#c7d2fe",
+      fillColor: background.landBlock.stationQuarter.fillColor,
+      strokeColor: background.landBlock.stationQuarter.strokeColor,
       routable: false
     },
     {
@@ -706,8 +667,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.minX + width * 0.64, y: bounds.minY + height * 0.31 },
         { x: bounds.minX + width * 0.31, y: bounds.minY + height * 0.29 }
       ],
-      fillColor: "#f1f5f9",
-      strokeColor: "#cbd5e1",
+      fillColor: background.landBlock.goodsYard.fillColor,
+      strokeColor: background.landBlock.goodsYard.strokeColor,
       routable: false
     },
     {
@@ -720,8 +681,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.minX + width * 0.34, y: lowerParkMaxY },
         { x: bounds.minX + width * 0.01, y: lowerParkMaxY + height * 0.02 }
       ],
-      fillColor: "#dcfce7",
-      strokeColor: "#bbf7d0",
+      fillColor: background.park.garden.fillColor,
+      strokeColor: background.park.garden.strokeColor,
       routable: false
     },
     {
@@ -734,8 +695,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.maxX - width * 0.02, y: bounds.minY + height * 0.75 },
         { x: bounds.maxX - width * 0.25, y: bounds.minY + height * 0.77 }
       ],
-      fillColor: "#bbf7d0",
-      strokeColor: "#86efac",
+      fillColor: background.park.square.fillColor,
+      strokeColor: background.park.square.strokeColor,
       routable: false
     },
     {
@@ -748,8 +709,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.minX + width * 0.64, y: bounds.minY + height * 0.55 },
         { x: bounds.minX + width * 0.35, y: bounds.minY + height * 0.56 }
       ],
-      fillColor: "#f8fafc",
-      strokeColor: "#e2e8f0",
+      fillColor: background.landBlock.marketQuarter.fillColor,
+      strokeColor: background.landBlock.marketQuarter.strokeColor,
       routable: false
     },
     {
@@ -762,8 +723,8 @@ export function buildSyntheticBackgroundFeatures(map: MapDefinition): SyntheticB
         { x: bounds.minX + width * 0.64, y: bounds.maxY + height * 0.05 },
         { x: bounds.minX + width * 0.36, y: bounds.maxY + height * 0.03 }
       ],
-      fillColor: "#e0f2fe",
-      strokeColor: "#bae6fd",
+      fillColor: background.landBlock.civicQuarter.fillColor,
+      strokeColor: background.landBlock.civicQuarter.strokeColor,
       routable: false
     }
   ];
@@ -778,11 +739,13 @@ export function buildSyntheticRouteOverlayVisuals(input: {
 }): SyntheticRouteOverlayVisual[] {
   const overlays: SyntheticRouteOverlayVisual[] = [];
 
-  addRouteOverlay(overlays, "raw-route", input.rawRoutePoints, "#f97316", 4);
-  addRouteOverlay(overlays, "snapped-route", input.snappedRoutePoints, "#22c55e", 3, [6, 5]);
-  addRouteOverlay(overlays, "matched-route", input.matchedRoutePoints, "#7c3aed", 8);
-  addRouteOverlay(overlays, "shortest-legal-route", input.shortestLegalRoutePoints, "#0ea5e9", 4, [10, 6]);
-  addRouteOverlay(overlays, "illegal-movement", input.illegalRoutePoints, "#dc2626", 9);
+  const overlaysStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays;
+
+  addRouteOverlay(overlays, "raw-route", input.rawRoutePoints, overlaysStyle.rawRoute);
+  addRouteOverlay(overlays, "snapped-route", input.snappedRoutePoints, overlaysStyle.snappedRoute);
+  addRouteOverlay(overlays, "matched-route", input.matchedRoutePoints, overlaysStyle.matchedRoute);
+  addRouteOverlay(overlays, "shortest-legal-route", input.shortestLegalRoutePoints, overlaysStyle.shortestLegalRoute);
+  addRouteOverlay(overlays, "illegal-movement", input.illegalRoutePoints, overlaysStyle.illegalMovement);
 
   return overlays;
 }
@@ -874,9 +837,7 @@ function addRouteOverlay(
   overlays: SyntheticRouteOverlayVisual[],
   kind: SyntheticRouteOverlayKind,
   points: readonly Vec2[] | undefined,
-  strokeColor: string,
-  strokeWidth: number,
-  dash?: number[]
+  style: { strokeColor: string; strokeWidth: number; dash?: readonly number[] }
 ) {
   if (!points || points.length < 2) {
     return;
@@ -886,9 +847,9 @@ function addRouteOverlay(
     id: kind,
     kind,
     points: points.map((point) => ({ ...point })),
-    strokeColor,
-    strokeWidth,
-    ...(dash ? { dash: [...dash] } : {})
+    strokeColor: style.strokeColor,
+    strokeWidth: style.strokeWidth,
+    ...(style.dash ? { dash: [...style.dash] } : {})
   });
 }
 
@@ -967,19 +928,21 @@ function mapBounds(map: MapDefinition): { minX: number; minY: number; maxX: numb
 }
 
 function roadLabelPriority(roadClass: SyntheticRoadClass): number {
+  const priorities = TOPOPASS_STREET_ATLAS_STYLE.labels.priorities;
+
   if (roadClass === "major") {
-    return 3;
+    return priorities.majorRoad;
   }
 
   if (roadClass === "secondary" || roadClass === "one-way") {
-    return 4;
+    return priorities.secondaryRoad;
   }
 
   if (roadClass === "no-entry" || roadClass === "restricted") {
-    return 5;
+    return priorities.restrictedRoad;
   }
 
-  return 6;
+  return priorities.localRoad;
 }
 
 function landmarkVisualKind(landmark: Landmark): SyntheticLandmarkVisualKind {
@@ -1025,63 +988,35 @@ function landmarkVisualStyle(kind: SyntheticLandmarkVisualKind): {
   haloColor: string;
   priority: number;
 } {
+  const style = TOPOPASS_STREET_ATLAS_STYLE;
+
   if (kind === "station") {
     return {
-      radius: 10,
-      fillColor: "#ffffff",
-      strokeColor: "#dc2626",
-      haloColor: "rgba(220,38,38,0.14)",
-      priority: 2
+      radius: style.station.radius,
+      fillColor: style.station.fillColor,
+      strokeColor: style.station.strokeColor,
+      haloColor: style.station.haloColor,
+      priority: style.station.priority
     };
   }
 
   if (kind === "hospital") {
-    return {
-      radius: 9,
-      fillColor: "#eff6ff",
-      strokeColor: "#2563eb",
-      haloColor: "rgba(37,99,235,0.13)",
-      priority: 3
-    };
+    return { ...style.landmarks.hospital };
   }
 
   if (kind === "park") {
-    return {
-      radius: 8,
-      fillColor: "#ecfdf5",
-      strokeColor: "#16a34a",
-      haloColor: "rgba(22,163,74,0.13)",
-      priority: 4
-    };
+    return { ...style.landmarks.park };
   }
 
   if (kind === "market" || kind === "dock") {
-    return {
-      radius: 8,
-      fillColor: "#fff7ed",
-      strokeColor: "#ea580c",
-      haloColor: "rgba(234,88,12,0.13)",
-      priority: 5
-    };
+    return { ...(kind === "market" ? style.landmarks.market : style.landmarks.dock) };
   }
 
   if (kind === "civic" || kind === "church" || kind === "museum") {
-    return {
-      radius: 8,
-      fillColor: "#f8fafc",
-      strokeColor: "#475569",
-      haloColor: "rgba(71,85,105,0.12)",
-      priority: 5
-    };
+    return { ...style.landmarks[kind] };
   }
 
-  return {
-    radius: 6,
-    fillColor: "#ffffff",
-    strokeColor: "#64748b",
-    haloColor: "rgba(100,116,139,0.1)",
-    priority: 7
-  };
+  return { ...style.landmarks.generic };
 }
 
 function shouldLabelLandmark(visual: SyntheticLandmarkVisual): boolean {

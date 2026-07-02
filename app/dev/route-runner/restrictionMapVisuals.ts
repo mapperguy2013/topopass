@@ -1,6 +1,7 @@
 import type { TurnRestrictionVisual, TurnRestrictionVisualKind, Vec2 } from "../../../lib/map-engine/index.ts";
 import type { RoadRestrictionOverlay, RouteIssueOverlay } from "./routeRunnerDisplay.ts";
 import type { SyntheticStreetMapLegendItem } from "./syntheticStreetMapRenderer.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 export type RestrictionMapVisualKind =
   | "no-entry"
@@ -71,8 +72,9 @@ export type BuildRestrictionMapVisualItemsInput = {
   routeIssueOverlays: readonly RouteIssueOverlay[];
 };
 
-const LONG_ROAD_ARROW_THRESHOLD = 180;
-export const ONE_WAY_ARROW_MIN_SPACING_METERS = 50;
+const LONG_ROAD_ARROW_THRESHOLD = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.longRoadArrowThresholdMeters;
+export const ONE_WAY_ARROW_MIN_SPACING_METERS =
+  TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.oneWayArrowMinSpacingMeters;
 
 function clonePoint(point: Vec2): Vec2 {
   return {

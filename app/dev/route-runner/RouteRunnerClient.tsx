@@ -135,6 +135,7 @@ import {
   type SyntheticRoadVisual,
   type SyntheticStreetMapLegendItem
 } from "./syntheticStreetMapRenderer";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle";
 import {
   buildRestrictionLegendItems,
   buildRestrictionMapVisualItems,
@@ -1010,20 +1011,27 @@ function drawExerciseStopMarker(input: {
   role: "start" | "checkpoint" | "finish";
   index: number;
 }): void {
-  const fillStyle =
-    input.role === "start" ? "#15803d" : input.role === "finish" ? "#6d28d9" : "#f97316";
-  const markerText = input.role === "start" ? "S" : input.role === "finish" ? "F" : `CP${input.index}`;
-  const radius = input.role === "checkpoint" ? 12 : 14;
+  const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
+  const markerStyle =
+    input.role === "start" ? style.start : input.role === "finish" ? style.destination : style.checkpoint;
+  const fillStyle = markerStyle.fillColor;
+  const markerText =
+    input.role === "start"
+      ? style.start.text
+      : input.role === "finish"
+        ? style.destination.text
+        : `${style.checkpoint.textPrefix}${input.index}`;
+  const radius = markerStyle.radius;
 
   input.context.save();
-  input.context.shadowColor = "rgba(15,23,42,0.24)";
-  input.context.shadowBlur = 10;
-  input.context.shadowOffsetY = 2;
-  input.context.fillStyle = "rgba(255,255,255,0.96)";
+  input.context.shadowColor = style.shadowColor;
+  input.context.shadowBlur = style.shadowBlur;
+  input.context.shadowOffsetY = style.shadowOffsetY;
+  input.context.fillStyle = style.haloFillColor;
   input.context.strokeStyle = fillStyle;
-  input.context.lineWidth = 3;
+  input.context.lineWidth = style.strokeWidth;
   input.context.beginPath();
-  input.context.arc(input.point.x, input.point.y, radius + 5, 0, Math.PI * 2);
+  input.context.arc(input.point.x, input.point.y, radius + style.haloRadiusPadding, 0, Math.PI * 2);
   input.context.fill();
   input.context.stroke();
   input.context.shadowColor = "transparent";
@@ -1033,8 +1041,8 @@ function drawExerciseStopMarker(input: {
   input.context.arc(input.point.x, input.point.y, radius, 0, Math.PI * 2);
   input.context.fill();
 
-  input.context.fillStyle = "#ffffff";
-  input.context.font = markerText.length > 1 ? "800 9px Arial, sans-serif" : "800 12px Arial, sans-serif";
+  input.context.fillStyle = style.textColor;
+  input.context.font = markerStyle.font;
   input.context.textAlign = "center";
   input.context.textBaseline = "middle";
   input.context.fillText(markerText, input.point.x, input.point.y + 0.5);
@@ -1055,7 +1063,7 @@ function drawSyntheticBackgroundFeature(
   context.save();
   context.fillStyle = feature.fillColor;
   context.strokeStyle = feature.strokeColor;
-  context.lineWidth = 1.5;
+  context.lineWidth = TOPOPASS_STREET_ATLAS_STYLE.background.polygonStrokeWidth;
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1164,22 +1172,22 @@ function drawSyntheticLandmarkVisual(
 
   context.fillStyle = visual.fillColor;
   context.strokeStyle = visual.strokeColor;
-  context.lineWidth = visual.kind === "station" ? 3.5 : 2.5;
+  context.lineWidth = visual.kind === "station" ? TOPOPASS_STREET_ATLAS_STYLE.station.markerStrokeWidth : 2.5;
   context.beginPath();
   context.arc(point.x, point.y, visual.radius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
 
   if (visual.kind === "station") {
-    context.strokeStyle = "#1d4ed8";
-    context.lineWidth = 5;
+    context.strokeStyle = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineColor;
+    context.lineWidth = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineWidth;
     context.lineCap = "round";
     context.beginPath();
     context.moveTo(point.x - visual.radius - 4, point.y);
     context.lineTo(point.x + visual.radius + 4, point.y);
     context.stroke();
   } else if (visual.kind === "hospital") {
-    context.strokeStyle = "#2563eb";
+    context.strokeStyle = TOPOPASS_STREET_ATLAS_STYLE.landmarks.hospital.strokeColor;
     context.lineWidth = 2.4;
     context.lineCap = "round";
     context.beginPath();
@@ -1189,7 +1197,7 @@ function drawSyntheticLandmarkVisual(
     context.lineTo(point.x, point.y + 4);
     context.stroke();
   } else if (visual.kind === "park") {
-    context.fillStyle = "#16a34a";
+    context.fillStyle = TOPOPASS_STREET_ATLAS_STYLE.landmarks.park.strokeColor;
     context.beginPath();
     context.arc(point.x, point.y, 3, 0, Math.PI * 2);
     context.fill();
@@ -1234,24 +1242,21 @@ function drawSyntheticMapLabel(
 
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = isAreaLabel
-    ? "600 13px Arial, sans-serif"
+  const labelStyle = isAreaLabel
+    ? TOPOPASS_STREET_ATLAS_STYLE.labels.area
     : isStopLabel
-      ? "700 11px Arial, sans-serif"
+      ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop
       : isLandmarkLabel
-        ? "700 11px Arial, sans-serif"
-        : "600 11px Arial, sans-serif";
-  context.lineWidth = isStopLabel ? 4 : 3;
-  context.strokeStyle = isAreaLabel ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.94)";
-  context.fillStyle = isAreaLabel
-    ? "rgba(71,85,105,0.56)"
-    : isStopLabel
-      ? "#0f172a"
-      : isLandmarkLabel
-        ? "rgba(15,23,42,0.78)"
-        : "rgba(51,65,85,0.78)";
-  context.strokeText(label.text, 0, isStopLabel ? -18 : 0);
-  context.fillText(label.text, 0, isStopLabel ? -18 : 0);
+        ? TOPOPASS_STREET_ATLAS_STYLE.labels.landmark
+        : TOPOPASS_STREET_ATLAS_STYLE.labels.road;
+  const yOffset = isStopLabel ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop.yOffset ?? 0 : 0;
+
+  context.font = labelStyle.font;
+  context.lineWidth = labelStyle.haloWidth;
+  context.strokeStyle = labelStyle.haloColor;
+  context.fillStyle = labelStyle.color;
+  context.strokeText(label.text, 0, yOffset);
+  context.fillText(label.text, 0, yOffset);
   context.restore();
 }
 
@@ -1346,14 +1351,31 @@ function roadEndpoints(road: MapRoad, map: MapDefinition): { from?: MapNode; to?
 
 function restrictionOverlayColour(kind: RoadRestrictionOverlay["kind"]): string {
   if (kind === "no-entry") {
-    return "#ef4444";
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.overlay.noEntry.strokeColor;
   }
 
   if (kind === "restricted") {
-    return "#f59e0b";
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.overlay.restricted.strokeColor;
   }
 
-  return "#3b82f6";
+  return TOPOPASS_STREET_ATLAS_STYLE.restrictions.overlay.oneWay.strokeColor;
+}
+
+function restrictionOverlayStyle(kind: RoadRestrictionOverlay["kind"]): {
+  strokeColor: string;
+  strokeWidth: number;
+  alpha?: number;
+  dash?: readonly number[];
+} {
+  if (kind === "no-entry") {
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.overlay.noEntry;
+  }
+
+  if (kind === "restricted") {
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.overlay.restricted;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.restrictions.overlay.oneWay;
 }
 
 function drawRoadRestrictionOverlay(
@@ -1366,14 +1388,15 @@ function drawRoadRestrictionOverlay(
   }
 
   const colour = restrictionOverlayColour(overlay.kind);
+  const overlayStyle = restrictionOverlayStyle(overlay.kind);
   const screenPoints = overlay.points.map((point) => mapToScreenPoint(point, viewport));
 
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
-  context.globalAlpha = overlay.kind === "one-way" ? 0.32 : 0.38;
-  context.lineWidth = overlay.kind === "one-way" ? 3 : overlay.kind === "restricted" ? 7 : 6;
-  context.setLineDash(overlay.kind === "restricted" ? [10, 7] : []);
+  context.globalAlpha = overlayStyle.alpha ?? 1;
+  context.lineWidth = overlayStyle.strokeWidth;
+  context.setLineDash([...(overlayStyle.dash ?? [])]);
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1387,8 +1410,10 @@ function drawRoadRestrictionOverlay(
 }
 
 function drawTurnArrowSymbol(context: CanvasRenderingContext2D, turnKind: TurnRestrictionVisual["turnKind"]): void {
-  context.strokeStyle = "#111827";
-  context.lineWidth = 2.5;
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker;
+
+  context.strokeStyle = style.arrowColor;
+  context.lineWidth = style.arrowLineWidth;
   context.lineCap = "round";
   context.lineJoin = "round";
 
@@ -1420,20 +1445,22 @@ function drawTurnArrowSymbol(context: CanvasRenderingContext2D, turnKind: TurnRe
 }
 
 function drawNoEntryMapSymbol(context: CanvasRenderingContext2D, point: Vec2, radius = 14): void {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.noEntryMarker;
+
   context.save();
-  context.fillStyle = "rgba(255,255,255,0.96)";
-  context.strokeStyle = "#dc2626";
-  context.lineWidth = 3;
+  context.fillStyle = style.fillColor;
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth;
   context.beginPath();
   context.arc(point.x, point.y, radius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
-  context.strokeStyle = "#dc2626";
-  context.lineWidth = 5;
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.barWidth;
   context.lineCap = "round";
   context.beginPath();
-  context.moveTo(point.x - radius * 0.58, point.y);
-  context.lineTo(point.x + radius * 0.58, point.y);
+  context.moveTo(point.x - radius * style.barRadiusRatio, point.y);
+  context.lineTo(point.x + radius * style.barRadiusRatio, point.y);
   context.stroke();
   context.restore();
 }
@@ -1448,19 +1475,20 @@ function drawOneWayMapSymbol(
   }
 
   const angle = Math.atan2(direction.to.y - direction.from.y, direction.to.x - direction.from.x);
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay;
   const tip = {
-    x: point.x + 13 * Math.cos(angle),
-    y: point.y + 13 * Math.sin(angle)
+    x: point.x + style.tipDistance * Math.cos(angle),
+    y: point.y + style.tipDistance * Math.sin(angle)
   };
   const tail = {
-    x: point.x - 11 * Math.cos(angle),
-    y: point.y - 11 * Math.sin(angle)
+    x: point.x - style.tailDistance * Math.cos(angle),
+    y: point.y - style.tailDistance * Math.sin(angle)
   };
 
   context.save();
-  context.strokeStyle = "#1d4ed8";
-  context.fillStyle = "#1d4ed8";
-  context.lineWidth = 4;
+  context.strokeStyle = style.color;
+  context.fillStyle = style.color;
+  context.lineWidth = style.lineWidth;
   context.lineCap = "round";
   context.beginPath();
   context.moveTo(tail.x, tail.y);
@@ -1471,28 +1499,30 @@ function drawOneWayMapSymbol(
 }
 
 function drawRestrictedRoadMapSymbol(context: CanvasRenderingContext2D, point: Vec2): void {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.restrictedMarker;
+
   context.save();
-  context.fillStyle = "#fffbeb";
-  context.strokeStyle = "#d97706";
-  context.lineWidth = 3;
+  context.fillStyle = style.fillColor;
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth;
   context.beginPath();
-  context.moveTo(point.x, point.y - 14);
-  context.lineTo(point.x + 14, point.y);
-  context.lineTo(point.x, point.y + 14);
-  context.lineTo(point.x - 14, point.y);
+  context.moveTo(point.x, point.y - style.radius);
+  context.lineTo(point.x + style.radius, point.y);
+  context.lineTo(point.x, point.y + style.radius);
+  context.lineTo(point.x - style.radius, point.y);
   context.closePath();
   context.fill();
   context.stroke();
-  context.strokeStyle = "#92400e";
-  context.lineWidth = 3;
+  context.strokeStyle = style.symbolColor;
+  context.lineWidth = style.symbolLineWidth;
   context.lineCap = "round";
   context.beginPath();
   context.moveTo(point.x, point.y - 7);
   context.lineTo(point.x, point.y + 2);
   context.stroke();
-  context.fillStyle = "#92400e";
+  context.fillStyle = style.symbolColor;
   context.beginPath();
-  context.arc(point.x, point.y + 7, 2, 0, Math.PI * 2);
+  context.arc(point.x, point.y + 7, style.dotRadius, 0, Math.PI * 2);
   context.fill();
   context.restore();
 }
@@ -1502,18 +1532,20 @@ function drawTurnBanMapSymbol(
   point: Vec2,
   turnKind: TurnRestrictionVisual["turnKind"] | undefined
 ): void {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker;
+
   context.save();
-  context.fillStyle = "#ffffff";
-  context.strokeStyle = "#be123c";
-  context.lineWidth = 3;
+  context.fillStyle = style.fillColor;
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth;
   context.beginPath();
-  context.arc(point.x, point.y, 14, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.radius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.translate(point.x, point.y);
   drawTurnArrowSymbol(context, turnKind ?? "no-left-turn");
-  context.strokeStyle = "#be123c";
-  context.lineWidth = 3;
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth;
   context.lineCap = "round";
   context.beginPath();
   context.moveTo(-9, 9);
@@ -1523,10 +1555,12 @@ function drawTurnBanMapSymbol(
 }
 
 function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: RestrictionMapVisualItem, point: Vec2): void {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue;
+
   if (item.symbol === "disconnected-gap") {
     context.save();
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = "#dc2626";
+    context.fillStyle = style.illegalSymbolFillColor;
+    context.strokeStyle = style.illegalSymbolStrokeColor;
     context.lineWidth = 3;
     context.beginPath();
     context.arc(point.x, point.y, 15, 0, Math.PI * 2);
@@ -1538,7 +1572,7 @@ function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: Restri
     context.lineTo(point.x + 9, point.y);
     context.stroke();
     context.setLineDash([]);
-    context.fillStyle = "#dc2626";
+    context.fillStyle = style.illegalSymbolStrokeColor;
     context.beginPath();
     context.arc(point.x - 9, point.y, 3, 0, Math.PI * 2);
     context.arc(point.x + 9, point.y, 3, 0, Math.PI * 2);
@@ -1548,8 +1582,8 @@ function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: Restri
   }
 
   context.save();
-  context.fillStyle = "#fee2e2";
-  context.strokeStyle = "#b91c1c";
+  context.fillStyle = style.noEntrySymbolFillColor;
+  context.strokeStyle = style.noEntrySymbolStrokeColor;
   context.lineWidth = 3;
   context.beginPath();
   context.arc(point.x, point.y, 16, 0, Math.PI * 2);
@@ -1557,7 +1591,7 @@ function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: Restri
   context.stroke();
 
   if (item.label.toLowerCase().includes("no entry")) {
-    context.strokeStyle = "#b91c1c";
+    context.strokeStyle = style.noEntrySymbolStrokeColor;
     context.lineWidth = 5;
     context.lineCap = "round";
     context.beginPath();
@@ -1565,7 +1599,7 @@ function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: Restri
     context.lineTo(point.x + 9, point.y);
     context.stroke();
   } else {
-    context.strokeStyle = "#b91c1c";
+    context.strokeStyle = style.noEntrySymbolStrokeColor;
     context.lineWidth = 4;
     context.lineCap = "round";
     context.beginPath();
@@ -1623,16 +1657,18 @@ function drawSelectedRestrictionHighlight(
   const point = mapToScreenPoint(highlight.point, viewport);
 
   context.save();
-  context.strokeStyle = "#0284c7";
-  context.fillStyle = "rgba(14,165,233,0.12)";
-  context.lineWidth = 4;
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.selectedFocus;
+
+  context.strokeStyle = style.strokeColor;
+  context.fillStyle = style.fillColor;
+  context.lineWidth = style.strokeWidth;
   context.setLineDash([]);
 
   if (highlight.points.length >= 2) {
     const screenPoints = highlight.points.map((candidate) => mapToScreenPoint(candidate, viewport));
 
-    context.globalAlpha = 0.86;
-    context.lineWidth = 9;
+    context.globalAlpha = style.routeAlpha;
+    context.lineWidth = style.routeLineWidth;
     context.beginPath();
     context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1645,21 +1681,21 @@ function drawSelectedRestrictionHighlight(
 
   context.globalAlpha = 1;
   context.beginPath();
-  context.arc(point.x, point.y, 24, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.innerRadius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
   context.beginPath();
-  context.arc(point.x, point.y, 31, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.outerRadius, 0, Math.PI * 2);
   context.stroke();
   context.restore();
 }
 
 function routeIssueOverlayColour(kind: RouteIssueOverlay["kind"]): string {
   if (kind === "prohibited-turn" || kind === "no-u-turn") {
-    return "#be123c";
+    return TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.turnColor;
   }
 
-  return "#dc2626";
+  return TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.defaultColor;
 }
 
 function drawRouteIssueOverlay(
@@ -1674,9 +1710,11 @@ function drawRouteIssueOverlay(
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
-  context.lineWidth = overlay.kind === "disconnected" ? 4 : 8;
-  context.globalAlpha = 0.82;
-  context.setLineDash(lineStyle === "dashed-red" ? [8, 6] : []);
+  const style = TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue;
+
+  context.lineWidth = overlay.kind === "disconnected" ? style.disconnectedLineWidth : style.illegalLineWidth;
+  context.globalAlpha = style.alpha;
+  context.setLineDash(lineStyle === "dashed-red" ? [...style.dashedIssueDash] : []);
 
   if (overlay.kind !== "prohibited-turn" && overlay.kind !== "no-u-turn") {
     for (const roadId of overlay.roadIds) {
@@ -1705,7 +1743,7 @@ function drawRouteIssueOverlay(
   if (overlay.points.length >= 2) {
     const screenPoints = overlay.points.map((point) => mapToScreenPoint(point, viewport));
 
-    context.lineWidth = overlay.kind === "disconnected" ? 3 : 5;
+    context.lineWidth = overlay.kind === "disconnected" ? style.disconnectedDetailLineWidth : style.illegalDetailLineWidth;
     context.beginPath();
     context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1744,8 +1782,10 @@ function drawFastestRouteOverlay(
   context.save();
   context.lineCap = "round";
   context.lineJoin = "round";
-  context.strokeStyle = "rgba(255,255,255,0.94)";
-  context.lineWidth = 10;
+  const style = TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute;
+
+  context.strokeStyle = style.halo.strokeColor;
+  context.lineWidth = style.halo.strokeWidth;
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1754,9 +1794,9 @@ function drawFastestRouteOverlay(
   }
 
   context.stroke();
-  context.strokeStyle = "#0284c7";
-  context.lineWidth = 5;
-  context.setLineDash([14, 8]);
+  context.strokeStyle = style.route.strokeColor;
+  context.lineWidth = style.route.strokeWidth;
+  context.setLineDash([...(style.route.dash ?? [])]);
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1924,7 +1964,9 @@ function drawOsmExerciseDebugOverlay(
 }
 
 function replayMarkerColour(kind: RouteReplayMarker["kind"]): string {
-  return kind === "user" ? "#ea580c" : "#0284c7";
+  return kind === "user"
+    ? TOPOPASS_STREET_ATLAS_STYLE.routeReplay.userColor
+    : TOPOPASS_STREET_ATLAS_STYLE.routeReplay.shortestColor;
 }
 
 function drawRouteReplayMarker(
@@ -1934,25 +1976,26 @@ function drawRouteReplayMarker(
 ): void {
   const point = mapToScreenPoint(marker.point, viewport);
   const colour = replayMarkerColour(marker.kind);
+  const style = TOPOPASS_STREET_ATLAS_STYLE.routeReplay;
 
   context.save();
-  context.fillStyle = "rgba(255,255,255,0.96)";
+  context.fillStyle = style.haloFillColor;
   context.strokeStyle = colour;
-  context.lineWidth = 4;
+  context.lineWidth = style.strokeWidth;
   context.beginPath();
-  context.arc(point.x, point.y, 15, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.haloRadius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
 
   context.fillStyle = colour;
   context.beginPath();
-  context.arc(point.x, point.y, 8, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.innerRadius, 0, Math.PI * 2);
   context.fill();
 
-  context.strokeStyle = "rgba(15,23,42,0.28)";
+  context.strokeStyle = style.outerStrokeColor;
   context.lineWidth = 1;
   context.beginPath();
-  context.arc(point.x, point.y, 21, 0, Math.PI * 2);
+  context.arc(point.x, point.y, style.outerRadius, 0, Math.PI * 2);
   context.stroke();
   context.restore();
 }
@@ -2100,7 +2143,7 @@ function drawRouteCanvas(input: {
   }
 
   context.clearRect(0, 0, input.canvas.width, input.canvas.height);
-  context.fillStyle = "#eef3f8";
+  context.fillStyle = TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor;
   context.fillRect(0, 0, input.canvas.width, input.canvas.height);
 
   context.lineCap = "round";
@@ -2140,18 +2183,20 @@ function drawRouteCanvas(input: {
       y: (fromPoint.y + toPoint.y) / 2
     };
 
-    context.strokeStyle = "rgba(255,255,255,0.88)";
-    context.lineWidth = 11;
-    context.globalAlpha = 0.84;
+    const movementStyle = TOPOPASS_STREET_ATLAS_STYLE.review.matchedMovement;
+
+    context.strokeStyle = movementStyle.haloColor;
+    context.lineWidth = movementStyle.haloWidth;
+    context.globalAlpha = movementStyle.haloAlpha;
     context.beginPath();
     context.moveTo(fromPoint.x, fromPoint.y);
     context.lineTo(toPoint.x, toPoint.y);
     context.stroke();
 
-    context.strokeStyle = movement.directedEdgeId ? "#7c3aed" : "#ef4444";
-    context.fillStyle = movement.directedEdgeId ? "#7c3aed" : "#ef4444";
-    context.lineWidth = 6;
-    context.globalAlpha = 0.7;
+    context.strokeStyle = movement.directedEdgeId ? movementStyle.matchedColor : movementStyle.unmatchedColor;
+    context.fillStyle = movement.directedEdgeId ? movementStyle.matchedColor : movementStyle.unmatchedColor;
+    context.lineWidth = movementStyle.lineWidth;
+    context.globalAlpha = movementStyle.alpha;
     context.beginPath();
     context.moveTo(fromPoint.x, fromPoint.y);
     context.lineTo(toPoint.x, toPoint.y);
@@ -2159,11 +2204,13 @@ function drawRouteCanvas(input: {
     context.globalAlpha = 1;
     drawArrowHead(context, fromPoint, toPoint);
 
-    context.fillStyle = "#ffffff";
-    context.strokeStyle = movement.directedEdgeId ? "#6d28d9" : "#dc2626";
-    context.lineWidth = 1;
+    context.fillStyle = movementStyle.nodeFillColor;
+    context.strokeStyle = movement.directedEdgeId
+      ? movementStyle.matchedNodeStrokeColor
+      : movementStyle.unmatchedNodeStrokeColor;
+    context.lineWidth = movementStyle.nodeStrokeWidth;
     context.beginPath();
-    context.arc(midPoint.x, midPoint.y, 9, 0, Math.PI * 2);
+    context.arc(midPoint.x, midPoint.y, movementStyle.nodeRadius, 0, Math.PI * 2);
     context.fill();
     context.stroke();
   });
@@ -2183,11 +2230,13 @@ function drawRouteCanvas(input: {
   for (const node of input.map.nodes) {
     const point = mapToScreenPoint(node, input.viewport);
 
-    context.fillStyle = "rgba(255,255,255,0.72)";
-    context.strokeStyle = "rgba(100,116,139,0.28)";
-    context.lineWidth = 1;
+    const nodeStyle = TOPOPASS_STREET_ATLAS_STYLE.nodes;
+
+    context.fillStyle = nodeStyle.fillColor;
+    context.strokeStyle = nodeStyle.strokeColor;
+    context.lineWidth = nodeStyle.strokeWidth;
     context.beginPath();
-    context.arc(point.x, point.y, 2.25, 0, Math.PI * 2);
+    context.arc(point.x, point.y, nodeStyle.radius, 0, Math.PI * 2);
     context.fill();
     context.stroke();
   }
@@ -2202,8 +2251,10 @@ function drawRouteCanvas(input: {
     drawNodeMarker({
       context,
       point: mapToScreenPoint(node, input.viewport),
-      fillStyle: index === 0 ? "#2563eb" : "#7c3aed",
-      radius: 7
+      fillStyle: index === 0
+        ? TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedStartColor
+        : TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedNodeColor,
+      radius: TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedNodeRadius
     });
   });
 
@@ -2238,9 +2289,11 @@ function drawRouteCanvas(input: {
   });
 
   if (input.snapPreview.snappedPoints.length > 0) {
-    context.strokeStyle = "#22c55e";
-    context.lineWidth = 2;
-    context.setLineDash([5, 5]);
+    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview;
+
+    context.strokeStyle = hintStyle.strokeColor;
+    context.lineWidth = hintStyle.strokeWidth;
+    context.setLineDash([...(hintStyle.dash ?? [])]);
     input.snapPreview.snappedPoints.forEach((point, index) => {
       const screenPoint = mapToScreenPoint(point.snappedPoint, input.viewport);
 
@@ -2263,8 +2316,10 @@ function drawRouteCanvas(input: {
         : [];
 
   if (visibleRawStrokes.length > 0) {
-    context.strokeStyle = "#ea580c";
-    context.lineWidth = 4;
+    const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
+
+    context.strokeStyle = rawRouteStyle.strokeColor;
+    context.lineWidth = rawRouteStyle.strokeWidth;
 
     visibleRawStrokes.forEach((stroke) => {
       if (stroke.points.length === 0) {
@@ -2288,9 +2343,11 @@ function drawRouteCanvas(input: {
   input.snapPreview.snappedPoints.forEach((point) => {
     const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
 
-    context.fillStyle = point.roadId ? "#16a34a" : "#dc2626";
+    context.fillStyle = point.roadId
+      ? TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointMatchedColor
+      : TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointUnmatchedColor;
     context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, 3, 0, Math.PI * 2);
+    context.arc(screenPoint.x, screenPoint.y, TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointRadius, 0, Math.PI * 2);
     context.fill();
   });
 

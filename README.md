@@ -789,6 +789,8 @@ Detailed Phase 5 implementation history has moved to [docs/phase-5-beta-ready.md
 
 Phase 6 Real London map styling work is judged against the Stage 141 acceptance
 contract in [docs/phase-6-map-styling-acceptance.md](docs/phase-6-map-styling-acceptance.md).
+The current Stage 142 map style audit and tokenisation notes live in
+[docs/phase-6-real-london-map-style-audit.md](docs/phase-6-real-london-map-style-audit.md).
 
 ## Current Feature Set
 

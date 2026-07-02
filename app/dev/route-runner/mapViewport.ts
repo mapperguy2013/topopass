@@ -1,4 +1,5 @@
 import type { ScreenMapViewport } from "../../../lib/map-engine/index.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 export type MapInteractionMode = "draw" | "pan";
 
@@ -53,11 +54,7 @@ export type MapWheelInput = {
 };
 
 export const ROUTE_RUNNER_MAP_ZOOM_LIMITS: MapZoomLimits = {
-  defaultZoom: 1,
-  minZoom: 0.75,
-  maxZoom: 10,
-  step: 0.25,
-  panMargin: 80
+  ...TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds
 };
 
 const ZOOM_EPSILON = 0.000001;

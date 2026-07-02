@@ -15,12 +15,151 @@ import {
   roadStyleForOsmHierarchy,
   roadStyleForSyntheticClass
 } from "./syntheticStreetMapRenderer.ts";
+import { ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
+import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "./restrictionMapVisuals.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 import {
   marloweDistrictMap,
   marloweDistrictRouteExercises,
   type MapDefinition
 } from "../../../lib/map-engine/index.ts";
 import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
+
+function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
+  if (Array.isArray(value)) {
+    assert.ok(value.length > 0, `${path} should not be an empty token array`);
+    value.forEach((item, index) => assertPrimitiveRenderValues(item, `${path}[${index}]`));
+    return;
+  }
+
+  if (value && typeof value === "object") {
+    Object.entries(value).forEach(([key, item]) => assertPrimitiveRenderValues(item, `${path}.${key}`));
+    return;
+  }
+
+  assert.ok(
+    typeof value === "string" || typeof value === "number" || typeof value === "boolean",
+    `${path} should be a primitive render token`
+  );
+
+  if (typeof value === "number") {
+    assert.ok(Number.isFinite(value), `${path} should be finite`);
+  }
+}
+
+test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#f5c84c");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#f3c44f");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dcfce7");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#64748b");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#dc2626");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#15803d");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#6d28d9");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#f97316");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#22c55e");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.color, "#1d4ed8");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute.route.strokeColor, "#0284c7");
+});
+
+test("Stage 142 road hierarchy route restriction and one-way token groups are complete", () => {
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.osm), [
+    "primary",
+    "secondary",
+    "tertiary",
+    "residential",
+    "service",
+    "unknown"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic), [
+    "major",
+    "secondary",
+    "oneWay",
+    "noEntry",
+    "restricted",
+    "service",
+    "local"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.routeOverlays), [
+    "rawRoute",
+    "snappedRoute",
+    "matchedRoute",
+    "shortestLegalRoute",
+    "illegalMovement"
+  ]);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
+});
+
+test("Stage 142 zoom and decluttering tokens are ordered finite and used by helpers", () => {
+  const thresholds = TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds;
+
+  assert.ok(thresholds.minZoom < thresholds.defaultZoom);
+  assert.ok(thresholds.defaultZoom < thresholds.maxZoom);
+  assert.ok(thresholds.step > 0);
+  assert.ok(thresholds.panMargin >= 0);
+  assert.deepEqual(ROUTE_RUNNER_MAP_ZOOM_LIMITS, thresholds);
+  assert.equal(
+    ONE_WAY_ARROW_MIN_SPACING_METERS,
+    TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.oneWayArrowMinSpacingMeters
+  );
+});
+
+test("Stage 142 style tokens are deterministic primitive render values", () => {
+  assertPrimitiveRenderValues(TOPOPASS_STREET_ATLAS_STYLE);
+  assert.deepEqual(TOPOPASS_STREET_ATLAS_STYLE, TOPOPASS_STREET_ATLAS_STYLE);
+});
+
+test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
+  assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
+    casingColor: "#fff7ed",
+    strokeColor: "#f5c84c",
+    casingWidth: 14,
+    strokeWidth: 8
+  });
+  assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
+    casingColor: "#fed7aa",
+    strokeColor: "#fdba74",
+    casingWidth: 11,
+    strokeWidth: 5,
+    dash: [10, 6]
+  });
+  assert.deepEqual(
+    buildSyntheticRouteOverlayVisuals({
+      rawRoutePoints: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 }
+      ],
+      shortestLegalRoutePoints: [
+        { x: 0, y: 4 },
+        { x: 10, y: 4 }
+      ]
+    }),
+    [
+      {
+        id: "raw-route",
+        kind: "raw-route",
+        points: [
+          { x: 0, y: 0 },
+          { x: 10, y: 0 }
+        ],
+        strokeColor: "#f97316",
+        strokeWidth: 4
+      },
+      {
+        id: "shortest-legal-route",
+        kind: "shortest-legal-route",
+        points: [
+          { x: 0, y: 4 },
+          { x: 10, y: 4 }
+        ],
+        strokeColor: "#0ea5e9",
+        strokeWidth: 4,
+        dash: [10, 6]
+      }
+    ]
+  );
+});
 
 test("deriveSyntheticRoadClass applies hierarchy and restriction-safe classes", () => {
   const oneWayRoad = marloweDistrictMap.roads.find((road) => road.id === "r04");
