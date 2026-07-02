@@ -190,6 +190,33 @@ labels for one-way streets, restricted turns, no-entry/blocked movements, and
 review warnings. The renderer still uses only existing restriction overlays,
 turn visuals, and route-review data; missing data remains a safe no-op.
 
+## Stage 149.5/150.5 Context Data Audit And Adapter Evidence
+
+Stage 149.5/150.5 addresses the Real London context-data coverage part of this
+checklist without changing routing, legality, scoring, exercise generation,
+OSM conversion behaviour, beta gates, feedback, or route attempts. The new
+audit helper reads committed fixture/source data only and reports deterministic
+counts for rail, subway rail, stations, named stations, bridges, named bridges,
+crossings, landmark-like features, park/open-space features, water, named
+water, and area/context label candidates.
+
+The new internal adapter normalises supported OSM fixture elements into typed
+render-ready context features for the existing synthetic street-map renderer.
+It covers the audited context categories plus the pre-existing visual-only
+pedestrian-area background category. It is a safe no-op when a map has no OSM
+projection, when fixture data is missing or malformed, or when required node
+geometry is unavailable. Tests cover deterministic counts, malformed input,
+stable adapter ordering, missing projection behaviour, and the rule that no
+context feature is invented when fixture/source data is absent.
+
+Known limitation: the current committed Real London Overpass fixtures
+(`tinyLondonOverpass.json`, `realLondonPilotOverpass.json`,
+`realLondonPilotTwoOverpass.json`, `mediumLondonOverpass.json`, and
+`largeLondonOverpass.json`) audit to zero for the audited non-road context
+categories. The learner benefit today is a clearer, testable pipeline and
+baseline for fixture-backed context rendering; visible new context still
+depends on future committed fixture data containing those OSM tags.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

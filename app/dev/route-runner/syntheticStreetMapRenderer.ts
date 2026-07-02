@@ -8,15 +8,14 @@ import {
   type ScreenMapViewport,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
-import { projectOsmCoordinateToLocalMeters } from "../../../lib/map-engine/osm/index.ts";
+import { buildRealLondonContextFeatures } from "./realLondonContextData.ts";
 import type {
-  OsmLocalProjection,
-  OverpassElementId,
-  OverpassJsonResponse,
-  OverpassNodeElement,
-  OverpassTags,
-  OverpassWayElement
-} from "../../../lib/map-engine/osm/index.ts";
+  RealLondonContextFeature,
+  RealLondonLandmarkContextFeature,
+  RealLondonParkContextFeature,
+  RealLondonPedestrianAreaContextFeature,
+  RealLondonWaterContextFeature
+} from "./realLondonContextData.ts";
 import {
   TOPOPASS_STREET_ATLAS_STYLE,
   type TopopassContextLabelStyle,
@@ -36,7 +35,7 @@ export type SyntheticRoadClass =
 
 export type SyntheticBackgroundFeatureKind = "park" | "water" | "land-block" | "open-space" | "pedestrian-area";
 
-export type SyntheticLinearFeatureKind = "rail" | "waterway" | "bridge";
+export type SyntheticLinearFeatureKind = "rail" | "waterway" | "bridge" | "crossing";
 
 export type SyntheticLandmarkVisualKind =
   | "station"
@@ -258,74 +257,6 @@ function isOsmMap(map: MapDefinition): boolean {
   const metadata = (map as { metadata?: { source?: unknown } }).metadata;
 
   return metadata?.source === "osm" || map.roads.some((road) => osmRoadMetadata(road) !== null);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function isTagRecord(value: unknown): value is OverpassTags {
-  return (
-    isRecord(value) &&
-    Object.values(value).every((tagValue) => typeof tagValue === "string")
-  );
-}
-
-function isOverpassNodeElement(value: unknown): value is OverpassNodeElement {
-  return (
-    isRecord(value) &&
-    value.type === "node" &&
-    typeof value.id === "number" &&
-    typeof value.lat === "number" &&
-    typeof value.lon === "number"
-  );
-}
-
-function isOverpassWayElement(value: unknown): value is OverpassWayElement {
-  return (
-    isRecord(value) &&
-    value.type === "way" &&
-    typeof value.id === "number" &&
-    Array.isArray(value.nodes) &&
-    value.nodes.every((nodeId) => typeof nodeId === "number") &&
-    (value.tags === undefined || isTagRecord(value.tags))
-  );
-}
-
-function isOverpassJsonResponse(value: unknown): value is OverpassJsonResponse {
-  return isRecord(value) && Array.isArray(value.elements);
-}
-
-function osmProjectionForMap(map: MapDefinition): OsmLocalProjection | null {
-  const metadata = (map as { metadata?: { source?: unknown; projection?: unknown } }).metadata;
-  const projection = metadata?.projection;
-
-  if (metadata?.source !== "osm" || !isRecord(projection)) {
-    return null;
-  }
-
-  return projection as OsmLocalProjection;
-}
-
-function overpassContextFromFixture(
-  fixture: unknown
-): { nodesById: Map<OverpassElementId, OverpassNodeElement>; ways: OverpassWayElement[] } | null {
-  if (!isOverpassJsonResponse(fixture)) {
-    return null;
-  }
-
-  const nodesById = new Map<OverpassElementId, OverpassNodeElement>();
-  const ways: OverpassWayElement[] = [];
-
-  for (const element of fixture.elements) {
-    if (isOverpassNodeElement(element)) {
-      nodesById.set(element.id, element);
-    } else if (isOverpassWayElement(element)) {
-      ways.push(element);
-    }
-  }
-
-  return { nodesById, ways };
 }
 
 export function deriveOsmRoadVisualHierarchy(road: MapRoad): OsmRoadVisualHierarchy | null {
@@ -987,7 +918,7 @@ function compareLandmarkVisualsForLayout(left: SyntheticLandmarkVisual, right: S
 }
 
 function contextLineStyleForFeature(feature: SyntheticLinearFeature) {
-  if (feature.kind === "bridge") {
+  if (feature.kind === "bridge" || feature.kind === "crossing") {
     return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.bridge;
   }
 
@@ -1193,7 +1124,7 @@ function contextLabelKindForLinearFeature(feature: SyntheticLinearFeature): Synt
     return "water";
   }
 
-  if (feature.kind === "bridge") {
+  if (feature.kind === "bridge" || feature.kind === "crossing") {
     return "bridge";
   }
 
@@ -1303,385 +1234,187 @@ function slugifyLabelId(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unnamed";
 }
 
-function projectedWayPoints(input: {
-  way: OverpassWayElement;
-  nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>;
-  projection: OsmLocalProjection;
-}): Vec2[] {
-  return input.way.nodes.flatMap((nodeId) => {
-    const node = input.nodesById.get(nodeId);
-
-    if (!node) {
-      return [];
-    }
-
-    return [projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, input.projection)];
-  });
-}
-
-function isClosedWay(way: OverpassWayElement): boolean {
-  return way.nodes.length >= 4 && way.nodes[0] === way.nodes[way.nodes.length - 1];
-}
-
-function namedContextLabel(tags: OverpassTags): string | undefined {
-  const name = tags.name?.trim();
-
-  return name && name.length > 0 ? name : undefined;
-}
-
-function bridgeContextLabel(tags: OverpassTags): string | undefined {
-  const bridgeName = tags["bridge:name"]?.trim();
-
-  return namedContextLabel(tags) ?? (bridgeName && bridgeName.length > 0 ? bridgeName : undefined);
-}
-
-function hasBridgeContextTag(tags: OverpassTags): boolean {
-  const bridge = tags.bridge?.trim().toLowerCase();
-  const manMade = tags.man_made?.trim().toLowerCase();
-
-  return (Boolean(bridge) && bridge !== "no") || manMade === "bridge";
-}
-
-function osmAreaLabelKind(tags: OverpassTags): SyntheticContextMapLabelKind | null {
-  const place = tags.place?.trim().toLowerCase();
-
-  if (place === "neighbourhood" || place === "suburb" || place === "quarter" || place === "locality" || place === "square") {
-    return "area";
-  }
-
-  return null;
-}
-
-function osmLandmarkVisualKindForTags(tags: OverpassTags): SyntheticLandmarkVisualKind | null {
-  const railway = tags.railway?.trim().toLowerCase();
-  const amenity = tags.amenity?.trim().toLowerCase();
-  const tourism = tags.tourism?.trim().toLowerCase();
-  const historic = tags.historic?.trim().toLowerCase();
-  const leisure = tags.leisure?.trim().toLowerCase();
-  const landuse = tags.landuse?.trim().toLowerCase();
-  const natural = tags.natural?.trim().toLowerCase();
-  const building = tags.building?.trim().toLowerCase();
-  const shop = tags.shop?.trim().toLowerCase();
-
-  if (railway === "station") {
-    return "station";
-  }
-
-  if (amenity === "hospital") {
-    return "hospital";
-  }
-
-  if (tourism === "attraction" || historic || tags.landmark === "yes") {
-    return "important-landmark";
-  }
-
-  if (
-    amenity === "townhall" ||
-    amenity === "library" ||
-    amenity === "school" ||
-    amenity === "university" ||
-    amenity === "college" ||
-    amenity === "police" ||
-    amenity === "fire_station" ||
-    amenity === "courthouse" ||
-    building === "public" ||
-    building === "civic"
-  ) {
-    return "public-building";
-  }
-
-  if (leisure === "park" || leisure === "garden" || landuse === "grass" || landuse === "recreation_ground" || natural === "wood") {
-    return "open-space";
-  }
-
-  if (amenity === "marketplace" || shop === "mall" || tourism === "museum" || tourism === "gallery") {
-    return "learner-reference";
-  }
-
-  return null;
-}
-
 function buildOsmAreaLabels(map: MapDefinition, fixture: unknown): SyntheticMapLabel[] {
-  const projection = osmProjectionForMap(map);
-  const overpassContext = overpassContextFromFixture(fixture);
-
-  if (!projection || !overpassContext) {
-    return [];
-  }
-
-  const labelsFromNodes = Array.from(overpassContext.nodesById.values())
-    .flatMap((node) => {
-      const tags = node.tags ?? {};
-      const kind = osmAreaLabelKind(tags);
-      const label = namedContextLabel(tags);
-
-      if (!kind || !label) {
+  return buildRealLondonContextFeatures(map, fixture)
+    .filter((feature): feature is Extract<RealLondonContextFeature, { kind: "area" }> => feature.kind === "area")
+    .flatMap((feature) => {
+      if (!feature.name) {
         return [];
       }
 
       return [
         {
-          id: `${kind}-label-osm-node-${node.id}`,
-          kind,
-          text: label,
-          point: projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection),
-          priority: contextLabelPriority(kind)
+          id: `area-label-${feature.id}`,
+          kind: "area" as const,
+          text: feature.name,
+          point: { ...feature.point },
+          priority: contextLabelPriority("area")
         }
       ];
-    });
-
-  const labelsFromWays = overpassContext.ways.flatMap((way) => {
-    const tags = way.tags ?? {};
-    const kind = osmAreaLabelKind(tags);
-    const label = namedContextLabel(tags);
-
-    if (!kind || !label || !isClosedWay(way)) {
-      return [];
-    }
-
-    const points = projectedWayPoints({
-      way,
-      nodesById: overpassContext.nodesById,
-      projection
-    });
-
-    if (points.length < 4) {
-      return [];
-    }
-
-    return [
-      {
-        id: `${kind}-label-osm-way-${way.id}`,
-        kind,
-        text: label,
-        point: polygonCenter(points),
-        priority: contextLabelPriority(kind)
-      }
-    ];
-  });
-
-  return [...labelsFromNodes, ...labelsFromWays].sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+    })
+    .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
 function buildOsmLandmarkVisuals(map: MapDefinition, fixture: unknown): SyntheticLandmarkVisual[] {
-  const projection = osmProjectionForMap(map);
-  const overpassContext = overpassContextFromFixture(fixture);
+  return buildRealLondonContextFeatures(map, fixture)
+    .flatMap((feature) => {
+      const visual = landmarkVisualFromContextFeature(feature);
 
-  if (!projection || !overpassContext) {
-    return [];
-  }
-
-  const visualsFromNodes = Array.from(overpassContext.nodesById.values())
-    .flatMap((node) => {
-      const tags = node.tags ?? {};
-      const kind = osmLandmarkVisualKindForTags(tags);
-      const label = namedContextLabel(tags);
-
-      if (!kind || !label) {
-        return [];
-      }
-
-      return [buildLandmarkVisualFromPoint(`osm-landmark-node-${node.id}`, kind, label, projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection))];
-    });
-
-  const visualsFromWays = overpassContext.ways.flatMap((way) => {
-    const tags = way.tags ?? {};
-    const kind = osmLandmarkVisualKindForTags(tags);
-    const label = namedContextLabel(tags);
-
-    if (!kind || !label || !isClosedWay(way)) {
-      return [];
-    }
-
-    const points = projectedWayPoints({
-      way,
-      nodesById: overpassContext.nodesById,
-      projection
-    });
-
-    if (points.length < 4) {
-      return [];
-    }
-
-    return [buildLandmarkVisualFromPoint(`osm-landmark-way-${way.id}`, kind, label, polygonCenter(points))];
-  });
-
-  return [...visualsFromNodes, ...visualsFromWays].sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+      return visual ? [visual] : [];
+    })
+    .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
-function osmBackgroundStyleForTags(tags: OverpassTags): Pick<
-  SyntheticBackgroundFeature,
-  "kind" | "fillColor" | "strokeColor" | "label"
-> | null {
-  const background = TOPOPASS_STREET_ATLAS_STYLE.background;
-
-  if (tags.natural === "water" || tags.water) {
-    return {
-      kind: "water",
-      label: namedContextLabel(tags),
-      fillColor: background.water.basin.fillColor,
-      strokeColor: background.water.basin.strokeColor
-    };
+function landmarkVisualFromContextFeature(feature: RealLondonContextFeature): SyntheticLandmarkVisual | null {
+  if (feature.kind === "station") {
+    return feature.name ? buildLandmarkVisualFromPoint(`osm-${feature.id}`, "station", feature.name, feature.point) : null;
   }
 
-  if (tags.leisure === "park" || tags.leisure === "garden") {
-    return {
-      kind: "park",
-      label: namedContextLabel(tags),
-      fillColor: background.park.garden.fillColor,
-      strokeColor: background.park.garden.strokeColor
-    };
+  if (feature.kind === "park") {
+    const name = feature.name;
+
+    return name ? buildLandmarkVisualFromPoint(`osm-${feature.id}`, "open-space", name, polygonCenter(feature.points)) : null;
   }
 
-  if (
-    tags.leisure === "recreation_ground" ||
-    tags.landuse === "grass" ||
-    tags.landuse === "recreation_ground" ||
-    tags.landuse === "village_green" ||
-    tags.landuse === "meadow" ||
-    tags.landuse === "forest" ||
-    tags.natural === "wood" ||
-    tags.natural === "grassland"
-  ) {
-    return {
-      kind: "open-space",
-      label: namedContextLabel(tags),
-      fillColor: background.openSpace.fillColor,
-      strokeColor: background.openSpace.strokeColor
-    };
-  }
-
-  if (tags.highway === "pedestrian" && tags.area === "yes") {
-    return {
-      kind: "pedestrian-area",
-      label: namedContextLabel(tags),
-      fillColor: background.pedestrianArea.fillColor,
-      strokeColor: background.pedestrianArea.strokeColor
-    };
+  if (feature.kind === "landmark") {
+    return buildLandmarkVisualFromPoint(`osm-${feature.id}`, landmarkVisualKindForContextLandmark(feature), feature.name, feature.point);
   }
 
   return null;
+}
+
+function landmarkVisualKindForContextLandmark(feature: RealLondonLandmarkContextFeature): SyntheticLandmarkVisualKind {
+  return feature.landmarkKind;
 }
 
 function buildOsmBackgroundFeatures(map: MapDefinition, fixture: unknown): SyntheticBackgroundFeature[] {
-  const projection = osmProjectionForMap(map);
-  const overpassContext = overpassContextFromFixture(fixture);
-
-  if (!projection || !overpassContext) {
-    return [];
-  }
-
-  return overpassContext.ways.flatMap((way) => {
-    const tags = way.tags ?? {};
-    const style = osmBackgroundStyleForTags(tags);
-
-    if (!style || !isClosedWay(way)) {
-      return [];
-    }
-
-    const points = projectedWayPoints({
-      way,
-      nodesById: overpassContext.nodesById,
-      projection
-    });
-
-    if (points.length < 4) {
-      return [];
-    }
-
-    return [
-      {
-        id: `osm-context-way-${way.id}`,
-        ...style,
-        points,
-        routable: false as const
+  return buildRealLondonContextFeatures(map, fixture)
+    .flatMap((feature) => {
+      if (feature.kind === "park") {
+        return [backgroundFeatureFromParkContext(feature)];
       }
-    ];
-  });
+
+      if (feature.kind === "water" && feature.subtype === "basin") {
+        return [backgroundFeatureFromWaterContext(feature)];
+      }
+
+      if (feature.kind === "pedestrian-area") {
+        return [backgroundFeatureFromPedestrianAreaContext(feature)];
+      }
+
+      return [];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function osmLinearFeatureStyleForTags(tags: OverpassTags): Pick<
-  SyntheticLinearFeature,
-  "kind" | "casingColor" | "strokeColor" | "casingWidth" | "strokeWidth" | "dash" | "label"
-> | null {
-  if (hasBridgeContextTag(tags) && Boolean(tags.highway)) {
-    const style = TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.bridge;
+function backgroundFeatureFromParkContext(feature: RealLondonParkContextFeature): SyntheticBackgroundFeature {
+  const background = TOPOPASS_STREET_ATLAS_STYLE.background;
+  const style =
+    feature.subtype === "park" || feature.subtype === "garden"
+      ? background.park.garden
+      : background.openSpace;
 
-    return {
-      kind: "bridge",
-      label: bridgeContextLabel(tags),
-      casingColor: style.casingColor ?? "",
-      strokeColor: style.strokeColor,
-      casingWidth: style.casingWidth ?? 0,
-      strokeWidth: style.strokeWidth,
-      dash: [...(style.dash ?? [])]
-    };
-  }
+  return {
+    id: `osm-context-${feature.id}`,
+    kind: feature.subtype === "park" || feature.subtype === "garden" ? "park" : "open-space",
+    label: feature.name,
+    fillColor: style.fillColor,
+    strokeColor: style.strokeColor,
+    points: feature.points.map((point) => ({ ...point })),
+    routable: false
+  };
+}
 
-  if (tags.railway === "rail" || tags.railway === "light_rail" || tags.railway === "subway") {
-    const style = TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail;
+function backgroundFeatureFromWaterContext(feature: RealLondonWaterContextFeature): SyntheticBackgroundFeature {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.background.water.basin;
 
-    return {
-      kind: "rail",
-      label: namedContextLabel(tags),
-      casingColor: style.casingColor ?? "",
-      strokeColor: style.strokeColor,
-      casingWidth: style.casingWidth ?? 0,
-      strokeWidth: style.strokeWidth,
-      dash: [...(style.dash ?? [])]
-    };
-  }
+  return {
+    id: `osm-context-${feature.id}`,
+    kind: "water",
+    label: feature.name,
+    fillColor: style.fillColor,
+    strokeColor: style.strokeColor,
+    points: feature.points.map((point) => ({ ...point })),
+    routable: false
+  };
+}
 
-  if (tags.waterway && !tags.area) {
-    const style = TOPOPASS_STREET_ATLAS_STYLE.background.water.linear;
+function backgroundFeatureFromPedestrianAreaContext(feature: RealLondonPedestrianAreaContextFeature): SyntheticBackgroundFeature {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.background.pedestrianArea;
 
-    return {
-      kind: "waterway",
-      label: namedContextLabel(tags),
-      casingColor: style.casingColor ?? "",
-      strokeColor: style.strokeColor,
-      casingWidth: style.casingWidth ?? 0,
-      strokeWidth: style.strokeWidth
-    };
-  }
-
-  return null;
+  return {
+    id: `osm-context-${feature.id}`,
+    kind: "pedestrian-area",
+    label: feature.name,
+    fillColor: style.fillColor,
+    strokeColor: style.strokeColor,
+    points: feature.points.map((point) => ({ ...point })),
+    routable: false
+  };
 }
 
 function buildOsmLinearFeatures(map: MapDefinition, fixture: unknown): SyntheticLinearFeature[] {
-  const projection = osmProjectionForMap(map);
-  const overpassContext = overpassContextFromFixture(fixture);
+  return buildRealLondonContextFeatures(map, fixture)
+    .flatMap<SyntheticLinearFeature>((feature) => {
+      if (feature.kind === "rail") {
+        const style = TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail;
 
-  if (!projection || !overpassContext) {
-    return [];
-  }
-
-  return overpassContext.ways.flatMap((way) => {
-    const style = osmLinearFeatureStyleForTags(way.tags ?? {});
-
-    if (!style || isClosedWay(way)) {
-      return [];
-    }
-
-    const points = projectedWayPoints({
-      way,
-      nodesById: overpassContext.nodesById,
-      projection
-    });
-
-    if (points.length < 2) {
-      return [];
-    }
-
-    return [
-      {
-        id: `osm-context-way-${way.id}`,
-        ...style,
-        points,
-        routable: false as const
+        return [
+          {
+            id: `osm-context-${feature.id}`,
+            kind: "rail" as const,
+            label: feature.name,
+            points: feature.points.map((point) => ({ ...point })),
+            casingColor: style.casingColor ?? "",
+            strokeColor: style.strokeColor,
+            casingWidth: style.casingWidth ?? 0,
+            strokeWidth: style.strokeWidth,
+            dash: [...(style.dash ?? [])],
+            routable: false as const
+          }
+        ];
       }
-    ];
-  });
+
+      if (feature.kind === "bridge") {
+        const style = TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.bridge;
+
+        return [
+          {
+            id: `osm-context-${feature.id}`,
+            kind: "bridge" as const,
+            label: feature.name,
+            points: feature.points.map((point) => ({ ...point })),
+            casingColor: style.casingColor ?? "",
+            strokeColor: style.strokeColor,
+            casingWidth: style.casingWidth ?? 0,
+            strokeWidth: style.strokeWidth,
+            dash: [...(style.dash ?? [])],
+            routable: false as const
+          }
+        ];
+      }
+
+      if (feature.kind === "water" && feature.subtype === "waterway") {
+        const style = TOPOPASS_STREET_ATLAS_STYLE.background.water.linear;
+
+        return [
+          {
+            id: `osm-context-${feature.id}`,
+            kind: "waterway" as const,
+            label: feature.name,
+            points: feature.points.map((point) => ({ ...point })),
+            casingColor: style.casingColor ?? "",
+            strokeColor: style.strokeColor,
+            casingWidth: style.casingWidth ?? 0,
+            strokeWidth: style.strokeWidth,
+            routable: false as const
+          }
+        ];
+      }
+
+      return [];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 export function buildSyntheticLinearFeatures(

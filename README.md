@@ -830,6 +830,13 @@ arrow halo styling, collision-filtering base restriction symbols against
 learner overlays, and keeping route-review warnings visible. It uses only
 existing one-way, restriction, turn, and review data; routing, legality,
 scoring, exercises, beta gates, feedback, and route attempts are unchanged.
+Stage 149.5/150.5 adds a pure Real London context coverage audit and a typed
+fixture-data adapter for render-ready rail, station, bridge, crossing,
+landmark, park/open-space, water, pedestrian-area, and area context features.
+The current committed Real London Overpass fixtures audit to zero for those
+non-road context categories, so the renderer still does not invent unavailable
+landmarks or restrictions; routing, legality, scoring, exercises, beta gates,
+feedback, and route attempts are unchanged.
 
 ## Current Feature Set
 

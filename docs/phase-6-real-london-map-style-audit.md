@@ -156,6 +156,32 @@ help explain a learner mistake when they do not sit directly under the review
 warning. Missing restriction overlays, turn visuals, or review issue data still
 produce no symbols rather than inferred restrictions.
 
+## Stage 149.5/150.5 Context Coverage Audit And Adapter
+
+Stage 149.5/150.5 adds a fixture-only Real London context audit and a typed
+normalisation adapter for context rendering. The audit is pure and
+deterministic: it inspects committed Overpass-style fixture/source elements and
+reports counts for rail, subway rail, stations, named stations, bridges, named
+bridges, crossings, landmark-like features, park/open-space features, water,
+named water, and area/context label candidates. It ignores malformed optional
+fields and unsupported relation-style data instead of guessing.
+
+The adapter converts supported fixture nodes and ways into render-ready context
+features for rail, stations, bridges, crossings, landmarks, parks/open spaces,
+water, pedestrian areas, and area labels. `syntheticStreetMapRenderer.ts` now
+consumes that adapter for OSM context labels, landmark visuals, background
+polygons, and linear context features, preserving the existing visual-only
+behaviour. It returns no features when fixture data is absent, malformed, lacks
+usable geometry, or belongs to a map without an OSM projection.
+
+Current committed fixture coverage is intentionally recorded as a limitation:
+`tinyLondonOverpass.json`, `realLondonPilotOverpass.json`,
+`realLondonPilotTwoOverpass.json`, `mediumLondonOverpass.json`, and
+`largeLondonOverpass.json` all audit to zero for the audited non-road context
+categories. The benefit is a reliable coverage baseline and a single typed
+adapter path for future fixture-backed context data; the renderer still does
+not invent landmarks, stations, bridges, water, area names, or restrictions.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -172,6 +198,9 @@ produce no symbols rather than inferred restrictions.
   parks/water/land blocks, fixture-derived OSM context where available,
   synthetic rail, landmarks, road/station/landmark/context labels, route
   overlays, and the route-runner legend.
+- `app/dev/route-runner/realLondonContextData.ts` audits committed Real London
+  context coverage and normalises fixture/source OSM context into typed
+  render-ready features for the synthetic street-map renderer.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.

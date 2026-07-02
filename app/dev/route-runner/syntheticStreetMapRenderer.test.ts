@@ -823,11 +823,16 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
       { type: "node", id: 12, lat: 51.5201, lon: -0.13925 },
       { type: "node", id: 13, lat: 51.51986, lon: -0.1398 },
       { type: "node", id: 14, lat: 51.52012, lon: -0.1396 },
+      { type: "node", id: 15, lat: 51.51972, lon: -0.1398 },
+      { type: "node", id: 16, lat: 51.51972, lon: -0.13962 },
+      { type: "node", id: 17, lat: 51.51958, lon: -0.13962 },
+      { type: "node", id: 18, lat: 51.51958, lon: -0.1398 },
       { type: "way", id: 100, nodes: [1, 2], tags: { highway: "residential", name: "Context Road" } },
       { type: "way", id: 200, nodes: [3, 4, 5, 6, 3], tags: { leisure: "park", name: "Fitzroy Garden" } },
       { type: "way", id: 201, nodes: [7, 8, 9, 10, 7], tags: { natural: "water", name: "Pilot Basin" } },
       { type: "way", id: 202, nodes: [11, 12], tags: { railway: "rail", name: "Main Line" } },
-      { type: "way", id: 203, nodes: [13, 14], tags: { waterway: "canal", name: "Pilot Cut" } }
+      { type: "way", id: 203, nodes: [13, 14], tags: { waterway: "canal", name: "Pilot Cut" } },
+      { type: "way", id: 204, nodes: [15, 16, 17, 18, 15], tags: { highway: "pedestrian", area: "yes", name: "Pilot Walk" } }
     ]
   };
   const converted = convertOverpassJsonToRouteMap(contextFixture, {
@@ -855,6 +860,7 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
     backgroundFeatures.map((feature) => [feature.kind, feature.label]),
     [
       ["park", "Fitzroy Garden"],
+      ["pedestrian-area", "Pilot Walk"],
       ["water", "Pilot Basin"]
     ]
   );
