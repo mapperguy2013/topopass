@@ -791,6 +791,10 @@ Phase 6 Real London map styling work is judged against the Stage 141 acceptance
 contract in [docs/phase-6-map-styling-acceptance.md](docs/phase-6-map-styling-acceptance.md).
 The current Stage 142 map style audit and tokenisation notes live in
 [docs/phase-6-real-london-map-style-audit.md](docs/phase-6-real-london-map-style-audit.md).
+Stage 144 strengthens the Real London base-road hierarchy with differentiated
+major/minor road widths, casings, colours, opacity, and layered Canvas drawing;
+route generation, snapping, scoring, legality, exercises, and beta gating are
+unchanged.
 
 ## Current Feature Set
 

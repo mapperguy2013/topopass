@@ -25,6 +25,18 @@ lines render below roads and learner overlays. The current Real London pilot
 fixtures remain road-only, so Stage 143 does not fabricate parks, water, rail,
 stations, landmarks, or new roads for those maps.
 
+## Stage 144 Road Hierarchy
+
+Stage 144 strengthens the Real London road hierarchy only. The canvas renderer
+now draws base-road casings in hierarchy order, then base-road fills in the
+same order, so service, restricted, inactive, pedestrian, and local roads sit
+below tertiary, secondary, and primary roads. Major and minor roads now use
+more differentiated widths, casing colours, fill colours, opacity, and dash
+treatments through the central TOPOPASS cartography tokens. Route overlays,
+restriction symbols, hints, start/destination/checkpoint markers, review
+overlays, snapping, scoring, legality, exercise generation, OSM conversion,
+beta gating, feedback, and persistence are unchanged.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -67,31 +79,35 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
    polygons where the selected fixture contains supported non-road tags.
 3. Synthetic rail/context lines for Marlowe and fixture-derived OSM rail or
    waterway lines where available.
-4. Road visuals from `buildSyntheticRoadVisuals`. Real London roads are
-   straight graph-segment lines derived from OSM route graph nodes.
-5. Landmark visuals from map landmarks. Real London pilot maps currently have
+4. Road casing visuals from `buildSyntheticRoadVisuals`, sorted by hierarchy.
+   Real London roads are straight graph-segment lines derived from OSM route
+   graph nodes.
+5. Road fill visuals from `buildSyntheticRoadVisuals`, sorted by hierarchy.
+   Service, restricted, inactive, pedestrian, and local roads draw before
+   tertiary, secondary, and primary roads.
+6. Landmark visuals from map landmarks. Real London pilot maps currently have
    limited landmark/context support compared with the synthetic Marlowe map.
-6. Base labels. Synthetic road, area, and landmark labels are visible by
+7. Base labels. Synthetic road, area, and landmark labels are visible by
    default. OSM road labels exist but are only shown when OSM QA/debug overlays
    are visible.
-7. Road restriction overlays, when enabled.
-8. OSM debug directed-edge overlays, when enabled.
-9. Fastest/shortest legal route overlay, when revealed.
-10. OSM exercise debug route and blocked-edge overlays, when enabled.
-11. Matched attempted movement overlay from the drawn pipeline.
-12. Route issue overlays for illegal, disconnected, prohibited-turn, and
+8. Road restriction overlays, when enabled.
+9. OSM debug directed-edge overlays, when enabled.
+10. Fastest/shortest legal route overlay, when revealed.
+11. OSM exercise debug route and blocked-edge overlays, when enabled.
+12. Matched attempted movement overlay from the drawn pipeline.
+13. Route issue overlays for illegal, disconnected, prohibited-turn, and
     no-U-turn review state.
-13. Restriction map symbols for one-way arrows, no-entry signs, restricted
+14. Restriction map symbols for one-way arrows, no-entry signs, restricted
     road signs, turn-ban signs, and route issue symbols.
-14. Selected restriction/review focus highlight.
-15. Small graph node dots.
-16. Matched route node markers.
-17. Exercise stop markers for start, destination, and checkpoints.
-18. Exercise stop labels.
-19. Snapped route preview line.
-20. Raw drawn route strokes.
-21. Snapped original-point dots.
-22. Route replay markers.
+15. Selected restriction/review focus highlight.
+16. Small graph node dots.
+17. Matched route node markers.
+18. Exercise stop markers for start, destination, and checkpoints.
+19. Exercise stop labels.
+20. Snapped route preview line.
+21. Raw drawn route strokes.
+22. Snapped original-point dots.
+23. Route replay markers.
 
 ## Current Styling Source Inventory
 
@@ -120,11 +136,13 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 ## Road Style Handling
 
 - OSM road hierarchy is derived from preserved `highway` metadata:
-  `primary`, `secondary`, `tertiary`, `residential`, `service`, and `unknown`.
-- `primary` roads render as the strongest warm yellow/orange roads. Secondary
-  and tertiary roads use distinct lighter warm treatments. Residential and
-  unknown roads render as pale local streets. Service roads render thinner and
-  more subdued.
+  `primary`, `secondary`, `tertiary`, `residential`, `service`, `pedestrian`,
+  `inactive`, and `unknown`.
+- `primary` roads render as the strongest warm yellow/orange roads with the
+  widest casing and fill. Secondary and tertiary roads use progressively
+  lighter warm treatments. Residential and unknown roads render as pale local
+  streets with quieter grey casings. Service, pedestrian, restricted, and
+  inactive roads render thinner and more subdued.
 - No-entry and road-closed restrictions override the general road class for
   visual modelling.
 - Real London road geometry is graph-segment based, so long real-world OSM ways

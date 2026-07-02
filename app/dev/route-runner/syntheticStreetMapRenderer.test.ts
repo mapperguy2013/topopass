@@ -12,8 +12,10 @@ import {
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
   deriveSyntheticRoadClass,
+  roadRenderRank,
   roadStyleForOsmHierarchy,
-  roadStyleForSyntheticClass
+  roadStyleForSyntheticClass,
+  sortRoadVisualsForBaseRender
 } from "./syntheticStreetMapRenderer.ts";
 import { ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
 import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "./restrictionMapVisuals.ts";
@@ -49,8 +51,8 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#d9a63a");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#d9a63a");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#d99a22");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#d99a22");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe9cd");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#6b7280");
@@ -70,6 +72,9 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "tertiary",
     "residential",
     "service",
+    "pedestrian",
+    "restricted",
+    "inactive",
     "unknown"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic), [
@@ -87,6 +92,16 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "matchedRoute",
     "shortestLegalRoute",
     "illegalMovement"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.roadCasings), [
+    "activeColor",
+    "quietColor",
+    "restrictedColor"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.zoomScaledWidths), [
+    "referenceZoom",
+    "minMultiplier",
+    "maxMultiplier"
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
@@ -113,17 +128,18 @@ test("Stage 142 style tokens are deterministic primitive render values", () => {
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#fff8e8",
-    strokeColor: "#d9a63a",
-    casingWidth: 16,
-    strokeWidth: 9
+    casingColor: "#fff2c7",
+    strokeColor: "#d99a22",
+    casingWidth: 19,
+    strokeWidth: 10.5
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
-    casingColor: "#ffe5c2",
-    strokeColor: "#e7a94f",
-    casingWidth: 11,
-    strokeWidth: 5,
-    dash: [10, 6]
+    casingColor: "#e2caa6",
+    strokeColor: "#e9bd73",
+    casingWidth: 9,
+    strokeWidth: 4,
+    dash: [9, 7],
+    alpha: 0.72
   });
   assert.deepEqual(
     buildSyntheticRouteOverlayVisuals({
@@ -201,7 +217,7 @@ test("deriveSyntheticRoadClass marks closed roads as renderer-only restricted ro
   };
 
   assert.equal(deriveSyntheticRoadClass(closedRoadMap, closedRoadMap.roads[0]), "restricted");
-  assert.deepEqual(roadStyleForSyntheticClass("restricted").dash, [10, 6]);
+  assert.deepEqual(roadStyleForSyntheticClass("restricted").dash, [9, 7]);
 });
 
 test("buildSyntheticRoadVisuals creates deterministic road visual items", () => {
@@ -274,7 +290,7 @@ test("synthetic road styling keeps a clear London-inspired hierarchy", () => {
 
   assert.ok(majorStyle.casingWidth > localStyle.casingWidth);
   assert.ok(localStyle.strokeWidth > serviceStyle.strokeWidth);
-  assert.equal(oneWayStyle.strokeColor, "#9fc7e7");
+  assert.equal(oneWayStyle.strokeColor, "#8bbcdf");
 });
 
 test("converted OSM road visuals expose deterministic hierarchy metadata", () => {
@@ -298,6 +314,36 @@ test("converted OSM hierarchy maps to expected road style widths", () => {
   assert.ok(roadStyleForOsmHierarchy("secondary").strokeWidth > roadStyleForOsmHierarchy("tertiary").strokeWidth);
   assert.ok(roadStyleForOsmHierarchy("tertiary").strokeWidth > roadStyleForOsmHierarchy("residential").strokeWidth);
   assert.ok(roadStyleForOsmHierarchy("residential").strokeWidth > roadStyleForOsmHierarchy("service").strokeWidth);
+  assert.ok(roadStyleForOsmHierarchy("service").strokeWidth > roadStyleForOsmHierarchy("pedestrian").strokeWidth);
+  assert.ok((roadStyleForOsmHierarchy("inactive").alpha ?? 1) < (roadStyleForOsmHierarchy("residential").alpha ?? 1));
+});
+
+test("Stage 144 road hierarchy ranks base roads below learner overlays", () => {
+  assert.ok(roadRenderRank({ roadClass: "service", osmHierarchy: "service" }) < roadRenderRank({ roadClass: "local" }));
+  assert.ok(roadRenderRank({ roadClass: "local", osmHierarchy: "residential" }) < roadRenderRank({ roadClass: "secondary", osmHierarchy: "tertiary" }));
+  assert.ok(roadRenderRank({ roadClass: "secondary", osmHierarchy: "tertiary" }) < roadRenderRank({ roadClass: "secondary", osmHierarchy: "secondary" }));
+  assert.ok(roadRenderRank({ roadClass: "secondary", osmHierarchy: "secondary" }) < roadRenderRank({ roadClass: "major", osmHierarchy: "primary" }));
+
+  assert.deepEqual(
+    buildSyntheticRouteOverlayVisuals({
+      matchedRoutePoints: [
+        { x: 0, y: 0 },
+        { x: 10, y: 0 }
+      ]
+    }).map((overlay) => overlay.kind),
+    ["matched-route"]
+  );
+});
+
+test("Stage 144 road visual sorting draws quieter roads before major roads", () => {
+  const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
+  const ordered = sortRoadVisualsForBaseRender(visuals);
+  const primaryIndex = ordered.findIndex((visual) => visual.osmHierarchy === "primary");
+  const serviceIndex = ordered.findIndex((visual) => visual.osmHierarchy === "service");
+
+  assert.ok(primaryIndex >= 0);
+  assert.ok(serviceIndex >= 0);
+  assert.ok(serviceIndex < primaryIndex);
 });
 
 test("Stage 143 OSM context rendering uses raw fixture tags without adding routable graph features", () => {

@@ -128,6 +128,7 @@ import {
   buildSyntheticLinearFeatures,
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
+  sortRoadVisualsForBaseRender,
   type SyntheticBackgroundFeature,
   type SyntheticLandmarkVisual,
   type SyntheticLinearFeature,
@@ -1117,34 +1118,30 @@ function drawSyntheticLinearFeature(
   context.restore();
 }
 
-function drawSyntheticRoadVisual(
+function drawSyntheticRoadVisualLayer(
   context: CanvasRenderingContext2D,
   visual: SyntheticRoadVisual,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  layer: "casing" | "fill"
 ): void {
   if (visual.points.length < 2) {
     return;
   }
 
   const screenPoints = visual.points.map((point) => mapToScreenPoint(point, viewport));
+  const lineWidth = layer === "casing" ? visual.style.casingWidth : visual.style.strokeWidth;
+
+  if (lineWidth <= 0) {
+    return;
+  }
 
   context.save();
   context.lineCap = "round";
   context.lineJoin = "round";
-  context.setLineDash([]);
-  context.strokeStyle = visual.style.casingColor;
-  context.lineWidth = visual.style.casingWidth;
-  context.beginPath();
-  context.moveTo(screenPoints[0].x, screenPoints[0].y);
-
-  for (const point of screenPoints.slice(1)) {
-    context.lineTo(point.x, point.y);
-  }
-
-  context.stroke();
-  context.setLineDash(visual.style.dash ?? []);
-  context.strokeStyle = visual.style.strokeColor;
-  context.lineWidth = visual.style.strokeWidth;
+  context.globalAlpha = visual.style.alpha ?? 1;
+  context.setLineDash(layer === "fill" ? visual.style.dash ?? [] : []);
+  context.strokeStyle = layer === "casing" ? visual.style.casingColor : visual.style.strokeColor;
+  context.lineWidth = lineWidth;
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1155,6 +1152,22 @@ function drawSyntheticRoadVisual(
   context.stroke();
   context.setLineDash([]);
   context.restore();
+}
+
+function drawSyntheticRoadVisualsByHierarchy(
+  context: CanvasRenderingContext2D,
+  roadVisuals: readonly SyntheticRoadVisual[],
+  viewport: ScreenMapViewport
+): void {
+  const orderedRoadVisuals = sortRoadVisualsForBaseRender(roadVisuals);
+
+  for (const visual of orderedRoadVisuals) {
+    drawSyntheticRoadVisualLayer(context, visual, viewport, "casing");
+  }
+
+  for (const visual of orderedRoadVisuals) {
+    drawSyntheticRoadVisualLayer(context, visual, viewport, "fill");
+  }
 }
 
 function drawSyntheticLandmarkVisual(
@@ -1278,9 +1291,7 @@ function drawSyntheticStreetMapBase(input: {
     drawSyntheticLinearFeature(input.context, feature, input.viewport);
   }
 
-  for (const visual of input.roadVisuals) {
-    drawSyntheticRoadVisual(input.context, visual, input.viewport);
-  }
+  drawSyntheticRoadVisualsByHierarchy(input.context, input.roadVisuals, input.viewport);
 
   for (const visual of buildSyntheticLandmarkVisuals(input.map, input.selectedExercise)) {
     drawSyntheticLandmarkVisual(input.context, visual, input.viewport);

@@ -65,6 +65,7 @@ export type SyntheticRoadStyle = {
   casingWidth: number;
   strokeWidth: number;
   dash?: number[];
+  alpha?: number;
 };
 
 export type OsmRoadVisualHierarchy =
@@ -73,6 +74,9 @@ export type OsmRoadVisualHierarchy =
   | "tertiary"
   | "residential"
   | "service"
+  | "pedestrian"
+  | "restricted"
+  | "inactive"
   | "unknown";
 
 export type OsmRoadRenderMetadata = {
@@ -280,8 +284,16 @@ export function deriveOsmRoadVisualHierarchy(road: MapRoad): OsmRoadVisualHierar
     return "service";
   }
 
+  if (highway === "footway" || highway === "cycleway" || highway === "path" || highway === "pedestrian") {
+    return "pedestrian";
+  }
+
   if (highway === "residential" || highway === "living_street" || highway === "unclassified") {
     return "residential";
+  }
+
+  if (highway === "construction" || highway === "proposed" || highway === "platform") {
+    return "inactive";
   }
 
   return "unknown";
@@ -321,6 +333,10 @@ function roadClassFromOsmHighway(road: MapRoad): SyntheticRoadClass | null {
     return "service";
   }
 
+  if (hierarchy === "pedestrian" || hierarchy === "inactive" || hierarchy === "restricted") {
+    return "service";
+  }
+
   return "local";
 }
 
@@ -330,7 +346,8 @@ function cloneRoadStyle(style: TopopassRoadStyleToken): SyntheticRoadStyle {
     strokeColor: style.strokeColor,
     casingWidth: style.casingWidth,
     strokeWidth: style.strokeWidth,
-    ...(style.dash ? { dash: [...style.dash] } : {})
+    ...(style.dash ? { dash: [...style.dash] } : {}),
+    ...(typeof style.alpha === "number" ? { alpha: style.alpha } : {})
   };
 }
 
@@ -340,6 +357,7 @@ type TopopassRoadStyleToken = {
   casingWidth: number;
   strokeWidth: number;
   dash?: readonly number[];
+  alpha?: number;
 };
 
 export function deriveSyntheticRoadClass(map: MapDefinition, road: MapRoad): SyntheticRoadClass {
@@ -391,6 +409,18 @@ export function roadStyleForOsmHierarchy(hierarchy: OsmRoadVisualHierarchy): Syn
     return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.service);
   }
 
+  if (hierarchy === "pedestrian") {
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.pedestrian);
+  }
+
+  if (hierarchy === "restricted") {
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.restricted);
+  }
+
+  if (hierarchy === "inactive") {
+    return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.inactive);
+  }
+
   if (hierarchy === "residential") {
     return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential);
   }
@@ -426,6 +456,39 @@ export function roadStyleForSyntheticClass(roadClass: SyntheticRoadClass): Synth
   return cloneRoadStyle(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.local);
 }
 
+export function roadRenderRank(visual: Pick<SyntheticRoadVisual, "roadClass" | "osmHierarchy">): number {
+  if (visual.roadClass === "restricted" || visual.roadClass === "no-entry" || visual.osmHierarchy === "inactive") {
+    return 0;
+  }
+
+  if (visual.osmHierarchy === "service" || visual.osmHierarchy === "pedestrian" || visual.roadClass === "service") {
+    return 1;
+  }
+
+  if (visual.osmHierarchy === "residential" || visual.osmHierarchy === "unknown" || visual.roadClass === "local") {
+    return 2;
+  }
+
+  if (visual.osmHierarchy === "tertiary") {
+    return 3;
+  }
+
+  if (visual.osmHierarchy === "secondary" || visual.roadClass === "secondary" || visual.roadClass === "one-way") {
+    return 4;
+  }
+
+  return 5;
+}
+
+export function sortRoadVisualsForBaseRender(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticRoadVisual[] {
+  return [...roadVisuals].sort(
+    (left, right) =>
+      roadRenderRank(left) - roadRenderRank(right) ||
+      left.name.localeCompare(right.name) ||
+      left.roadId.localeCompare(right.roadId)
+  );
+}
+
 export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisual[] {
   return map.roads.flatMap((road) => {
     const endpoints = roadEndpoints(map, road);
@@ -437,7 +500,12 @@ export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisu
     const roadClass = deriveSyntheticRoadClass(map, road);
     const label = deriveRoadLabelPosition(map, road);
     const osmMetadata = deriveOsmRoadRenderMetadata(road);
-    const style = osmMetadata ? roadStyleForOsmHierarchy(osmMetadata.hierarchy) : roadStyleForSyntheticClass(roadClass);
+    const style =
+      roadClass === "restricted" || roadClass === "no-entry"
+        ? roadStyleForSyntheticClass(roadClass)
+        : osmMetadata
+          ? roadStyleForOsmHierarchy(osmMetadata.hierarchy)
+          : roadStyleForSyntheticClass(roadClass);
 
     return [
       {

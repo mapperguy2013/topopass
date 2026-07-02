@@ -13,6 +13,7 @@ export type TopopassRoadClassStyle = {
   casingWidth: number;
   strokeWidth: number;
   dash?: readonly number[];
+  alpha?: number;
 };
 
 export type TopopassLabelStyle = {
@@ -45,7 +46,20 @@ export type TopopassStreetAtlasStyle = {
       "major" | "secondary" | "oneWay" | "noEntry" | "restricted" | "service" | "local",
       TopopassRoadClassStyle
     >;
-    osm: Record<"primary" | "secondary" | "tertiary" | "residential" | "service" | "unknown", TopopassRoadClassStyle>;
+    osm: Record<
+      "primary" | "secondary" | "tertiary" | "residential" | "service" | "pedestrian" | "restricted" | "inactive" | "unknown",
+      TopopassRoadClassStyle
+    >;
+    roadCasings: {
+      activeColor: string;
+      quietColor: string;
+      restrictedColor: string;
+    };
+    zoomScaledWidths: {
+      referenceZoom: number;
+      minMultiplier: number;
+      maxMultiplier: number;
+    };
   };
   labels: {
     road: TopopassLabelStyle;
@@ -248,86 +262,124 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     synthetic: {
       major: {
-        casingColor: "#fff8e8",
-        strokeColor: "#d9a63a",
-        casingWidth: 15,
-        strokeWidth: 9
+        casingColor: "#fff2c7",
+        strokeColor: "#d99a22",
+        casingWidth: 18,
+        strokeWidth: 10
       },
       secondary: {
-        casingColor: "#fffdf5",
-        strokeColor: "#e8c66a",
-        casingWidth: 12,
-        strokeWidth: 7
+        casingColor: "#fff8d6",
+        strokeColor: "#efc95b",
+        casingWidth: 15,
+        strokeWidth: 8
       },
       oneWay: {
-        casingColor: "#fffdf5",
-        strokeColor: "#9fc7e7",
-        casingWidth: 11,
-        strokeWidth: 6
+        casingColor: "#e4f1fb",
+        strokeColor: "#8bbcdf",
+        casingWidth: 12,
+        strokeWidth: 6.5
       },
       noEntry: {
-        casingColor: "#ffe8dd",
-        strokeColor: "#f6b5a3",
-        casingWidth: 11,
-        strokeWidth: 6
+        casingColor: "#ead6cc",
+        strokeColor: "#f3c0b1",
+        casingWidth: 10,
+        strokeWidth: 4.5,
+        alpha: 0.74
       },
       restricted: {
-        casingColor: "#ffe5c2",
-        strokeColor: "#e7a94f",
-        casingWidth: 11,
-        strokeWidth: 5,
-        dash: [10, 6]
+        casingColor: "#e2caa6",
+        strokeColor: "#e9bd73",
+        casingWidth: 9,
+        strokeWidth: 4,
+        dash: [9, 7],
+        alpha: 0.72
       },
       service: {
-        casingColor: "#fffdf8",
-        strokeColor: "#ddd5c8",
-        casingWidth: 8,
-        strokeWidth: 3
+        casingColor: "#d8d1c7",
+        strokeColor: "#eee9dd",
+        casingWidth: 6,
+        strokeWidth: 2.5,
+        alpha: 0.8
       },
       local: {
-        casingColor: "#fffdf8",
-        strokeColor: "#cfc6b6",
-        casingWidth: 9,
-        strokeWidth: 4.5
+        casingColor: "#d8d0c2",
+        strokeColor: "#fffdf8",
+        casingWidth: 8.5,
+        strokeWidth: 4.8
       }
     },
     osm: {
       primary: {
-        casingColor: "#fff8e8",
-        strokeColor: "#d9a63a",
-        casingWidth: 16,
-        strokeWidth: 9
+        casingColor: "#fff2c7",
+        strokeColor: "#d99a22",
+        casingWidth: 19,
+        strokeWidth: 10.5
       },
       secondary: {
-        casingColor: "#fffdf5",
-        strokeColor: "#e6c25f",
-        casingWidth: 13,
-        strokeWidth: 7
+        casingColor: "#fff8d6",
+        strokeColor: "#efc95b",
+        casingWidth: 15.5,
+        strokeWidth: 8.2
       },
       tertiary: {
-        casingColor: "#fffdf5",
-        strokeColor: "#ead68b",
-        casingWidth: 11,
-        strokeWidth: 5.5
+        casingColor: "#fffbe6",
+        strokeColor: "#f2df96",
+        casingWidth: 12.5,
+        strokeWidth: 6.2
       },
       residential: {
-        casingColor: "#fffdf8",
-        strokeColor: "#cfc6b6",
-        casingWidth: 8,
-        strokeWidth: 4
+        casingColor: "#d8d0c2",
+        strokeColor: "#fffdf8",
+        casingWidth: 8.5,
+        strokeWidth: 4.8
       },
       service: {
-        casingColor: "#fffdf8",
-        strokeColor: "#ddd5c8",
-        casingWidth: 6,
-        strokeWidth: 2.5
+        casingColor: "#d8d1c7",
+        strokeColor: "#eee9dd",
+        casingWidth: 5.8,
+        strokeWidth: 2.4,
+        alpha: 0.78
+      },
+      pedestrian: {
+        casingColor: "#d5cfc5",
+        strokeColor: "#eee7d8",
+        casingWidth: 4.8,
+        strokeWidth: 1.9,
+        dash: [3, 5],
+        alpha: 0.62
+      },
+      restricted: {
+        casingColor: "#e2caa6",
+        strokeColor: "#e9bd73",
+        casingWidth: 8.8,
+        strokeWidth: 3.8,
+        dash: [9, 7],
+        alpha: 0.72
+      },
+      inactive: {
+        casingColor: "#d6d0c8",
+        strokeColor: "#ece7df",
+        casingWidth: 5.2,
+        strokeWidth: 2.1,
+        alpha: 0.56
       },
       unknown: {
-        casingColor: "#fffdf8",
-        strokeColor: "#d5ccbd",
-        casingWidth: 7,
-        strokeWidth: 3.5
+        casingColor: "#d7d0c5",
+        strokeColor: "#f4efe7",
+        casingWidth: 6.8,
+        strokeWidth: 3.4,
+        alpha: 0.74
       }
+    },
+    roadCasings: {
+      activeColor: "#d8d0c2",
+      quietColor: "#d8d1c7",
+      restrictedColor: "#e2caa6"
+    },
+    zoomScaledWidths: {
+      referenceZoom: 1,
+      minMultiplier: 0.9,
+      maxMultiplier: 1.18
     }
   },
   labels: {
