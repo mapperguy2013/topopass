@@ -19,6 +19,7 @@ import type {
 } from "../../../lib/map-engine/osm/index.ts";
 import {
   TOPOPASS_STREET_ATLAS_STYLE,
+  type TopopassContextLabelStyle,
   type TopopassLabelStyle,
   type TopopassRoadInteractionStyle,
   type TopopassRoadLabelStyle
@@ -48,7 +49,9 @@ export type SyntheticLandmarkVisualKind =
   | "dock"
   | "generic";
 
-export type SyntheticMapLabelKind = "road" | "area" | "landmark" | "start" | "checkpoint" | "finish";
+export type SyntheticContextMapLabelKind = "area" | "park" | "water" | "station" | "landmark";
+
+export type SyntheticMapLabelKind = "road" | SyntheticContextMapLabelKind | "start" | "checkpoint" | "finish";
 
 export type SyntheticRouteOverlayKind =
   | "raw-route"
@@ -210,6 +213,7 @@ export type SyntheticStreetMapLegendItem = {
 export type BuildSyntheticMapLabelOptions = {
   includeOsmRoadLabels?: boolean;
   backgroundFeatures?: readonly SyntheticBackgroundFeature[];
+  linearFeatures?: readonly SyntheticLinearFeature[];
 };
 
 export type BuildSyntheticContextOptions = {
@@ -704,24 +708,44 @@ export function buildSyntheticMapLabels(
       continue;
     }
 
+    const kind = contextLabelKindForBackgroundFeature(feature);
+
     labels.push({
-      id: `area-label-${feature.id}`,
-      kind: "area",
+      id: `${kind}-label-${feature.id}`,
+      kind,
       text: feature.label,
       point: polygonCenter(feature.points),
-      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.area
+      priority: contextLabelPriority(kind)
+    });
+  }
+
+  for (const feature of options.linearFeatures ?? buildSyntheticLinearFeatures(map)) {
+    if (!feature.label) {
+      continue;
+    }
+
+    const kind = contextLabelKindForLinearFeature(feature);
+
+    labels.push({
+      id: `${kind}-label-${feature.id}`,
+      kind,
+      text: feature.label,
+      point: polylineCenter(feature.points),
+      priority: contextLabelPriority(kind)
     });
   }
 
   const labelledLandmarks = buildSyntheticLandmarkVisuals(map, exercise).filter((visual) => shouldLabelLandmark(visual));
 
   for (const visual of labelledLandmarks) {
+    const kind = visual.kind === "station" ? "station" : "landmark";
+
     labels.push({
-      id: `landmark-label-${visual.id}`,
-      kind: "landmark",
+      id: `${kind}-label-${visual.id}`,
+      kind,
       text: visual.label,
       point: { x: visual.point.x, y: visual.point.y - 18 },
-      priority: visual.isExerciseStop ? 8 : visual.priority
+      priority: visual.isExerciseStop ? contextLabelPriority("station") : contextLabelPriority(kind)
     });
   }
 
@@ -769,17 +793,13 @@ export function roadLabelTier(label: Pick<SyntheticMapLabel, "roadClass" | "osmH
   return "minor";
 }
 
-export function labelStyleForSyntheticMapLabel(label: SyntheticMapLabel): TopopassLabelStyle | TopopassRoadLabelStyle {
+export function labelStyleForSyntheticMapLabel(label: SyntheticMapLabel): TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle {
   if (label.kind === "road") {
     return TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)];
   }
 
-  if (label.kind === "area") {
-    return TOPOPASS_STREET_ATLAS_STYLE.labels.area;
-  }
-
-  if (label.kind === "landmark") {
-    return TOPOPASS_STREET_ATLAS_STYLE.labels.landmark;
+  if (isContextMapLabelKind(label.kind)) {
+    return TOPOPASS_STREET_ATLAS_STYLE.labels.context[label.kind];
   }
 
   return TOPOPASS_STREET_ATLAS_STYLE.labels.stop;
@@ -795,6 +815,10 @@ export function filterSyntheticMapLabelsForViewport(
 
   for (const label of [...options.labels].sort(compareLabelsForLayout)) {
     if (label.kind === "road" && !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText)) {
+      continue;
+    }
+
+    if (isContextMapLabelKind(label.kind) && !shouldShowContextLabel(label, viewportScale)) {
       continue;
     }
 
@@ -877,6 +901,14 @@ function shouldShowRoadLabel(
   return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= style.repeatDistance);
 }
 
+function shouldShowContextLabel(label: SyntheticMapLabel, viewportScale: number): boolean {
+  if (!isContextMapLabelKind(label.kind)) {
+    return true;
+  }
+
+  return viewportScale >= TOPOPASS_STREET_ATLAS_STYLE.labels.context[label.kind].minViewportScale;
+}
+
 function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
   const style = labelStyleForSyntheticMapLabel(label);
   const point = mapToScreenPoint(label.point, viewport);
@@ -898,13 +930,13 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
   };
 }
 
-function estimatedLabelTextWidth(text: string, style: TopopassLabelStyle | TopopassRoadLabelStyle): number {
+function estimatedLabelTextWidth(text: string, style: TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle): number {
   const characterWidth = "approximateCharacterWidth" in style ? style.approximateCharacterWidth : labelFontSize(style) * 0.58;
 
   return text.length * characterWidth;
 }
 
-function labelFontSize(style: TopopassLabelStyle | TopopassRoadLabelStyle): number {
+function labelFontSize(style: TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle): number {
   if ("fontSize" in style) {
     return style.fontSize;
   }
@@ -928,6 +960,48 @@ function boxesIntersect(left: SyntheticLabelCollisionBox, right: SyntheticLabelC
 
 function distanceBetweenPoints(left: Vec2, right: Vec2): number {
   return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+function isContextMapLabelKind(kind: SyntheticMapLabelKind): kind is SyntheticContextMapLabelKind {
+  return kind === "area" || kind === "park" || kind === "water" || kind === "station" || kind === "landmark";
+}
+
+function contextLabelKindForBackgroundFeature(feature: SyntheticBackgroundFeature): SyntheticContextMapLabelKind {
+  if (feature.kind === "park" || feature.kind === "open-space") {
+    return "park";
+  }
+
+  if (feature.kind === "water") {
+    return "water";
+  }
+
+  return "area";
+}
+
+function contextLabelKindForLinearFeature(feature: SyntheticLinearFeature): SyntheticContextMapLabelKind {
+  return feature.kind === "waterway" ? "water" : "area";
+}
+
+function contextLabelPriority(kind: SyntheticContextMapLabelKind): number {
+  const priorities = TOPOPASS_STREET_ATLAS_STYLE.labels.priorities;
+
+  if (kind === "station") {
+    return priorities.station;
+  }
+
+  if (kind === "landmark") {
+    return priorities.landmark;
+  }
+
+  if (kind === "park") {
+    return priorities.park;
+  }
+
+  if (kind === "water") {
+    return priorities.water;
+  }
+
+  return priorities.area;
 }
 
 function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticMapLabel[] {
@@ -1550,6 +1624,39 @@ function polygonCenter(points: readonly Vec2[]): Vec2 {
     x: total.x / points.length,
     y: total.y / points.length
   };
+}
+
+function polylineCenter(points: readonly Vec2[]): Vec2 {
+  if (points.length === 0) {
+    return { x: 0, y: 0 };
+  }
+
+  if (points.length === 1) {
+    return { ...points[0] };
+  }
+
+  const totalLength = points.slice(1).reduce((sum, point, index) => sum + distanceBetweenPoints(points[index], point), 0);
+  const targetLength = totalLength / 2;
+  let travelledLength = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1];
+    const to = points[index];
+    const segmentLength = distanceBetweenPoints(from, to);
+
+    if (travelledLength + segmentLength >= targetLength) {
+      const ratio = segmentLength > 0 ? (targetLength - travelledLength) / segmentLength : 0;
+
+      return {
+        x: from.x + (to.x - from.x) * ratio,
+        y: from.y + (to.y - from.y) * ratio
+      };
+    }
+
+    travelledLength += segmentLength;
+  }
+
+  return { ...points[points.length - 1] };
 }
 
 function mapBounds(map: MapDefinition): { minX: number; minY: number; maxX: number; maxY: number } {

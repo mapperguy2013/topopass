@@ -140,10 +140,29 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "restricted",
     "service"
   ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.context), [
+    "station",
+    "landmark",
+    "park",
+    "water",
+    "area"
+  ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.collision), [
     "defaultPadding",
     "routePadding",
     "markerPadding"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.priorities), [
+    "majorRoad",
+    "secondaryRoad",
+    "restrictedRoad",
+    "localRoad",
+    "station",
+    "landmark",
+    "park",
+    "water",
+    "area",
+    "exerciseStop"
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
@@ -299,7 +318,7 @@ test("buildSyntheticMapLabels includes road area start checkpoint and finish lab
 
   assert.ok(labels.some((label) => label.kind === "road" && label.text === "Station Row"));
   assert.ok(labels.some((label) => label.kind === "area" && label.text === "Market Quarter"));
-  assert.ok(labels.some((label) => label.kind === "landmark" && label.text === "Fox Lane Station"));
+  assert.ok(labels.some((label) => label.kind === "station" && label.text === "Fox Lane Station"));
   assert.ok(labels.some((label) => label.kind === "start" && label.text === "START"));
   assert.ok(labels.some((label) => label.kind === "checkpoint" && label.text === "CHECKPOINT 1"));
   assert.ok(labels.some((label) => label.kind === "finish" && label.text === "FINISH"));
@@ -637,6 +656,108 @@ test("Stage 145 label layout avoids reserved route and marker areas", () => {
   );
 });
 
+test("Stage 146 repeated road labels are allowed when sufficiently separated", () => {
+  const labels = [
+    roadLabel({
+      id: "first",
+      text: "Grafton Place",
+      point: { x: 20, y: 20 },
+      roadClass: "local",
+      osmHierarchy: "residential",
+      roadLengthMeters: 300
+    }),
+    roadLabel({
+      id: "far-repeat",
+      text: "Grafton Place",
+      point: { x: 190, y: 80 },
+      roadClass: "local",
+      osmHierarchy: "residential",
+      roadLengthMeters: 300
+    })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["far-repeat", "first"]
+  );
+});
+
+test("Stage 146 higher-priority road labels win collisions over lower-priority labels", () => {
+  const labels = [
+    roadLabel({
+      id: "minor",
+      text: "Store Street",
+      point: { x: 70, y: 50 },
+      roadClass: "local",
+      osmHierarchy: "residential",
+      roadLengthMeters: 300
+    }),
+    roadLabel({
+      id: "major",
+      text: "Euston Road",
+      point: { x: 70, y: 50 },
+      roadClass: "major",
+      osmHierarchy: "primary",
+      roadLengthMeters: 300
+    })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["major"]
+  );
+});
+
+test("Stage 146 context labels use category styles and low-zoom decluttering", () => {
+  const labels: SyntheticMapLabel[] = [
+    {
+      id: "station-label",
+      kind: "station",
+      text: "Euston Station",
+      point: { x: 40, y: 30 },
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.station
+    },
+    {
+      id: "park-label",
+      kind: "park",
+      text: "Gordon Square",
+      point: { x: 160, y: 80 },
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.park
+    }
+  ];
+  const lowZoomViewport = {
+    width: 160,
+    height: 160,
+    mapBounds: {
+      minX: 0,
+      minY: 0,
+      maxX: 1000,
+      maxY: 1000
+    }
+  };
+
+  assert.equal(labelStyleForSyntheticMapLabel(labels[0]).font, "700 12px Arial, sans-serif");
+  assert.equal(labelStyleForSyntheticMapLabel(labels[1]).font, "600 11px Arial, sans-serif");
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomViewport }).map((label) => label.id),
+    []
+  );
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["station-label", "park-label"]
+  );
+});
+
+test("Stage 146 label candidate ordering is deterministic", () => {
+  const labels = buildSyntheticMapLabels(marloweDistrictMap, marloweDistrictRouteExercises[0]);
+  const repeatedLabels = buildSyntheticMapLabels(marloweDistrictMap, marloweDistrictRouteExercises[0]);
+
+  assert.deepEqual(
+    repeatedLabels.map((label) => [label.id, label.kind, label.text, label.priority]),
+    labels.map((label) => [label.id, label.kind, label.text, label.priority])
+  );
+});
+
 test("Stage 143 OSM context rendering uses raw fixture tags without adding routable graph features", () => {
   const contextFixture: OverpassJsonResponse = {
     elements: [
@@ -676,9 +797,10 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
   const linearFeatures = buildSyntheticLinearFeatures(converted.map, {
     sourceOverpassFixture: contextFixture
   });
-  const areaLabels = buildSyntheticMapLabels(converted.map, undefined, {
-    backgroundFeatures
-  }).filter((label) => label.kind === "area");
+  const contextLabels = buildSyntheticMapLabels(converted.map, undefined, {
+    backgroundFeatures,
+    linearFeatures
+  }).filter((label) => label.kind === "park" || label.kind === "water" || label.kind === "area");
 
   assert.equal(converted.map.roads.length, 1);
   assert.deepEqual(
@@ -695,7 +817,10 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
       ["waterway", "Pilot Cut", false]
     ]
   );
-  assert.ok(areaLabels.some((label) => label.text === "Fitzroy Garden"));
+  assert.ok(contextLabels.some((label) => label.kind === "park" && label.text === "Fitzroy Garden"));
+  assert.ok(contextLabels.some((label) => label.kind === "water" && label.text === "Pilot Basin"));
+  assert.ok(contextLabels.some((label) => label.kind === "water" && label.text === "Pilot Cut"));
+  assert.ok(contextLabels.some((label) => label.kind === "area" && label.text === "Main Line"));
   assert.ok(backgroundFeatures.every((feature) => feature.routable === false));
 });
 

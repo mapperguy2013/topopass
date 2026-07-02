@@ -61,6 +61,23 @@ below labels and learner route overlays. Routing, snapping, scoring, legality,
 exercise generation, OSM conversion, beta gating, feedback, and persistence are
 unchanged.
 
+## Stage 146 Label Rendering System
+
+Stage 146 expands the learner Canvas label system beyond road labels while
+leaving routing behavior unchanged. Labels now have explicit categories for
+roads, stations, landmarks, parks, water, and general area/context names.
+Category-specific TOPOPASS tokens define text size, colour, halo, collision
+padding, priority, and zoom visibility. The same deterministic layout pass
+handles road-aligned labels, repeated street-name spacing, collision winners,
+reserved route/marker/review areas, and context-label decluttering.
+
+Context labels are generated only from data the current visual model already
+has: synthetic Marlowe background polygons and landmarks, converted OSM context
+polygons/lines when a fixture contains supported tags, and map landmarks where
+present. The current Real London pilot fixtures remain mostly road-only, so
+Stage 146 adds hooks and tests for parks, water, rail-line context, stations,
+and landmarks without inventing unavailable Real London places.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -75,7 +92,8 @@ unchanged.
 - `app/dev/route-runner/syntheticStreetMapRenderer.ts` builds visual models for
   roads, OSM road hierarchy metadata, optional OSM road labels, synthetic
   parks/water/land blocks, fixture-derived OSM context where available,
-  synthetic rail, landmarks, route overlays, and the route-runner legend.
+  synthetic rail, landmarks, road/station/landmark/context labels, route
+  overlays, and the route-runner legend.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.
@@ -117,9 +135,10 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
    snap-preview road ids.
 9. Landmark visuals from map landmarks. Real London pilot maps currently have
    limited landmark/context support compared with the synthetic Marlowe map.
-10. Base labels. Synthetic and converted OSM road labels are filtered by road
-   hierarchy, zoom scale, segment fit, repeated-name spacing, and reserved
-   overlay/marker areas before drawing.
+10. Base labels. Synthetic and converted OSM road labels, stations, landmarks,
+   parks, water, rail-line context, and area names are filtered by category
+   priority, zoom scale, road segment fit, repeated-name spacing, collisions,
+   and reserved overlay/marker areas before drawing.
 11. Road restriction overlays, when enabled.
 12. OSM debug directed-edge overlays, when enabled.
 13. Fastest/shortest legal route overlay, when revealed.
@@ -143,14 +162,15 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 - `topopassCartographyStyle.ts` contains named tokens for current road colours,
   road casing colours, widths, road geometry, junction blends, road interaction
-  focus, hierarchy-specific label fonts/colours/halos, label visibility
-  thresholds, label collision spacing, background features, rail,
-  station/landmark markers, route overlays, exercise markers, hints,
+  focus, hierarchy-specific road label fonts/colours/halos, context label
+  fonts/colours/halos, label visibility thresholds, label collision spacing,
+  background features, rail, station/landmark markers, route overlays, exercise markers, hints,
   restrictions, review overlays, replay markers, node markers, zoom thresholds,
   and decluttering thresholds.
 - `syntheticStreetMapRenderer.ts` now reads road hierarchy, synthetic road
   styles, OSM road styles, background feature colours, rail styling, landmark
-  styling, label priorities, and route overlay styles from the token object.
+  styling, road/context label priorities, label visibility, and route overlay
+  styles from the token object.
 - `RouteRunnerClient.tsx` now reads active canvas map styling, exercise marker
   styling, label text/halo styling, restriction overlay/symbol styling, review
   overlay styling, fastest route styling, replay markers, node markers, raw
@@ -197,11 +217,17 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   threshold. Secondary and tertiary labels are smaller. Minor street labels
   require more zoom and enough segment length. Service, restricted, and inactive
   labels are heavily limited.
+- Station labels are stronger than generic landmark labels. Park, water, rail,
+  and area/context labels are quieter and require enough zoom before they enter
+  the collision pass.
 - Labels are skipped when text would not fit the visible road segment, when the
-  same road name was already placed nearby, or when their screen box intersects
-  reserved route, hint, review, start, checkpoint, or destination areas.
-- Synthetic Marlowe labels remain available for non-service roads, area
-  polygons, labelled landmarks, and exercise stops.
+  same road name was already placed nearby, when their category is below the
+  current zoom threshold, or when their screen box intersects reserved route,
+  hint, review, start, checkpoint, or destination areas.
+- Synthetic Marlowe labels remain available for non-service roads, stations,
+  landmarks, parks, water, area polygons, rail context, and exercise stops.
+  Converted OSM context labels are available only where the selected fixture has
+  supported non-road tags.
 - Stop labels are drawn after markers, keeping start/destination/checkpoint
   labels above the base map.
 
@@ -279,14 +305,17 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   candidate roads with explicit pass ordering, junction blends, low-zoom
   quieting, and focus strokes. Future work still needs fully generalized
   cartographic generalisation for long OSM ways and merged multi-segment roads.
-- Label readability: Stage 145 adds learner-visible OSM road labels with
-  hierarchy, zoom, fit, repeat, and reserved-area rules. Future work still needs
-  full curved placement and richer collision handling for dense parallel roads.
+- Label readability: Stage 145 and Stage 146 add learner-visible OSM road
+  labels plus station, landmark, park, water, rail-line, and area/context label
+  hooks with hierarchy, zoom, fit, repeat, priority, collision, and
+  reserved-area rules. Future work still needs full curved placement and richer
+  collision handling for dense parallel roads.
 - Zoom decluttering: road labels and one-way arrows now have explicit
   decluttering. Most non-label layers still do not respond to zoom level.
-- Parks/water/rail/stations/bridges/landmarks/area names: these are largely
-  absent for Real London base maps, even though they exist in the synthetic
-  Marlowe visual model.
+- Parks/water/rail/stations/bridges/landmarks/area names: the renderer now has
+  category-specific label hooks for available context data, but the current
+  Real London base maps are still mostly road-only because the committed pilot
+  fixtures do not yet carry broad non-road context or landmark data.
 - Learner overlays: start, destination, checkpoint, route, restriction, and
   review overlays are visible above the base map, but some meanings still rely
   strongly on colour and compact text panels.

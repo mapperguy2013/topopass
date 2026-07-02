@@ -64,6 +64,13 @@ export type TopopassRoadLabelStyle = TopopassLabelStyle & {
   collisionPadding: number;
 };
 
+export type TopopassContextLabelStyle = TopopassLabelStyle & {
+  fontSize: number;
+  approximateCharacterWidth: number;
+  minViewportScale: number;
+  collisionPadding: number;
+};
+
 export type TopopassZoomThresholds = {
   defaultZoom: number;
   minZoom: number;
@@ -112,6 +119,7 @@ export type TopopassStreetAtlasStyle = {
     roadHierarchy: Record<"major" | "secondary" | "minor" | "restricted" | "service", TopopassRoadLabelStyle>;
     area: TopopassLabelStyle;
     landmark: TopopassLabelStyle;
+    context: Record<"station" | "landmark" | "park" | "water" | "area", TopopassContextLabelStyle>;
     stop: TopopassLabelStyle;
     collision: {
       defaultPadding: number;
@@ -123,6 +131,10 @@ export type TopopassStreetAtlasStyle = {
       secondaryRoad: number;
       restrictedRoad: number;
       localRoad: number;
+      station: number;
+      landmark: number;
+      park: number;
+      water: number;
       area: number;
       exerciseStop: number;
     };
@@ -571,6 +583,64 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       haloColor: "rgba(255,255,255,0.94)",
       haloWidth: 3
     },
+    context: {
+      station: {
+        font: "700 12px Arial, sans-serif",
+        fontSize: 12,
+        approximateCharacterWidth: 6.7,
+        color: "rgba(15,23,42,0.84)",
+        haloColor: "rgba(255,255,255,0.96)",
+        haloWidth: 3.5,
+        shadowColor: "rgba(255,255,255,0.48)",
+        shadowBlur: 2,
+        shadowOffsetY: 0,
+        minViewportScale: 0.42,
+        collisionPadding: 5
+      },
+      landmark: {
+        font: "650 10.5px Arial, sans-serif",
+        fontSize: 10.5,
+        approximateCharacterWidth: 5.9,
+        color: "rgba(15,23,42,0.72)",
+        haloColor: "rgba(255,255,255,0.92)",
+        haloWidth: 3,
+        shadowColor: "rgba(255,255,255,0.35)",
+        shadowBlur: 1.5,
+        shadowOffsetY: 0,
+        minViewportScale: 0.78,
+        collisionPadding: 4
+      },
+      park: {
+        font: "600 11px Arial, sans-serif",
+        fontSize: 11,
+        approximateCharacterWidth: 6,
+        color: "rgba(58,94,58,0.62)",
+        haloColor: "rgba(255,255,255,0.78)",
+        haloWidth: 3,
+        minViewportScale: 0.68,
+        collisionPadding: 5
+      },
+      water: {
+        font: "600 11px Arial, sans-serif",
+        fontSize: 11,
+        approximateCharacterWidth: 6,
+        color: "rgba(37,99,135,0.62)",
+        haloColor: "rgba(255,255,255,0.78)",
+        haloWidth: 3,
+        minViewportScale: 0.58,
+        collisionPadding: 5
+      },
+      area: {
+        font: "600 12px Arial, sans-serif",
+        fontSize: 12,
+        approximateCharacterWidth: 6.5,
+        color: "rgba(71,85,105,0.5)",
+        haloColor: "rgba(255,255,255,0.72)",
+        haloWidth: 3,
+        minViewportScale: 0.86,
+        collisionPadding: 5
+      }
+    },
     stop: {
       font: "700 11px Arial, sans-serif",
       color: "#0f172a",
@@ -588,7 +658,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       secondaryRoad: 3,
       restrictedRoad: 5,
       localRoad: 6,
-      area: 7,
+      station: 4,
+      landmark: 6,
+      park: 7,
+      water: 7,
+      area: 8,
       exerciseStop: 10
     }
   },

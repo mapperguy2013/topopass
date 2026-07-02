@@ -1394,7 +1394,8 @@ function drawSyntheticStreetMapBase(input: {
   const labels = filterSyntheticMapLabelsForViewport({
     labels: buildSyntheticMapLabels(input.map, input.selectedExercise, {
       includeOsmRoadLabels: input.showOsmRoadLabels,
-      backgroundFeatures: input.backgroundFeatures
+      backgroundFeatures: input.backgroundFeatures,
+      linearFeatures: input.linearFeatures
     }),
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes
