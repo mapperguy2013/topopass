@@ -179,8 +179,8 @@ test("buildOneWayVisualItems adds repeated arrows only for long readable segment
   assert.deepEqual(
     items.map((item) => [item.id, item.symbol, item.point]),
     [
-      ["one-way:r-one-way:0", "one-way-arrow", { x: 74.80000000000001, y: 0 }],
-      ["one-way:r-one-way:1", "one-way-arrow", { x: 145.20000000000002, y: 0 }]
+      ["one-way:r-one-way:0", "one-way-arrow", { x: 52.8, y: 0 }],
+      ["one-way:r-one-way:1", "one-way-arrow", { x: 167.2, y: 0 }]
     ]
   );
   assert.ok(items.every((item) => item.direction?.to.x === 220));
@@ -279,9 +279,13 @@ test("Stage 147 zoom tier helper classifies restriction detail deterministically
     "osmRoadLabelsRequireQaOverlay",
     "oneWayArrowMinSpacingMeters",
     "longRoadArrowThresholdMeters",
+    "mediumOneWayArrowSpacingMultiplier",
+    "highOneWayArrowSpacingMultiplier",
     "lowDetailViewportScale",
     "highDetailViewportScale",
     "mediumOneWayMinRoadLengthMeters",
+    "restrictionSymbolCollisionPadding",
+    "reviewRestrictionProximityMeters",
     "lowRestrictionSymbolAlpha",
     "mediumRestrictionSymbolAlpha",
     "highRestrictionSymbolAlpha",
@@ -304,6 +308,181 @@ test("Stage 147 low zoom hides base restriction symbols while preserving route r
   assert.deepEqual(
     filterRestrictionMapVisualItemsForViewport(items, lowZoomViewport).map((item) => item.kind),
     ["missed-restriction", "illegal-movement"]
+  );
+});
+
+test("Stage 150 one-way arrows prefer deterministic decision-point placement and zoom spacing", () => {
+  const highItems = buildOneWayVisualItems(
+    [
+      {
+        roadId: "long-decision-road",
+        kind: "one-way",
+        label: "One-way",
+        points: [
+          { x: 0, y: 0 },
+          { x: 220, y: 0 }
+        ],
+        midpoint: { x: 110, y: 0 },
+        direction: {
+          from: { x: 0, y: 0 },
+          to: { x: 220, y: 0 }
+        }
+      }
+    ],
+    { viewport: highZoomViewport }
+  );
+  const mediumItems = buildOneWayVisualItems(
+    [
+      {
+        roadId: "long-decision-road",
+        kind: "one-way",
+        label: "One-way",
+        points: [
+          { x: 0, y: 0 },
+          { x: 220, y: 0 }
+        ],
+        midpoint: { x: 110, y: 0 },
+        direction: {
+          from: { x: 0, y: 0 },
+          to: { x: 220, y: 0 }
+        }
+      }
+    ],
+    { viewport: mediumZoomViewport }
+  );
+
+  assert.deepEqual(
+    highItems.map((item) => item.point.x),
+    [52.8, 167.2]
+  );
+  assert.ok(highItems[0].point.x < 220 * 0.3);
+  assert.ok(highItems[1].point.x > 220 * 0.7);
+  assert.deepEqual(
+    mediumItems.map((item) => item.id),
+    ["one-way:long-decision-road:0", "one-way:long-decision-road:1"]
+  );
+  assert.equal(
+    TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.mediumSpacingMultiplier,
+    TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.mediumOneWayArrowSpacingMultiplier
+  );
+});
+
+test("Stage 150 medium zoom spacing suppresses repeated one-way arrows on dense road groups", () => {
+  const overlays: RoadRestrictionOverlay[] = [
+    {
+      roadId: "osm-way-1-segment-0",
+      renderGroupId: "osm-way:1",
+      kind: "one-way",
+      label: "One-way",
+      points: [
+        { x: 0, y: 0 },
+        { x: 80, y: 0 }
+      ],
+      midpoint: { x: 40, y: 0 },
+      direction: {
+        from: { x: 0, y: 0 },
+        to: { x: 80, y: 0 }
+      }
+    },
+    {
+      roadId: "osm-way-1-segment-1",
+      renderGroupId: "osm-way:1",
+      kind: "one-way",
+      label: "One-way",
+      points: [
+        { x: 70, y: 0 },
+        { x: 150, y: 0 }
+      ],
+      midpoint: { x: 110, y: 0 },
+      direction: {
+        from: { x: 70, y: 0 },
+        to: { x: 150, y: 0 }
+      }
+    }
+  ];
+
+  assert.deepEqual(
+    buildOneWayVisualItems(overlays, { viewport: highZoomViewport }).map((item) => item.id),
+    ["one-way:osm-way-1-segment-0:0", "one-way:osm-way-1-segment-1:0"]
+  );
+  assert.deepEqual(
+    buildOneWayVisualItems(overlays, { viewport: mediumZoomViewport }).map((item) => item.id),
+    ["one-way:osm-way-1-segment-0:0"]
+  );
+});
+
+test("Stage 150 restriction symbols avoid learner reservations and preserve review issues", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays
+  });
+  const filtered = filterRestrictionMapVisualItemsForViewport(items, highZoomViewport, {
+    reservedBoxes: [
+      {
+        id: "learner-route",
+        minX: 48,
+        minY: -18,
+        maxX: 90,
+        maxY: 18
+      }
+    ]
+  });
+
+  assert.equal(filtered.some((item) => item.id === "one-way:r-one-way:0"), false);
+  assert.equal(filtered.some((item) => item.id === "one-way:r-one-way:1"), true);
+  assert.deepEqual(
+    filtered.filter((item) => item.kind === "missed-restriction" || item.kind === "illegal-movement").map((item) => item.kind),
+    ["missed-restriction", "illegal-movement"]
+  );
+});
+
+test("Stage 150 restriction markers are collision-filtered with stable priority", () => {
+  const overlappingItems = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays: [
+      {
+        roadId: "r-no-entry-a",
+        kind: "no-entry",
+        label: "No entry A",
+        points: [
+          { x: 100, y: 100 },
+          { x: 140, y: 100 }
+        ],
+        midpoint: { x: 120, y: 100 },
+        direction: {
+          from: { x: 100, y: 100 },
+          to: { x: 140, y: 100 }
+        }
+      },
+      {
+        roadId: "r-restricted-b",
+        kind: "restricted",
+        label: "Restricted road B",
+        points: [
+          { x: 112, y: 100 },
+          { x: 152, y: 100 }
+        ],
+        midpoint: { x: 132, y: 100 }
+      }
+    ],
+    turnRestrictionVisuals: [],
+    routeIssueOverlays: []
+  });
+
+  assert.deepEqual(
+    filterRestrictionMapVisualItemsForViewport(overlappingItems, highZoomViewport).map((item) => item.id),
+    ["restricted-road:r-restricted-b:0"]
+  );
+});
+
+test("Stage 150 empty restriction data does not invent map symbols", () => {
+  assert.deepEqual(
+    buildRestrictionMapVisualItems({
+      roadRestrictionOverlays: [],
+      turnRestrictionVisuals: [],
+      routeIssueOverlays: []
+    }),
+    []
   );
 });
 
@@ -343,7 +522,6 @@ test("Stage 147 high zoom reveals one-way and restriction detail", () => {
       "one-way",
       "no-entry",
       "restricted-road",
-      "prohibited-turn",
       "missed-restriction",
       "illegal-movement"
     ]
@@ -352,8 +530,22 @@ test("Stage 147 high zoom reveals one-way and restriction detail", () => {
 
 test("Stage 147 medium zoom shows useful restriction symbols and reduces their style", () => {
   const items = buildRestrictionMapVisualItems({
-    roadRestrictionOverlays,
-    turnRestrictionVisuals: [turnVisual()],
+    roadRestrictionOverlays: [
+      roadRestrictionOverlays[0],
+      {
+        ...roadRestrictionOverlays[1],
+        points: [
+          { x: 500, y: 0 },
+          { x: 500, y: 100 }
+        ],
+        midpoint: { x: 500, y: 50 },
+        direction: {
+          from: { x: 500, y: 0 },
+          to: { x: 500, y: 100 }
+        }
+      }
+    ],
+    turnRestrictionVisuals: [],
     routeIssueOverlays: []
   });
   const visibleItems = filterRestrictionMapVisualItemsForViewport(items, mediumZoomViewport);

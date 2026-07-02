@@ -824,6 +824,12 @@ existing committed map/Overpass data. Context labels and markers use central
 zoom, priority, and collision tokens, while route-review and exercise marker
 reservations keep learner overlays legible without changing routing, legality,
 scoring, exercises, beta gates, feedback, or route attempts.
+Stage 150 improves one-way and restriction cartography by moving one-way arrows
+toward decision-point positions, spacing them by zoom tier, adding tokenised
+arrow halo styling, collision-filtering base restriction symbols against
+learner overlays, and keeping route-review warnings visible. It uses only
+existing one-way, restriction, turn, and review data; routing, legality,
+scoring, exercises, beta gates, feedback, and route attempts are unchanged.
 
 ## Current Feature Set
 

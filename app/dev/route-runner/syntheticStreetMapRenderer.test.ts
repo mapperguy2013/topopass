@@ -186,7 +186,7 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "openSpaceMarker",
     "learnerReferenceMarker"
   ]);
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 56);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
 });
 
@@ -201,6 +201,10 @@ test("Stage 142 zoom and decluttering tokens are ordered finite and used by help
   assert.equal(
     ONE_WAY_ARROW_MIN_SPACING_METERS,
     TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.oneWayArrowMinSpacingMeters
+  );
+  assert.equal(
+    TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.mediumSpacingMultiplier,
+    TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.mediumOneWayArrowSpacingMultiplier
   );
 });
 

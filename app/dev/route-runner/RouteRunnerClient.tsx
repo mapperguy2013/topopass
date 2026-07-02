@@ -1655,10 +1655,16 @@ function drawOneWayMapSymbol(
 
   context.save();
   context.globalAlpha = alpha;
+  context.lineCap = "round";
+  context.strokeStyle = style.haloColor;
+  context.lineWidth = style.haloLineWidth * scale;
+  context.beginPath();
+  context.moveTo(tail.x, tail.y);
+  context.lineTo(tip.x, tip.y);
+  context.stroke();
   context.strokeStyle = style.color;
   context.fillStyle = style.color;
   context.lineWidth = style.lineWidth * scale;
-  context.lineCap = "round";
   context.beginPath();
   context.moveTo(tail.x, tail.y);
   context.lineTo(tip.x, tip.y);
@@ -2602,7 +2608,9 @@ function drawRouteCanvas(input: {
     drawRouteIssueOverlay(context, overlay, input.viewport, input.map);
   }
 
-  for (const item of filterRestrictionMapVisualItemsForViewport(input.restrictionMapVisualItems, input.viewport)) {
+  for (const item of filterRestrictionMapVisualItemsForViewport(input.restrictionMapVisualItems, input.viewport, {
+    reservedBoxes: labelReservedBoxes
+  })) {
     drawRestrictionMapVisualItem(context, item, input.viewport);
   }
 
@@ -3137,9 +3145,10 @@ export function RouteRunnerClient({
       buildRestrictionMapVisualItems({
         roadRestrictionOverlays: visibleRoadRestrictionOverlays,
         turnRestrictionVisuals: visibleTurnRestrictionVisuals,
-        routeIssueOverlays
+        routeIssueOverlays,
+        viewport
       }),
-    [routeIssueOverlays, visibleRoadRestrictionOverlays, visibleTurnRestrictionVisuals]
+    [routeIssueOverlays, viewport, visibleRoadRestrictionOverlays, visibleTurnRestrictionVisuals]
   );
   const illegalDrawnMovements = useMemo(
     () =>

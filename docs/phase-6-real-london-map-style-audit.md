@@ -137,6 +137,25 @@ separate reservation token so base-map labels do not crowd start, checkpoint,
 destination, or review cues. Unnamed features, unsupported tags, and missing
 fixture data are still ignored instead of creating inferred landmarks.
 
+## Stage 150 One-Way And Restriction Cartography
+
+Stage 150 improves learner-readable restriction cartography without changing
+routing, legality, scoring, snapping, exercise generation, OSM conversion, beta
+behaviour, feedback, or persistence. One-way arrows now use central TOPOPASS
+tokens for halo styling, line width, decision-point ratios, minimum spacing,
+and zoom-tier spacing multipliers. Long one-way segments place arrows closer to
+meaningful decision ends instead of the segment centre, and medium zoom spaces
+arrows more aggressively than high zoom.
+
+Base restriction symbols now pass through a deterministic viewport collision
+filter. The filter keeps route-review issue symbols visible across zoom tiers,
+removes base symbols that would collide with learner route/hint/review/stop
+reservations, and suppresses lower-priority overlapping base symbols. Symbols
+near route-review issue locations receive higher collision priority so they can
+help explain a learner mistake when they do not sit directly under the review
+warning. Missing restriction overlays, turn visuals, or review issue data still
+produce no symbols rather than inferred restrictions.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -320,14 +339,18 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 - One-way arrows are generated from existing one-way road overlay geometry and
   continue to follow the road direction where direction data is available.
+  Placement is deterministic, biased toward decision-point positions, and
+  spaced by zoom tier on the same rendered road group.
 - Low zoom hides base one-way, no-entry, restricted-road, and turn-ban symbols
   so the map does not become symbol-heavy. Route-review issue symbols remain
   visible even at low zoom.
 - Medium zoom shows no-entry, restricted-road, prohibited-turn, and long one-way
-  indicators with reduced alpha and scale.
+  indicators with reduced alpha, scale, and wider one-way spacing.
 - High zoom shows the full legal-restriction symbol layer, including one-way
   arrows, no-entry signs, restricted-road signs, and turn-ban signs where the
   current data already exposes them.
+- Base restriction symbols are collision-filtered against each other and
+  learner overlay reservations; route-review issue symbols are preserved.
 - Road restriction overlay lines are not legal logic; they are visual hints
   derived from existing overlays and are faded at lower zoom tiers.
 - Missing turn-restriction visual data is a safe no-op; the renderer does not
@@ -340,9 +363,9 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Restriction map symbols include red no-entry signs, blue one-way arrows,
   amber restricted-road diamonds, rose turn-ban symbols, and route issue
   symbols.
-- Stage 131 one-way decluttering remains active: arrows on the same rendered
-  road group are spaced by at least 50 metres, and longer roads can receive two
-  arrows.
+- Stage 150 one-way decluttering is active: arrows on the same rendered road
+  group are spaced by at least 56 metres at high detail, medium detail uses a
+  wider tokenised multiplier, and longer roads can receive two arrows.
 - In student Real London beta mode, road restriction overlays are enabled and
   turn restriction overlays are collapsed/hidden by default outside internal QA
   surfaces.
@@ -370,8 +393,8 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   `0.75`, max `10`, step `0.25`, and pan margin `80`.
 - Base-map zoom decluttering now covers minor road quieting, road/context label
   thresholds, rail and bridge/crossing line visibility, station/landmark/context
-  marker visibility, one-way arrow spacing, restriction symbol tiers, and
-  restriction overlay alpha.
+  marker visibility, one-way arrow spacing, restriction symbol tiers,
+  restriction-symbol collision filtering, and restriction overlay alpha.
 - Repeated one-way arrows are thinned, road and context labels use category
   thresholds/collisions, and context markers avoid reserved learner overlay
   boxes.
@@ -386,6 +409,8 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Active learner overlays are generally drawn above base roads and context.
 - Context labels and markers now reserve around route-review and exercise
   marker areas before drawing.
+- Base restriction symbols now avoid learner overlay reservations and
+  lower-priority symbol collisions while preserving route-review warnings.
 - One-way arrows already have deterministic density suppression.
 - OSM attribution is surfaced in the beta practice page and related panel
   models.
@@ -406,15 +431,16 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
   collision handling for dense parallel roads.
 - Zoom decluttering: road labels, minor road detail, one-way arrows,
   restriction overlays, and restriction symbols now respond to central
-  decluttering tiers. Some non-label context layers still have limited zoom
-  behaviour.
+  decluttering tiers and collision rules. Some non-label context layers still
+  have limited zoom behaviour.
 - Parks/water/rail/stations/bridges/landmarks/area names: the renderer now has
   category-specific label and marker hooks for available named context data,
   but any individual Real London pilot map still depends on what its committed
   fixture actually contains.
 - Learner overlays: start, destination, checkpoint, route, restriction, and
-  review overlays are visible above the base map, but some meanings still rely
-  strongly on colour and compact text panels.
+  review overlays are visible above the base map, and base restriction symbols
+  now avoid their reservations, but some meanings still rely strongly on colour
+  and compact text panels.
 - Route review clarity: route review overlays and route issue symbols now stay
   visible through zoom decluttering and reserve label space, but overlapping
   route geometries and dense central London streets still need clearer

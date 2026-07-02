@@ -106,9 +106,13 @@ export type TopopassZoomDeclutteringStyle = {
   osmRoadLabelsRequireQaOverlay: boolean;
   oneWayArrowMinSpacingMeters: number;
   longRoadArrowThresholdMeters: number;
+  mediumOneWayArrowSpacingMultiplier: number;
+  highOneWayArrowSpacingMultiplier: number;
   lowDetailViewportScale: number;
   highDetailViewportScale: number;
   mediumOneWayMinRoadLengthMeters: number;
+  restrictionSymbolCollisionPadding: number;
+  reviewRestrictionProximityMeters: number;
   lowRestrictionSymbolAlpha: number;
   mediumRestrictionSymbolAlpha: number;
   highRestrictionSymbolAlpha: number;
@@ -291,11 +295,18 @@ export type TopopassStreetAtlasStyle = {
     };
     oneWay: {
       color: string;
+      haloColor: string;
+      haloLineWidth: number;
       lineWidth: number;
       tipDistance: number;
       tailDistance: number;
       longRoadArrowThresholdMeters: number;
       minSpacingMeters: number;
+      mediumSpacingMultiplier: number;
+      highSpacingMultiplier: number;
+      shortRoadRatio: number;
+      longRoadRatios: readonly number[];
+      collisionPadding: number;
     };
     restrictedMarker: {
       fillColor: string;
@@ -1064,11 +1075,18 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     oneWay: {
       color: "#1d4ed8",
-      lineWidth: 4,
-      tipDistance: 13,
-      tailDistance: 11,
+      haloColor: "rgba(255,255,255,0.82)",
+      haloLineWidth: 7,
+      lineWidth: 3.5,
+      tipDistance: 14,
+      tailDistance: 12,
       longRoadArrowThresholdMeters: 180,
-      minSpacingMeters: 50
+      minSpacingMeters: 56,
+      mediumSpacingMultiplier: 1.35,
+      highSpacingMultiplier: 1,
+      shortRoadRatio: 0.62,
+      longRoadRatios: [0.24, 0.76],
+      collisionPadding: 8
     },
     restrictedMarker: {
       fillColor: "#fffbeb",
@@ -1172,11 +1190,15 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     decluttering: {
       osmRoadLabelsRequireQaOverlay: false,
-      oneWayArrowMinSpacingMeters: 50,
+      oneWayArrowMinSpacingMeters: 56,
       longRoadArrowThresholdMeters: 180,
+      mediumOneWayArrowSpacingMultiplier: 1.35,
+      highOneWayArrowSpacingMultiplier: 1,
       lowDetailViewportScale: 0.5,
       highDetailViewportScale: 0.95,
       mediumOneWayMinRoadLengthMeters: 180,
+      restrictionSymbolCollisionPadding: 8,
+      reviewRestrictionProximityMeters: 72,
       lowRestrictionSymbolAlpha: 0.42,
       mediumRestrictionSymbolAlpha: 0.78,
       highRestrictionSymbolAlpha: 1,

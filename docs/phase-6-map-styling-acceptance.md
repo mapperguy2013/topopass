@@ -172,6 +172,24 @@ radius, stroke, and reservation padding so missed/illegal review cues stay
 readable above the base map without changing routing, scoring, legality,
 exercise generation, beta gating, feedback, or route attempts.
 
+## Stage 150 Restriction Cartography Evidence
+
+Stage 150 addresses the one-way/restriction readability part of this checklist
+through visual-only renderer changes. One-way arrows now use tokenised
+decision-point placement ratios, zoom-tier spacing, halo styling, and collision
+padding so useful arrows remain readable without repeating densely on the same
+rendered road group. Medium zoom applies wider one-way spacing than high zoom,
+and low zoom still suppresses base restriction symbols.
+
+Base no-entry, one-way, restricted-road, and turn-restriction markers now pass
+through a deterministic collision filter that avoids learner route, hint,
+review issue, start, checkpoint, and destination reservation boxes. Route-review
+restriction warnings are preserved across zoom tiers and are not removed by
+base-symbol collision filtering. The legend text now uses learner-friendly
+labels for one-way streets, restricted turns, no-entry/blocked movements, and
+review warnings. The renderer still uses only existing restriction overlays,
+turn visuals, and route-review data; missing data remains a safe no-op.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

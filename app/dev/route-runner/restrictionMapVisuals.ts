@@ -1,6 +1,6 @@
 import type { ScreenMapViewport, TurnRestrictionVisual, TurnRestrictionVisualKind, Vec2 } from "../../../lib/map-engine/index.ts";
 import type { RoadRestrictionOverlay, RouteIssueOverlay } from "./routeRunnerDisplay.ts";
-import type { SyntheticStreetMapLegendItem } from "./syntheticStreetMapRenderer.ts";
+import type { SyntheticLabelCollisionBox, SyntheticStreetMapLegendItem } from "./syntheticStreetMapRenderer.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 export type RestrictionMapVisualKind =
@@ -77,6 +77,11 @@ export type BuildRestrictionMapVisualItemsInput = {
   roadRestrictionOverlays: readonly RoadRestrictionOverlay[];
   turnRestrictionVisuals: readonly TurnRestrictionVisual[];
   routeIssueOverlays: readonly RouteIssueOverlay[];
+  viewport?: ScreenMapViewport;
+};
+
+export type FilterRestrictionMapVisualItemsOptions = {
+  reservedBoxes?: readonly SyntheticLabelCollisionBox[];
 };
 
 const LONG_ROAD_ARROW_THRESHOLD = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.longRoadArrowThresholdMeters;
@@ -117,6 +122,10 @@ function clonePoint(point: Vec2): Vec2 {
 
 function distanceBetween(from: Vec2, to: Vec2): number {
   return Math.hypot(to.x - from.x, to.y - from.y);
+}
+
+function boxIntersects(left: SyntheticLabelCollisionBox, right: SyntheticLabelCollisionBox): boolean {
+  return left.minX <= right.maxX && left.maxX >= right.minX && left.minY <= right.maxY && left.maxY >= right.minY;
 }
 
 function polylineLength(points: readonly Vec2[]): number {
@@ -173,9 +182,25 @@ export function buildNoEntryVisualItems(overlays: readonly RoadRestrictionOverla
   }));
 }
 
-export function buildOneWayVisualItems(overlays: readonly RoadRestrictionOverlay[]): RestrictionMapVisualItem[] {
+function oneWayArrowSpacingForViewport(viewport?: ScreenMapViewport): number {
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+  const tier = viewport ? restrictionZoomTierForViewport(viewport) : "high";
+
+  if (tier === "medium") {
+    return decluttering.oneWayArrowMinSpacingMeters * decluttering.mediumOneWayArrowSpacingMultiplier;
+  }
+
+  return decluttering.oneWayArrowMinSpacingMeters * decluttering.highOneWayArrowSpacingMultiplier;
+}
+
+export function buildOneWayVisualItems(
+  overlays: readonly RoadRestrictionOverlay[],
+  options: { viewport?: ScreenMapViewport } = {}
+): RestrictionMapVisualItem[] {
   const lastRenderedPointByRoadGroup = new Map<string, Vec2>();
   const items: RestrictionMapVisualItem[] = [];
+  const arrowStyle = TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay;
+  const minSpacingMeters = oneWayArrowSpacingForViewport(options.viewport);
 
   for (const overlay of roadRestrictionItemsByKind(overlays, "one-way")) {
     const direction = overlay.direction;
@@ -184,14 +209,17 @@ export function buildOneWayVisualItems(overlays: readonly RoadRestrictionOverlay
       continue;
     }
 
-    const ratios = distanceBetween(direction.from, direction.to) >= LONG_ROAD_ARROW_THRESHOLD ? [0.34, 0.66] : [0.5];
+    const ratios =
+      distanceBetween(direction.from, direction.to) >= LONG_ROAD_ARROW_THRESHOLD
+        ? arrowStyle.longRoadRatios
+        : [arrowStyle.shortRoadRatio];
     const roadGroupId = overlay.renderGroupId ?? overlay.roadId;
 
     ratios.forEach((ratio, index) => {
       const point = lerpPoint(direction.from, direction.to, ratio);
       const previousPoint = lastRenderedPointByRoadGroup.get(roadGroupId);
 
-      if (previousPoint && distanceBetween(previousPoint, point) < ONE_WAY_ARROW_MIN_SPACING_METERS) {
+      if (previousPoint && distanceBetween(previousPoint, point) < minSpacingMeters) {
         return;
       }
 
@@ -295,7 +323,7 @@ export function buildRestrictionMapVisualItems(
 ): RestrictionMapVisualItem[] {
   return [
     ...buildNoEntryVisualItems(input.roadRestrictionOverlays),
-    ...buildOneWayVisualItems(input.roadRestrictionOverlays),
+    ...buildOneWayVisualItems(input.roadRestrictionOverlays, { viewport: input.viewport }),
     ...buildRestrictedRoadVisualItems(input.roadRestrictionOverlays),
     ...buildTurnRestrictionVisualItemsOrEmpty(input.turnRestrictionVisuals),
     ...buildIllegalMovementVisualItems(input.routeIssueOverlays)
@@ -333,9 +361,39 @@ export function shouldShowRestrictionMapVisualItemAtZoom(
 
 export function filterRestrictionMapVisualItemsForViewport(
   items: readonly RestrictionMapVisualItem[],
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  options: FilterRestrictionMapVisualItemsOptions = {}
 ): RestrictionMapVisualItem[] {
-  return items.filter((item) => shouldShowRestrictionMapVisualItemAtZoom(item, viewport));
+  const visibleItems = items.filter((item) => shouldShowRestrictionMapVisualItemAtZoom(item, viewport));
+  const reviewItems = visibleItems.filter(isRouteReviewVisualItem);
+  const baseItems = visibleItems.filter((item) => !isRouteReviewVisualItem(item));
+  const acceptedBaseItems: RestrictionMapVisualItem[] = [];
+  const acceptedBoxes: SyntheticLabelCollisionBox[] = [];
+  const reviewPoints = reviewItems.map((item) => item.point);
+
+  const rankedBaseItems = [...baseItems].sort((left, right) => {
+    const leftPriority = restrictionCollisionPriority(left, reviewPoints);
+    const rightPriority = restrictionCollisionPriority(right, reviewPoints);
+
+    return rightPriority - leftPriority || left.id.localeCompare(right.id);
+  });
+
+  for (const item of rankedBaseItems) {
+    const itemBox = restrictionSymbolCollisionBox(item, viewport);
+
+    if (options.reservedBoxes?.some((box) => boxIntersects(itemBox, box))) {
+      continue;
+    }
+
+    if (acceptedBoxes.some((box) => boxIntersects(itemBox, box))) {
+      continue;
+    }
+
+    acceptedBaseItems.push(item);
+    acceptedBoxes.push(itemBox);
+  }
+
+  return [...acceptedBaseItems, ...reviewItems].sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
 export function restrictionMapVisualStyleForViewport(
@@ -385,6 +443,58 @@ export function roadRestrictionOverlayAlphaForViewport(
   }
 
   return decluttering.highRestrictionOverlayAlphaMultiplier;
+}
+
+function restrictionCollisionPriority(item: RestrictionMapVisualItem, reviewPoints: readonly Vec2[]): number {
+  const reviewProximityMeters = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.reviewRestrictionProximityMeters;
+  const nearReviewIssue = reviewPoints.some((point) => distanceBetween(item.point, point) <= reviewProximityMeters);
+
+  return item.priority + (nearReviewIssue ? 25 : 0);
+}
+
+function restrictionSymbolCollisionBox(item: RestrictionMapVisualItem, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
+  const point = mapPointToScreen(item.point, viewport);
+  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport);
+  const radius = restrictionSymbolRadius(item) * zoomStyle.scale + TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.restrictionSymbolCollisionPadding;
+
+  return {
+    id: `restriction-symbol-${item.id}`,
+    minX: point.x - radius,
+    minY: point.y - radius,
+    maxX: point.x + radius,
+    maxY: point.y + radius
+  };
+}
+
+function restrictionSymbolRadius(item: RestrictionMapVisualItem): number {
+  if (item.symbol === "one-way-arrow") {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay;
+    return Math.max(style.tipDistance, style.tailDistance) + style.collisionPadding;
+  }
+
+  if (item.symbol === "no-entry-sign") {
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.noEntryMarker.radius;
+  }
+
+  if (item.symbol === "restricted-road-sign") {
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.restrictedMarker.radius;
+  }
+
+  if (item.symbol === "turn-ban-sign") {
+    return TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius + TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding;
+}
+
+function mapPointToScreen(point: Vec2, viewport: ScreenMapViewport): Vec2 {
+  const width = viewport.mapBounds.maxX - viewport.mapBounds.minX;
+  const height = viewport.mapBounds.maxY - viewport.mapBounds.minY;
+
+  return {
+    x: width === 0 ? 0 : ((point.x - viewport.mapBounds.minX) / width) * viewport.width,
+    y: height === 0 ? 0 : ((point.y - viewport.mapBounds.minY) / height) * viewport.height
+  };
 }
 
 function reviewItemText(item: RestrictionFocusReviewItem): string {
@@ -509,25 +619,25 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "illegal-movement",
-      label: "Illegal movement",
-      description: "Solid red route section marks the offending attempted movement.",
+      label: "Review warning",
+      description: "Red review marks show the route section or warning that needs attention.",
       tone: "illegal"
     },
     {
       id: "no-entry",
-      label: "No Entry",
-      description: "Red barred-circle symbols mark no-entry movements.",
+      label: "No entry / blocked",
+      description: "Red barred-circle symbols mark no-entry or blocked movements.",
       tone: "restriction"
     },
     {
       id: "one-way",
-      label: "Blue one-way arrows",
+      label: "One-way street",
       description: "Blue arrowheads show the permitted one-way travel direction.",
       tone: "one-way"
     },
     {
       id: "prohibited-turn",
-      label: "Prohibited Turn",
+      label: "Restricted turn",
       description: "Compact turn-ban symbols mark banned junction turns.",
       tone: "turn"
     },

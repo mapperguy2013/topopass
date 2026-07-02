@@ -47,20 +47,20 @@ function legendText(id: string): string {
   return `${item.label} ${item.description}`;
 }
 
-test("Stage 131 reduces repeated one-way arrows on the same road under 50m", () => {
+test("Stage 131 reduces repeated one-way arrows on the same road under the token spacing", () => {
   const items = buildOneWayVisualItems([
     oneWayOverlay({ roadId: "same-road", from: { x: 0, y: 0 }, to: { x: 40, y: 0 } }),
     oneWayOverlay({ roadId: "same-road", from: { x: 30, y: 0 }, to: { x: 70, y: 0 } })
   ]);
 
-  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 50);
+  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 56);
   assert.deepEqual(
     items.map((item) => item.id),
     ["one-way:same-road:0"]
   );
 });
 
-test("Stage 131 preserves one-way arrows on the same road at least 50m apart", () => {
+test("Stage 131 preserves one-way arrows on the same road at least the token spacing apart", () => {
   const items = buildOneWayVisualItems([
     oneWayOverlay({ roadId: "long-one-way", from: { x: 0, y: 0 }, to: { x: 220, y: 0 } })
   ]);
