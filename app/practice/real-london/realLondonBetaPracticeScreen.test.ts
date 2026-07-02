@@ -205,6 +205,27 @@ test("Stage 139 mobile feedback and map interaction affordances stay usable", ()
   assert.equal(model.mapInteraction.submitActionLabel, "Submit Attempt");
 });
 
+test("Stage 156 mobile and tablet map readability contract uses central touch-safe values", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.mobileLayout.mapFirstLayout, true);
+  assert.equal(model.mobileLayout.mapControlsMinTouchTargetPx, 44);
+  assert.equal(model.mobileLayout.mapControlsAvoidPrimaryMarkers, true);
+  assert.equal(model.mobileLayout.mapLegendCollapsedByDefault, true);
+  assert.equal(model.mobileLayout.mapLegendMaxHeightPx, 192);
+  assert.equal(model.mobileLayout.markerHitTargetMinPx, 44);
+  assert.ok(model.mobileLayout.reviewIssueHitTargetMinPx > model.mobileLayout.markerHitTargetMinPx);
+  assert.ok(model.mobileLayout.calloutMinHeightPx >= 34);
+  assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, 420);
+  assert.equal(model.mobileLayout.routeRunnerTabletMapPreferredMinHeightPx, 560);
+  assert.equal(model.mobileLayout.routeRunnerLandscapeMapPreferredMinHeightPx, 360);
+  assert.ok(
+    model.mobileLayout.routeRunnerTabletMapPreferredMinHeightPx >
+      model.mobileLayout.routeRunnerMapPreferredMinHeightPx
+  );
+  assert.equal(model.mobileLayout.horizontalOverflowRisk, false);
+});
+
 test("Stage 139 one-way arrow visual thinning remains presentation-only", () => {
   const model = requireAvailableModel();
 

@@ -26,6 +26,22 @@ Use the dev route-runner visual comparison scenarios for future checks:
   context, hierarchy, labels, restrictions, learner overlays, warnings,
   callouts, and selected focus.
 
+Use the Stage 156 responsive visual QA scenarios for phone and tablet checks:
+
+- `mobile-dense-central-readability`
+- `mobile-route-drawing`
+- `mobile-route-review`
+- `mobile-one-way-restriction-declutter`
+- `mobile-marker-hint-collision`
+- `tablet-portrait-learner-overlays`
+- `tablet-landscape-review-panels`
+- `tablet-context-orientation`
+
+These scenarios use deterministic viewports for small phone portrait, large
+phone portrait, phone landscape, tablet portrait, tablet landscape, and a narrow
+embedded map. They are configuration/readability fixtures, not pixel-perfect
+screenshot assertions.
+
 ## What Works
 
 - Major, secondary, and local roads now read as a hierarchy rather than a raw
@@ -47,6 +63,10 @@ Use the dev route-runner visual comparison scenarios for future checks:
   appears inside the route map frame when OSM-derived data is selected.
 - The compact learner legend explains road hierarchy, route overlays,
   restrictions, objective markers, parks, water, rail, and stations.
+- Mobile and tablet readability now has explicit 44 px touch-target tokens,
+  larger in-map control tap areas, mobile-constrained legend height,
+  touch/pen-safe canvas gesture handling, and label reservations that account
+  for finger-sized marker, hint, and review issue targets.
 
 ## Remaining Visual Issues
 
@@ -57,7 +77,8 @@ Use the dev route-runner visual comparison scenarios for future checks:
 | Medium-zoom restriction markers are intentionally quiet and may need manual zoom for review detail in dense junctions. | Minor | Phase 6 accepted | Review-critical restriction markers remain visible; base restriction clutter is reduced by design. |
 | Some bridge and water-crossing names depend on available committed fixture tags. | Future polish | Deferred | No OSM conversion or fixture invention was done in Phase 6. |
 | Accepted alternative, route completed, and some hint/callout states are represented in QA fixtures and tokens, but appear only when existing review or fixture data supplies them. | Future polish | Deferred | This is expected until route-review data grows in a later phase. |
-| Mobile map space is improved, but opening the full legend on very small screens can temporarily cover the lower-left map area. | Minor | Phase 6 accepted | The legend is collapsed by default and avoids primary drawing controls. |
+| Mobile map space is improved, but opening the full legend on very small screens can temporarily cover the lower-left map area. | Minor | Phase 6 accepted | Stage 156 constrains legend height and keeps it collapsed by default; learners can still open it when needed. |
+| Stage 156 responsive QA is fixture/configuration based rather than device screenshot automation. | Future polish | Deferred | Tests verify scenario wiring, touch targets, and map layout metadata. Full device screenshot comparison belongs to a later QA investment. |
 
 ## Acceptance Decision
 

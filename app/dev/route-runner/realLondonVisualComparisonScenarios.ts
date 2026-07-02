@@ -19,6 +19,26 @@ export type RealLondonVisualComparisonModeId =
 
 export type RealLondonReadabilityDeclutterTier = "overview" | "learner" | "detail";
 
+export type RealLondonResponsiveViewportId =
+  | "small-mobile-portrait"
+  | "large-mobile-portrait"
+  | "mobile-landscape"
+  | "tablet-portrait"
+  | "tablet-landscape"
+  | "narrow-embedded-map";
+
+export type RealLondonResponsiveDeviceClass = "mobile" | "tablet";
+
+export type RealLondonResponsiveVisualScenarioId =
+  | "mobile-dense-central-readability"
+  | "mobile-route-drawing"
+  | "mobile-route-review"
+  | "mobile-one-way-restriction-declutter"
+  | "mobile-marker-hint-collision"
+  | "tablet-portrait-learner-overlays"
+  | "tablet-landscape-review-panels"
+  | "tablet-context-orientation";
+
 export type RealLondonVisualComparisonLayer =
   | "raw-road-graph"
   | "road-hierarchy"
@@ -128,6 +148,47 @@ export type RealLondonVisualReadabilityScenario = {
   expected: RealLondonVisualExpectedCategories;
 };
 
+export type RealLondonResponsiveVisualViewport = RealLondonVisualViewport & {
+  id: RealLondonResponsiveViewportId;
+  label: string;
+  width: number;
+  height: number;
+  deviceClass: RealLondonResponsiveDeviceClass;
+  orientation: "portrait" | "landscape";
+  expectedMapMinHeight: number;
+};
+
+export type RealLondonResponsiveScenarioExpected = {
+  requiresMapFirstLayout: boolean;
+  requiresTouchDrawing: boolean;
+  requiresCollapsedPanels: boolean;
+  requiresMinTapTargetPx: number;
+  categories: (
+    | "roads-by-hierarchy"
+    | "street-labels"
+    | "context-labels"
+    | "route-overlays"
+    | "start-destination-markers"
+    | "checkpoints"
+    | "hints"
+    | "review-callouts"
+    | "one-way-symbols"
+    | "restriction-symbols"
+    | "decluttering-tier"
+    | "legend-attribution"
+  )[];
+};
+
+export type RealLondonResponsiveVisualScenario = {
+  id: RealLondonResponsiveVisualScenarioId;
+  label: string;
+  description: string;
+  baseScenarioId: RealLondonVisualReadabilityScenarioId;
+  viewportId: RealLondonResponsiveViewportId;
+  comparisonModeIds: RealLondonVisualComparisonModeId[];
+  expected: RealLondonResponsiveScenarioExpected;
+};
+
 export const REAL_LONDON_VISUAL_COMPARISON_MODES: RealLondonVisualComparisonMode[] = [
   {
     id: "plain-route-graph",
@@ -226,6 +287,87 @@ export const FINAL_PHASE_6_REAL_LONDON_LAYER_STACK: RealLondonFinalPhase6Layer[]
   "hints",
   "review-callouts",
   "selected-focused-overlays"
+];
+
+export const REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS: RealLondonResponsiveVisualViewport[] = [
+  {
+    id: "small-mobile-portrait",
+    label: "Small mobile portrait",
+    width: 360,
+    height: 740,
+    deviceClass: "mobile",
+    orientation: "portrait",
+    expectedMapMinHeight: 420,
+    center: { x: 18, y: -52 },
+    bounds: { minX: -210, minY: -260, maxX: 170, maxY: 145 },
+    zoom: 1.65,
+    declutterTier: "learner"
+  },
+  {
+    id: "large-mobile-portrait",
+    label: "Large mobile portrait",
+    width: 430,
+    height: 932,
+    deviceClass: "mobile",
+    orientation: "portrait",
+    expectedMapMinHeight: 420,
+    center: { x: 18, y: -52 },
+    bounds: { minX: -230, minY: -270, maxX: 205, maxY: 160 },
+    zoom: 1.7,
+    declutterTier: "learner"
+  },
+  {
+    id: "mobile-landscape",
+    label: "Mobile landscape",
+    width: 844,
+    height: 390,
+    deviceClass: "mobile",
+    orientation: "landscape",
+    expectedMapMinHeight: 360,
+    center: { x: 0, y: -30 },
+    bounds: { minX: -255, minY: -195, maxX: 255, maxY: 135 },
+    zoom: 1.35,
+    declutterTier: "overview"
+  },
+  {
+    id: "tablet-portrait",
+    label: "Tablet portrait",
+    width: 768,
+    height: 1024,
+    deviceClass: "tablet",
+    orientation: "portrait",
+    expectedMapMinHeight: 560,
+    center: { x: 24, y: -54 },
+    bounds: { minX: -245, minY: -280, maxX: 245, maxY: 160 },
+    zoom: 1.75,
+    declutterTier: "learner"
+  },
+  {
+    id: "tablet-landscape",
+    label: "Tablet landscape",
+    width: 1024,
+    height: 768,
+    deviceClass: "tablet",
+    orientation: "landscape",
+    expectedMapMinHeight: 560,
+    center: { x: 22, y: -46 },
+    bounds: { minX: -267, minY: -286, maxX: 267, maxY: 210 },
+    zoom: 1.55,
+    declutterTier: "detail"
+  },
+  {
+    id: "narrow-embedded-map",
+    label: "Narrow embedded map",
+    width: 320,
+    height: 640,
+    deviceClass: "mobile",
+    orientation: "portrait",
+    expectedMapMinHeight: 420,
+    center: { x: -34, y: -6 },
+    bounds: { minX: -235, minY: -220, maxX: 145, maxY: 170 },
+    zoom: 1.2,
+    declutterTier: "overview"
+  }
 ];
 
 export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabilityScenario[] = [
@@ -562,10 +704,184 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
   }
 ];
 
+export const REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS: RealLondonResponsiveVisualScenario[] = [
+  {
+    id: "mobile-dense-central-readability",
+    label: "Mobile dense central readability",
+    description:
+      "Small portrait viewport for checking dense roads, label thinning, and map-first readability without side panels.",
+    baseScenarioId: "dense-central-readability",
+    viewportId: "small-mobile-portrait",
+    comparisonModeIds: ["plain-route-graph", "phase-6-street-atlas"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: true,
+      requiresMinTapTargetPx: 44,
+      categories: ["roads-by-hierarchy", "street-labels", "decluttering-tier", "legend-attribution"]
+    }
+  },
+  {
+    id: "mobile-route-drawing",
+    label: "Mobile route drawing",
+    description:
+      "Large portrait phone viewport with route drawing controls, objective markers, checkpoints, and hints visible above the map.",
+    baseScenarioId: "learner-route-overlay-review",
+    viewportId: "large-mobile-portrait",
+    comparisonModeIds: ["learner-route-overlay"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: true,
+      requiresMinTapTargetPx: 44,
+      categories: [
+        "roads-by-hierarchy",
+        "route-overlays",
+        "start-destination-markers",
+        "checkpoints",
+        "hints",
+        "decluttering-tier"
+      ]
+    }
+  },
+  {
+    id: "mobile-route-review",
+    label: "Mobile route review",
+    description:
+      "Portrait phone review state preserving warning callouts, route issues, checkpoints, and restrictions after submission.",
+    baseScenarioId: "learner-route-overlay-review",
+    viewportId: "small-mobile-portrait",
+    comparisonModeIds: ["route-review-readability"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: true,
+      requiresMinTapTargetPx: 44,
+      categories: [
+        "route-overlays",
+        "review-callouts",
+        "start-destination-markers",
+        "checkpoints",
+        "restriction-symbols",
+        "decluttering-tier"
+      ]
+    }
+  },
+  {
+    id: "mobile-one-way-restriction-declutter",
+    label: "Mobile one-way and restriction declutter",
+    description:
+      "Narrow phone viewport for one-way-heavy local streets where normal restrictions thin out but review-critical symbols remain.",
+    baseScenarioId: "one-way-restriction-declutter",
+    viewportId: "narrow-embedded-map",
+    comparisonModeIds: ["phase-6-street-atlas", "route-review-readability"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: true,
+      requiresMinTapTargetPx: 44,
+      categories: ["one-way-symbols", "restriction-symbols", "review-callouts", "decluttering-tier"]
+    }
+  },
+  {
+    id: "mobile-marker-hint-collision",
+    label: "Mobile marker and hint collision",
+    description:
+      "Phone portrait fixture for checking that objective markers, hint dots, and review warnings reserve enough label space.",
+    baseScenarioId: "learner-route-overlay-review",
+    viewportId: "large-mobile-portrait",
+    comparisonModeIds: ["learner-route-overlay", "route-review-readability"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: true,
+      requiresMinTapTargetPx: 44,
+      categories: [
+        "street-labels",
+        "start-destination-markers",
+        "checkpoints",
+        "hints",
+        "review-callouts",
+        "decluttering-tier"
+      ]
+    }
+  },
+  {
+    id: "tablet-portrait-learner-overlays",
+    label: "Tablet portrait learner overlays",
+    description:
+      "Tablet portrait viewport for checking larger map area, route overlays, objectives, hints, and context labels together.",
+    baseScenarioId: "learner-route-overlay-review",
+    viewportId: "tablet-portrait",
+    comparisonModeIds: ["learner-route-overlay"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: true,
+      requiresMinTapTargetPx: 44,
+      categories: [
+        "roads-by-hierarchy",
+        "context-labels",
+        "route-overlays",
+        "start-destination-markers",
+        "checkpoints",
+        "hints",
+        "decluttering-tier"
+      ]
+    }
+  },
+  {
+    id: "tablet-landscape-review-panels",
+    label: "Tablet landscape review panels",
+    description:
+      "Tablet landscape viewport for checking route review overlays with map controls and summary panels sharing horizontal space.",
+    baseScenarioId: "complete-phase-6-stack-integration",
+    viewportId: "tablet-landscape",
+    comparisonModeIds: ["route-review-readability"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: false,
+      requiresMinTapTargetPx: 44,
+      categories: [
+        "roads-by-hierarchy",
+        "context-labels",
+        "route-overlays",
+        "review-callouts",
+        "restriction-symbols",
+        "legend-attribution",
+        "decluttering-tier"
+      ]
+    }
+  },
+  {
+    id: "tablet-context-orientation",
+    label: "Tablet context orientation",
+    description:
+      "Tablet landscape context viewport for park, water, rail, station, landmark, and area-name readability.",
+    baseScenarioId: "park-water-rail-station-context",
+    viewportId: "tablet-landscape",
+    comparisonModeIds: ["phase-6-street-atlas"],
+    expected: {
+      requiresMapFirstLayout: true,
+      requiresTouchDrawing: true,
+      requiresCollapsedPanels: false,
+      requiresMinTapTargetPx: 44,
+      categories: ["roads-by-hierarchy", "context-labels", "street-labels", "decluttering-tier", "legend-attribution"]
+    }
+  }
+];
+
 export function getRealLondonVisualReadabilityScenario(
   scenarioId: RealLondonVisualReadabilityScenarioId
 ): RealLondonVisualReadabilityScenario | undefined {
   return REAL_LONDON_VISUAL_READABILITY_SCENARIOS.find((scenario) => scenario.id === scenarioId);
+}
+
+export function getRealLondonResponsiveVisualScenario(
+  scenarioId: RealLondonResponsiveVisualScenarioId
+): RealLondonResponsiveVisualScenario | undefined {
+  return REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.find((scenario) => scenario.id === scenarioId);
 }
 
 export function buildRealLondonVisualComparisonScenarioSummary() {
@@ -574,6 +890,8 @@ export function buildRealLondonVisualComparisonScenarioSummary() {
     fixtureName: PHASE_6_VISUAL_QA_FIXTURE_NAME,
     comparisonModeIds: REAL_LONDON_VISUAL_COMPARISON_MODES.map((mode) => mode.id),
     scenarioIds: REAL_LONDON_VISUAL_READABILITY_SCENARIOS.map((scenario) => scenario.id),
+    responsiveViewportIds: REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.map((viewport) => viewport.id),
+    responsiveScenarioIds: REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.map((scenario) => scenario.id),
     viewportBounds: qaMapBounds,
     finalPhase6LayerStack: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
     exerciseId: qaExercise?.id ?? null,

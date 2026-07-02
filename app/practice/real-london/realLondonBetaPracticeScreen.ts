@@ -6,6 +6,7 @@ import {
   type RouteExercise,
   type RouteStop
 } from "../../../lib/map-engine/index.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "../../dev/route-runner/topopassCartographyStyle.ts";
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   getRealLondonPilotExerciseMetadata,
@@ -107,7 +108,16 @@ export type RealLondonBetaPracticeScreenModel =
         feedbackMinTouchTargetPx: 44;
         routeRunnerMapMinHeightPx: 360;
         routeRunnerMapPreferredMinHeightPx: 420;
+        routeRunnerTabletMapPreferredMinHeightPx: number;
+        routeRunnerLandscapeMapPreferredMinHeightPx: number;
         routeRunnerMapTouchAction: "none";
+        mapControlsMinTouchTargetPx: number;
+        mapControlsAvoidPrimaryMarkers: true;
+        mapLegendCollapsedByDefault: true;
+        mapLegendMaxHeightPx: number;
+        markerHitTargetMinPx: number;
+        reviewIssueHitTargetMinPx: number;
+        calloutMinHeightPx: number;
         restrictionSummaryFirst: true;
         restrictionDetailsCollapsedByDefault: true;
         restrictionDebugDetailsHidden: true;
@@ -241,7 +251,16 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       feedbackMinTouchTargetPx: 44,
       routeRunnerMapMinHeightPx: 360,
       routeRunnerMapPreferredMinHeightPx: 420,
+      routeRunnerTabletMapPreferredMinHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.tabletMapMinHeightPx,
+      routeRunnerLandscapeMapPreferredMinHeightPx: 360,
       routeRunnerMapTouchAction: "none",
+      mapControlsMinTouchTargetPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.compactControlMinHeightPx,
+      mapControlsAvoidPrimaryMarkers: true,
+      mapLegendCollapsedByDefault: true,
+      mapLegendMaxHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.legendMaxHeightPx,
+      markerHitTargetMinPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.minTapTargetPx,
+      reviewIssueHitTargetMinPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.reviewIssueHitRadius * 2,
+      calloutMinHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.calloutMinHeight,
       restrictionSummaryFirst: true,
       restrictionDetailsCollapsedByDefault: true,
       restrictionDebugDetailsHidden: true,

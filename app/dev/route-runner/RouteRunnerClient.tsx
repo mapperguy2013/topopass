@@ -2028,6 +2028,10 @@ function shouldDrawLearnerReviewCallout(item: RestrictionMapVisualItem): boolean
   return item.kind === "illegal-movement" || item.kind === "missed-restriction";
 }
 
+function shouldPreventNativeMapGesture(pointerType: string): boolean {
+  return pointerType === "touch" || pointerType === "pen";
+}
+
 function drawLearnerOverlayCallout(
   context: CanvasRenderingContext2D,
   anchor: Vec2,
@@ -2038,15 +2042,25 @@ function drawLearnerOverlayCallout(
   const text = compactLearnerCalloutText(label);
   const viewportWidth = viewport.width;
   const viewportHeight = viewport.height;
+  const mobileReadability = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability;
+  const touchTargets = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets;
+  const viewportPadding = mobileReadability.calloutViewportPaddingPx;
 
   context.save();
   context.font = style.font;
 
-  const textWidth = Math.min(context.measureText(text).width, style.maxWidth);
+  const viewportAwareMaxWidth = Math.min(style.maxWidth, Math.max(96, viewportWidth - viewportPadding * 2));
+  const textWidth = Math.min(context.measureText(text).width, viewportAwareMaxWidth);
   const width = textWidth + style.paddingX * 2;
-  const height = 20 + style.paddingY * 2;
-  const x = Math.min(Math.max(anchor.x + style.offsetX, 6), Math.max(6, viewportWidth - width - 6));
-  const y = Math.min(Math.max(anchor.y + style.offsetY, 6), Math.max(6, viewportHeight - height - 6));
+  const height = Math.max(20 + style.paddingY * 2, touchTargets.calloutMinHeight);
+  const x = Math.min(
+    Math.max(anchor.x + style.offsetX, viewportPadding),
+    Math.max(viewportPadding, viewportWidth - width - viewportPadding)
+  );
+  const y = Math.min(
+    Math.max(anchor.y + style.offsetY, viewportPadding),
+    Math.max(viewportPadding, viewportHeight - height - viewportPadding)
+  );
   const connectorTarget = {
     x: Math.min(Math.max(anchor.x, x + style.borderRadius), x + width - style.borderRadius),
     y: Math.min(Math.max(anchor.y, y + style.borderRadius), y + height - style.borderRadius)
@@ -2568,6 +2582,7 @@ function buildLabelReservationBoxes(input: {
 }): SyntheticLabelCollisionBox[] {
   const boxes: SyntheticLabelCollisionBox[] = [];
   const labelCollisionStyle = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
+  const touchTargets = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets;
 
   addPolylineReservationBoxes({
     boxes,
@@ -2608,7 +2623,10 @@ function buildLabelReservationBoxes(input: {
         id: `snap-point-${index}`,
         point: point.originalPoint,
         viewport: input.viewport,
-        radius: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.radius + labelCollisionStyle.markerPadding
+        radius: Math.max(
+          TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.radius + labelCollisionStyle.markerPadding,
+          touchTargets.hintHitRadius
+        )
       })
     );
   });
@@ -2649,9 +2667,11 @@ function buildLabelReservationBoxes(input: {
         point: overlay.midpoint,
         viewport: input.viewport,
         radius:
-          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
-          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding +
-          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
+          Math.max(
+            TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
+              TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding,
+            touchTargets.reviewIssueHitRadius
+          ) + TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
       })
     );
   });
@@ -2679,9 +2699,10 @@ function buildLabelReservationBoxes(input: {
         point: node,
         viewport: input.viewport,
         radius:
-          markerStyle.radius +
-          markerStyle.haloRadiusPadding +
-          TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
+          Math.max(
+            markerStyle.radius + markerStyle.haloRadiusPadding,
+            index === 0 || isFinish ? touchTargets.markerHitRadius : touchTargets.checkpointHitRadius
+          ) + TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
       })
     );
   });
@@ -4338,7 +4359,7 @@ export function RouteRunnerClient({
     };
     const isMiddleButtonPan = isMiddleButtonMapPanPointer(pointerInput);
 
-    if (isMiddleButtonPan) {
+    if (isMiddleButtonPan || shouldPreventNativeMapGesture(event.pointerType)) {
       event.preventDefault();
     }
 
@@ -4378,7 +4399,10 @@ export function RouteRunnerClient({
 
   function handlePointerMove(event: PointerEvent<HTMLCanvasElement>) {
     if (isPanningMap) {
-      if (isMiddleButtonMapPanActive({ buttons: event.buttons, pointerType: event.pointerType })) {
+      if (
+        isMiddleButtonMapPanActive({ buttons: event.buttons, pointerType: event.pointerType }) ||
+        shouldPreventNativeMapGesture(event.pointerType)
+      ) {
         event.preventDefault();
       }
 
@@ -4412,6 +4436,10 @@ export function RouteRunnerClient({
       return;
     }
 
+    if (shouldPreventNativeMapGesture(event.pointerType)) {
+      event.preventDefault();
+    }
+
     const canvas = event.currentTarget;
 
     if (!canvas) {
@@ -4433,7 +4461,10 @@ export function RouteRunnerClient({
 
   function handlePointerEnd(event: PointerEvent<HTMLCanvasElement>) {
     if (isPanningMap) {
-      if (isMiddleButtonMapPanPointer({ button: event.button, pointerType: event.pointerType })) {
+      if (
+        isMiddleButtonMapPanPointer({ button: event.button, pointerType: event.pointerType }) ||
+        shouldPreventNativeMapGesture(event.pointerType)
+      ) {
         event.preventDefault();
       }
 
@@ -4451,6 +4482,10 @@ export function RouteRunnerClient({
 
     if (!isDrawing) {
       return;
+    }
+
+    if (shouldPreventNativeMapGesture(event.pointerType)) {
+      event.preventDefault();
     }
 
     const canvas = event.currentTarget;
@@ -5221,13 +5256,13 @@ export function RouteRunnerClient({
               }`}
               style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
             >
-              <div className="pointer-events-none absolute right-4 top-4 z-20 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2">
+              <div className="pointer-events-none absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1.5 sm:right-4 sm:top-4 sm:max-w-[calc(100%-2rem)] sm:gap-2">
                 <div className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setRouteMapInteractionMode("draw")}
                     aria-pressed={mapInteractionMode === "draw"}
-                    className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                       mapInteractionMode === "draw"
                         ? "bg-blue-700 text-white"
                         : "bg-white/95 text-slate-700 hover:bg-slate-50"
@@ -5239,7 +5274,7 @@ export function RouteRunnerClient({
                     type="button"
                     onClick={() => setRouteMapInteractionMode("pan")}
                     aria-pressed={mapInteractionMode === "pan"}
-                    className={`inline-flex shrink-0 items-center justify-center whitespace-nowrap border-l border-slate-300 px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap border-l border-slate-300 px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                       mapInteractionMode === "pan"
                         ? "bg-blue-700 text-white"
                         : "bg-white/95 text-slate-700 hover:bg-slate-50"
@@ -5252,7 +5287,7 @@ export function RouteRunnerClient({
                   type="button"
                   onClick={undoLastDrawnStroke}
                   disabled={!hasUndoableDrawnStroke}
-                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   Undo
                 </button>
@@ -5260,7 +5295,7 @@ export function RouteRunnerClient({
                   type="button"
                   onClick={clearDrawnAttempt}
                   disabled={drawnTrace.points.length === 0 && !isDrawing}
-                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   {isStudentBetaRouteRunner ? "Clear" : "Clear drawing"}
                 </button>
@@ -5270,7 +5305,7 @@ export function RouteRunnerClient({
                     onClick={toggleFastestRouteOverlay}
                     disabled={selectedExerciseIsInvalid}
                     aria-pressed={fastestRouteRevealState.visible}
-                    className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-sky-300 bg-white/95 px-3 py-2 text-sm font-semibold text-sky-900 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-sky-100"
+                    className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-sky-300 bg-white/95 px-3 py-2 text-sm font-semibold text-sky-900 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:border-slate-300 disabled:text-slate-400 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-sky-100"
                   >
                     {selectedExerciseIsInvalid
                       ? "Fastest route unavailable"
@@ -5289,7 +5324,7 @@ export function RouteRunnerClient({
                       }))
                     }
                     aria-pressed={osmDebugOverlayState.visible}
-                    className={`pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-100 ${
+                    className={`pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-cyan-100 ${
                       osmDebugOverlayState.visible
                         ? "border-cyan-500 bg-cyan-700 text-white hover:bg-cyan-800"
                         : "border-cyan-300 bg-white/95 text-cyan-900 hover:bg-cyan-50"
@@ -5307,7 +5342,7 @@ export function RouteRunnerClient({
                       }))
                     }
                     aria-pressed={osmExerciseDebugOverlayState.visible}
-                    className={`pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-100 ${
+                    className={`pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-violet-100 ${
                       osmExerciseDebugOverlayState.visible
                         ? "border-violet-500 bg-violet-700 text-white hover:bg-violet-800"
                         : "border-violet-300 bg-white/95 text-violet-900 hover:bg-violet-50"
@@ -5319,19 +5354,19 @@ export function RouteRunnerClient({
                 <button
                   type="button"
                   onClick={resetRouteMapView}
-                  className="pointer-events-auto inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   {isStudentBetaRouteRunner ? "Reset" : "Reset view"}
                 </button>
               </div>
-              <div className="pointer-events-auto absolute right-4 top-24 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md">
+              <div className="pointer-events-auto absolute right-2 top-28 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md sm:right-4 sm:top-24">
                 <button
                   type="button"
                   onClick={zoomInRouteMap}
                   disabled={!canZoomIn}
                   aria-label="Zoom in"
                   title="Zoom in"
-                  className="inline-flex h-10 w-10 items-center justify-center text-lg font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="inline-flex h-11 w-11 items-center justify-center text-lg font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   +
                 </button>
@@ -5341,20 +5376,23 @@ export function RouteRunnerClient({
                   disabled={!canZoomOut}
                   aria-label="Zoom out"
                   title="Zoom out"
-                  className="inline-flex h-10 w-10 items-center justify-center border-t border-slate-200 text-lg font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  className="inline-flex h-11 w-11 items-center justify-center border-t border-slate-200 text-lg font-bold text-slate-800 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   -
                 </button>
               </div>
-              <div className="pointer-events-none absolute bottom-4 right-4 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
+              <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm sm:bottom-4 sm:right-4">
                 {Math.round(mapViewportState.zoom * 100)}%
               </div>
-              <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex max-w-[min(28rem,calc(100%-7rem))] flex-col items-start gap-2">
+              <div className="pointer-events-none absolute bottom-2 left-2 z-20 flex max-w-[min(24rem,calc(100%-5.75rem))] flex-col items-start gap-2 sm:bottom-4 sm:left-4 sm:max-w-[min(28rem,calc(100%-7rem))]">
                 <details className="pointer-events-auto max-w-full rounded-lg border border-slate-200 bg-white/95 text-xs text-slate-800 shadow-md">
-                  <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-slate-900">
+                  <summary className="min-h-11 cursor-pointer select-none px-3 py-3 font-semibold text-slate-900 sm:min-h-0 sm:py-2">
                     Map legend
                   </summary>
-                  <div className="grid max-h-56 gap-1 overflow-y-auto border-t border-slate-100 p-2 sm:grid-cols-2">
+                  <div
+                    className="grid gap-1 overflow-y-auto border-t border-slate-100 p-2 sm:grid-cols-2"
+                    style={{ maxHeight: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.legendMaxHeightPx }}
+                  >
                     {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
                       <span
                         key={item.id}
@@ -5383,7 +5421,7 @@ export function RouteRunnerClient({
                 onPointerCancel={handlePointerEnd}
                 onPointerLeave={handlePointerLeave}
                 onAuxClick={handleMapAuxClick}
-                className={`block h-full w-full touch-none ${
+                className={`block h-full w-full touch-none select-none overscroll-contain ${
                   isPanningMap ? "cursor-grabbing" : isPanMode ? "cursor-grab" : "cursor-crosshair"
                 }`}
                 aria-label={`${activeMap.name} drawing capture canvas`}

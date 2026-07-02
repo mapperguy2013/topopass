@@ -42,9 +42,12 @@ import {
 } from "./realLondonVisualQaScenario.ts";
 import {
   FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
+  REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS,
+  REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS,
   REAL_LONDON_VISUAL_COMPARISON_MODES,
   REAL_LONDON_VISUAL_READABILITY_SCENARIOS,
   buildRealLondonVisualComparisonScenarioSummary,
+  getRealLondonResponsiveVisualScenario,
   getRealLondonVisualReadabilityScenario
 } from "./realLondonVisualComparisonScenarios.ts";
 import {
@@ -318,6 +321,94 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
     assert.ok(scenario.viewport.bounds.minY >= comparisonSummary.viewportBounds.minY);
     assert.ok(scenario.viewport.bounds.maxY <= comparisonSummary.viewportBounds.maxY);
   }
+});
+
+test("Stage 156 responsive visual scenarios register deterministic mobile and tablet viewports", () => {
+  const comparisonSummary = buildRealLondonVisualComparisonScenarioSummary();
+
+  assert.deepEqual(comparisonSummary.responsiveViewportIds, [
+    "small-mobile-portrait",
+    "large-mobile-portrait",
+    "mobile-landscape",
+    "tablet-portrait",
+    "tablet-landscape",
+    "narrow-embedded-map"
+  ]);
+  assert.deepEqual(comparisonSummary.responsiveScenarioIds, [
+    "mobile-dense-central-readability",
+    "mobile-route-drawing",
+    "mobile-route-review",
+    "mobile-one-way-restriction-declutter",
+    "mobile-marker-hint-collision",
+    "tablet-portrait-learner-overlays",
+    "tablet-landscape-review-panels",
+    "tablet-context-orientation"
+  ]);
+
+  const viewportIds = new Set(REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.map((viewport) => viewport.id));
+  const baseScenarioIds = new Set(REAL_LONDON_VISUAL_READABILITY_SCENARIOS.map((scenario) => scenario.id));
+  const comparisonModeIds = new Set(REAL_LONDON_VISUAL_COMPARISON_MODES.map((mode) => mode.id));
+
+  assert.ok(REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.some((viewport) => viewport.deviceClass === "mobile"));
+  assert.ok(REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.some((viewport) => viewport.deviceClass === "tablet"));
+  assert.ok(REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.some((viewport) => viewport.orientation === "portrait"));
+  assert.ok(REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.some((viewport) => viewport.orientation === "landscape"));
+
+  for (const viewport of REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS) {
+    assert.ok(viewport.width > 0, viewport.id);
+    assert.ok(viewport.height > 0, viewport.id);
+    assert.ok(viewport.expectedMapMinHeight >= 360, viewport.id);
+    assert.ok(viewport.bounds.minX >= comparisonSummary.viewportBounds.minX, viewport.id);
+    assert.ok(viewport.bounds.maxX <= comparisonSummary.viewportBounds.maxX, viewport.id);
+    assert.ok(viewport.bounds.minY >= comparisonSummary.viewportBounds.minY, viewport.id);
+    assert.ok(viewport.bounds.maxY <= comparisonSummary.viewportBounds.maxY, viewport.id);
+  }
+
+  for (const scenario of REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS) {
+    assert.ok(getRealLondonResponsiveVisualScenario(scenario.id), scenario.id);
+    assert.ok(baseScenarioIds.has(scenario.baseScenarioId), scenario.id);
+    assert.ok(viewportIds.has(scenario.viewportId), scenario.id);
+    assert.ok(scenario.comparisonModeIds.every((modeId) => comparisonModeIds.has(modeId)), scenario.id);
+    assert.equal(scenario.expected.requiresMapFirstLayout, true, scenario.id);
+    assert.equal(scenario.expected.requiresTouchDrawing, true, scenario.id);
+    assert.ok(scenario.expected.requiresMinTapTargetPx >= 44, scenario.id);
+    assert.ok(scenario.expected.categories.includes("decluttering-tier"), scenario.id);
+  }
+});
+
+test("Stage 156 responsive visual scenarios cover learner mobile readability categories", () => {
+  const categories = new Set(REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.flatMap((scenario) => scenario.expected.categories));
+
+  for (const category of [
+    "roads-by-hierarchy",
+    "street-labels",
+    "context-labels",
+    "route-overlays",
+    "start-destination-markers",
+    "checkpoints",
+    "hints",
+    "review-callouts",
+    "one-way-symbols",
+    "restriction-symbols",
+    "decluttering-tier",
+    "legend-attribution"
+  ]) {
+    assert.ok(categories.has(category), category);
+  }
+
+  assert.ok(
+    REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.some(
+      (scenario) => scenario.id === "mobile-route-review" && scenario.expected.categories.includes("review-callouts")
+    )
+  );
+  assert.ok(
+    REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.some(
+      (scenario) =>
+        scenario.id === "mobile-one-way-restriction-declutter" &&
+        scenario.expected.categories.includes("one-way-symbols") &&
+        scenario.expected.categories.includes("restriction-symbols")
+    )
+  );
 });
 
 test("Stage 152 visual comparison scenarios cover expected Real London readability categories", () => {

@@ -411,6 +411,24 @@ export type TopopassStreetAtlasStyle = {
       outerRadius: number;
       markerRadiusPadding: number;
     };
+    touchTargets: {
+      minTapTargetPx: number;
+      markerHitRadius: number;
+      checkpointHitRadius: number;
+      hintHitRadius: number;
+      reviewIssueHitRadius: number;
+      restrictionHitRadius: number;
+      calloutMinHeight: number;
+    };
+    mobileReadability: {
+      labelDeclutterViewportWidthPx: number;
+      compactControlGapPx: number;
+      compactControlMinHeightPx: number;
+      legendMaxHeightPx: number;
+      mapMinHeightPx: number;
+      tabletMapMinHeightPx: number;
+      calloutViewportPaddingPx: number;
+    };
   };
   restrictions: {
     overlay: {
@@ -1693,6 +1711,24 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       innerRadius: 24,
       outerRadius: 31,
       markerRadiusPadding: 13
+    },
+    touchTargets: {
+      minTapTargetPx: 44,
+      markerHitRadius: 24,
+      checkpointHitRadius: 24,
+      hintHitRadius: 22,
+      reviewIssueHitRadius: 26,
+      restrictionHitRadius: 22,
+      calloutMinHeight: 34
+    },
+    mobileReadability: {
+      labelDeclutterViewportWidthPx: 480,
+      compactControlGapPx: 6,
+      compactControlMinHeightPx: 44,
+      legendMaxHeightPx: 192,
+      mapMinHeightPx: 420,
+      tabletMapMinHeightPx: 560,
+      calloutViewportPaddingPx: 8
     }
   },
   restrictions: {

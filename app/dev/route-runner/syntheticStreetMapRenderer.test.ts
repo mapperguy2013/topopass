@@ -264,6 +264,27 @@ test("Stage 153 learner overlay marker hint and callout tokens are complete and 
   assert.ok(learnerOverlays.selectedFocus.routeAlpha > 0.8);
 });
 
+test("Stage 156 mobile touch readability tokens are central and finger-safe", () => {
+  const learnerOverlays = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays;
+  const touchTargets = learnerOverlays.touchTargets;
+  const mobileReadability = learnerOverlays.mobileReadability;
+
+  assert.equal(touchTargets.minTapTargetPx, 44);
+  assert.ok(touchTargets.markerHitRadius * 2 >= touchTargets.minTapTargetPx);
+  assert.ok(touchTargets.checkpointHitRadius * 2 >= touchTargets.minTapTargetPx);
+  assert.ok(touchTargets.hintHitRadius * 2 >= touchTargets.minTapTargetPx);
+  assert.ok(touchTargets.reviewIssueHitRadius * 2 > touchTargets.minTapTargetPx);
+  assert.ok(touchTargets.restrictionHitRadius * 2 >= touchTargets.minTapTargetPx);
+  assert.ok(touchTargets.calloutMinHeight >= 32);
+  assert.ok(touchTargets.markerHitRadius > learnerOverlays.markers.checkpointBase.radius);
+  assert.ok(touchTargets.hintHitRadius > learnerOverlays.hints.marker.radius);
+  assert.ok(mobileReadability.compactControlMinHeightPx >= touchTargets.minTapTargetPx);
+  assert.ok(mobileReadability.legendMaxHeightPx <= 220);
+  assert.ok(mobileReadability.mapMinHeightPx >= 420);
+  assert.ok(mobileReadability.tabletMapMinHeightPx > mobileReadability.mapMinHeightPx);
+  assert.ok(mobileReadability.calloutViewportPaddingPx >= 6);
+});
+
 test("Stage 142 zoom and decluttering tokens are ordered finite and used by helpers", () => {
   const thresholds = TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds;
 

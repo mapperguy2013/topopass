@@ -878,6 +878,15 @@ learner legend to cover road hierarchy, route overlays, restrictions, objective
 markers, parks, water, rail, and stations, and keeps OSM attribution visible
 inside the map frame for OSM-derived maps. Remaining visual issues are recorded
 as non-blocking or future polish in `docs/phase-6-visual-acceptance-audit.md`.
+Stage 156 improves phone and tablet Real London map readability with central
+44 px touch-target tokens, larger in-map controls, touch/pen-safe canvas
+drawing, constrained mobile legend height, finger-sized marker/review issue
+label reservations, and deterministic responsive visual QA scenarios for mobile
+route drawing, route review, one-way/restriction decluttering, marker/hint
+collision, and tablet context orientation. This remains visual-only and does
+not change route logic, legality, scoring, exercise generation, beta gates,
+feedback tooling, accepted route rules, checkpoint validation, or OSM
+conversion.
 
 ## Current Feature Set
 

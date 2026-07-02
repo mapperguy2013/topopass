@@ -437,6 +437,40 @@ available committed fixture data. No route logic, legality, scoring, exercise
 generation, beta gate, feedback tooling, OSM conversion, or Phase 7 product-flow
 work is included.
 
+## Stage 156 Mobile And Tablet Readability
+
+Stage 156 makes the Real London learner map more practical on phones and
+tablets without changing routing, legality, scoring, exercise generation, beta
+gates, feedback tooling, accepted route rules, checkpoint validation, or OSM
+conversion.
+
+The route map now uses central TOPOPASS mobile readability tokens for 44 px
+touch targets, marker/review issue hit-area reservations, callout height,
+compact control height, map minimum heights, and legend height. Touch and pen
+route drawing explicitly suppress native page gestures while the canvas has
+control, the in-map draw/pan/undo/clear/reset/zoom controls have larger tap
+areas, and the collapsed legend is constrained on narrow screens so it does not
+dominate the lower-left map area.
+
+Stage 156 also adds deterministic responsive visual QA fixture metadata:
+
+- `small-mobile-portrait`
+- `large-mobile-portrait`
+- `mobile-landscape`
+- `tablet-portrait`
+- `tablet-landscape`
+- `narrow-embedded-map`
+
+The responsive scenarios cover dense central readability, route drawing, route
+review, one-way/restriction decluttering, marker/hint collision, tablet learner
+overlays, tablet review panels, and tablet context orientation. These fixtures
+are configuration checks rather than pixel-perfect screenshots.
+
+Known limitations: this pass improves canvas readability and responsive QA
+fixtures, but it does not add a new map provider, live device lab automation, or
+new OSM data. Some restrictions, landmarks, bridges, stations, and labels still
+depend on the committed OSM fixture data available to the selected map.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

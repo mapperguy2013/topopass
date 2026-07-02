@@ -344,6 +344,32 @@ No route logic, legality checks, scoring, exercise generation, beta gates,
 feedback tooling, OSM conversion behaviour, or route-engine behaviour changes
 were made.
 
+## Stage 156 Mobile And Tablet Readability
+
+Stage 156 extends the Phase 6 visual audit to phone and tablet map use. The
+student beta route map remains map-first, but the canvas controls now use
+larger tap targets, touch/pen drawing prevents native page gestures while the
+pointer is captured, and marker/review issue reservations account for
+finger-sized targets before labels are placed.
+
+The mobile behaviour is driven by `topopassCartographyStyle.ts` tokens:
+minimum 44 px tap targets, compact control height, legend maximum height,
+mobile/tablet map minimum heights, review issue hit radius, hint hit radius,
+and callout minimum height. The Real London beta practice screen model records
+the same contract for tests and future audit.
+
+`realLondonVisualComparisonScenarios.ts` now also exports responsive visual QA
+viewports and scenarios for small phone portrait, large phone portrait, phone
+landscape, tablet portrait, tablet landscape, and a narrow embedded map. These
+scenarios document the intended inspection states for mobile route drawing,
+mobile review, one-way/restriction decluttering, marker/hint collision, and
+tablet context orientation.
+
+Known limitations remain data-driven. Stage 156 does not add device screenshot
+automation, live OSM fetching, new restrictions, new landmarks, or route-engine
+behaviour. Restrictions and context labels still depend on available committed
+fixture data.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -369,8 +395,8 @@ were made.
   synthetic Phase 6 visual QA scenario for combined readability inspection.
 - `app/dev/route-runner/realLondonVisualComparisonScenarios.ts` defines the
   Stage 152 fixed visual comparison modes, viewports, expected readability
-  categories, and Stage 154 final Phase 6 layer-stack metadata for dev/test
-  inspection.
+  categories, Stage 154 final Phase 6 layer-stack metadata, and Stage 156
+  responsive mobile/tablet visual QA viewports for dev/test inspection.
 - `docs/phase-6-visual-acceptance-audit.md` records the Stage 155 final visual
   acceptance scenarios, non-blocking remaining issues, and deferrals.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
