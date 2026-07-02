@@ -424,6 +424,26 @@ when the selected committed fixture supplies usable data. After lint,
 `test:map`, build, and `git diff --check` pass, the Phase 6 map styling work is
 ready for final learner-facing visual review.
 
+## Stage 158.5 Mobile Pinch-Zoom Interaction
+
+Stage 158.5 adds custom two-finger pinch handling to the route-runner canvas so
+mobile learners can zoom the Real London map directly. The interaction layer
+tracks active touch pointers, treats two touch/pen pointers as a pinch gesture,
+cancels any active one-finger draft stroke when a second finger joins, and
+applies the same clamped viewport zoom used by wheel and button zoom.
+
+This preserves Phase 6 rendering behaviour: learner markers, route overlays,
+review callouts, street labels, and zoom decluttering are redrawn from the
+updated viewport. It also keeps one-finger drawing, pan mode, middle-mouse pan,
+wheel zoom, zoom buttons, and route review behaviour separate from the pinch
+gesture.
+
+Manual QA should use a real phone on the Real London practice map: pinch out,
+pinch in, pan, draw a route, verify pinch does not draw route points, and check
+that start/destination/checkpoint markers plus labels remain aligned after
+zooming. Automated coverage is unit-level because this project does not yet
+have browser-level pinch screenshot automation.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -435,8 +455,9 @@ ready for final learner-facing visual review.
 - `app/dev/route-runner/RouteRunnerClient.tsx` owns the canvas rendering loop,
   map controls, route drawing interaction, route/review overlays, learner
   objective markers, hint overlays, compact review callouts, restriction
-  overlays, missed/completed checkpoint review markers, memoized base-map
-  candidate inputs, OSM debug overlays, replay markers, and compact/dev panels.
+  overlays, mobile pinch-to-zoom handling, missed/completed checkpoint review
+  markers, memoized base-map candidate inputs, OSM debug overlays, replay
+  markers, and compact/dev panels.
 - `app/dev/route-runner/syntheticStreetMapRenderer.ts` builds visual models for
   roads, OSM road hierarchy metadata, optional OSM road labels, synthetic
   parks/water/land blocks, fixture-derived OSM context where available,

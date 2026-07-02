@@ -905,6 +905,12 @@ final layer order, validation commands, and the explicit behaviours that must
 not change. This is visual QA metadata and documentation only; it does not
 change route logic, legality, scoring, exercise generation, beta gates,
 feedback tooling, OSM conversion behaviour, or route-engine behaviour.
+Stage 158.5 fixes mobile Real London map pinch zoom: the canvas now recognises
+two-finger touch/pen gestures as clamped map zoom, cancels any active one-finger
+draft stroke when a second finger joins, and keeps one-finger drawing, pan mode,
+wheel zoom, zoom buttons, overlays, labels, and decluttering aligned with the
+updated viewport. Manual phone QA steps are recorded in the Phase 6 map styling
+acceptance doc.
 
 ## Current Feature Set
 

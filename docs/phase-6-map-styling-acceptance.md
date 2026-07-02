@@ -539,6 +539,34 @@ on the committed fixture data available to the selected map. After the required
 validation commands pass, Phase 6 is ready for final learner-facing visual
 review.
 
+## Stage 158.5 Mobile Pinch-Zoom Interaction
+
+Stage 158.5 fixes a mobile Phase 6 usability blocker: the Real London canvas
+map now recognises two-finger pinch gestures as map zoom instead of accidental
+route drawing. The fix uses the existing route-runner viewport zoom/pan limits,
+so labels, decluttering tiers, learner overlays, markers, hints, and review
+callouts stay aligned after pinch zoom. It does not change route logic,
+legality checks, scoring, exercise generation, beta gates, feedback tooling,
+OSM conversion behaviour, or map visual styling.
+
+Manual mobile QA checklist:
+
+- Open the Real London practice map on a mobile phone.
+- Pinch out on the map to zoom in.
+- Pinch in on the map to zoom out.
+- Pan the map after zooming.
+- Draw or attempt a learner route with one finger.
+- Confirm a two-finger pinch does not draw a route or leave stray route points.
+- Confirm start, destination, and checkpoint markers remain aligned.
+- Confirm street labels and zoom-based decluttering update after zooming.
+- Confirm map controls, panels, legend, and attribution do not block the main
+  gesture area.
+
+Known limitation: automated browser-level pinch simulation is not part of the
+current test stack. Stage 158.5 adds focused unit coverage for two-pointer
+pinch recognition, zoom clamping, and overlay alignment, with the checklist
+above retained for real-device QA.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

@@ -17,6 +17,7 @@ import {
 } from "./fastestRouteOverlay.ts";
 import {
   applyPanToMapView,
+  applyPinchZoomToMapView,
   applyWheelZoomToMapView,
   buildZoomedMapViewport,
   canDrawInMapInteractionMode,
@@ -25,6 +26,7 @@ import {
   canZoomInMapView,
   canZoomOutMapView,
   clampMapPan,
+  createMapPinchGesture,
   createDefaultMapScrollLockState,
   createDefaultMapViewportState,
   enterMapScrollLockState,
@@ -167,6 +169,96 @@ test("wheel zoom preserves the map point under the cursor when possible", () => 
   assert.equal(zoomed.zoom, 1.25);
   assertClose(afterMapPoint.x, beforeMapPoint.x, "cursor-focused wheel zoom should preserve x");
   assertClose(afterMapPoint.y, beforeMapPoint.y, "cursor-focused wheel zoom should preserve y");
+});
+
+test("two-finger pinch gesture zooms the map without using route drawing input", () => {
+  const startPointers = [
+    { x: 80, y: 50 },
+    { x: 120, y: 50 }
+  ] as const;
+  const currentPointers = [
+    { x: 60, y: 50 },
+    { x: 140, y: 50 }
+  ] as const;
+  const gesture = createMapPinchGesture(defaultViewportState, startPointers, testLimits);
+
+  assert.ok(gesture);
+  assert.equal(canStartDrawingWithMapPointer({ button: 0, pointerType: "touch" }), true);
+
+  const zoomed = applyPinchZoomToMapView(gesture, currentPointers, baseViewport, testLimits);
+
+  assert.equal(zoomed.zoom, 2);
+  assert.equal(zoomed.interactionMode, "draw");
+});
+
+test("pinch zoom out and pinch zoom in stay within route-runner limits", () => {
+  const startPointers = [
+    { x: 50, y: 50 },
+    { x: 150, y: 50 }
+  ] as const;
+  const gesture = createMapPinchGesture({ ...defaultViewportState, zoom: 1.5 }, startPointers, testLimits);
+
+  assert.ok(gesture);
+
+  const zoomedOut = applyPinchZoomToMapView(
+    gesture,
+    [
+      { x: 95, y: 50 },
+      { x: 105, y: 50 }
+    ],
+    baseViewport,
+    testLimits
+  );
+  const zoomedIn = applyPinchZoomToMapView(
+    gesture,
+    [
+      { x: -100, y: 50 },
+      { x: 300, y: 50 }
+    ],
+    baseViewport,
+    testLimits
+  );
+
+  assert.equal(zoomedOut.zoom, testLimits.minZoom);
+  assert.equal(zoomedIn.zoom, testLimits.maxZoom);
+});
+
+test("pinch zoom preserves overlay alignment around the gesture midpoint", () => {
+  const startPointers = [
+    { x: 80, y: 40 },
+    { x: 120, y: 60 }
+  ] as const;
+  const currentPointers = [
+    { x: 60, y: 30 },
+    { x: 140, y: 70 }
+  ] as const;
+  const gesture = createMapPinchGesture(defaultViewportState, startPointers, testLimits);
+
+  assert.ok(gesture);
+
+  const beforeViewport = buildZoomedMapViewport(baseViewport, defaultViewportState, testLimits);
+  const beforeMapPoint = screenToMapPoint({ x: 100, y: 50 }, beforeViewport);
+  const zoomed = applyPinchZoomToMapView(gesture, currentPointers, baseViewport, testLimits);
+  const afterViewport = buildZoomedMapViewport(baseViewport, zoomed, testLimits);
+  const afterMarkerPoint = mapToScreenPoint(beforeMapPoint, afterViewport);
+
+  assert.equal(zoomed.zoom, 2);
+  assertClose(afterMarkerPoint.x, 100, "marker x should stay aligned with pinch midpoint");
+  assertClose(afterMarkerPoint.y, 50, "marker y should stay aligned with pinch midpoint");
+});
+
+test("pinch gesture ignores unusable zero-distance touch pairs", () => {
+  assert.equal(
+    createMapPinchGesture(
+      defaultViewportState,
+      [
+        { x: 100, y: 50 },
+        { x: 100, y: 50 }
+      ],
+      testLimits
+    ),
+    null
+  );
 });
 
 test("wheel default prevention is limited to real wheel zoom deltas", () => {

@@ -187,11 +187,13 @@ import {
 } from "./routeRunnerExerciseDisplay";
 import {
   applyPanToMapView,
+  applyPinchZoomToMapView,
   applyWheelZoomToMapView,
   buildZoomedMapViewport,
   canStartDrawingWithMapPointer,
   canZoomInMapView,
   canZoomOutMapView,
+  createMapPinchGesture,
   createDefaultMapScrollLockState,
   createDefaultMapViewportState,
   enterMapScrollLockState,
@@ -205,6 +207,8 @@ import {
   zoomInMapView,
   zoomOutMapView,
   type MapInteractionMode,
+  type MapPinchGesture,
+  type MapPinchPointer,
   type MapScrollLockState,
   type MapViewportState
 } from "./mapViewport";
@@ -308,6 +312,11 @@ type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
   message: string | null;
   id?: string;
+};
+
+type ActiveMapPointer = MapPinchPointer & {
+  pointerId: number;
+  pointerType: string;
 };
 
 type SavedAttemptHistoryState = {
@@ -3039,6 +3048,10 @@ export function RouteRunnerClient({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
+  const panPointerIdRef = useRef<number | null>(null);
+  const drawingPointerIdRef = useRef<number | null>(null);
+  const activeMapPointersRef = useRef<Map<number, ActiveMapPointer>>(new Map());
+  const activePinchGestureRef = useRef<MapPinchGesture | null>(null);
   const mapScrollLockStateRef = useRef<MapScrollLockState>(createDefaultMapScrollLockState());
   const routeReplayAnimationFrameRef = useRef<number | null>(null);
   const routeReplayStateRef = useRef<RouteReplayState>(createRouteReplayState());
@@ -3063,6 +3076,7 @@ export function RouteRunnerClient({
     createHiddenFastestRouteRevealState()
   );
   const [mapViewportState, setMapViewportState] = useState<MapViewportState>(() => createDefaultMapViewportState());
+  const mapViewportStateRef = useRef<MapViewportState>(mapViewportState);
   const [isPanningMap, setIsPanningMap] = useState(false);
   const [routeReplayState, setRouteReplayState] = useState<RouteReplayState>(() => createRouteReplayState());
   const [routeReplayRunId, setRouteReplayRunId] = useState(0);
@@ -3908,6 +3922,10 @@ export function RouteRunnerClient({
   }, [routeReplayState]);
 
   useEffect(() => {
+    mapViewportStateRef.current = mapViewportState;
+  }, [mapViewportState]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
 
     if (!canvas) {
@@ -4115,6 +4133,77 @@ export function RouteRunnerClient({
     return screenToMapPoint(screenPoint, viewport);
   }
 
+  function clearMapPointerGestureState() {
+    activeMapPointersRef.current.clear();
+    activePinchGestureRef.current = null;
+    panDragPointRef.current = null;
+    panPointerIdRef.current = null;
+    drawingPointerIdRef.current = null;
+  }
+
+  function trackActiveMapPointer(event: PointerEvent<HTMLCanvasElement>): boolean {
+    if (!shouldPreventNativeMapGesture(event.pointerType)) {
+      return false;
+    }
+
+    const screenPoint = pointerToScreenPoint(event.currentTarget, event.clientX, event.clientY);
+
+    if (!screenPoint) {
+      return false;
+    }
+
+    activeMapPointersRef.current.set(event.pointerId, {
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      ...screenPoint
+    });
+
+    return true;
+  }
+
+  function releaseMapPointerCapture(canvas: HTMLCanvasElement | null, pointerId: number) {
+    if (canvas?.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+  }
+
+  function activePinchPointerPair(): [MapPinchPointer, MapPinchPointer] | null {
+    const pointers = [...activeMapPointersRef.current.values()].filter((pointer) =>
+      shouldPreventNativeMapGesture(pointer.pointerType)
+    );
+
+    if (pointers.length < 2) {
+      return null;
+    }
+
+    return [pointers[0], pointers[1]];
+  }
+
+  function cancelActiveRouteGestureForPinch() {
+    panDragPointRef.current = null;
+    panPointerIdRef.current = null;
+    drawingPointerIdRef.current = null;
+    setIsPanningMap(false);
+    setIsDrawing(false);
+    setDrawnRouteDraft((currentDraft) =>
+      currentDraft.activeStrokeIndex === null ? currentDraft : undoLastRouteStroke(currentDraft)
+    );
+  }
+
+  function beginPinchGestureIfReady(): boolean {
+    const pinchPointers = activePinchPointerPair();
+
+    if (!pinchPointers) {
+      return false;
+    }
+
+    activePinchGestureRef.current =
+      activePinchGestureRef.current ?? createMapPinchGesture(mapViewportStateRef.current, pinchPointers);
+    cancelActiveRouteGestureForPinch();
+
+    return true;
+  }
+
   function cancelRouteReplayAnimation() {
     if (routeReplayAnimationFrameRef.current !== null) {
       window.cancelAnimationFrame(routeReplayAnimationFrameRef.current);
@@ -4172,6 +4261,7 @@ export function RouteRunnerClient({
 
   function clearDrawnAttempt() {
     setIsDrawing(false);
+    drawingPointerIdRef.current = null;
     setDrawnRouteDraft(clearRouteDraft());
     setSelectedRestrictionReviewItemId(null);
     resetRouteReplay();
@@ -4190,13 +4280,13 @@ export function RouteRunnerClient({
   }
 
   function resetRouteMapView() {
-    panDragPointRef.current = null;
+    clearMapPointerGestureState();
     setIsPanningMap(false);
     setMapViewportState(resetMapViewport());
   }
 
   function setRouteMapInteractionMode(interactionMode: MapInteractionMode) {
-    panDragPointRef.current = null;
+    clearMapPointerGestureState();
     setIsPanningMap(false);
     setIsDrawing(false);
     setDrawnRouteDraft((currentDraft) =>
@@ -4262,7 +4352,7 @@ export function RouteRunnerClient({
     resetCurrentRouteAttemptState();
 
     if (linkedExercise) {
-      panDragPointRef.current = null;
+      clearMapPointerGestureState();
       setIsPanningMap(false);
       setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
       setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
@@ -4319,7 +4409,7 @@ export function RouteRunnerClient({
     setExerciseId(nextExerciseId);
     setResult(null);
     setError(null);
-    panDragPointRef.current = null;
+    clearMapPointerGestureState();
     setIsPanningMap(false);
     setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
     setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
@@ -4346,7 +4436,7 @@ export function RouteRunnerClient({
     setRoadIdsText("");
     setResult(null);
     setError(null);
-    panDragPointRef.current = null;
+    clearMapPointerGestureState();
     setIsPanningMap(false);
     setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
     setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
@@ -4367,6 +4457,7 @@ export function RouteRunnerClient({
     }
 
     mapScrollLockStateRef.current = enterMapScrollLockState(mapScrollLockStateRef.current);
+    trackActiveMapPointer(event);
 
     const pointerInput = {
       button: event.button,
@@ -4379,11 +4470,20 @@ export function RouteRunnerClient({
       event.preventDefault();
     }
 
+    if (beginPinchGestureIfReady()) {
+      if (canvas.isConnected) {
+        canvas.setPointerCapture(event.pointerId);
+      }
+
+      return;
+    }
+
     if (isPanMode || isMiddleButtonPan) {
       if (canvas.isConnected) {
         canvas.setPointerCapture(event.pointerId);
       }
 
+      panPointerIdRef.current = event.pointerId;
       panDragPointRef.current = {
         clientX: event.clientX,
         clientY: event.clientY
@@ -4408,13 +4508,39 @@ export function RouteRunnerClient({
     }
 
     setIsDrawing(true);
+    drawingPointerIdRef.current = event.pointerId;
     setSelectedRestrictionReviewItemId(null);
     resetRouteReplay();
     setDrawnRouteDraft((currentDraft) => startRouteStroke(currentDraft, point));
   }
 
   function handlePointerMove(event: PointerEvent<HTMLCanvasElement>) {
+    trackActiveMapPointer(event);
+
+    if (activePinchGestureRef.current || beginPinchGestureIfReady()) {
+      event.preventDefault();
+
+      const pinchGesture = activePinchGestureRef.current;
+      const pinchPointers = activePinchPointerPair();
+
+      if (pinchGesture && pinchPointers) {
+        setMapViewportState(() => {
+          const nextState = applyPinchZoomToMapView(pinchGesture, pinchPointers, baseViewport);
+
+          mapViewportStateRef.current = nextState;
+
+          return nextState;
+        });
+      }
+
+      return;
+    }
+
     if (isPanningMap) {
+      if (panPointerIdRef.current !== null && event.pointerId !== panPointerIdRef.current) {
+        return;
+      }
+
       if (
         isMiddleButtonMapPanActive({ buttons: event.buttons, pointerType: event.pointerType }) ||
         shouldPreventNativeMapGesture(event.pointerType)
@@ -4452,6 +4578,10 @@ export function RouteRunnerClient({
       return;
     }
 
+    if (drawingPointerIdRef.current !== null && event.pointerId !== drawingPointerIdRef.current) {
+      return;
+    }
+
     if (shouldPreventNativeMapGesture(event.pointerType)) {
       event.preventDefault();
     }
@@ -4476,7 +4606,38 @@ export function RouteRunnerClient({
   }
 
   function handlePointerEnd(event: PointerEvent<HTMLCanvasElement>) {
+    const wasPinching = activePinchGestureRef.current !== null;
+
+    if (shouldPreventNativeMapGesture(event.pointerType)) {
+      activeMapPointersRef.current.delete(event.pointerId);
+    }
+
+    if (wasPinching) {
+      event.preventDefault();
+      releaseMapPointerCapture(event.currentTarget, event.pointerId);
+
+      const remainingPinchPointers = activePinchPointerPair();
+
+      activePinchGestureRef.current = remainingPinchPointers
+        ? createMapPinchGesture(mapViewportStateRef.current, remainingPinchPointers)
+        : null;
+
+      if (!remainingPinchPointers) {
+        panPointerIdRef.current = null;
+        drawingPointerIdRef.current = null;
+        panDragPointRef.current = null;
+        setIsPanningMap(false);
+        setIsDrawing(false);
+      }
+
+      return;
+    }
+
     if (isPanningMap) {
+      if (panPointerIdRef.current !== null && event.pointerId !== panPointerIdRef.current) {
+        return;
+      }
+
       if (
         isMiddleButtonMapPanPointer({ button: event.button, pointerType: event.pointerType }) ||
         shouldPreventNativeMapGesture(event.pointerType)
@@ -4485,18 +4646,19 @@ export function RouteRunnerClient({
       }
 
       panDragPointRef.current = null;
+      panPointerIdRef.current = null;
       setIsPanningMap(false);
 
-      const canvas = event.currentTarget;
-
-      if (canvas?.hasPointerCapture(event.pointerId)) {
-        canvas.releasePointerCapture(event.pointerId);
-      }
+      releaseMapPointerCapture(event.currentTarget, event.pointerId);
 
       return;
     }
 
     if (!isDrawing) {
+      return;
+    }
+
+    if (drawingPointerIdRef.current !== null && event.pointerId !== drawingPointerIdRef.current) {
       return;
     }
 
@@ -4509,6 +4671,7 @@ export function RouteRunnerClient({
     if (!canvas) {
       setDrawnRouteDraft((currentDraft) => finishRouteStroke(currentDraft));
       setIsDrawing(false);
+      drawingPointerIdRef.current = null;
       return;
     }
 
@@ -4521,10 +4684,9 @@ export function RouteRunnerClient({
     });
 
     setIsDrawing(false);
+    drawingPointerIdRef.current = null;
 
-    if (canvas.hasPointerCapture(event.pointerId)) {
-      canvas.releasePointerCapture(event.pointerId);
-    }
+    releaseMapPointerCapture(canvas, event.pointerId);
   }
 
   function handleMapAuxClick(event: MouseEvent<HTMLCanvasElement>) {
@@ -4536,18 +4698,29 @@ export function RouteRunnerClient({
   function handlePointerLeave(event: PointerEvent<HTMLCanvasElement>) {
     mapScrollLockStateRef.current = leaveMapScrollLockState(mapScrollLockStateRef.current);
 
+    if (shouldPreventNativeMapGesture(event.pointerType)) {
+      activeMapPointersRef.current.delete(event.pointerId);
+    }
+
+    if (activePinchGestureRef.current) {
+      activePinchGestureRef.current = null;
+      releaseMapPointerCapture(event.currentTarget, event.pointerId);
+      return;
+    }
+
     if (!isPanningMap) {
       return;
     }
 
+    if (panPointerIdRef.current !== null && event.pointerId !== panPointerIdRef.current) {
+      return;
+    }
+
     panDragPointRef.current = null;
+    panPointerIdRef.current = null;
     setIsPanningMap(false);
 
-    const canvas = event.currentTarget;
-
-    if (canvas?.hasPointerCapture(event.pointerId)) {
-      canvas.releasePointerCapture(event.pointerId);
-    }
+    releaseMapPointerCapture(event.currentTarget, event.pointerId);
   }
 
   function handleRunRoute() {

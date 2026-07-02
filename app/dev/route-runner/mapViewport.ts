@@ -38,6 +38,14 @@ export type MapViewportScreenPoint = {
   y: number;
 };
 
+export type MapPinchPointer = MapViewportScreenPoint;
+
+export type MapPinchGesture = {
+  startDistance: number;
+  startMidpoint: MapViewportScreenPoint;
+  startState: MapViewportState;
+};
+
 export type MapPointerInput = {
   button: number;
   buttons?: number;
@@ -106,6 +114,21 @@ function clampScreenPoint(point: MapViewportScreenPoint, bounds: MapPanBounds): 
   return {
     x: normalizeZero(Math.min(width, Math.max(0, x))),
     y: normalizeZero(Math.min(height, Math.max(0, y)))
+  };
+}
+
+function pinchDistance(pointers: readonly [MapPinchPointer, MapPinchPointer]): number {
+  const [first, second] = pointers;
+
+  return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function pinchMidpoint(pointers: readonly [MapPinchPointer, MapPinchPointer]): MapViewportScreenPoint {
+  const [first, second] = pointers;
+
+  return {
+    x: (first.x + second.x) / 2,
+    y: (first.y + second.y) / 2
   };
 }
 
@@ -249,6 +272,59 @@ export function applyWheelZoomToMapView(
   const zoomDirection = deltaY < 0 ? 1 : -1;
 
   return zoomMapViewAroundPoint(state, state.zoom + limits.step * zoomDirection, focusPoint, bounds, limits);
+}
+
+export function createMapPinchGesture(
+  state: MapViewportState,
+  pointers: readonly [MapPinchPointer, MapPinchPointer],
+  limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS
+): MapPinchGesture | null {
+  const startDistance = pinchDistance(pointers);
+
+  if (startDistance <= ZOOM_EPSILON) {
+    return null;
+  }
+
+  return {
+    startDistance,
+    startMidpoint: pinchMidpoint(pointers),
+    startState: {
+      ...state,
+      zoom: clampMapZoom(state.zoom, limits)
+    }
+  };
+}
+
+export function applyPinchZoomToMapView(
+  gesture: MapPinchGesture,
+  pointers: readonly [MapPinchPointer, MapPinchPointer],
+  bounds: MapPanBounds,
+  limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS
+): MapViewportState {
+  const currentDistance = pinchDistance(pointers);
+
+  if (currentDistance <= ZOOM_EPSILON) {
+    return clampMapPan(gesture.startState, bounds, limits);
+  }
+
+  const currentMidpoint = pinchMidpoint(pointers);
+  const zoomed = zoomMapViewAroundPoint(
+    gesture.startState,
+    gesture.startState.zoom * (currentDistance / gesture.startDistance),
+    gesture.startMidpoint,
+    bounds,
+    limits
+  );
+
+  return applyPanToMapView(
+    zoomed,
+    {
+      deltaX: currentMidpoint.x - gesture.startMidpoint.x,
+      deltaY: currentMidpoint.y - gesture.startMidpoint.y
+    },
+    bounds,
+    limits
+  );
 }
 
 export function createDefaultMapScrollLockState(): MapScrollLockState {
