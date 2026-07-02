@@ -289,6 +289,41 @@ exports. They do not add missing landmarks or restrictions to committed real
 pilot fixtures, and restriction/context visibility still depends on available
 fixture data.
 
+## Stage 152.5 Route Review Styling
+
+Stage 152.5 improves visual route-review cartography without changing routing,
+legality, scoring, exercise generation, beta gates, feedback tooling, or OSM
+conversion behaviour.
+
+Route-review styling meanings:
+
+- Attempted route: orange learner line with a pale casing. This is the route the
+  learner drew or submitted.
+- Correct route: blue dashed reference line with a quiet casing. This answers
+  what the learner should have done when a fastest/correct route is available.
+- Accepted alternative route: teal dotted line in visual QA fixture support.
+  This communicates also valid without adding route-engine alternative logic.
+- Illegal segment: prominent red cased section, drawn above the attempted route
+  and restriction cartography so the offending movement is immediately visible.
+- Inefficient section: amber dashed warning style for non-blocking review
+  warnings where existing review data or QA fixture data exposes one.
+- Backtrack section: purple dashed warning style, quieter than illegal movement
+  styling.
+- Completed checkpoint: checkpoint marker keeps its normal objective style and
+  gains a green review ring/check.
+- Missed checkpoint: checkpoint marker gains a stronger red dashed review ring
+  and cross treatment.
+
+The Stage 152 visual QA scenarios `learner-route-overlay-review` and
+`one-way-restriction-declutter` now include expected route-review overlay
+categories for attempted route, correct route, accepted alternative fixture
+support, illegal segment, inefficient section, and backtrack section.
+
+Known limitations: accepted alternatives, inefficient sections, and backtrack
+sections are styling/fixture categories only unless existing review data supplies
+those classifications. This stage does not invent alternative-route acceptance
+or new route-analysis behaviour.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

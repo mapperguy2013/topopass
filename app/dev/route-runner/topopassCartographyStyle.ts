@@ -256,7 +256,14 @@ export type TopopassStreetAtlasStyle = {
     TopopassContextMarkerVisualStyle
   >;
   routeOverlays: Record<
-    "rawRoute" | "snappedRoute" | "matchedRoute" | "shortestLegalRoute" | "illegalMovement",
+    | "rawRoute"
+    | "snappedRoute"
+    | "matchedRoute"
+    | "shortestLegalRoute"
+    | "acceptedAlternativeRoute"
+    | "illegalMovement"
+    | "inefficientSection"
+    | "backtrackSection",
     TopopassLineStyle
   >;
   exerciseMarkers: {
@@ -362,6 +369,30 @@ export type TopopassStreetAtlasStyle = {
     fastestRoute: {
       halo: TopopassLineStyle;
       route: TopopassLineStyle;
+    };
+    checkpoints: {
+      completed: {
+        haloColor: string;
+        strokeColor: string;
+        strokeWidth: number;
+        outerRadiusPadding: number;
+        checkColor: string;
+        checkLineWidth: number;
+      };
+      missed: {
+        haloColor: string;
+        strokeColor: string;
+        strokeWidth: number;
+        outerRadiusPadding: number;
+        crossColor: string;
+        crossLineWidth: number;
+        dash: readonly number[];
+      };
+      focused: {
+        strokeColor: string;
+        strokeWidth: number;
+        outerRadiusPadding: number;
+      };
     };
     matchedMovement: {
       haloColor: string;
@@ -1008,8 +1039,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   },
   routeOverlays: {
     rawRoute: {
+      casingColor: "rgba(255,255,255,0.92)",
+      casingWidth: 9,
       strokeColor: "#f97316",
-      strokeWidth: 4
+      strokeWidth: 5
     },
     snappedRoute: {
       strokeColor: "#22c55e",
@@ -1017,17 +1050,50 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       dash: [6, 5]
     },
     matchedRoute: {
+      casingColor: "rgba(255,255,255,0.88)",
+      casingWidth: 11,
       strokeColor: "#7c3aed",
-      strokeWidth: 8
+      strokeWidth: 7,
+      alpha: 0.9
     },
     shortestLegalRoute: {
-      strokeColor: "#0ea5e9",
-      strokeWidth: 4,
-      dash: [10, 6]
+      casingColor: "rgba(255,255,255,0.9)",
+      casingWidth: 9,
+      strokeColor: "#0284c7",
+      strokeWidth: 4.5,
+      dash: [14, 8],
+      alpha: 0.9
+    },
+    acceptedAlternativeRoute: {
+      casingColor: "rgba(255,255,255,0.84)",
+      casingWidth: 7,
+      strokeColor: "#0f766e",
+      strokeWidth: 3.5,
+      dash: [3, 7],
+      alpha: 0.78
     },
     illegalMovement: {
+      casingColor: "rgba(255,255,255,0.9)",
+      casingWidth: 12,
       strokeColor: "#dc2626",
-      strokeWidth: 9
+      strokeWidth: 8.5,
+      alpha: 0.9
+    },
+    inefficientSection: {
+      casingColor: "rgba(255,255,255,0.82)",
+      casingWidth: 8,
+      strokeColor: "#d97706",
+      strokeWidth: 4,
+      dash: [9, 7],
+      alpha: 0.78
+    },
+    backtrackSection: {
+      casingColor: "rgba(255,255,255,0.82)",
+      casingWidth: 8,
+      strokeColor: "#9333ea",
+      strokeWidth: 4,
+      dash: [4, 5],
+      alpha: 0.72
     }
   },
   exerciseMarkers: {
@@ -1150,23 +1216,47 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     fastestRoute: {
       halo: {
-        strokeColor: "rgba(255,255,255,0.94)",
-        strokeWidth: 10
+        strokeColor: "rgba(255,255,255,0.9)",
+        strokeWidth: 9
       },
       route: {
         strokeColor: "#0284c7",
-        strokeWidth: 5,
+        strokeWidth: 4.5,
         dash: [14, 8]
       }
     },
+    checkpoints: {
+      completed: {
+        haloColor: "rgba(22,163,74,0.14)",
+        strokeColor: "#16a34a",
+        strokeWidth: 3,
+        outerRadiusPadding: 8,
+        checkColor: "#ffffff",
+        checkLineWidth: 2.4
+      },
+      missed: {
+        haloColor: "rgba(220,38,38,0.16)",
+        strokeColor: "#dc2626",
+        strokeWidth: 3.5,
+        outerRadiusPadding: 10,
+        crossColor: "#ffffff",
+        crossLineWidth: 3,
+        dash: [5, 4]
+      },
+      focused: {
+        strokeColor: "#0284c7",
+        strokeWidth: 4,
+        outerRadiusPadding: 13
+      }
+    },
     matchedMovement: {
-      haloColor: "rgba(255,255,255,0.88)",
-      haloWidth: 11,
+      haloColor: "rgba(255,255,255,0.9)",
+      haloWidth: 12,
       haloAlpha: 0.84,
       matchedColor: "#7c3aed",
       unmatchedColor: "#ef4444",
-      lineWidth: 6,
-      alpha: 0.7,
+      lineWidth: 6.5,
+      alpha: 0.74,
       matchedNodeStrokeColor: "#6d28d9",
       unmatchedNodeStrokeColor: "#dc2626",
       nodeFillColor: "#ffffff",

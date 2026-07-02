@@ -105,7 +105,10 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "snappedRoute",
     "matchedRoute",
     "shortestLegalRoute",
-    "illegalMovement"
+    "acceptedAlternativeRoute",
+    "illegalMovement",
+    "inefficientSection",
+    "backtrackSection"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.roads.roadCasings), [
     "activeColor",
@@ -191,6 +194,25 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
 });
 
+test("Stage 152.5 route review overlay tokens are distinct and severity ordered", () => {
+  const overlays = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays;
+  const checkpointStates = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints;
+
+  assert.ok(overlays.rawRoute.casingWidth && overlays.rawRoute.casingWidth > overlays.rawRoute.strokeWidth);
+  assert.ok(overlays.shortestLegalRoute.dash && overlays.shortestLegalRoute.dash.length > 0);
+  assert.notEqual(overlays.rawRoute.strokeColor, overlays.shortestLegalRoute.strokeColor);
+  assert.notEqual(overlays.acceptedAlternativeRoute.strokeColor, overlays.shortestLegalRoute.strokeColor);
+  assert.notEqual(overlays.acceptedAlternativeRoute.strokeColor, overlays.rawRoute.strokeColor);
+  assert.ok(overlays.illegalMovement.strokeWidth > overlays.inefficientSection.strokeWidth);
+  assert.ok(overlays.illegalMovement.strokeWidth > overlays.backtrackSection.strokeWidth);
+  assert.ok((overlays.illegalMovement.casingWidth ?? 0) > (overlays.inefficientSection.casingWidth ?? 0));
+  assert.notEqual(overlays.inefficientSection.strokeColor, overlays.illegalMovement.strokeColor);
+  assert.notEqual(overlays.backtrackSection.strokeColor, overlays.illegalMovement.strokeColor);
+  assert.notEqual(checkpointStates.missed.strokeColor, checkpointStates.completed.strokeColor);
+  assert.ok(checkpointStates.missed.outerRadiusPadding > checkpointStates.completed.outerRadiusPadding);
+  assert.ok(checkpointStates.focused.outerRadiusPadding > checkpointStates.completed.outerRadiusPadding);
+});
+
 test("Stage 142 zoom and decluttering tokens are ordered finite and used by helpers", () => {
   const thresholds = TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds;
 
@@ -267,7 +289,9 @@ test("Stage 142 tokenized renderer helpers preserve existing style values", () =
           { x: 10, y: 0 }
         ],
         strokeColor: "#f97316",
-        strokeWidth: 4
+        strokeWidth: 5,
+        casingColor: "rgba(255,255,255,0.92)",
+        casingWidth: 9
       },
       {
         id: "shortest-legal-route",
@@ -276,9 +300,12 @@ test("Stage 142 tokenized renderer helpers preserve existing style values", () =
           { x: 0, y: 4 },
           { x: 10, y: 4 }
         ],
-        strokeColor: "#0ea5e9",
-        strokeWidth: 4,
-        dash: [10, 6]
+        strokeColor: "#0284c7",
+        strokeWidth: 4.5,
+        casingColor: "rgba(255,255,255,0.9)",
+        casingWidth: 9,
+        dash: [14, 8],
+        alpha: 0.9
       }
     ]
   );
@@ -1245,14 +1272,46 @@ test("buildSyntheticRouteOverlayVisuals creates route overlay visual models", ()
     shortestLegalRoutePoints: [
       { x: 0, y: 4 },
       { x: 10, y: 4 }
+    ],
+    acceptedAlternativeRoutePoints: [
+      { x: 0, y: 6 },
+      { x: 10, y: 6 }
+    ],
+    inefficientRoutePoints: [
+      { x: 0, y: 8 },
+      { x: 10, y: 8 }
+    ],
+    backtrackRoutePoints: [
+      { x: 0, y: 10 },
+      { x: 10, y: 10 }
+    ],
+    illegalRoutePoints: [
+      { x: 0, y: 12 },
+      { x: 10, y: 12 }
     ]
   });
 
   assert.deepEqual(
     overlays.map((overlay) => overlay.kind),
-    ["raw-route", "matched-route", "shortest-legal-route"]
+    [
+      "raw-route",
+      "matched-route",
+      "shortest-legal-route",
+      "accepted-alternative-route",
+      "inefficient-section",
+      "backtrack-section",
+      "illegal-movement"
+    ]
   );
   assert.equal(overlays.find((overlay) => overlay.kind === "shortest-legal-route")?.dash?.length, 2);
+  assert.equal(
+    overlays.find((overlay) => overlay.kind === "accepted-alternative-route")?.strokeColor,
+    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.acceptedAlternativeRoute.strokeColor
+  );
+  assert.ok(
+    (overlays.find((overlay) => overlay.kind === "illegal-movement")?.strokeWidth ?? 0) >
+      (overlays.find((overlay) => overlay.kind === "inefficient-section")?.strokeWidth ?? 0)
+  );
 });
 
 test("synthetic street map legend covers route restrictions stops and background", () => {
@@ -1263,7 +1322,9 @@ test("synthetic street map legend covers route restrictions stops and background
   assert.ok(ids.includes("context-road"));
   assert.ok(ids.includes("your-route"));
   assert.ok(ids.includes("shortest-legal-route"));
+  assert.ok(ids.includes("accepted-alternative-route"));
   assert.ok(ids.includes("illegal-movement"));
+  assert.ok(ids.includes("inefficient-section"));
   assert.ok(ids.includes("no-entry"));
   assert.ok(ids.includes("one-way"));
   assert.ok(ids.includes("prohibited-turn"));

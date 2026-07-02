@@ -852,6 +852,14 @@ context, bridge context, landmarks/area names, learner objectives, one-way
 symbols, and restriction warnings. These are dev/test QA fixtures only; they do
 not change routing, legality, scoring, exercise generation, beta gates, feedback,
 OSM conversion, or the main learner experience.
+Stage 152.5 improves Real London route-review styling tokens and canvas drawing:
+attempted routes use an orange cased learner line, correct routes use a quieter
+blue dashed reference line, accepted alternatives have teal dotted fixture
+support, illegal sections are more prominent red warnings, inefficient/backtrack
+sections have softer warning styles, and missed/completed checkpoints get
+distinct review rings. This remains visual-only and does not add route-engine
+alternative, scoring, legality, exercise, beta, feedback, or OSM conversion
+behaviour.
 
 ## Current Feature Set
 

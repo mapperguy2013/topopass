@@ -289,7 +289,16 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       labelKinds: ["road", "start", "checkpoint", "finish"],
       backgroundKinds: ["water", "pedestrian-area"],
       linearKinds: ["bridge", "waterway"],
-      routeOverlayKinds: ["raw-route", "snapped-route", "matched-route", "illegal-movement"],
+      routeOverlayKinds: [
+        "raw-route",
+        "snapped-route",
+        "matched-route",
+        "shortest-legal-route",
+        "accepted-alternative-route",
+        "inefficient-section",
+        "backtrack-section",
+        "illegal-movement"
+      ],
       objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
       restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
       decluttering: ["learner", "detail"]
@@ -313,7 +322,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       labelKinds: ["road", "area"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
-      routeOverlayKinds: ["illegal-movement"],
+      routeOverlayKinds: ["accepted-alternative-route", "inefficient-section", "backtrack-section", "illegal-movement"],
       objectiveMarkers: ["required-via"],
       restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
       decluttering: ["overview", "learner"]

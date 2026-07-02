@@ -70,6 +70,9 @@ export type SyntheticRouteOverlayKind =
   | "snapped-route"
   | "matched-route"
   | "shortest-legal-route"
+  | "accepted-alternative-route"
+  | "inefficient-section"
+  | "backtrack-section"
   | "illegal-movement";
 
 export type SyntheticLegendTone =
@@ -218,7 +221,10 @@ export type SyntheticRouteOverlayVisual = {
   points: Vec2[];
   strokeColor: string;
   strokeWidth: number;
+  casingColor?: string;
+  casingWidth?: number;
   dash?: number[];
+  alpha?: number;
 };
 
 export type SyntheticStreetMapLegendItem = {
@@ -1627,6 +1633,9 @@ export function buildSyntheticRouteOverlayVisuals(input: {
   snappedRoutePoints?: readonly Vec2[];
   matchedRoutePoints?: readonly Vec2[];
   shortestLegalRoutePoints?: readonly Vec2[];
+  acceptedAlternativeRoutePoints?: readonly Vec2[];
+  inefficientRoutePoints?: readonly Vec2[];
+  backtrackRoutePoints?: readonly Vec2[];
   illegalRoutePoints?: readonly Vec2[];
 }): SyntheticRouteOverlayVisual[] {
   const overlays: SyntheticRouteOverlayVisual[] = [];
@@ -1637,6 +1646,14 @@ export function buildSyntheticRouteOverlayVisuals(input: {
   addRouteOverlay(overlays, "snapped-route", input.snappedRoutePoints, overlaysStyle.snappedRoute);
   addRouteOverlay(overlays, "matched-route", input.matchedRoutePoints, overlaysStyle.matchedRoute);
   addRouteOverlay(overlays, "shortest-legal-route", input.shortestLegalRoutePoints, overlaysStyle.shortestLegalRoute);
+  addRouteOverlay(
+    overlays,
+    "accepted-alternative-route",
+    input.acceptedAlternativeRoutePoints,
+    overlaysStyle.acceptedAlternativeRoute
+  );
+  addRouteOverlay(overlays, "inefficient-section", input.inefficientRoutePoints, overlaysStyle.inefficientSection);
+  addRouteOverlay(overlays, "backtrack-section", input.backtrackRoutePoints, overlaysStyle.backtrackSection);
   addRouteOverlay(overlays, "illegal-movement", input.illegalRoutePoints, overlaysStyle.illegalMovement);
 
   return overlays;
@@ -1664,8 +1681,14 @@ export function buildSyntheticStreetMapLegendItems(): SyntheticStreetMapLegendIt
     },
     {
       id: "shortest-legal-route",
-      label: "Shortest legal route",
-      description: "Blue dashed line when a shortest-route overlay is available.",
+      label: "Correct route",
+      description: "Blue dashed line shows the reference route to compare against the attempt.",
+      tone: "shortest"
+    },
+    {
+      id: "accepted-alternative-route",
+      label: "Also valid",
+      description: "Teal dotted line marks an accepted alternative when fixture or review data provides one.",
       tone: "shortest"
     },
     {
@@ -1673,6 +1696,12 @@ export function buildSyntheticStreetMapLegendItems(): SyntheticStreetMapLegendIt
       label: "Illegal movement",
       description: "Solid red route section marks the offending attempted movement.",
       tone: "illegal"
+    },
+    {
+      id: "inefficient-section",
+      label: "Inefficient section",
+      description: "Amber dashed route section marks a non-blocking route-review warning.",
+      tone: "restricted"
     },
     {
       id: "no-entry",
@@ -1729,7 +1758,14 @@ function addRouteOverlay(
   overlays: SyntheticRouteOverlayVisual[],
   kind: SyntheticRouteOverlayKind,
   points: readonly Vec2[] | undefined,
-  style: { strokeColor: string; strokeWidth: number; dash?: readonly number[] }
+  style: {
+    strokeColor: string;
+    strokeWidth: number;
+    casingColor?: string;
+    casingWidth?: number;
+    dash?: readonly number[];
+    alpha?: number;
+  }
 ) {
   if (!points || points.length < 2) {
     return;
@@ -1741,7 +1777,10 @@ function addRouteOverlay(
     points: points.map((point) => ({ ...point })),
     strokeColor: style.strokeColor,
     strokeWidth: style.strokeWidth,
-    ...(style.dash ? { dash: [...style.dash] } : {})
+    ...(style.casingColor ? { casingColor: style.casingColor } : {}),
+    ...(style.casingWidth ? { casingWidth: style.casingWidth } : {}),
+    ...(style.dash ? { dash: [...style.dash] } : {}),
+    ...(style.alpha ? { alpha: style.alpha } : {})
   });
 }
 

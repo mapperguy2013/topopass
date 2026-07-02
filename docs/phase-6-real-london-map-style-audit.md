@@ -239,6 +239,30 @@ change exercise generation, affect beta gates, modify feedback tooling, or
 change OSM conversion. It also does not invent restrictions or landmarks in real
 pilot fixtures; visibility still depends on fixture/source data.
 
+## Stage 152.5 Route Review Overlay Styling
+
+Stage 152.5 improves the visual language for learner route review. Attempted
+routes now use a stronger orange cased learner line; correct/reference routes
+use a quieter blue dashed line; accepted-alternative fixture support uses a teal
+dotted line; illegal route segments use the most prominent red warning style;
+inefficient and backtrack sections use softer amber and purple warning styles;
+and checkpoint markers can show completed or missed review rings.
+
+The canvas renderer now uses the central route overlay tokens for attempted and
+correct route strokes, accounts for route casing in label reservation boxes, and
+draws missed/completed checkpoint states from existing required-stop visit
+status data. Route issue overlays remain deterministic and continue to draw
+above attempted route geometry but below objective markers and selected review
+focus callouts.
+
+Stage 152 comparison fixtures now include accepted-alternative,
+inefficient-section, and backtrack-section expected categories in the
+route-review scenarios. These are visual QA categories only unless existing
+review data supplies the classification. No accepted-alternative route-engine
+behaviour, route-analysis logic, legality rule, scoring rule, exercise
+generation, beta gate, feedback workflow, or OSM conversion behaviour is added
+or changed.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -249,7 +273,8 @@ pilot fixtures; visibility still depends on fixture/source data.
   labels, and compact beta diagnostics.
 - `app/dev/route-runner/RouteRunnerClient.tsx` owns the canvas rendering loop,
   map controls, route drawing interaction, route/review overlays, restriction
-  overlays, OSM debug overlays, replay markers, and compact/dev panels.
+  overlays, missed/completed checkpoint review markers, OSM debug overlays,
+  replay markers, and compact/dev panels.
 - `app/dev/route-runner/syntheticStreetMapRenderer.ts` builds visual models for
   roads, OSM road hierarchy metadata, optional OSM road labels, synthetic
   parks/water/land blocks, fixture-derived OSM context where available,

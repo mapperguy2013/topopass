@@ -87,6 +87,7 @@ import {
   type DrawnRouteScoreDisplayState,
   type PipelineStageState,
   type RoadRestrictionOverlay,
+  type RequiredStopVisitStatus,
   type RouteIssueOverlay
 } from "./routeRunnerDisplay";
 import {
@@ -149,7 +150,7 @@ import {
   type SyntheticRoadVisual,
   type SyntheticStreetMapLegendItem
 } from "./syntheticStreetMapRenderer";
-import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle";
+import { TOPOPASS_STREET_ATLAS_STYLE, type TopopassLineStyle } from "./topopassCartographyStyle";
 import {
   buildRestrictionLegendItems,
   buildRestrictionMapVisualItems,
@@ -1039,11 +1040,64 @@ function drawNodeMarker(input: {
   }
 }
 
+function drawStyledPolyline(
+  context: CanvasRenderingContext2D,
+  points: readonly Vec2[],
+  style: TopopassLineStyle
+): void {
+  if (points.length < 2) {
+    return;
+  }
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.globalAlpha = style.alpha ?? 1;
+
+  if (style.casingColor && style.casingWidth) {
+    context.strokeStyle = style.casingColor;
+    context.lineWidth = style.casingWidth;
+    context.setLineDash([]);
+    context.beginPath();
+    context.moveTo(points[0].x, points[0].y);
+
+    for (const point of points.slice(1)) {
+      context.lineTo(point.x, point.y);
+    }
+
+    context.stroke();
+  }
+
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth;
+  context.setLineDash([...(style.dash ?? [])]);
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+
+  for (const point of points.slice(1)) {
+    context.lineTo(point.x, point.y);
+  }
+
+  context.stroke();
+  context.setLineDash([]);
+  context.restore();
+}
+
+function drawStyledMapPolyline(
+  context: CanvasRenderingContext2D,
+  points: readonly Vec2[],
+  viewport: ScreenMapViewport,
+  style: TopopassLineStyle
+): void {
+  drawStyledPolyline(context, points.map((point) => mapToScreenPoint(point, viewport)), style);
+}
+
 function drawExerciseStopMarker(input: {
   context: CanvasRenderingContext2D;
   point: Vec2;
   role: "start" | "checkpoint" | "finish";
   index: number;
+  reviewStatus?: "completed" | "missed";
 }): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
   const markerStyle =
@@ -1088,6 +1142,53 @@ function drawExerciseStopMarker(input: {
   input.context.textAlign = "center";
   input.context.textBaseline = "middle";
   input.context.fillText(markerText, input.point.x, input.point.y + 0.5);
+
+  if (input.role === "checkpoint" && input.reviewStatus) {
+    const checkpointStyle = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints[input.reviewStatus];
+    const outerRadius = radius + checkpointStyle.outerRadiusPadding;
+
+    input.context.shadowColor = "transparent";
+    input.context.fillStyle = checkpointStyle.haloColor;
+    input.context.beginPath();
+    input.context.arc(input.point.x, input.point.y, outerRadius + 2, 0, Math.PI * 2);
+    input.context.fill();
+    input.context.strokeStyle = checkpointStyle.strokeColor;
+    input.context.lineWidth = checkpointStyle.strokeWidth;
+    input.context.setLineDash(
+      input.reviewStatus === "missed" ? [...TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints.missed.dash] : []
+    );
+    input.context.beginPath();
+    input.context.arc(input.point.x, input.point.y, outerRadius, 0, Math.PI * 2);
+    input.context.stroke();
+    input.context.setLineDash([]);
+
+    if (input.reviewStatus === "missed") {
+      const missedStyle = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints.missed;
+
+      input.context.strokeStyle = missedStyle.crossColor;
+      input.context.lineWidth = missedStyle.crossLineWidth;
+      input.context.lineCap = "round";
+      input.context.beginPath();
+      input.context.moveTo(input.point.x - 6, input.point.y - 6);
+      input.context.lineTo(input.point.x + 6, input.point.y + 6);
+      input.context.moveTo(input.point.x + 6, input.point.y - 6);
+      input.context.lineTo(input.point.x - 6, input.point.y + 6);
+      input.context.stroke();
+    } else {
+      const completedStyle = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints.completed;
+
+      input.context.strokeStyle = completedStyle.checkColor;
+      input.context.lineWidth = completedStyle.checkLineWidth;
+      input.context.lineCap = "round";
+      input.context.lineJoin = "round";
+      input.context.beginPath();
+      input.context.moveTo(input.point.x - 7, input.point.y);
+      input.context.lineTo(input.point.x - 2, input.point.y + 5);
+      input.context.lineTo(input.point.x + 8, input.point.y - 6);
+      input.context.stroke();
+    }
+  }
+
   input.context.restore();
 }
 
@@ -1927,9 +2028,12 @@ function drawRouteIssueOverlay(
   context.strokeStyle = colour;
   context.fillStyle = colour;
   const style = TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue;
+  const illegalRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement;
 
-  context.lineWidth = overlay.kind === "disconnected" ? style.disconnectedLineWidth : style.illegalLineWidth;
-  context.globalAlpha = style.alpha;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.lineWidth = overlay.kind === "disconnected" ? style.disconnectedLineWidth : illegalRouteStyle.strokeWidth;
+  context.globalAlpha = illegalRouteStyle.alpha ?? style.alpha;
   context.setLineDash(lineStyle === "dashed-red" ? [...style.dashedIssueDash] : []);
 
   if (overlay.kind !== "prohibited-turn" && overlay.kind !== "no-u-turn") {
@@ -1959,7 +2063,7 @@ function drawRouteIssueOverlay(
   if (overlay.points.length >= 2) {
     const screenPoints = overlay.points.map((point) => mapToScreenPoint(point, viewport));
 
-    context.lineWidth = overlay.kind === "disconnected" ? style.disconnectedDetailLineWidth : style.illegalDetailLineWidth;
+    context.lineWidth = overlay.kind === "disconnected" ? style.disconnectedDetailLineWidth : illegalRouteStyle.strokeWidth;
     context.beginPath();
     context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1989,40 +2093,7 @@ function drawFastestRouteOverlay(
   routePoints: readonly Vec2[],
   viewport: ScreenMapViewport
 ): void {
-  if (routePoints.length < 2) {
-    return;
-  }
-
-  const screenPoints = routePoints.map((point) => mapToScreenPoint(point, viewport));
-
-  context.save();
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  const style = TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute;
-
-  context.strokeStyle = style.halo.strokeColor;
-  context.lineWidth = style.halo.strokeWidth;
-  context.beginPath();
-  context.moveTo(screenPoints[0].x, screenPoints[0].y);
-
-  for (const point of screenPoints.slice(1)) {
-    context.lineTo(point.x, point.y);
-  }
-
-  context.stroke();
-  context.strokeStyle = style.route.strokeColor;
-  context.lineWidth = style.route.strokeWidth;
-  context.setLineDash([...(style.route.dash ?? [])]);
-  context.beginPath();
-  context.moveTo(screenPoints[0].x, screenPoints[0].y);
-
-  for (const point of screenPoints.slice(1)) {
-    context.lineTo(point.x, point.y);
-  }
-
-  context.stroke();
-  context.setLineDash([]);
-  context.restore();
+  drawStyledMapPolyline(context, routePoints, viewport, TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute);
 }
 
 function drawOsmExerciseDebugRouteOverlay(
@@ -2349,7 +2420,9 @@ function buildLabelReservationBoxes(input: {
     idPrefix: "fastest-route",
     points: input.fastestRoutePoints,
     viewport: input.viewport,
-    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute.halo.strokeWidth,
+    strokeWidth:
+      TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.casingWidth ??
+      TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.strokeWidth,
     padding: labelCollisionStyle.routePadding
   });
 
@@ -2359,7 +2432,9 @@ function buildLabelReservationBoxes(input: {
       idPrefix: `raw-route-${index}`,
       points: stroke.points,
       viewport: input.viewport,
-      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth,
+      strokeWidth:
+        TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.casingWidth ??
+        TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth,
       padding: labelCollisionStyle.routePadding
     });
   });
@@ -2408,7 +2483,9 @@ function buildLabelReservationBoxes(input: {
       idPrefix: `route-issue-${index}`,
       points: overlay.points,
       viewport: input.viewport,
-      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.illegalLineWidth,
+      strokeWidth:
+        TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement.casingWidth ??
+        TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement.strokeWidth,
       padding: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
     });
 
@@ -2531,6 +2608,7 @@ function drawRouteCanvas(input: {
   routeIssueOverlays: RouteIssueOverlay[];
   restrictionMapVisualItems: RestrictionMapVisualItem[];
   selectedRestrictionHighlight: SelectedRestrictionHighlight | null;
+  requiredStopStatuses: RequiredStopVisitStatus[];
   osmDebugOverlay: OsmDebugOverlayModel | null;
   osmExerciseDebugOverlay: OsmExerciseDebugOverlayModel | null;
 }) {
@@ -2709,25 +2787,8 @@ function drawRouteCanvas(input: {
   if (visibleRawStrokes.length > 0) {
     const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
 
-    context.strokeStyle = rawRouteStyle.strokeColor;
-    context.lineWidth = rawRouteStyle.strokeWidth;
-
     visibleRawStrokes.forEach((stroke) => {
-      if (stroke.points.length === 0) {
-        return;
-      }
-
-      context.beginPath();
-      stroke.points.forEach((point, index) => {
-        const screenPoint = mapToScreenPoint(point, input.viewport);
-
-        if (index === 0) {
-          context.moveTo(screenPoint.x, screenPoint.y);
-        } else {
-          context.lineTo(screenPoint.x, screenPoint.y);
-        }
-      });
-      context.stroke();
+      drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle);
     });
   }
 
@@ -2752,6 +2813,9 @@ function drawRouteCanvas(input: {
   });
 
   const selectedExercise = input.selectedExercise;
+  const requiredStopStatusByNodeId = new Map(
+    input.requiredStopStatuses.map((status) => [status.nodeId, status])
+  );
 
   if (selectedExercise) {
     selectedExercise.stops.forEach((stop, index) => {
@@ -2764,12 +2828,19 @@ function drawRouteCanvas(input: {
       const point = mapToScreenPoint(node, input.viewport);
       const role =
         index === 0 ? "start" : index === selectedExercise.stops.length - 1 ? "finish" : "checkpoint";
+      const requiredStopStatus = requiredStopStatusByNodeId.get(node.id);
 
       drawExerciseStopMarker({
         context,
         point,
         role,
-        index
+        index,
+        reviewStatus:
+          role === "checkpoint" && requiredStopStatus
+            ? requiredStopStatus.visited
+              ? "completed"
+              : "missed"
+            : undefined
       });
     });
   }
@@ -3796,6 +3867,7 @@ export function RouteRunnerClient({
       routeIssueOverlays,
       restrictionMapVisualItems,
       selectedRestrictionHighlight,
+      requiredStopStatuses,
       osmDebugOverlay: visibleOsmDebugOverlayAvailable ? osmDebugOverlay : null,
       osmExerciseDebugOverlay: visibleOsmExerciseDebugOverlayAvailable ? osmExerciseDebugOverlay : null
     });
@@ -3813,6 +3885,7 @@ export function RouteRunnerClient({
     restrictionMapVisualItems,
     routeReplayMarkers,
     routeIssueOverlays,
+    requiredStopStatuses,
     selectedExercise,
     selectedMapOption.sourceOverpassFixture,
     selectedRestrictionHighlight,

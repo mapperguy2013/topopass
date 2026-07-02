@@ -340,6 +340,10 @@ test("Stage 152 visual comparison scenarios cover expected Real London readabili
     rawRoutePoints: stopPoints,
     snappedRoutePoints: stopPoints,
     matchedRoutePoints: stopPoints,
+    shortestLegalRoutePoints: stopPoints.slice().reverse(),
+    acceptedAlternativeRoutePoints: stopPoints.slice(0, 1).concat(stopPoints.slice(2, 4)),
+    inefficientRoutePoints: stopPoints.slice(0, 3),
+    backtrackRoutePoints: stopPoints.slice(0, 2).reverse().concat(stopPoints.slice(1, 2)),
     illegalRoutePoints: stopPoints.slice(1, 3)
   });
   const restrictionItems = buildRestrictionMapVisualItems({
