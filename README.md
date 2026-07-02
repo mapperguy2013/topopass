@@ -817,6 +817,13 @@ labels where the committed data supports them. Context lines and markers now
 fade or filter by zoom and avoid learner overlay reservations; the renderer
 does not fabricate unavailable landmarks or change routing, legality, scoring,
 exercises, beta gates, feedback, or route attempts.
+Stage 149 improves Real London orientation and learner-overlay readability by
+classifying named fixture-backed area labels, public buildings, open spaces,
+important landmarks, learner-reference landmarks, and station markers from
+existing committed map/Overpass data. Context labels and markers use central
+zoom, priority, and collision tokens, while route-review and exercise marker
+reservations keep learner overlays legible without changing routing, legality,
+scoring, exercises, beta gates, feedback, or route attempts.
 
 ## Current Feature Set
 

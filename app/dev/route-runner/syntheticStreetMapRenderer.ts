@@ -42,6 +42,10 @@ export type SyntheticLandmarkVisualKind =
   | "station"
   | "hospital"
   | "park"
+  | "important-landmark"
+  | "public-building"
+  | "open-space"
+  | "learner-reference"
   | "market"
   | "civic"
   | "church"
@@ -49,7 +53,16 @@ export type SyntheticLandmarkVisualKind =
   | "dock"
   | "generic";
 
-export type SyntheticContextMapLabelKind = "area" | "park" | "water" | "station" | "landmark" | "bridge";
+export type SyntheticContextMapLabelKind =
+  | "area"
+  | "park"
+  | "water"
+  | "station"
+  | "landmark"
+  | "public_building"
+  | "open_space"
+  | "learner_reference"
+  | "bridge";
 
 export type SyntheticMapLabelKind = "road" | SyntheticContextMapLabelKind | "start" | "checkpoint" | "finish";
 
@@ -220,6 +233,7 @@ export type BuildSyntheticMapLabelOptions = {
   includeOsmRoadLabels?: boolean;
   backgroundFeatures?: readonly SyntheticBackgroundFeature[];
   linearFeatures?: readonly SyntheticLinearFeature[];
+  sourceOverpassFixture?: unknown;
 };
 
 export type BuildSyntheticContextOptions = {
@@ -741,10 +755,14 @@ export function buildSyntheticMapLabels(
     });
   }
 
-  const labelledLandmarks = buildSyntheticLandmarkVisuals(map, exercise).filter((visual) => shouldLabelLandmark(visual));
+  labels.push(...buildOsmAreaLabels(map, options.sourceOverpassFixture));
+
+  const labelledLandmarks = buildSyntheticLandmarkVisuals(map, exercise, {
+    sourceOverpassFixture: options.sourceOverpassFixture
+  }).filter((visual) => shouldLabelLandmark(visual));
 
   for (const visual of labelledLandmarks) {
-    const kind = visual.kind === "station" ? "station" : "landmark";
+    const kind = contextLabelKindForLandmarkVisual(visual);
 
     labels.push({
       id: `${kind}-label-${visual.id}`,
@@ -987,9 +1005,27 @@ function contextLineStyleForFeature(feature: SyntheticLinearFeature) {
 }
 
 function contextMarkerStyleForVisual(visual: SyntheticLandmarkVisual) {
-  return visual.kind === "station"
-    ? TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.stationMarker
-    : TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.landmarkMarker;
+  if (visual.kind === "station") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.stationMarker;
+  }
+
+  if (visual.kind === "hospital" || visual.kind === "important-landmark") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.importantLandmarkMarker;
+  }
+
+  if (visual.kind === "public-building" || visual.kind === "civic" || visual.kind === "church" || visual.kind === "museum") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.publicBuildingMarker;
+  }
+
+  if (visual.kind === "open-space" || visual.kind === "park") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.openSpaceMarker;
+  }
+
+  if (visual.kind === "learner-reference" || visual.kind === "market" || visual.kind === "dock") {
+    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.learnerReferenceMarker;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.landmarkMarker;
 }
 
 export function syntheticMapViewportScale(viewport: ScreenMapViewport): number {
@@ -1107,12 +1143,22 @@ function distanceBetweenPoints(left: Vec2, right: Vec2): number {
 }
 
 function isContextMapLabelKind(kind: SyntheticMapLabelKind): kind is SyntheticContextMapLabelKind {
-  return kind === "area" || kind === "park" || kind === "water" || kind === "station" || kind === "landmark" || kind === "bridge";
+  return (
+    kind === "area" ||
+    kind === "park" ||
+    kind === "water" ||
+    kind === "station" ||
+    kind === "landmark" ||
+    kind === "public_building" ||
+    kind === "open_space" ||
+    kind === "learner_reference" ||
+    kind === "bridge"
+  );
 }
 
 function contextLabelKindForBackgroundFeature(feature: SyntheticBackgroundFeature): SyntheticContextMapLabelKind {
   if (feature.kind === "park" || feature.kind === "open-space") {
-    return "park";
+    return "open_space";
   }
 
   if (feature.kind === "water") {
@@ -1120,6 +1166,26 @@ function contextLabelKindForBackgroundFeature(feature: SyntheticBackgroundFeatur
   }
 
   return "area";
+}
+
+function contextLabelKindForLandmarkVisual(visual: SyntheticLandmarkVisual): SyntheticContextMapLabelKind {
+  if (visual.kind === "station") {
+    return "station";
+  }
+
+  if (visual.kind === "public-building") {
+    return "public_building";
+  }
+
+  if (visual.kind === "open-space" || visual.kind === "park") {
+    return "open_space";
+  }
+
+  if (visual.kind === "learner-reference" || visual.kind === "market" || visual.kind === "dock") {
+    return "learner_reference";
+  }
+
+  return "landmark";
 }
 
 function contextLabelKindForLinearFeature(feature: SyntheticLinearFeature): SyntheticContextMapLabelKind {
@@ -1143,6 +1209,18 @@ function contextLabelPriority(kind: SyntheticContextMapLabelKind): number {
 
   if (kind === "landmark") {
     return priorities.landmark;
+  }
+
+  if (kind === "public_building") {
+    return priorities.publicBuilding;
+  }
+
+  if (kind === "open_space") {
+    return priorities.openSpace;
+  }
+
+  if (kind === "learner_reference") {
+    return priorities.learnerReference;
   }
 
   if (kind === "park") {
@@ -1262,6 +1340,173 @@ function hasBridgeContextTag(tags: OverpassTags): boolean {
   const manMade = tags.man_made?.trim().toLowerCase();
 
   return (Boolean(bridge) && bridge !== "no") || manMade === "bridge";
+}
+
+function osmAreaLabelKind(tags: OverpassTags): SyntheticContextMapLabelKind | null {
+  const place = tags.place?.trim().toLowerCase();
+
+  if (place === "neighbourhood" || place === "suburb" || place === "quarter" || place === "locality" || place === "square") {
+    return "area";
+  }
+
+  return null;
+}
+
+function osmLandmarkVisualKindForTags(tags: OverpassTags): SyntheticLandmarkVisualKind | null {
+  const railway = tags.railway?.trim().toLowerCase();
+  const amenity = tags.amenity?.trim().toLowerCase();
+  const tourism = tags.tourism?.trim().toLowerCase();
+  const historic = tags.historic?.trim().toLowerCase();
+  const leisure = tags.leisure?.trim().toLowerCase();
+  const landuse = tags.landuse?.trim().toLowerCase();
+  const natural = tags.natural?.trim().toLowerCase();
+  const building = tags.building?.trim().toLowerCase();
+  const shop = tags.shop?.trim().toLowerCase();
+
+  if (railway === "station") {
+    return "station";
+  }
+
+  if (amenity === "hospital") {
+    return "hospital";
+  }
+
+  if (tourism === "attraction" || historic || tags.landmark === "yes") {
+    return "important-landmark";
+  }
+
+  if (
+    amenity === "townhall" ||
+    amenity === "library" ||
+    amenity === "school" ||
+    amenity === "university" ||
+    amenity === "college" ||
+    amenity === "police" ||
+    amenity === "fire_station" ||
+    amenity === "courthouse" ||
+    building === "public" ||
+    building === "civic"
+  ) {
+    return "public-building";
+  }
+
+  if (leisure === "park" || leisure === "garden" || landuse === "grass" || landuse === "recreation_ground" || natural === "wood") {
+    return "open-space";
+  }
+
+  if (amenity === "marketplace" || shop === "mall" || tourism === "museum" || tourism === "gallery") {
+    return "learner-reference";
+  }
+
+  return null;
+}
+
+function buildOsmAreaLabels(map: MapDefinition, fixture: unknown): SyntheticMapLabel[] {
+  const projection = osmProjectionForMap(map);
+  const overpassContext = overpassContextFromFixture(fixture);
+
+  if (!projection || !overpassContext) {
+    return [];
+  }
+
+  const labelsFromNodes = Array.from(overpassContext.nodesById.values())
+    .flatMap((node) => {
+      const tags = node.tags ?? {};
+      const kind = osmAreaLabelKind(tags);
+      const label = namedContextLabel(tags);
+
+      if (!kind || !label) {
+        return [];
+      }
+
+      return [
+        {
+          id: `${kind}-label-osm-node-${node.id}`,
+          kind,
+          text: label,
+          point: projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection),
+          priority: contextLabelPriority(kind)
+        }
+      ];
+    });
+
+  const labelsFromWays = overpassContext.ways.flatMap((way) => {
+    const tags = way.tags ?? {};
+    const kind = osmAreaLabelKind(tags);
+    const label = namedContextLabel(tags);
+
+    if (!kind || !label || !isClosedWay(way)) {
+      return [];
+    }
+
+    const points = projectedWayPoints({
+      way,
+      nodesById: overpassContext.nodesById,
+      projection
+    });
+
+    if (points.length < 4) {
+      return [];
+    }
+
+    return [
+      {
+        id: `${kind}-label-osm-way-${way.id}`,
+        kind,
+        text: label,
+        point: polygonCenter(points),
+        priority: contextLabelPriority(kind)
+      }
+    ];
+  });
+
+  return [...labelsFromNodes, ...labelsFromWays].sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+function buildOsmLandmarkVisuals(map: MapDefinition, fixture: unknown): SyntheticLandmarkVisual[] {
+  const projection = osmProjectionForMap(map);
+  const overpassContext = overpassContextFromFixture(fixture);
+
+  if (!projection || !overpassContext) {
+    return [];
+  }
+
+  const visualsFromNodes = Array.from(overpassContext.nodesById.values())
+    .flatMap((node) => {
+      const tags = node.tags ?? {};
+      const kind = osmLandmarkVisualKindForTags(tags);
+      const label = namedContextLabel(tags);
+
+      if (!kind || !label) {
+        return [];
+      }
+
+      return [buildLandmarkVisualFromPoint(`osm-landmark-node-${node.id}`, kind, label, projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection))];
+    });
+
+  const visualsFromWays = overpassContext.ways.flatMap((way) => {
+    const tags = way.tags ?? {};
+    const kind = osmLandmarkVisualKindForTags(tags);
+    const label = namedContextLabel(tags);
+
+    if (!kind || !label || !isClosedWay(way)) {
+      return [];
+    }
+
+    const points = projectedWayPoints({
+      way,
+      nodesById: overpassContext.nodesById,
+      projection
+    });
+
+    if (points.length < 4) {
+      return [];
+    }
+
+    return [buildLandmarkVisualFromPoint(`osm-landmark-way-${way.id}`, kind, label, polygonCenter(points))];
+  });
+
+  return [...visualsFromNodes, ...visualsFromWays].sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
 function osmBackgroundStyleForTags(tags: OverpassTags): Pick<
@@ -1475,13 +1720,14 @@ export function buildSyntheticLinearFeatures(
 
 export function buildSyntheticLandmarkVisuals(
   map: MapDefinition,
-  exercise?: RouteExercise
+  exercise?: RouteExercise,
+  options: BuildSyntheticContextOptions = {}
 ): SyntheticLandmarkVisual[] {
   const exerciseLandmarkIds = new Set(
     exercise?.stops.flatMap((stop) => (stop.type === "landmark" ? [stop.landmarkId] : [])) ?? []
   );
 
-  return map.landmarks
+  const mapLandmarks = map.landmarks
     .map((landmark) => {
       const kind = landmarkVisualKind(landmark);
       const visualStyle = landmarkVisualStyle(kind);
@@ -1500,8 +1746,11 @@ export function buildSyntheticLandmarkVisuals(
         isExerciseStop,
         routable: false as const
       };
-    })
-    .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+    });
+
+  return [...mapLandmarks, ...buildOsmLandmarkVisuals(map, options.sourceOverpassFixture)].sort(
+    (left, right) => left.priority - right.priority || left.id.localeCompare(right.id)
+  );
 }
 
 export function buildSyntheticBackgroundFeatures(
@@ -1899,7 +2148,7 @@ function landmarkVisualKind(landmark: Landmark): SyntheticLandmarkVisualKind {
   }
 
   if (landmark.type === "park") {
-    return "park";
+    return "open-space";
   }
 
   if (landmark.type === "market") {
@@ -1907,15 +2156,19 @@ function landmarkVisualKind(landmark: Landmark): SyntheticLandmarkVisualKind {
   }
 
   if (landmark.type === "civic") {
-    return "civic";
+    return "public-building";
   }
 
   if (landmark.type === "place_of_worship") {
-    return "church";
+    return "public-building";
   }
 
   if (landmark.type === "museum" || landmark.type === "entertainment") {
-    return "museum";
+    return "learner-reference";
+  }
+
+  if (landmark.type === "school" || landmark.type === "library" || landmark.type === "office") {
+    return "public-building";
   }
 
   if (landmark.type === "dock") {
@@ -1923,6 +2176,29 @@ function landmarkVisualKind(landmark: Landmark): SyntheticLandmarkVisualKind {
   }
 
   return "generic";
+}
+
+function buildLandmarkVisualFromPoint(
+  id: string,
+  kind: SyntheticLandmarkVisualKind,
+  label: string,
+  point: Vec2
+): SyntheticLandmarkVisual {
+  const visualStyle = landmarkVisualStyle(kind);
+
+  return {
+    id,
+    kind,
+    label,
+    point: { ...point },
+    radius: visualStyle.radius,
+    fillColor: visualStyle.fillColor,
+    strokeColor: visualStyle.strokeColor,
+    haloColor: visualStyle.haloColor,
+    priority: visualStyle.priority,
+    isExerciseStop: false,
+    routable: false
+  };
 }
 
 function landmarkVisualStyle(kind: SyntheticLandmarkVisualKind): {
@@ -1952,6 +2228,22 @@ function landmarkVisualStyle(kind: SyntheticLandmarkVisualKind): {
     return { ...style.landmarks.park };
   }
 
+  if (kind === "important-landmark") {
+    return { ...style.landmarks.important };
+  }
+
+  if (kind === "public-building") {
+    return { ...style.landmarks.publicBuilding };
+  }
+
+  if (kind === "open-space") {
+    return { ...style.landmarks.openSpace };
+  }
+
+  if (kind === "learner-reference") {
+    return { ...style.landmarks.learnerReference };
+  }
+
   if (kind === "market" || kind === "dock") {
     return { ...(kind === "market" ? style.landmarks.market : style.landmarks.dock) };
   }
@@ -1964,7 +2256,7 @@ function landmarkVisualStyle(kind: SyntheticLandmarkVisualKind): {
 }
 
 function shouldLabelLandmark(visual: SyntheticLandmarkVisual): boolean {
-  return visual.isExerciseStop || visual.priority <= 5;
+  return visual.isExerciseStop || visual.priority <= 6;
 }
 
 function resolveRouteStopPoint(map: MapDefinition, stop: RouteStop): Vec2 | null {

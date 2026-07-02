@@ -147,6 +147,9 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.context), [
     "station",
     "landmark",
+    "public_building",
+    "open_space",
+    "learner_reference",
     "park",
     "water",
     "bridge",
@@ -164,6 +167,9 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "localRoad",
     "station",
     "landmark",
+    "publicBuilding",
+    "openSpace",
+    "learnerReference",
     "park",
     "water",
     "bridge",
@@ -174,7 +180,11 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "rail",
     "bridge",
     "stationMarker",
-    "landmarkMarker"
+    "landmarkMarker",
+    "importantLandmarkMarker",
+    "publicBuildingMarker",
+    "openSpaceMarker",
+    "learnerReferenceMarker"
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
@@ -753,10 +763,10 @@ test("Stage 146 context labels use category styles and low-zoom decluttering", (
     },
     {
       id: "park-label",
-      kind: "park",
+      kind: "open_space",
       text: "Gordon Square",
       point: { x: 160, y: 80 },
-      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.park
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.openSpace
     }
   ];
   const lowZoomViewport = {
@@ -773,7 +783,7 @@ test("Stage 146 context labels use category styles and low-zoom decluttering", (
   assert.equal(labelStyleForSyntheticMapLabel(labels[0]).font, "700 12px Arial, sans-serif");
   assert.equal(labelStyleForSyntheticMapLabel(labels[1]).font, "600 11px Arial, sans-serif");
   assert.deepEqual(
-    filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomViewport }).map((label) => label.id),
+    filterSyntheticMapLabelsForViewport({ labels: labels.slice(0, 2), viewport: lowZoomViewport }).map((label) => label.id),
     []
   );
   assert.deepEqual(
@@ -834,7 +844,7 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
   const contextLabels = buildSyntheticMapLabels(converted.map, undefined, {
     backgroundFeatures,
     linearFeatures
-  }).filter((label) => label.kind === "park" || label.kind === "water" || label.kind === "area");
+  }).filter((label) => label.kind === "open_space" || label.kind === "water" || label.kind === "area");
 
   assert.equal(converted.map.roads.length, 1);
   assert.deepEqual(
@@ -851,7 +861,7 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
       ["waterway", "Pilot Cut", false]
     ]
   );
-  assert.ok(contextLabels.some((label) => label.kind === "park" && label.text === "Fitzroy Garden"));
+  assert.ok(contextLabels.some((label) => label.kind === "open_space" && label.text === "Fitzroy Garden"));
   assert.ok(contextLabels.some((label) => label.kind === "water" && label.text === "Pilot Basin"));
   assert.ok(contextLabels.some((label) => label.kind === "water" && label.text === "Pilot Cut"));
   assert.ok(contextLabels.some((label) => label.kind === "area" && label.text === "Main Line"));
@@ -958,6 +968,146 @@ test("Stage 148 station and landmark markers declutter against learner overlay r
   );
 });
 
+test("Stage 149 raw OSM area names and landmark categories are fixture-backed", () => {
+  const contextFixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.5201, lon: -0.1398 },
+      { type: "node", id: 3, lat: 51.5202, lon: -0.1396 },
+      { type: "node", id: 4, lat: 51.5203, lon: -0.1394 },
+      { type: "node", id: 5, lat: 51.5199, lon: -0.1397 },
+      { type: "node", id: 6, lat: 51.5198, lon: -0.1396 },
+      { type: "node", id: 7, lat: 51.5197, lon: -0.1397 },
+      { type: "node", id: 8, lat: 51.5198, lon: -0.1398 },
+      { type: "node", id: 20, lat: 51.52004, lon: -0.1399, tags: { place: "neighbourhood", name: "Fitzrovia" } },
+      { type: "node", id: 21, lat: 51.52008, lon: -0.13985, tags: { amenity: "library", name: "Pilot Library" } },
+      { type: "node", id: 22, lat: 51.52012, lon: -0.13982, tags: { tourism: "attraction", name: "Pilot Monument" } },
+      { type: "node", id: 23, lat: 51.52016, lon: -0.13978, tags: { amenity: "marketplace", name: "Pilot Market" } },
+      { type: "node", id: 24, lat: 51.5202, lon: -0.13975, tags: { amenity: "bench", name: "Named Bench" } },
+      { type: "way", id: 100, nodes: [1, 2], tags: { highway: "residential", name: "Context Road" } },
+      { type: "way", id: 200, nodes: [5, 6, 7, 8, 5], tags: { leisure: "garden", name: "Pilot Garden" } }
+    ]
+  };
+  const converted = convertOverpassJsonToRouteMap(contextFixture, {
+    mapId: "stage-149-context-map",
+    name: "Stage 149 Context Map"
+  });
+
+  if (!converted.ok) {
+    throw new Error(`Expected context fixture to convert: ${converted.errors.join("; ")}`);
+  }
+
+  const labelsWithoutFixture = buildSyntheticMapLabels(converted.map, undefined);
+  const labels = buildSyntheticMapLabels(converted.map, undefined, {
+    sourceOverpassFixture: contextFixture
+  });
+  const visuals = buildSyntheticLandmarkVisuals(converted.map, undefined, {
+    sourceOverpassFixture: contextFixture
+  });
+
+  assert.equal(labelsWithoutFixture.some((label) => label.text === "Fitzrovia"), false);
+  assert.ok(labels.some((label) => label.kind === "area" && label.text === "Fitzrovia"));
+  assert.ok(labels.some((label) => label.kind === "public_building" && label.text === "Pilot Library"));
+  assert.ok(labels.some((label) => label.kind === "landmark" && label.text === "Pilot Monument"));
+  assert.ok(labels.some((label) => label.kind === "learner_reference" && label.text === "Pilot Market"));
+  assert.ok(labels.some((label) => label.kind === "open_space" && label.text === "Pilot Garden"));
+  assert.equal(labels.some((label) => label.text === "Named Bench"), false);
+  assert.deepEqual(
+    visuals.map((visual) => [visual.kind, visual.label, visual.routable]),
+    [
+      ["important-landmark", "Pilot Monument", false],
+      ["public-building", "Pilot Library", false],
+      ["learner-reference", "Pilot Market", false],
+      ["open-space", "Pilot Garden", false]
+    ]
+  );
+});
+
+test("Stage 149 area and landmark labels respect zoom and learner overlay priority", () => {
+  const labels: SyntheticMapLabel[] = [
+    {
+      id: "area-label",
+      kind: "area",
+      text: "Bloomsbury",
+      point: { x: 100, y: 50 },
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.area
+    },
+    {
+      id: "public-building-label",
+      kind: "public_building",
+      text: "Central Library",
+      point: { x: 100, y: 50 },
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.publicBuilding
+    },
+    roadLabel({
+      id: "road-label",
+      text: "Euston Road",
+      point: { x: 100, y: 50 },
+      roadClass: "major",
+      osmHierarchy: "primary",
+      roadLengthMeters: 500
+    })
+  ];
+  const lowZoomViewport = {
+    width: 160,
+    height: 160,
+    mapBounds: {
+      minX: 0,
+      minY: 0,
+      maxX: 1000,
+      maxY: 1000
+    }
+  };
+  const reservedBoxes = [{ id: "exercise-stop", minX: 72, minY: 28, maxX: 128, maxY: 72 }];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomViewport }).map((label) => label.id),
+    []
+  );
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["road-label"]
+  );
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels: labels.slice(0, 2), viewport: labelTestViewport, reservedBoxes }),
+    []
+  );
+});
+
+test("Stage 149 landmark marker roles have deterministic zoom and collision behaviour", () => {
+  const visuals = buildSyntheticLandmarkVisuals(marloweDistrictMap);
+  const publicBuilding = visuals.find((visual) => visual.kind === "public-building");
+  const openSpace = visuals.find((visual) => visual.kind === "open-space");
+
+  if (!publicBuilding || !openSpace) {
+    throw new Error("Expected public-building and open-space landmark visuals.");
+  }
+
+  const lowViewport = { width: 120, height: 120, mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 } };
+  const highViewport = {
+    width: 240,
+    height: 240,
+    mapBounds: {
+      minX: publicBuilding.point.x - 120,
+      minY: publicBuilding.point.y - 120,
+      maxX: publicBuilding.point.x + 120,
+      maxY: publicBuilding.point.y + 120
+    }
+  };
+  const reservedBoxes = [{ id: "review-marker", minX: 112, minY: 112, maxX: 128, maxY: 128 }];
+
+  assert.deepEqual(filterSyntheticLandmarkVisualsForViewport({ visuals: [publicBuilding], viewport: lowViewport }), []);
+  assert.deepEqual(
+    filterSyntheticLandmarkVisualsForViewport({ visuals: [publicBuilding], viewport: highViewport }).map((visual) => visual.id),
+    [publicBuilding.id]
+  );
+  assert.deepEqual(
+    filterSyntheticLandmarkVisualsForViewport({ visuals: [publicBuilding], viewport: highViewport, reservedBoxes }),
+    []
+  );
+  assert.ok(syntheticLandmarkVisualAlphaForViewport(openSpace, highViewport) <= 1);
+});
+
 test("converted OSM road labels are optional and deduplicated by road name", () => {
   const hiddenLabels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0]);
   const visibleLabels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0], {
@@ -1050,7 +1200,7 @@ test("synthetic landmark visuals classify useful London-style context markers", 
   assert.equal(station?.routable, false);
   assert.equal(hospital?.kind, "hospital");
   assert.equal(hospital?.isExerciseStop, true);
-  assert.equal(church?.kind, "church");
+  assert.equal(church?.kind, "public-building");
 });
 
 test("buildSyntheticRouteOverlayVisuals creates route overlay visual models", () => {

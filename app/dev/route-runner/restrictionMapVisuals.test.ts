@@ -307,6 +307,28 @@ test("Stage 147 low zoom hides base restriction symbols while preserving route r
   );
 });
 
+test("Stage 149 route review symbols stay top-priority and use review marker tokens", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays
+  });
+  const reviewItems = filterRestrictionMapVisualItemsForViewport(items, lowZoomViewport).filter(
+    (item) => item.kind === "missed-restriction" || item.kind === "illegal-movement"
+  );
+
+  assert.deepEqual(reviewItems.map((item) => item.kind), ["missed-restriction", "illegal-movement"]);
+  assert.deepEqual(
+    reviewItems.map((item) => restrictionMapVisualStyleForViewport(item, lowZoomViewport)),
+    [
+      { alpha: 1, scale: 1 },
+      { alpha: 1, scale: 1 }
+    ]
+  );
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius > TOPOPASS_STREET_ATLAS_STYLE.nodes.radius);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding > TOPOPASS_STREET_ATLAS_STYLE.labels.collision.defaultPadding);
+});
+
 test("Stage 147 high zoom reveals one-way and restriction detail", () => {
   const items = buildRestrictionMapVisualItems({
     roadRestrictionOverlays,

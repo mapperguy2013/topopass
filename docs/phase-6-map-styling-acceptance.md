@@ -154,6 +154,24 @@ destination, hint, and replay layers above the base map. Underground-specific
 styling is intentionally not claimed: `railway=subway` can render as rail
 context when present, but no separate Underground distinction is invented.
 
+## Stage 149 Orientation And Overlay Evidence
+
+Stage 149 addresses the landmarks/area names/learner overlay readability part
+of this checklist through visual-only renderer changes. Named OSM nodes and
+closed ways from the selected committed raw Overpass fixture can now produce
+area labels, public-building markers, open-space markers, important landmark
+markers, learner-reference markers, and station markers when their existing
+tags match the supported cartographic categories. Unsupported tags, unnamed
+features, and missing fixture data remain safe no-ops.
+
+The Stage 149 renderer keeps orientation context subordinate to learner tasks by
+using central context-label priorities, zoom thresholds, collision boxes, route
+issue reservations, and exercise-marker reservations before drawing context
+labels or markers. Route-review issue markers keep their own tokenised halo,
+radius, stroke, and reservation padding so missed/illegal review cues stay
+readable above the base map without changing routing, scoring, legality,
+exercise generation, beta gating, feedback, or route attempts.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

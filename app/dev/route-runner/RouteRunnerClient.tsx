@@ -1316,6 +1316,26 @@ function drawSyntheticLandmarkVisual(
     context.beginPath();
     context.arc(point.x, point.y, 3, 0, Math.PI * 2);
     context.fill();
+  } else if (visual.kind === "public-building") {
+    context.strokeStyle = visual.strokeColor;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.rect(point.x - 4, point.y - 4, 8, 8);
+    context.stroke();
+  } else if (visual.kind === "open-space") {
+    context.fillStyle = visual.strokeColor;
+    context.beginPath();
+    context.arc(point.x, point.y, 2.8, 0, Math.PI * 2);
+    context.fill();
+  } else if (visual.kind === "learner-reference" || visual.kind === "important-landmark") {
+    context.strokeStyle = visual.strokeColor;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(point.x, point.y - 5);
+    context.lineTo(point.x + 5, point.y + 4);
+    context.lineTo(point.x - 5, point.y + 4);
+    context.closePath();
+    context.stroke();
   } else if (visual.kind === "market" || visual.kind === "dock") {
     context.strokeStyle = visual.strokeColor;
     context.lineWidth = 2;
@@ -1382,6 +1402,7 @@ function drawSyntheticStreetMapBase(input: {
   roadVisuals: SyntheticRoadVisual[];
   labelReservedBoxes: SyntheticLabelCollisionBox[];
   showOsmRoadLabels: boolean;
+  sourceOverpassFixture?: unknown;
   selectedRoadIds: readonly string[];
   hoveredRoadIds: readonly string[];
   selectedExercise?: RouteExercise;
@@ -1408,7 +1429,9 @@ function drawSyntheticStreetMapBase(input: {
   drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.selectedRoadIds, "selected");
 
   for (const visual of filterSyntheticLandmarkVisualsForViewport({
-    visuals: buildSyntheticLandmarkVisuals(input.map, input.selectedExercise),
+    visuals: buildSyntheticLandmarkVisuals(input.map, input.selectedExercise, {
+      sourceOverpassFixture: input.sourceOverpassFixture
+    }),
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes
   })) {
@@ -1424,7 +1447,8 @@ function drawSyntheticStreetMapBase(input: {
     labels: buildSyntheticMapLabels(input.map, input.selectedExercise, {
       includeOsmRoadLabels: input.showOsmRoadLabels,
       backgroundFeatures: input.backgroundFeatures,
-      linearFeatures: input.linearFeatures
+      linearFeatures: input.linearFeatures,
+      sourceOverpassFixture: input.sourceOverpassFixture
     }),
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes
@@ -1707,14 +1731,19 @@ function drawTurnBanMapSymbol(
 
 function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: RestrictionMapVisualItem, point: Vec2): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue;
+  const markerRadius = style.markerRadius;
 
   if (item.symbol === "disconnected-gap") {
     context.save();
+    context.fillStyle = style.markerHaloColor;
+    context.beginPath();
+    context.arc(point.x, point.y, markerRadius + style.markerHaloPadding, 0, Math.PI * 2);
+    context.fill();
     context.fillStyle = style.illegalSymbolFillColor;
     context.strokeStyle = style.illegalSymbolStrokeColor;
-    context.lineWidth = 3;
+    context.lineWidth = style.markerStrokeWidth;
     context.beginPath();
-    context.arc(point.x, point.y, 15, 0, Math.PI * 2);
+    context.arc(point.x, point.y, markerRadius, 0, Math.PI * 2);
     context.fill();
     context.stroke();
     context.setLineDash([4, 3]);
@@ -1733,11 +1762,15 @@ function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: Restri
   }
 
   context.save();
+  context.fillStyle = style.markerHaloColor;
+  context.beginPath();
+  context.arc(point.x, point.y, markerRadius + style.markerHaloPadding, 0, Math.PI * 2);
+  context.fill();
   context.fillStyle = style.noEntrySymbolFillColor;
   context.strokeStyle = style.noEntrySymbolStrokeColor;
-  context.lineWidth = 3;
+  context.lineWidth = style.markerStrokeWidth;
   context.beginPath();
-  context.arc(point.x, point.y, 16, 0, Math.PI * 2);
+  context.arc(point.x, point.y, markerRadius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
 
@@ -2345,8 +2378,20 @@ function buildLabelReservationBoxes(input: {
       points: overlay.points,
       viewport: input.viewport,
       strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.illegalLineWidth,
-      padding: labelCollisionStyle.routePadding
+      padding: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
     });
+
+    boxes.push(
+      screenPointReservationBox({
+        id: `route-issue-marker-${index}`,
+        point: overlay.midpoint,
+        viewport: input.viewport,
+        radius:
+          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
+          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding +
+          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
+      })
+    );
   });
 
   input.selectedExercise?.stops.forEach((stop, index) => {
@@ -2372,7 +2417,7 @@ function buildLabelReservationBoxes(input: {
         radius:
           markerStyle.radius +
           TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.haloRadiusPadding +
-          labelCollisionStyle.markerPadding
+          TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
       })
     );
   });
@@ -2440,6 +2485,7 @@ function drawRouteCanvas(input: {
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
+  sourceOverpassFixture?: unknown;
   showOsmRoadLabels: boolean;
   selectedExercise?: RouteExercise;
   trace: DrawnRouteTrace;
@@ -2488,6 +2534,7 @@ function drawRouteCanvas(input: {
     roadVisuals: input.roadVisuals,
     labelReservedBoxes,
     showOsmRoadLabels: input.showOsmRoadLabels,
+    sourceOverpassFixture: input.sourceOverpassFixture,
     selectedRoadIds: input.pipelineResult.matchResult?.orderedRoadIds ?? [],
     hoveredRoadIds: uniqueOrdered(
       input.snapPreview.snappedPoints.map((point) => point.roadId).filter((roadId): roadId is string => Boolean(roadId))
@@ -3683,6 +3730,7 @@ export function RouteRunnerClient({
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
+      sourceOverpassFixture: selectedMapOption.sourceOverpassFixture,
       showOsmRoadLabels: true,
       selectedExercise,
       trace: drawnTrace,
@@ -3713,6 +3761,7 @@ export function RouteRunnerClient({
     routeReplayMarkers,
     routeIssueOverlays,
     selectedExercise,
+    selectedMapOption.sourceOverpassFixture,
     selectedRestrictionHighlight,
     snapPreview,
     syntheticBackgroundFeatures,

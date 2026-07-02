@@ -22,6 +22,14 @@ export type TopopassContextMarkerStyle = {
   collisionPadding: number;
 };
 
+export type TopopassContextMarkerVisualStyle = {
+  radius: number;
+  fillColor: string;
+  strokeColor: string;
+  haloColor: string;
+  priority: number;
+};
+
 export type TopopassRoadClassStyle = {
   casingColor: string;
   strokeColor: string;
@@ -152,7 +160,18 @@ export type TopopassStreetAtlasStyle = {
     roadHierarchy: Record<"major" | "secondary" | "minor" | "restricted" | "service", TopopassRoadLabelStyle>;
     area: TopopassLabelStyle;
     landmark: TopopassLabelStyle;
-    context: Record<"station" | "landmark" | "park" | "water" | "area" | "bridge", TopopassContextLabelStyle>;
+    context: Record<
+      | "station"
+      | "landmark"
+      | "public_building"
+      | "open_space"
+      | "learner_reference"
+      | "park"
+      | "water"
+      | "area"
+      | "bridge",
+      TopopassContextLabelStyle
+    >;
     stop: TopopassLabelStyle;
     collision: {
       defaultPadding: number;
@@ -166,6 +185,9 @@ export type TopopassStreetAtlasStyle = {
       localRoad: number;
       station: number;
       landmark: number;
+      publicBuilding: number;
+      openSpace: number;
+      learnerReference: number;
       park: number;
       water: number;
       bridge: number;
@@ -199,6 +221,10 @@ export type TopopassStreetAtlasStyle = {
     bridge: TopopassContextLineStyle;
     stationMarker: TopopassContextMarkerStyle;
     landmarkMarker: TopopassContextMarkerStyle;
+    importantLandmarkMarker: TopopassContextMarkerStyle;
+    publicBuildingMarker: TopopassContextMarkerStyle;
+    openSpaceMarker: TopopassContextMarkerStyle;
+    learnerReferenceMarker: TopopassContextMarkerStyle;
   };
   station: {
     radius: number;
@@ -211,14 +237,19 @@ export type TopopassStreetAtlasStyle = {
     innerLineWidth: number;
   };
   landmarks: Record<
-    "hospital" | "park" | "market" | "dock" | "civic" | "church" | "museum" | "generic",
-    {
-      radius: number;
-      fillColor: string;
-      strokeColor: string;
-      haloColor: string;
-      priority: number;
-    }
+    | "hospital"
+    | "park"
+    | "market"
+    | "dock"
+    | "civic"
+    | "church"
+    | "museum"
+    | "generic"
+    | "important"
+    | "publicBuilding"
+    | "openSpace"
+    | "learnerReference",
+    TopopassContextMarkerVisualStyle
   >;
   routeOverlays: Record<
     "rawRoute" | "snappedRoute" | "matchedRoute" | "shortestLegalRoute" | "illegalMovement",
@@ -228,6 +259,8 @@ export type TopopassStreetAtlasStyle = {
     haloFillColor: string;
     textColor: string;
     haloRadiusPadding: number;
+    reservationPadding: number;
+    minSeparation: number;
     strokeWidth: number;
     shadowColor: string;
     shadowBlur: number;
@@ -305,6 +338,11 @@ export type TopopassStreetAtlasStyle = {
       noEntrySymbolStrokeColor: string;
       illegalSymbolFillColor: string;
       illegalSymbolStrokeColor: string;
+      markerRadius: number;
+      markerStrokeWidth: number;
+      markerHaloColor: string;
+      markerHaloPadding: number;
+      reservationPadding: number;
     };
     fastestRoute: {
       halo: TopopassLineStyle;
@@ -646,6 +684,42 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         minViewportScale: 0.78,
         collisionPadding: 4
       },
+      public_building: {
+        font: "650 10px Arial, sans-serif",
+        fontSize: 10,
+        approximateCharacterWidth: 5.7,
+        color: "rgba(51,65,85,0.68)",
+        haloColor: "rgba(255,255,255,0.9)",
+        haloWidth: 3,
+        shadowColor: "rgba(255,255,255,0.32)",
+        shadowBlur: 1,
+        shadowOffsetY: 0,
+        minViewportScale: 0.72,
+        collisionPadding: 4
+      },
+      open_space: {
+        font: "600 11px Arial, sans-serif",
+        fontSize: 11,
+        approximateCharacterWidth: 5.8,
+        color: "rgba(58,94,58,0.56)",
+        haloColor: "rgba(255,255,255,0.78)",
+        haloWidth: 3,
+        minViewportScale: 0.58,
+        collisionPadding: 5
+      },
+      learner_reference: {
+        font: "650 10px Arial, sans-serif",
+        fontSize: 10,
+        approximateCharacterWidth: 5.6,
+        color: "rgba(88,64,44,0.62)",
+        haloColor: "rgba(255,255,255,0.86)",
+        haloWidth: 3,
+        shadowColor: "rgba(255,255,255,0.3)",
+        shadowBlur: 1,
+        shadowOffsetY: 0,
+        minViewportScale: 0.82,
+        collisionPadding: 4
+      },
       park: {
         font: "600 11px Arial, sans-serif",
         fontSize: 11,
@@ -680,14 +754,14 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         collisionPadding: 5
       },
       area: {
-        font: "600 12px Arial, sans-serif",
+        font: "650 12px Arial, sans-serif",
         fontSize: 12,
-        approximateCharacterWidth: 6.5,
-        color: "rgba(71,85,105,0.5)",
+        approximateCharacterWidth: 7.2,
+        color: "rgba(71,85,105,0.46)",
         haloColor: "rgba(255,255,255,0.72)",
         haloWidth: 3,
-        minViewportScale: 0.86,
-        collisionPadding: 5
+        minViewportScale: 0.5,
+        collisionPadding: 7
       }
     },
     stop: {
@@ -709,6 +783,9 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       localRoad: 6,
       station: 4,
       landmark: 6,
+      publicBuilding: 6,
+      openSpace: 7,
+      learnerReference: 7,
       park: 7,
       water: 7,
       bridge: 6,
@@ -784,6 +861,34 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       mediumZoomAlpha: 0.78,
       highZoomAlpha: 0.92,
       collisionPadding: 6
+    },
+    importantLandmarkMarker: {
+      minViewportScale: 0.58,
+      lowZoomAlpha: 0.68,
+      mediumZoomAlpha: 0.86,
+      highZoomAlpha: 1,
+      collisionPadding: 7
+    },
+    publicBuildingMarker: {
+      minViewportScale: 0.68,
+      lowZoomAlpha: 0.58,
+      mediumZoomAlpha: 0.78,
+      highZoomAlpha: 0.92,
+      collisionPadding: 6
+    },
+    openSpaceMarker: {
+      minViewportScale: 0.72,
+      lowZoomAlpha: 0.5,
+      mediumZoomAlpha: 0.72,
+      highZoomAlpha: 0.86,
+      collisionPadding: 6
+    },
+    learnerReferenceMarker: {
+      minViewportScale: 0.84,
+      lowZoomAlpha: 0.48,
+      mediumZoomAlpha: 0.72,
+      highZoomAlpha: 0.88,
+      collisionPadding: 6
     }
   },
   station: {
@@ -852,6 +957,34 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       strokeColor: "#64748b",
       haloColor: "rgba(100,116,139,0.1)",
       priority: 7
+    },
+    important: {
+      radius: 8,
+      fillColor: "#ffffff",
+      strokeColor: "#334155",
+      haloColor: "rgba(51,65,85,0.13)",
+      priority: 4
+    },
+    publicBuilding: {
+      radius: 7,
+      fillColor: "#f8fafc",
+      strokeColor: "#475569",
+      haloColor: "rgba(71,85,105,0.11)",
+      priority: 5
+    },
+    openSpace: {
+      radius: 7,
+      fillColor: "#ecfdf5",
+      strokeColor: "#16a34a",
+      haloColor: "rgba(22,163,74,0.11)",
+      priority: 6
+    },
+    learnerReference: {
+      radius: 6,
+      fillColor: "#fff7ed",
+      strokeColor: "#a16207",
+      haloColor: "rgba(161,98,7,0.1)",
+      priority: 6
     }
   },
   routeOverlays: {
@@ -882,6 +1015,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     haloFillColor: "rgba(255,255,255,0.96)",
     textColor: "#ffffff",
     haloRadiusPadding: 5,
+    reservationPadding: 14,
+    minSeparation: 28,
     strokeWidth: 3,
     shadowColor: "rgba(15,23,42,0.24)",
     shadowBlur: 10,
@@ -975,7 +1110,12 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       noEntrySymbolFillColor: "#fee2e2",
       noEntrySymbolStrokeColor: "#b91c1c",
       illegalSymbolFillColor: "#ffffff",
-      illegalSymbolStrokeColor: "#dc2626"
+      illegalSymbolStrokeColor: "#dc2626",
+      markerRadius: 16,
+      markerStrokeWidth: 3,
+      markerHaloColor: "rgba(255,255,255,0.96)",
+      markerHaloPadding: 5,
+      reservationPadding: 12
     },
     fastestRoute: {
       halo: {
