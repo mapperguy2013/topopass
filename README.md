@@ -787,6 +787,9 @@ Known limitations:
 
 Detailed Phase 5 implementation history has moved to [docs/phase-5-beta-ready.md](docs/phase-5-beta-ready.md).
 
+Phase 6 Real London map styling work is judged against the Stage 141 acceptance
+contract in [docs/phase-6-map-styling-acceptance.md](docs/phase-6-map-styling-acceptance.md).
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
