@@ -4,6 +4,7 @@ import {
   buildBlockedDirectedEdgeKeys,
   buildMapGraph,
   directedEdgeKey,
+  getTurnRestrictionVisuals,
   mapToScreenPoint,
   snapDrawnRouteToRoads,
   validateDirectedEdgePath,
@@ -40,13 +41,22 @@ import {
   phase6RealLondonVisualQaRouteMap
 } from "./realLondonVisualQaScenario.ts";
 import {
+  REAL_LONDON_VISUAL_COMPARISON_MODES,
+  REAL_LONDON_VISUAL_READABILITY_SCENARIOS,
+  buildRealLondonVisualComparisonScenarioSummary,
+  getRealLondonVisualReadabilityScenario
+} from "./realLondonVisualComparisonScenarios.ts";
+import {
   buildSyntheticBackgroundFeatures,
   buildSyntheticLinearFeatures,
   buildSyntheticMapLabels,
+  buildSyntheticRouteOverlayVisuals,
   buildSyntheticRoadVisuals,
   deriveSyntheticRoadClass
 } from "./syntheticStreetMapRenderer.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
+import { buildRoadRestrictionOverlays } from "./routeRunnerDisplay.ts";
+import { buildRestrictionMapVisualItems } from "./restrictionMapVisuals.ts";
 
 const TEST_CANVAS_WIDTH = 1120;
 const TEST_CANVAS_HEIGHT = 760;
@@ -66,6 +76,24 @@ function assertClose(actual: number, expected: number, epsilon = 0.000001): void
 function assertScreenPointInsideViewport(point: { x: number; y: number }, message: string): void {
   assert.ok(point.x >= -0.000001 && point.x <= TEST_CANVAS_WIDTH + 0.000001, `${message} x=${point.x}`);
   assert.ok(point.y >= -0.000001 && point.y <= TEST_CANVAS_HEIGHT + 0.000001, `${message} y=${point.y}`);
+}
+
+function phase6VisualQaExerciseStopPoints(): { x: number; y: number }[] {
+  const exercise = phase6RealLondonVisualQaRouteExercises[0];
+
+  if (!exercise) {
+    throw new Error("Phase 6 visual QA exercise is missing");
+  }
+
+  return exercise.stops.flatMap((stop) => {
+    if (!("nodeId" in stop)) {
+      return [];
+    }
+
+    const node = phase6RealLondonVisualQaRouteMap.nodes.find((candidate) => candidate.id === stop.nodeId);
+
+    return node ? [{ x: node.x, y: node.y }] : [];
+  });
 }
 
 test("route runner map catalogue keeps the synthetic map as the default", () => {
@@ -245,6 +273,151 @@ test("Stage 151 visual QA scenario provides context features for visual inspecti
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.text, "START");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.textPrefix, "VIA");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text, "END");
+});
+
+test("Stage 152 visual comparison scenarios register deterministic readability modes and viewports", () => {
+  const comparisonSummary = buildRealLondonVisualComparisonScenarioSummary();
+
+  assert.deepEqual(
+    REAL_LONDON_VISUAL_COMPARISON_MODES.map((mode) => mode.id),
+    ["plain-route-graph", "phase-6-street-atlas", "learner-route-overlay", "route-review-readability"]
+  );
+  assert.deepEqual(comparisonSummary.scenarioIds, [
+    "dense-central-readability",
+    "major-road-side-street-hierarchy",
+    "park-water-rail-station-context",
+    "bridge-crossing-context",
+    "landmark-area-orientation",
+    "learner-route-overlay-review",
+    "one-way-restriction-declutter"
+  ]);
+  assert.equal(comparisonSummary.mapId, phase6RealLondonVisualQaRouteMap.id);
+  assert.equal(comparisonSummary.fixtureName, "syntheticPhase6VisualQaOverpassFixture");
+  assert.equal(comparisonSummary.exerciseId, "osm-phase-6-visual-qa-checkpoint-route");
+  assert.equal(comparisonSummary.synthetic, true);
+
+  const comparisonModeIds = new Set(REAL_LONDON_VISUAL_COMPARISON_MODES.map((mode) => mode.id));
+
+  for (const scenario of REAL_LONDON_VISUAL_READABILITY_SCENARIOS) {
+    assert.equal(scenario.mapId, phase6RealLondonVisualQaRouteMap.id);
+    assert.equal(scenario.fixtureName, "syntheticPhase6VisualQaOverpassFixture");
+    assert.ok(scenario.label.length > 0);
+    assert.ok(scenario.description.length > 0);
+    assert.ok(getRealLondonVisualReadabilityScenario(scenario.id));
+    assert.ok(scenario.comparisonModeIds.length > 0);
+    assert.ok(scenario.comparisonModeIds.every((modeId) => comparisonModeIds.has(modeId)));
+    assert.ok(scenario.viewport.zoom > 0);
+    assert.ok(scenario.viewport.bounds.minX < scenario.viewport.bounds.maxX);
+    assert.ok(scenario.viewport.bounds.minY < scenario.viewport.bounds.maxY);
+    assert.ok(scenario.expected.decluttering.includes(scenario.viewport.declutterTier));
+    assert.ok(scenario.viewport.bounds.minX >= comparisonSummary.viewportBounds.minX);
+    assert.ok(scenario.viewport.bounds.maxX <= comparisonSummary.viewportBounds.maxX);
+    assert.ok(scenario.viewport.bounds.minY >= comparisonSummary.viewportBounds.minY);
+    assert.ok(scenario.viewport.bounds.maxY <= comparisonSummary.viewportBounds.maxY);
+  }
+});
+
+test("Stage 152 visual comparison scenarios cover expected Real London readability categories", () => {
+  const option = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
+
+  assert.ok(option);
+
+  const backgrounds = buildSyntheticBackgroundFeatures(option.map, {
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const linearFeatures = buildSyntheticLinearFeatures(option.map, {
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const labels = buildSyntheticMapLabels(option.map, option.exercises[0], {
+    includeOsmRoadLabels: true,
+    backgroundFeatures: backgrounds,
+    linearFeatures,
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const roadVisuals = buildSyntheticRoadVisuals(option.map);
+  const stopPoints = phase6VisualQaExerciseStopPoints();
+  const routeOverlays = buildSyntheticRouteOverlayVisuals({
+    rawRoutePoints: stopPoints,
+    snappedRoutePoints: stopPoints,
+    matchedRoutePoints: stopPoints,
+    illegalRoutePoints: stopPoints.slice(1, 3)
+  });
+  const restrictionItems = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays: buildRoadRestrictionOverlays(option.map),
+    turnRestrictionVisuals: getTurnRestrictionVisuals(option.map),
+    routeIssueOverlays: [
+      {
+        kind: "prohibited-turn",
+        label: "Review warning",
+        message: "Synthetic review warning for the Phase 6 comparison fixture.",
+        points: stopPoints.slice(1, 3),
+        midpoint: stopPoints[1] ?? { x: 0, y: 0 },
+        roadIds: ["osm-way-9005-segment-1", "osm-way-9002-segment-2"],
+        movementIndex: 1
+      }
+    ]
+  });
+
+  const roadHierarchies = new Set(roadVisuals.map((visual) => visual.osmHierarchy).filter(Boolean));
+  const labelKinds = new Set(labels.map((label) => label.kind));
+  const backgroundKinds = new Set(backgrounds.map((feature) => feature.kind));
+  const linearKinds = new Set(linearFeatures.map((feature) => feature.kind));
+  const routeOverlayKinds = new Set(routeOverlays.map((overlay) => overlay.kind));
+  const restrictionSymbols = new Set(
+    restrictionItems.flatMap((item) => {
+      if (item.kind === "one-way") {
+        return ["one-way"];
+      }
+
+      if (item.kind === "prohibited-turn") {
+        return ["restricted-turn"];
+      }
+
+      if (item.kind === "illegal-movement" || item.kind === "missed-restriction") {
+        return ["review-warning"];
+      }
+
+      return [];
+    })
+  );
+  const objectiveMarkers = new Set(["start", "required-via", "checkpoint", "destination"]);
+
+  assert.ok(restrictionItems.some((item) => item.symbol === "one-way-arrow"));
+  assert.ok(restrictionItems.some((item) => item.symbol === "turn-ban-sign"));
+  assert.ok(restrictionItems.some((item) => item.symbol === "illegal-route-section"));
+
+  for (const scenario of REAL_LONDON_VISUAL_READABILITY_SCENARIOS) {
+    for (const hierarchy of scenario.expected.roadHierarchies) {
+      assert.ok(roadHierarchies.has(hierarchy), `${scenario.id} expected road hierarchy ${hierarchy}`);
+    }
+
+    for (const labelKind of scenario.expected.labelKinds) {
+      assert.ok(labelKinds.has(labelKind), `${scenario.id} expected label kind ${labelKind}`);
+    }
+
+    for (const backgroundKind of scenario.expected.backgroundKinds) {
+      assert.ok(backgroundKinds.has(backgroundKind), `${scenario.id} expected background kind ${backgroundKind}`);
+    }
+
+    for (const linearKind of scenario.expected.linearKinds) {
+      assert.ok(linearKinds.has(linearKind), `${scenario.id} expected linear context kind ${linearKind}`);
+    }
+
+    for (const overlayKind of scenario.expected.routeOverlayKinds) {
+      assert.ok(routeOverlayKinds.has(overlayKind), `${scenario.id} expected route overlay ${overlayKind}`);
+    }
+
+    for (const marker of scenario.expected.objectiveMarkers) {
+      assert.ok(objectiveMarkers.has(marker), `${scenario.id} expected objective marker ${marker}`);
+    }
+
+    for (const restrictionSymbol of scenario.expected.restrictionSymbols) {
+      assert.ok(
+        restrictionSymbols.has(restrictionSymbol),
+        `${scenario.id} expected restriction symbol ${restrictionSymbol}`
+      );
+    }
+  }
 });
 
 test("converted OSM map exposes drawable and snappable road geometry", () => {

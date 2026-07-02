@@ -845,6 +845,13 @@ tokens so start, destination, first required via point, checkpoints, optional
 snap hints, and selected/matched nodes read above the base map without changing
 route logic, legality, scoring, exercises, beta gates, feedback, or OSM
 conversion behaviour.
+Stage 152 adds deterministic Phase 6 visual comparison fixture metadata for
+plain graph, street-atlas, learner-overlay, and route-review readability modes.
+The fixed scenarios cover dense streets, road hierarchy, park/water/rail/station
+context, bridge context, landmarks/area names, learner objectives, one-way
+symbols, and restriction warnings. These are dev/test QA fixtures only; they do
+not change routing, legality, scoring, exercise generation, beta gates, feedback,
+OSM conversion, or the main learner experience.
 
 ## Current Feature Set
 

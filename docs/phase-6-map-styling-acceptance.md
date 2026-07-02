@@ -252,6 +252,43 @@ one-way arrows, a turn restriction, route stops, and objective overlays visible
 in one place while committed real pilot fixtures still have limited non-road
 context coverage.
 
+## Stage 152 Visual Comparison Fixtures
+
+Stage 152 adds deterministic comparison fixtures around the Stage 151 dev-only
+visual QA map. The fixtures define four QA modes:
+
+- `plain-route-graph`
+- `phase-6-street-atlas`
+- `learner-route-overlay`
+- `route-review-readability`
+
+The fixed readability scenarios are:
+
+- `dense-central-readability`
+- `major-road-side-street-hierarchy`
+- `park-water-rail-station-context`
+- `bridge-crossing-context`
+- `landmark-area-orientation`
+- `learner-route-overlay-review`
+- `one-way-restriction-declutter`
+
+Open the dev route-runner and select `Phase 6 visual QA scenario` to inspect the
+underlying map. The scenario definitions live in
+`app/dev/route-runner/realLondonVisualComparisonScenarios.ts` and document the
+intended fixed viewport, comparison modes, and expected categories for each
+inspection case. The automated checks verify configuration and rendered category
+coverage rather than pixel-perfect screenshots.
+
+Learner benefit: developers can now compare the same London-like fixture as a
+plain graph, a Phase 6 street-atlas map, a learner route overlay, and a review
+state with warnings. This makes it easier to see whether the map reads as a
+usable learner street atlas rather than backend route geometry.
+
+Known limitations: these scenarios are synthetic QA fixtures, not real OSM
+exports. They do not add missing landmarks or restrictions to committed real
+pilot fixtures, and restriction/context visibility still depends on available
+fixture data.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

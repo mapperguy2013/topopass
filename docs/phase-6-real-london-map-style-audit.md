@@ -214,6 +214,31 @@ states may need future non-colour cues. This stage does not change routing,
 legality, scoring, exercise generation, beta gates, feedback tooling, or OSM
 conversion behaviour.
 
+## Stage 152 Visual Comparison And Readability Fixtures
+
+Stage 152 adds deterministic visual comparison fixture metadata for the Phase 6
+Real London QA map. The comparison modes are `plain-route-graph`,
+`phase-6-street-atlas`, `learner-route-overlay`, and
+`route-review-readability`; they give reviewers controlled states for judging
+the same London-like area before and after Phase 6 styling and with learner or
+review overlays present.
+
+The fixed scenario IDs are `dense-central-readability`,
+`major-road-side-street-hierarchy`, `park-water-rail-station-context`,
+`bridge-crossing-context`, `landmark-area-orientation`,
+`learner-route-overlay-review`, and `one-way-restriction-declutter`. Each
+scenario records a stable viewport, decluttering tier, comparison modes, and
+expected rendered categories such as roads by hierarchy, labels, context
+features, route overlays, start/destination/checkpoints, hints, one-way symbols,
+and restriction/review-warning symbols.
+
+The implementation is non-invasive fixture data plus regression tests. It does
+not rewrite the renderer, add a map provider, expose comparison modes in the
+main learner experience, alter routing, alter legality checks, change scoring,
+change exercise generation, affect beta gates, modify feedback tooling, or
+change OSM conversion. It also does not invent restrictions or landmarks in real
+pilot fixtures; visibility still depends on fixture/source data.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -235,6 +260,9 @@ conversion behaviour.
   render-ready features for the synthetic street-map renderer.
 - `app/dev/route-runner/realLondonVisualQaScenario.ts` defines the dev-only
   synthetic Phase 6 visual QA scenario for combined readability inspection.
+- `app/dev/route-runner/realLondonVisualComparisonScenarios.ts` defines the
+  Stage 152 fixed visual comparison modes, viewports, and expected readability
+  categories for dev/test inspection.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.
