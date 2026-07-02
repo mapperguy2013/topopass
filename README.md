@@ -894,6 +894,17 @@ already hides the label, and builds restriction candidates from the current zoom
 tier instead of the full viewport when possible. Viewport collision, route
 drawing, route review, and selected-focus calculations remain live so the Phase
 6 visual output is preserved.
+Stage 158 adds the Phase 6 final visual regression and release-candidate gate.
+The visual comparison fixtures now include extra deterministic Real London
+contexts for low-zoom dense central streets, high streets and side streets,
+estate/residential blocks, park/open-space edges, bridge and river review,
+awkward junction restrictions, rail/station interchange context, and high-zoom
+landmark/area labels. The exported gate records required contexts,
+low/medium/high decluttering tiers, responsive phone/tablet scenario coverage,
+final layer order, validation commands, and the explicit behaviours that must
+not change. This is visual QA metadata and documentation only; it does not
+change route logic, legality, scoring, exercise generation, beta gates,
+feedback tooling, OSM conversion behaviour, or route-engine behaviour.
 
 ## Current Feature Set
 

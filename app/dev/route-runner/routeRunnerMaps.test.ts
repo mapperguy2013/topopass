@@ -42,13 +42,15 @@ import {
 } from "./realLondonVisualQaScenario.ts";
 import {
   FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
+  REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE,
   REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS,
   REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS,
   REAL_LONDON_VISUAL_COMPARISON_MODES,
   REAL_LONDON_VISUAL_READABILITY_SCENARIOS,
   buildRealLondonVisualComparisonScenarioSummary,
   getRealLondonResponsiveVisualScenario,
-  getRealLondonVisualReadabilityScenario
+  getRealLondonVisualReadabilityScenario,
+  type RealLondonFinalPhase6Layer
 } from "./realLondonVisualComparisonScenarios.ts";
 import {
   buildSyntheticBackgroundFeatures,
@@ -294,7 +296,15 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
     "landmark-area-orientation",
     "learner-route-overlay-review",
     "one-way-restriction-declutter",
-    "complete-phase-6-stack-integration"
+    "complete-phase-6-stack-integration",
+    "dense-central-low-zoom-overview",
+    "high-street-side-street-readability",
+    "estate-residential-blocks",
+    "park-open-space-edge",
+    "bridge-river-crossing-review",
+    "awkward-junction-restriction-review",
+    "rail-station-interchange-context",
+    "landmark-area-high-zoom"
   ]);
   assert.deepEqual(comparisonSummary.finalPhase6LayerStack, FINAL_PHASE_6_REAL_LONDON_LAYER_STACK);
   assert.equal(comparisonSummary.mapId, phase6RealLondonVisualQaRouteMap.id);
@@ -321,6 +331,69 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
     assert.ok(scenario.viewport.bounds.minY >= comparisonSummary.viewportBounds.minY);
     assert.ok(scenario.viewport.bounds.maxY <= comparisonSummary.viewportBounds.maxY);
   }
+});
+
+test("Stage 158 final visual regression gate covers release-candidate contexts", () => {
+  const comparisonSummary = buildRealLondonVisualComparisonScenarioSummary();
+  const scenarioById = new Map(REAL_LONDON_VISUAL_READABILITY_SCENARIOS.map((scenario) => [scenario.id, scenario]));
+  const responsiveScenarioIds = new Set(REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.map((scenario) => scenario.id));
+  const coveredContextTags = new Set(REAL_LONDON_VISUAL_READABILITY_SCENARIOS.flatMap((scenario) => scenario.contextTags));
+  const coveredZoomTiers = new Set(REAL_LONDON_VISUAL_READABILITY_SCENARIOS.flatMap((scenario) => scenario.expected.decluttering));
+
+  if (REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.length > 0) {
+    coveredContextTags.add("mobile-tablet-readability");
+  }
+
+  assert.equal(comparisonSummary.releaseCandidateGateId, REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.id);
+  assert.equal(comparisonSummary.releaseCandidateStatus, "ready-for-final-learner-review");
+  assert.deepEqual(
+    comparisonSummary.releaseCandidateRequiredContextTags,
+    REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.requiredContextTags
+  );
+  assert.deepEqual(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.validationCommands, [
+    "npm.cmd run lint",
+    "npm.cmd run test:map",
+    "npm.cmd run build",
+    "git diff --check"
+  ]);
+
+  for (const scenarioId of REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.requiredScenarioIds) {
+    assert.ok(scenarioById.has(scenarioId), scenarioId);
+  }
+
+  for (const scenarioId of REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.requiredResponsiveScenarioIds) {
+    assert.ok(responsiveScenarioIds.has(scenarioId), scenarioId);
+  }
+
+  for (const contextTag of REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.requiredContextTags) {
+    assert.ok(coveredContextTags.has(contextTag), contextTag);
+  }
+
+  for (const zoomTier of REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.requiredZoomTiers) {
+    assert.ok(coveredZoomTiers.has(zoomTier), zoomTier);
+  }
+
+  assert.ok(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.mustPreserve.includes("mobile and tablet readability"));
+  assert.ok(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.mustNotChange.includes("route logic"));
+  assert.ok(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.mustNotChange.includes("OSM conversion behaviour"));
+  assert.deepEqual(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.finalLayerStack, FINAL_PHASE_6_REAL_LONDON_LAYER_STACK);
+});
+
+test("Stage 158 final Phase 6 layer stack preserves visual overlay order", () => {
+  const layerIndex = (layer: RealLondonFinalPhase6Layer) => FINAL_PHASE_6_REAL_LONDON_LAYER_STACK.indexOf(layer);
+
+  assert.ok(layerIndex("land-background") < layerIndex("water"));
+  assert.ok(layerIndex("water") < layerIndex("parks-open-spaces"));
+  assert.ok(layerIndex("parks-open-spaces") < layerIndex("road-casings"));
+  assert.ok(layerIndex("road-casings") < layerIndex("road-fills"));
+  assert.ok(layerIndex("road-fills") < layerIndex("street-labels"));
+  assert.ok(layerIndex("street-labels") < layerIndex("correct-reference-route"));
+  assert.ok(layerIndex("correct-reference-route") < layerIndex("attempted-route"));
+  assert.ok(layerIndex("attempted-route") < layerIndex("start-destination-markers"));
+  assert.ok(layerIndex("start-destination-markers") < layerIndex("checkpoints"));
+  assert.ok(layerIndex("checkpoints") < layerIndex("hints"));
+  assert.ok(layerIndex("hints") < layerIndex("review-callouts"));
+  assert.ok(layerIndex("review-callouts") < layerIndex("selected-focused-overlays"));
 });
 
 test("Stage 156 responsive visual scenarios register deterministic mobile and tablet viewports", () => {

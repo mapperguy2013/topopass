@@ -26,6 +26,25 @@ Use the dev route-runner visual comparison scenarios for future checks:
   context, hierarchy, labels, restrictions, learner overlays, warnings,
   callouts, and selected focus.
 
+Use the Stage 158 release-candidate visual QA scenarios for final regression
+checks:
+
+- `dense-central-low-zoom-overview`: low-zoom central street density and area
+  context without label/symbol clutter.
+- `high-street-side-street-readability`: high-street hierarchy, side streets,
+  and medium-zoom label clarity.
+- `estate-residential-blocks`: residential blocks, pedestrian-area context, and
+  local label readability.
+- `park-open-space-edge`: park, water, canal/basin, and adjacent road context.
+- `bridge-river-crossing-review`: bridge/water context with review restriction
+  overlays.
+- `awkward-junction-restriction-review`: one-way/restriction-heavy junction
+  review overlays.
+- `rail-station-interchange-context`: rail, station, park/water, and nearby
+  street labels.
+- `landmark-area-high-zoom`: landmark, public-building, area-name, and
+  high-zoom street label collision checks.
+
 Use the Stage 156 responsive visual QA scenarios for phone and tablet checks:
 
 - `mobile-dense-central-readability`
@@ -70,6 +89,10 @@ screenshot assertions.
 - Stage 157 preserves the same visual output while memoizing static base-map
   candidates, caching label width/font-size estimates, skipping hidden road
   label width work, and keying restriction candidate generation by zoom tier.
+- Stage 158 adds a repeatable final visual regression gate covering additional
+  Real London contexts, low/medium/high decluttering tiers, responsive
+  phone/tablet coverage, and final overlay ordering without changing route or
+  OSM behaviour.
 
 ## Remaining Visual Issues
 
@@ -83,12 +106,15 @@ screenshot assertions.
 | Mobile map space is improved, but opening the full legend on very small screens can temporarily cover the lower-left map area. | Minor | Phase 6 accepted | Stage 156 constrains legend height and keeps it collapsed by default; learners can still open it when needed. |
 | Stage 156 responsive QA is fixture/configuration based rather than device screenshot automation. | Future polish | Deferred | Tests verify scenario wiring, touch targets, and map layout metadata. Full device screenshot comparison belongs to a later QA investment. |
 | Stage 157 does not add separate dirty canvas layers for static base and live overlays. | Future polish | Deferred | Candidate generation and label measurement are optimized first; a multi-canvas renderer would be a larger architecture change. |
+| Stage 158 remains metadata/test based rather than pixel-perfect visual snapshot automation. | Future polish | Deferred | The release gate verifies scenario coverage, contexts, zoom tiers, and layer order. Screenshot baselines can be added later if the project adopts that infrastructure. |
 
 ## Acceptance Decision
 
 No blocking visual issues remain for the Phase 6 Real London styling pass. The
-map is coherent enough for the current beta learner experience, with known
-limitations driven by fixture data coverage and future route-review data depth.
+Stage 158 gate records Phase 6 as ready for final learner-facing visual review
+after the required lint, map test, build, and diff checks pass. Known
+limitations are driven by fixture data coverage, non-pixel-perfect QA, and
+future route-review data depth.
 
 Future work should stay separate from Phase 6 unless it is strictly visual QA:
 new route analysis, alternative-route acceptance, new scoring rules, additional

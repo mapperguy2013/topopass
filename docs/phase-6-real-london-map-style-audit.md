@@ -398,6 +398,32 @@ Manual review should use Real London practice plus the Phase 6 visual QA
 scenarios: inspect dense central labels, context layers, one-way/restriction
 decluttering, route drawing, and route review while panning and zooming.
 
+## Stage 158 Final Visual Regression Gate
+
+Stage 158 adds the Phase 6 release-candidate visual QA gate. The change is
+limited to fixture metadata, tests, and documentation for Real London
+readability inspection; it does not alter routing, legality checks, scoring,
+exercise generation, beta gates, feedback tooling, OSM conversion behaviour, or
+route-engine behaviour.
+
+`realLondonVisualComparisonScenarios.ts` now includes additional fixed
+readability scenarios for low-zoom dense central streets, high-street/side
+street hierarchy, estate and residential blocks, park/open-space edges, bridge
+and river review, awkward junction restrictions, rail/station interchange
+context, and high-zoom landmark/area labels.
+
+The exported `phase-6-final-visual-rc-gate` records the required visual
+contexts, low/medium/high decluttering tiers, responsive phone/tablet scenario
+coverage, final Phase 6 layer stack, validation commands, behaviours to
+preserve, and behaviours that must not change. This makes the release-candidate
+check repeatable without introducing pixel-perfect screenshot infrastructure.
+
+Known limitations remain data-driven. Stage 158 does not invent restrictions,
+landmarks, stations, bridges, water, or area names. Those contexts render only
+when the selected committed fixture supplies usable data. After lint,
+`test:map`, build, and `git diff --check` pass, the Phase 6 map styling work is
+ready for final learner-facing visual review.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -423,8 +449,9 @@ decluttering, route drawing, and route review while panning and zooming.
   synthetic Phase 6 visual QA scenario for combined readability inspection.
 - `app/dev/route-runner/realLondonVisualComparisonScenarios.ts` defines the
   Stage 152 fixed visual comparison modes, viewports, expected readability
-  categories, Stage 154 final Phase 6 layer-stack metadata, and Stage 156
-  responsive mobile/tablet visual QA viewports for dev/test inspection.
+  categories, Stage 154 final Phase 6 layer-stack metadata, Stage 156
+  responsive mobile/tablet visual QA viewports, and the Stage 158 final visual
+  release-candidate gate for dev/test inspection.
 - `docs/phase-6-visual-acceptance-audit.md` records the Stage 155 final visual
   acceptance scenarios, non-blocking remaining issues, and deferrals.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,

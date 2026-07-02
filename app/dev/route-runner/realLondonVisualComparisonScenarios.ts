@@ -39,6 +39,19 @@ export type RealLondonResponsiveVisualScenarioId =
   | "tablet-landscape-review-panels"
   | "tablet-context-orientation";
 
+export type RealLondonVisualQaContext =
+  | "dense-central-streets"
+  | "major-road-side-street-hierarchy"
+  | "bridges-river-crossings"
+  | "parks-open-spaces"
+  | "estates-residential-blocks"
+  | "high-streets"
+  | "awkward-complex-junctions"
+  | "rail-station-context"
+  | "landmark-area-name-context"
+  | "learner-route-review-overlays"
+  | "mobile-tablet-readability";
+
 export type RealLondonVisualComparisonLayer =
   | "raw-road-graph"
   | "road-hierarchy"
@@ -59,7 +72,15 @@ export type RealLondonVisualReadabilityScenarioId =
   | "landmark-area-orientation"
   | "learner-route-overlay-review"
   | "one-way-restriction-declutter"
-  | "complete-phase-6-stack-integration";
+  | "complete-phase-6-stack-integration"
+  | "dense-central-low-zoom-overview"
+  | "high-street-side-street-readability"
+  | "estate-residential-blocks"
+  | "park-open-space-edge"
+  | "bridge-river-crossing-review"
+  | "awkward-junction-restriction-review"
+  | "rail-station-interchange-context"
+  | "landmark-area-high-zoom";
 
 export type RealLondonFinalPhase6Layer =
   | "land-background"
@@ -140,6 +161,7 @@ export type RealLondonVisualReadabilityScenario = {
   id: RealLondonVisualReadabilityScenarioId;
   label: string;
   description: string;
+  contextTags: RealLondonVisualQaContext[];
   mapId: string;
   fixtureName: string;
   exerciseId?: string;
@@ -187,6 +209,20 @@ export type RealLondonResponsiveVisualScenario = {
   viewportId: RealLondonResponsiveViewportId;
   comparisonModeIds: RealLondonVisualComparisonModeId[];
   expected: RealLondonResponsiveScenarioExpected;
+};
+
+export type RealLondonPhase6ReleaseCandidateGate = {
+  id: "phase-6-final-visual-rc-gate";
+  label: string;
+  status: "ready-for-final-learner-review";
+  validationCommands: readonly string[];
+  requiredZoomTiers: RealLondonReadabilityDeclutterTier[];
+  requiredContextTags: RealLondonVisualQaContext[];
+  requiredScenarioIds: RealLondonVisualReadabilityScenarioId[];
+  requiredResponsiveScenarioIds: RealLondonResponsiveVisualScenarioId[];
+  finalLayerStack: RealLondonFinalPhase6Layer[];
+  mustPreserve: readonly string[];
+  mustNotChange: readonly string[];
 };
 
 export const REAL_LONDON_VISUAL_COMPARISON_MODES: RealLondonVisualComparisonMode[] = [
@@ -376,6 +412,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Dense central readability",
     description:
       "Central London-like dense street grid for comparing raw graph readability against the Phase 6 street-atlas hierarchy.",
+    contextTags: ["dense-central-streets"],
     ...commonMapMetadata,
     comparisonModeIds: ["plain-route-graph", "phase-6-street-atlas"],
     viewport: {
@@ -402,6 +439,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Major road and side-street hierarchy",
     description:
       "Major east-west road with secondary and residential side-street network visible for hierarchy checks.",
+    contextTags: ["major-road-side-street-hierarchy"],
     ...commonMapMetadata,
     comparisonModeIds: ["plain-route-graph", "phase-6-street-atlas"],
     viewport: {
@@ -428,6 +466,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Park, water, rail, and station context",
     description:
       "Fixture-backed park, basin, canal, rail line, and station labels in one deterministic viewport.",
+    contextTags: ["parks-open-spaces", "rail-station-context"],
     ...commonMapMetadata,
     comparisonModeIds: ["phase-6-street-atlas"],
     viewport: {
@@ -464,6 +503,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Bridge and crossing context",
     description:
       "Bridge road and canal crossing area for checking that crossing context remains readable with review restrictions nearby.",
+    contextTags: ["bridges-river-crossings"],
     ...commonMapMetadata,
     comparisonModeIds: ["phase-6-street-atlas", "route-review-readability"],
     viewport: {
@@ -501,6 +541,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Landmark and area orientation",
     description:
       "Landmarks, public buildings, area names, and nearby street labels for orientation readability checks.",
+    contextTags: ["landmark-area-name-context"],
     ...commonMapMetadata,
     comparisonModeIds: ["phase-6-street-atlas"],
     viewport: {
@@ -527,6 +568,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Learner route overlay and review",
     description:
       "Objective route with start, destination, required via point, checkpoint, hint, and review-warning layers above the base map.",
+    contextTags: ["learner-route-review-overlays"],
     ...commonMapMetadata,
     comparisonModeIds: ["learner-route-overlay", "route-review-readability"],
     viewport: {
@@ -603,6 +645,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "One-way and restriction declutter",
     description:
       "One-way-heavy local street pattern with the synthetic prohibited turn preserved as review-critical restriction data.",
+    contextTags: ["awkward-complex-junctions"],
     ...commonMapMetadata,
     comparisonModeIds: ["phase-6-street-atlas", "route-review-readability"],
     viewport: {
@@ -650,6 +693,15 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     label: "Complete Phase 6 stack integration",
     description:
       "Final Phase 6 QA viewport covering base context, hierarchy, labels, restrictions, learner route, review warnings, hints, callouts, and selected focus.",
+    contextTags: [
+      "dense-central-streets",
+      "major-road-side-street-hierarchy",
+      "bridges-river-crossings",
+      "parks-open-spaces",
+      "rail-station-context",
+      "landmark-area-name-context",
+      "learner-route-review-overlays"
+    ],
     ...commonMapMetadata,
     comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay", "route-review-readability"],
     viewport: {
@@ -700,6 +752,244 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       ],
       restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
       decluttering: ["overview", "learner", "detail"]
+    }
+  },
+  {
+    id: "dense-central-low-zoom-overview",
+    label: "Dense central low-zoom overview",
+    description:
+      "Low-zoom release-candidate check that dense central streets stay uncluttered while major hierarchy and area context remain legible.",
+    contextTags: ["dense-central-streets"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas"],
+    viewport: {
+      center: { x: 0, y: -24 },
+      bounds: { minX: -267, minY: -286, maxX: 267, maxY: 210 },
+      zoom: 0.95,
+      declutterTier: "overview"
+    },
+    expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "area-names"],
+      roadHierarchies: ["primary", "secondary", "residential"],
+      labelKinds: ["road", "area"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: noRouteOverlays,
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
+      restrictionSymbols: noRestrictionSymbols,
+      decluttering: ["overview"]
+    }
+  },
+  {
+    id: "high-street-side-street-readability",
+    label: "High street and side-street readability",
+    description:
+      "Primary/secondary high-street corridor with side streets for checking hierarchy, casing/fill order, and medium-zoom label readability.",
+    contextTags: ["high-streets", "major-road-side-street-hierarchy"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas"],
+    viewport: {
+      center: { x: 42, y: 62 },
+      bounds: { minX: -145, minY: -95, maxX: 267, maxY: 220 },
+      zoom: 1.45,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows"],
+      roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
+      labelKinds: ["road"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: noRouteOverlays,
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
+      restrictionSymbols: ["one-way"],
+      decluttering: ["learner"]
+    }
+  },
+  {
+    id: "estate-residential-blocks",
+    label: "Estate and residential blocks",
+    description:
+      "Residential block pattern for checking quieter roads, pedestrian areas, and local label decluttering.",
+    contextTags: ["estates-residential-blocks"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas"],
+    viewport: {
+      center: { x: -74, y: -6 },
+      bounds: { minX: -205, minY: -160, maxX: 110, maxY: 145 },
+      zoom: 1.65,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "area-names"],
+      roadHierarchies: ["residential"],
+      labelKinds: ["road", "area"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: noRouteOverlays,
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
+      restrictionSymbols: noRestrictionSymbols,
+      decluttering: ["learner", "detail"]
+    }
+  },
+  {
+    id: "park-open-space-edge",
+    label: "Park and open-space edge",
+    description:
+      "Park, basin, canal, and adjacent streets for checking open-space context without overpowering the learner road network.",
+    contextTags: ["parks-open-spaces"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas"],
+    viewport: {
+      center: { x: 126, y: 84 },
+      bounds: { minX: -30, minY: -45, maxX: 267, maxY: 230 },
+      zoom: 1.75,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: ["land-background", "water", "parks-open-spaces", "road-casings", "road-fills", "road-hierarchy", "street-labels"],
+      roadHierarchies: ["primary", "tertiary", "residential"],
+      labelKinds: ["road", "water"],
+      backgroundKinds: ["park", "water"],
+      linearKinds: ["waterway"],
+      routeOverlayKinds: noRouteOverlays,
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
+      restrictionSymbols: noRestrictionSymbols,
+      decluttering: ["detail"]
+    }
+  },
+  {
+    id: "bridge-river-crossing-review",
+    label: "Bridge and river crossing review",
+    description:
+      "Water crossing review viewport for checking bridges, water labels, restrictions, and warning overlays after the performance pass.",
+    contextTags: ["bridges-river-crossings", "learner-route-review-overlays"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["route-review-readability"],
+    viewport: {
+      center: { x: 54, y: -122 },
+      bounds: { minX: -185, minY: -270, maxX: 242, maxY: 45 },
+      zoom: 1.7,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: [
+        "land-background",
+        "water",
+        "bridges-crossings",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "restriction-symbols",
+        "illegal-warning-overlays",
+        "review-callouts"
+      ],
+      roadHierarchies: ["secondary", "residential"],
+      labelKinds: ["road", "bridge", "water"],
+      backgroundKinds: ["water"],
+      linearKinds: ["bridge", "waterway"],
+      routeOverlayKinds: ["illegal-movement"],
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: ["restricted-manoeuvre-warning", "illegal-segment-callout"],
+      restrictionSymbols: ["restricted-turn", "review-warning"],
+      decluttering: ["learner", "detail"]
+    }
+  },
+  {
+    id: "awkward-junction-restriction-review",
+    label: "Awkward junction restriction review",
+    description:
+      "Complex junction and one-way/restriction viewport for checking review-critical symbols remain above decluttered base cartography.",
+    contextTags: ["awkward-complex-junctions", "learner-route-review-overlays"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas", "route-review-readability"],
+    viewport: {
+      center: { x: -18, y: -38 },
+      bounds: { minX: -198, minY: -218, maxX: 170, maxY: 135 },
+      zoom: 1.55,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: [
+        "land-background",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "restriction-symbols",
+        "accepted-alternative-route",
+        "illegal-warning-overlays",
+        "review-callouts"
+      ],
+      roadHierarchies: ["secondary", "residential"],
+      labelKinds: ["road"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: ["accepted-alternative-route", "illegal-movement"],
+      objectiveMarkers: ["required-via"],
+      learnerOverlayStates: ["required-checkpoint", "restricted-manoeuvre-warning", "illegal-segment-callout"],
+      restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
+      decluttering: ["overview", "learner"]
+    }
+  },
+  {
+    id: "rail-station-interchange-context",
+    label: "Rail and station interchange context",
+    description:
+      "Rail line, station marker, nearby park/water context, and high-street labels for orientation around transport landmarks.",
+    contextTags: ["rail-station-context", "landmark-area-name-context"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas"],
+    viewport: {
+      center: { x: 76, y: 102 },
+      bounds: { minX: -70, minY: -50, maxX: 267, maxY: 245 },
+      zoom: 1.8,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: ["land-background", "water", "parks-open-spaces", "rail", "stations", "road-casings", "road-fills", "road-hierarchy", "street-labels"],
+      roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
+      labelKinds: ["road", "station", "water"],
+      backgroundKinds: ["park", "water"],
+      linearKinds: ["rail", "waterway"],
+      routeOverlayKinds: noRouteOverlays,
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
+      restrictionSymbols: noRestrictionSymbols,
+      decluttering: ["detail"]
+    }
+  },
+  {
+    id: "landmark-area-high-zoom",
+    label: "Landmark and area high-zoom check",
+    description:
+      "High-zoom landmark, public-building, area-name, and street-label viewport for final label collision regression checks.",
+    contextTags: ["landmark-area-name-context"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas"],
+    viewport: {
+      center: { x: 78, y: -2 },
+      bounds: { minX: -58, minY: -130, maxX: 214, maxY: 118 },
+      zoom: 2,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: ["land-background", "landmarks", "area-names", "road-casings", "road-fills", "road-hierarchy", "street-labels"],
+      roadHierarchies: ["secondary", "tertiary", "residential"],
+      labelKinds: ["road", "landmark", "public_building", "area"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: noRouteOverlays,
+      objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
+      restrictionSymbols: noRestrictionSymbols,
+      decluttering: ["detail"]
     }
   }
 ];
@@ -872,6 +1162,69 @@ export const REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS: RealLondonResponsiveVisual
   }
 ];
 
+export const REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE: RealLondonPhase6ReleaseCandidateGate = {
+  id: "phase-6-final-visual-rc-gate",
+  label: "Phase 6 final visual regression and release-candidate gate",
+  status: "ready-for-final-learner-review",
+  validationCommands: ["npm.cmd run lint", "npm.cmd run test:map", "npm.cmd run build", "git diff --check"],
+  requiredZoomTiers: ["overview", "learner", "detail"],
+  requiredContextTags: [
+    "dense-central-streets",
+    "major-road-side-street-hierarchy",
+    "bridges-river-crossings",
+    "parks-open-spaces",
+    "estates-residential-blocks",
+    "high-streets",
+    "awkward-complex-junctions",
+    "rail-station-context",
+    "landmark-area-name-context",
+    "learner-route-review-overlays",
+    "mobile-tablet-readability"
+  ],
+  requiredScenarioIds: [
+    "dense-central-low-zoom-overview",
+    "dense-central-readability",
+    "high-street-side-street-readability",
+    "estate-residential-blocks",
+    "park-open-space-edge",
+    "bridge-river-crossing-review",
+    "awkward-junction-restriction-review",
+    "rail-station-interchange-context",
+    "landmark-area-high-zoom",
+    "learner-route-overlay-review",
+    "complete-phase-6-stack-integration"
+  ],
+  requiredResponsiveScenarioIds: [
+    "mobile-dense-central-readability",
+    "mobile-route-drawing",
+    "mobile-route-review",
+    "mobile-one-way-restriction-declutter",
+    "mobile-marker-hint-collision",
+    "tablet-portrait-learner-overlays",
+    "tablet-landscape-review-panels",
+    "tablet-context-orientation"
+  ],
+  finalLayerStack: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
+  mustPreserve: [
+    "low, medium, and high zoom readability",
+    "road hierarchy and street label decluttering",
+    "parks, water, rail, station, bridge, landmark, and area context",
+    "one-way and restriction cartography",
+    "learner route overlays, markers, checkpoints, hints, warnings, and review callouts",
+    "mobile and tablet readability"
+  ],
+  mustNotChange: [
+    "route logic",
+    "legality checks",
+    "scoring",
+    "exercise generation",
+    "beta gates",
+    "feedback tooling",
+    "OSM conversion behaviour",
+    "route engine behaviour"
+  ]
+};
+
 export function getRealLondonVisualReadabilityScenario(
   scenarioId: RealLondonVisualReadabilityScenarioId
 ): RealLondonVisualReadabilityScenario | undefined {
@@ -894,6 +1247,9 @@ export function buildRealLondonVisualComparisonScenarioSummary() {
     responsiveScenarioIds: REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.map((scenario) => scenario.id),
     viewportBounds: qaMapBounds,
     finalPhase6LayerStack: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
+    releaseCandidateGateId: REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.id,
+    releaseCandidateStatus: REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.status,
+    releaseCandidateRequiredContextTags: REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.requiredContextTags,
     exerciseId: qaExercise?.id ?? null,
     synthetic: true
   };

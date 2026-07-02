@@ -502,6 +502,43 @@ for review, and toggle restriction/legend states. The expected result is stable
 Phase 6 visual output with smoother redraws and no loss of labels, hierarchy,
 context layers, restrictions, markers, hints, or review callouts.
 
+## Stage 158 Final Visual Regression Gate
+
+Stage 158 records the Phase 6 final visual regression and release-candidate
+gate. It remains a visual QA and readability pass only: route logic, legality
+checks, scoring, exercise generation, beta gates, feedback tooling, OSM
+conversion behaviour, and route-engine behaviour are unchanged.
+
+The visual comparison fixture metadata now includes additional deterministic
+Real London readability contexts:
+
+- `dense-central-low-zoom-overview`
+- `high-street-side-street-readability`
+- `estate-residential-blocks`
+- `park-open-space-edge`
+- `bridge-river-crossing-review`
+- `awkward-junction-restriction-review`
+- `rail-station-interchange-context`
+- `landmark-area-high-zoom`
+
+Together with the existing Stage 152 and Stage 156 scenarios, the release gate
+covers dense central streets, major-road/side-street hierarchy, bridges and
+river crossings, parks and open spaces, estate/residential blocks, high
+streets, awkward junctions, rail/station context, landmark/area-name context,
+learner route-review overlays, and phone/tablet readability.
+
+Gate checks are configuration and readability checks rather than pixel-perfect
+screenshots. They verify the fixed scenarios, low/medium/high decluttering
+tiers, final Phase 6 layer order, responsive viewport coverage, and the
+explicit list of behaviours this gate must not change.
+
+Known limitations: Stage 158 does not add live OSM fetching, new map data, a
+new map provider, screenshot automation, or invented restrictions/landmarks.
+Bridge, station, landmark, restriction, and area-name visibility still depends
+on the committed fixture data available to the selected map. After the required
+validation commands pass, Phase 6 is ready for final learner-facing visual
+review.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta
