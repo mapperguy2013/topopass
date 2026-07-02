@@ -208,7 +208,6 @@ import {
   ROUTE_RUNNER_MAP_OPTIONS,
   getRealLondonPilotExerciseMetadata,
   getRouteRunnerMapViewportBounds,
-  getRouteRunnerMapOption,
   isConvertedOsmRouteRunnerMap
 } from "./routeRunnerMaps";
 import {
@@ -222,6 +221,7 @@ import {
   buildPracticeExercisesPanelModel,
   buildRouteRunnerPanelVisibility
 } from "./routeRunnerCompactPracticePanels";
+import { createRouteRunnerInitialHydrationState } from "./routeRunnerInitialState";
 import {
   buildOsmDebugOverlayModel,
   canOfferOsmDebugOverlay,
@@ -265,8 +265,6 @@ const RESTRICTION_MAP_LEGEND_ITEMS = buildRestrictionLegendItems();
 const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
-const DEFAULT_ROUTE_RUNNER_MAP_OPTION =
-  getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID) ?? ROUTE_RUNNER_MAP_OPTIONS[0];
 const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
 
 type RouteAttemptSaveStatus = {
@@ -2306,12 +2304,10 @@ export function RouteRunnerClient({
   mode = "dev",
   allowDevQaToggle = mode === "dev"
 }: RouteRunnerClientProps = {}) {
-  const initialMapOption =
-    getRouteRunnerMapOption(initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID) ?? DEFAULT_ROUTE_RUNNER_MAP_OPTION;
-  const initialSelectedExerciseId =
-    initialExerciseId && initialMapOption.exercises.some((exercise) => exercise.id === initialExerciseId)
-      ? initialExerciseId
-      : initialMapOption.defaultExerciseId;
+  const initialHydrationState = createRouteRunnerInitialHydrationState({
+    initialMapOptionId,
+    initialExerciseId
+  });
   const isStudentBetaRouteRunner = mode === "student-beta";
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
@@ -2319,8 +2315,9 @@ export function RouteRunnerClient({
   const mapScrollLockStateRef = useRef<MapScrollLockState>(createDefaultMapScrollLockState());
   const routeReplayAnimationFrameRef = useRef<number | null>(null);
   const routeReplayStateRef = useRef<RouteReplayState>(createRouteReplayState());
-  const [mapOptionId, setMapOptionId] = useState(initialMapOption.id);
-  const [exerciseId, setExerciseId] = useState(initialSelectedExerciseId);
+  const browserStorageRestoredRef = useRef(false);
+  const [mapOptionId, setMapOptionId] = useState(initialHydrationState.mapOptionId);
+  const [exerciseId, setExerciseId] = useState(initialHydrationState.exerciseId);
   const [nodeIdsText, setNodeIdsText] = useState("");
   const [roadIdsText, setRoadIdsText] = useState("");
   const [result, setResult] = useState<RunRouteExerciseResult | null>(null);
@@ -2343,7 +2340,9 @@ export function RouteRunnerClient({
   const [routeReplayState, setRouteReplayState] = useState<RouteReplayState>(() => createRouteReplayState());
   const [routeReplayRunId, setRouteReplayRunId] = useState(0);
   const [selectedRestrictionReviewItemId, setSelectedRestrictionReviewItemId] = useState<string | null>(null);
-  const [weakAreaProfile, setWeakAreaProfile] = useState<LearnerWeakAreaProfile>(() => readStoredWeakAreaProfile());
+  const [weakAreaProfile, setWeakAreaProfile] = useState<LearnerWeakAreaProfile>(
+    initialHydrationState.weakAreaProfile
+  );
   const [lastProfileAttemptKey, setLastProfileAttemptKey] = useState<string | null>(null);
   const [attemptHistory, setAttemptHistory] = useState<RouteAttemptHistoryState>(() => createRouteAttemptHistoryState());
   const [lastHistoryAttemptKey, setLastHistoryAttemptKey] = useState<string | null>(null);
@@ -2358,8 +2357,8 @@ export function RouteRunnerClient({
     message: "Loading saved attempts...",
     selectedAttemptId: null
   });
-  const [adaptiveLauncherState, setAdaptiveLauncherState] = useState<AdaptivePracticeLauncherState>(() =>
-    readStoredAdaptivePracticeLauncherState()
+  const [adaptiveLauncherState, setAdaptiveLauncherState] = useState<AdaptivePracticeLauncherState>(
+    initialHydrationState.adaptiveLauncherState
   );
   const [adaptiveLauncherMessage, setAdaptiveLauncherMessage] = useState<string | null>(null);
   const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
@@ -3218,12 +3217,26 @@ export function RouteRunnerClient({
   }, [routeReplayRunId, routeReplayState.status]);
 
   useEffect(() => {
+    if (!browserStorageRestoredRef.current) {
+      return;
+    }
+
     writeStoredWeakAreaProfile(weakAreaProfile);
   }, [weakAreaProfile]);
 
   useEffect(() => {
+    if (!browserStorageRestoredRef.current) {
+      return;
+    }
+
     writeStoredAdaptivePracticeLauncherState(adaptiveLauncherState);
   }, [adaptiveLauncherState]);
+
+  useEffect(() => {
+    setWeakAreaProfile(readStoredWeakAreaProfile());
+    setAdaptiveLauncherState(readStoredAdaptivePracticeLauncherState());
+    browserStorageRestoredRef.current = true;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
