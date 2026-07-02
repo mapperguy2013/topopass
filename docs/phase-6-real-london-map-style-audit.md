@@ -37,6 +37,17 @@ restriction symbols, hints, start/destination/checkpoint markers, review
 overlays, snapping, scoring, legality, exercise generation, OSM conversion,
 beta gating, feedback, and persistence are unchanged.
 
+## Stage 145 Street Label Readability
+
+Stage 145 makes street labels follow the strengthened road hierarchy without
+changing routing behavior. Road-label typography now uses central TOPOPASS
+tokens for major, secondary, minor, restricted, and service labels. The label
+layout pass filters labels by viewport scale, road-segment screen length, text
+fit, repeated-name spacing, and reserved screen areas around active route
+overlays, snapped hints, review lines, checkpoints, starts, and destinations.
+Converted OSM street labels are now allowed into the learner renderer, with the
+decluttering pass deciding which labels are readable enough to draw.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -87,9 +98,9 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
    tertiary, secondary, and primary roads.
 6. Landmark visuals from map landmarks. Real London pilot maps currently have
    limited landmark/context support compared with the synthetic Marlowe map.
-7. Base labels. Synthetic road, area, and landmark labels are visible by
-   default. OSM road labels exist but are only shown when OSM QA/debug overlays
-   are visible.
+7. Base labels. Synthetic and converted OSM road labels are filtered by road
+   hierarchy, zoom scale, segment fit, repeated-name spacing, and reserved
+   overlay/marker areas before drawing.
 8. Road restriction overlays, when enabled.
 9. OSM debug directed-edge overlays, when enabled.
 10. Fastest/shortest legal route overlay, when revealed.
@@ -112,7 +123,8 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 ## Current Styling Source Inventory
 
 - `topopassCartographyStyle.ts` contains named tokens for current road colours,
-  road casing colours, widths, label fonts/colours/halos, background features,
+  road casing colours, widths, hierarchy-specific label fonts/colours/halos,
+  label visibility thresholds, label collision spacing, background features,
   rail, station/landmark markers, route overlays, exercise markers, hints,
   restrictions, review overlays, replay markers, node markers, zoom thresholds,
   and decluttering thresholds.
@@ -151,12 +163,18 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 
 ## Labels
 
-- Real London/OSM road labels are implemented but hidden unless OSM QA/debug
-  overlays are visible.
-- Synthetic Marlowe labels are always visible for non-service roads, area
+- Real London/OSM road labels are learner-visible through the Stage 145
+  hierarchy and decluttering pass instead of being limited to OSM QA/debug
+  overlays.
+- Major road labels use the strongest type treatment and lower visibility
+  threshold. Secondary and tertiary labels are smaller. Minor street labels
+  require more zoom and enough segment length. Service, restricted, and inactive
+  labels are heavily limited.
+- Labels are skipped when text would not fit the visible road segment, when the
+  same road name was already placed nearby, or when their screen box intersects
+  reserved route, hint, review, start, checkpoint, or destination areas.
+- Synthetic Marlowe labels remain available for non-service roads, area
   polygons, labelled landmarks, and exercise stops.
-- Label collision avoidance is not currently implemented in the route-runner
-  canvas renderer.
 - Stop labels are drawn after markers, keeping start/destination/checkpoint
   labels above the base map.
 
@@ -232,11 +250,11 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Road hierarchy: major, secondary, residential, service, one-way, no-entry, and
   restricted roads are distinguished, but Real London still reads as graph
   segments rather than a polished street-atlas base map.
-- Label readability: Real London OSM road labels are not available in the
-  normal learner view, and there is no label collision/priority system for
-  learner-scale OSM labels.
-- Zoom decluttering: only one-way arrows and debug-gated OSM labels are
-  meaningfully decluttered. Most layers do not respond to zoom level.
+- Label readability: Stage 145 adds learner-visible OSM road labels with
+  hierarchy, zoom, fit, repeat, and reserved-area rules. Future work still needs
+  full curved placement and richer collision handling for dense parallel roads.
+- Zoom decluttering: road labels and one-way arrows now have explicit
+  decluttering. Most non-label layers still do not respond to zoom level.
 - Parks/water/rail/stations/bridges/landmarks/area names: these are largely
   absent for Real London base maps, even though they exist in the synthetic
   Marlowe visual model.
@@ -258,17 +276,15 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 1. Add a Real London base-map layer model for parks, water, rail/stations,
    bridges, landmarks, and area names from existing committed OSM data, without
    changing routing or scoring.
-2. Introduce learner-safe OSM road labels with priority, collision avoidance,
-   and zoom thresholds.
-3. Improve Real London road hierarchy styling using the new tokens, starting
-   with current OSM highway classes and restricted-road distinctions.
-4. Add zoom-based decluttering for labels, one-way symbols, restrictions,
+2. Add curved/along-road label placement and junction-name support once the
+   base label hierarchy has been validated in learner QA.
+3. Add zoom-based decluttering for restrictions,
    landmarks, and learner aids.
-5. Strengthen route review cartography with non-colour cues for missed,
+4. Strengthen route review cartography with non-colour cues for missed,
    illegal, correct, and user-drawn sections.
-6. Run a mobile-specific Real London readability pass after labels and context
+5. Run a mobile-specific Real London readability pass after labels and context
    features exist.
-7. Add performance checks for large Real London fixtures after any new
+6. Add performance checks for large Real London fixtures after any new
    label/context layer is introduced.
 
 ## Stage 142 Scope Confirmation

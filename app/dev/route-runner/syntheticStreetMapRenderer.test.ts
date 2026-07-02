@@ -12,10 +12,14 @@ import {
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
   deriveSyntheticRoadClass,
+  filterSyntheticMapLabelsForViewport,
+  labelStyleForSyntheticMapLabel,
   roadRenderRank,
+  roadLabelTier,
   roadStyleForOsmHierarchy,
   roadStyleForSyntheticClass,
-  sortRoadVisualsForBaseRender
+  sortRoadVisualsForBaseRender,
+  type SyntheticMapLabel
 } from "./syntheticStreetMapRenderer.ts";
 import { ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
 import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "./restrictionMapVisuals.ts";
@@ -102,6 +106,18 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "referenceZoom",
     "minMultiplier",
     "maxMultiplier"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy), [
+    "major",
+    "secondary",
+    "minor",
+    "restricted",
+    "service"
+  ]);
+  assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.collision), [
+    "defaultPadding",
+    "routePadding",
+    "markerPadding"
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 50);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
@@ -346,6 +362,120 @@ test("Stage 144 road visual sorting draws quieter roads before major roads", () 
   assert.ok(serviceIndex < primaryIndex);
 });
 
+function roadLabel(overrides: Partial<SyntheticMapLabel>): SyntheticMapLabel {
+  return {
+    id: "label",
+    kind: "road",
+    text: "Euston Road",
+    point: { x: 50, y: 50 },
+    angleRadians: 0,
+    priority: 2,
+    roadClass: "major",
+    osmHierarchy: "primary",
+    source: "osm",
+    roadLengthMeters: 300,
+    ...overrides
+  };
+}
+
+const labelTestViewport = {
+  width: 200,
+  height: 100,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 200,
+    maxY: 100
+  }
+};
+
+test("Stage 145 label styles follow road hierarchy", () => {
+  const majorLabel = roadLabel({ roadClass: "major", osmHierarchy: "primary" });
+  const minorLabel = roadLabel({ roadClass: "local", osmHierarchy: "residential" });
+
+  assert.equal(roadLabelTier(majorLabel), "major");
+  assert.equal(roadLabelTier(minorLabel), "minor");
+  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13px Arial, sans-serif");
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.major.fontSize >
+      TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.minor.fontSize
+  );
+});
+
+test("Stage 145 label visibility reduces minor roads at low zoom", () => {
+  const lowZoomViewport = {
+    width: 160,
+    height: 160,
+    mapBounds: {
+      minX: 0,
+      minY: 0,
+      maxX: 1000,
+      maxY: 1000
+    }
+  };
+  const labels = [
+    roadLabel({ id: "major", text: "Euston Road", roadClass: "major", osmHierarchy: "primary", roadLengthMeters: 1000 }),
+    roadLabel({ id: "minor", text: "Store Street", roadClass: "local", osmHierarchy: "residential", roadLengthMeters: 1000 })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomViewport }).map((label) => label.id),
+    ["major"]
+  );
+});
+
+test("Stage 145 label visibility rejects text that cannot fit its road segment", () => {
+  const labels = [
+    roadLabel({
+      id: "too-short",
+      text: "Very Long Street Name",
+      roadClass: "secondary",
+      osmHierarchy: "secondary",
+      roadLengthMeters: 40
+    }),
+    roadLabel({
+      id: "fits",
+      text: "Euston Road",
+      roadClass: "secondary",
+      osmHierarchy: "secondary",
+      roadLengthMeters: 180
+    })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["fits"]
+  );
+});
+
+test("Stage 145 label layout throttles repeated road names", () => {
+  const labels = [
+    roadLabel({ id: "first", text: "Euston Road", point: { x: 20, y: 40 }, roadLengthMeters: 300 }),
+    roadLabel({ id: "near-repeat", text: "Euston Road", point: { x: 80, y: 40 }, roadLengthMeters: 300 })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["first"]
+  );
+});
+
+test("Stage 145 label layout avoids reserved route and marker areas", () => {
+  const labels = [
+    roadLabel({ id: "blocked", point: { x: 50, y: 50 }, roadLengthMeters: 300 }),
+    roadLabel({ id: "clear", point: { x: 160, y: 80 }, roadLengthMeters: 300 })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({
+      labels,
+      viewport: labelTestViewport,
+      reservedBoxes: [{ id: "route", minX: 0, minY: 20, maxX: 110, maxY: 80 }]
+    }).map((label) => label.id),
+    ["clear"]
+  );
+});
+
 test("Stage 143 OSM context rendering uses raw fixture tags without adding routable graph features", () => {
   const contextFixture: OverpassJsonResponse = {
     elements: [
@@ -417,14 +547,16 @@ test("converted OSM road labels are optional and deduplicated by road name", () 
 
   assert.equal(hiddenLabels.some((label) => label.kind === "road" && label.text === "Euston Road"), false);
   assert.equal(eustonRoadLabels.length, 1);
-  assert.deepEqual(eustonRoadLabels[0], {
-    id: "road-label-osm-euston-road",
-    kind: "road",
-    text: "Euston Road",
-    point: { x: -267.166778, y: -322.105622 },
-    angleRadians: 0,
-    priority: 3
-  });
+  assert.equal(eustonRoadLabels[0].id, "road-label-osm-euston-road");
+  assert.equal(eustonRoadLabels[0].kind, "road");
+  assert.equal(eustonRoadLabels[0].text, "Euston Road");
+  assert.deepEqual(eustonRoadLabels[0].point, { x: -267.166778, y: -322.105622 });
+  assert.equal(eustonRoadLabels[0].angleRadians, 0);
+  assert.equal(eustonRoadLabels[0].priority, 2);
+  assert.equal(eustonRoadLabels[0].roadClass, "major");
+  assert.equal(eustonRoadLabels[0].osmHierarchy, "primary");
+  assert.equal(eustonRoadLabels[0].source, "osm");
+  assert.ok((eustonRoadLabels[0].roadLengthMeters ?? 0) > 0);
 });
 
 test("unnamed converted OSM roads do not crash label generation", () => {

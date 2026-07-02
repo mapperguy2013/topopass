@@ -1,4 +1,13 @@
-import type { Landmark, MapDefinition, MapRoad, RouteExercise, RouteStop, Vec2 } from "../../../lib/map-engine/index.ts";
+import {
+  mapToScreenPoint,
+  type Landmark,
+  type MapDefinition,
+  type MapRoad,
+  type RouteExercise,
+  type RouteStop,
+  type ScreenMapViewport,
+  type Vec2
+} from "../../../lib/map-engine/index.ts";
 import { projectOsmCoordinateToLocalMeters } from "../../../lib/map-engine/osm/index.ts";
 import type {
   OsmLocalProjection,
@@ -8,7 +17,7 @@ import type {
   OverpassTags,
   OverpassWayElement
 } from "../../../lib/map-engine/osm/index.ts";
-import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
+import { TOPOPASS_STREET_ATLAS_STYLE, type TopopassLabelStyle, type TopopassRoadLabelStyle } from "./topopassCartographyStyle.ts";
 
 export type SyntheticRoadClass =
   | "major"
@@ -146,6 +155,26 @@ export type SyntheticMapLabel = {
   point: Vec2;
   angleRadians?: number;
   priority: number;
+  roadClass?: SyntheticRoadClass;
+  osmHierarchy?: OsmRoadVisualHierarchy;
+  source?: "synthetic" | "osm";
+  roadLengthMeters?: number;
+};
+
+export type SyntheticRoadLabelTier = "major" | "secondary" | "minor" | "restricted" | "service";
+
+export type SyntheticLabelCollisionBox = {
+  id: string;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
+
+export type FilterSyntheticMapLabelsOptions = {
+  labels: readonly SyntheticMapLabel[];
+  viewport: ScreenMapViewport;
+  reservedBoxes?: readonly SyntheticLabelCollisionBox[];
 };
 
 export type SyntheticRouteOverlayVisual = {
@@ -566,7 +595,11 @@ export function buildSyntheticMapLabels(
       text: visual.name,
       point: { ...visual.midpoint },
       angleRadians: visual.labelAngleRadians,
-      priority: roadLabelPriority(visual.roadClass)
+      priority: roadLabelPriority(visual.roadClass, visual.osmHierarchy),
+      roadClass: visual.roadClass,
+      ...(visual.osmHierarchy ? { osmHierarchy: visual.osmHierarchy } : {}),
+      source: visual.source,
+      roadLengthMeters: roadVisualLength(visual)
     });
   }
 
@@ -624,6 +657,187 @@ export function buildSyntheticMapLabels(
   return labels.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
+export function roadLabelTier(label: Pick<SyntheticMapLabel, "roadClass" | "osmHierarchy">): SyntheticRoadLabelTier {
+  if (label.roadClass === "restricted" || label.roadClass === "no-entry" || label.osmHierarchy === "inactive") {
+    return "restricted";
+  }
+
+  if (label.roadClass === "service" || label.osmHierarchy === "service" || label.osmHierarchy === "pedestrian") {
+    return "service";
+  }
+
+  if (label.roadClass === "major" || label.osmHierarchy === "primary") {
+    return "major";
+  }
+
+  if (label.roadClass === "secondary" || label.roadClass === "one-way" || label.osmHierarchy === "secondary" || label.osmHierarchy === "tertiary") {
+    return "secondary";
+  }
+
+  return "minor";
+}
+
+export function labelStyleForSyntheticMapLabel(label: SyntheticMapLabel): TopopassLabelStyle | TopopassRoadLabelStyle {
+  if (label.kind === "road") {
+    return TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)];
+  }
+
+  if (label.kind === "area") {
+    return TOPOPASS_STREET_ATLAS_STYLE.labels.area;
+  }
+
+  if (label.kind === "landmark") {
+    return TOPOPASS_STREET_ATLAS_STYLE.labels.landmark;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.labels.stop;
+}
+
+export function filterSyntheticMapLabelsForViewport(
+  options: FilterSyntheticMapLabelsOptions
+): SyntheticMapLabel[] {
+  const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? [])];
+  const acceptedLabels: SyntheticMapLabel[] = [];
+  const roadLabelPointsByText = new Map<string, Vec2[]>();
+  const viewportScale = labelViewportScale(options.viewport);
+
+  for (const label of [...options.labels].sort(compareLabelsForLayout)) {
+    if (label.kind === "road" && !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText)) {
+      continue;
+    }
+
+    const box = labelCollisionBox(label, options.viewport);
+
+    if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
+      continue;
+    }
+
+    placedBoxes.push(box);
+    acceptedLabels.push(label);
+
+    if (label.kind === "road") {
+      const key = label.text.toLowerCase();
+      const screenPoint = mapToScreenPoint(label.point, options.viewport);
+      const points = roadLabelPointsByText.get(key) ?? [];
+
+      points.push(screenPoint);
+      roadLabelPointsByText.set(key, points);
+    }
+  }
+
+  return acceptedLabels.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+function compareLabelsForLayout(left: SyntheticMapLabel, right: SyntheticMapLabel): number {
+  const priorityDifference = left.priority - right.priority;
+
+  if (priorityDifference !== 0) {
+    return priorityDifference;
+  }
+
+  if (left.kind === "road" && right.kind === "road") {
+    const lengthDifference = (right.roadLengthMeters ?? 0) - (left.roadLengthMeters ?? 0);
+
+    if (lengthDifference !== 0) {
+      return lengthDifference;
+    }
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+function labelViewportScale(viewport: ScreenMapViewport): number {
+  const width = viewport.mapBounds.maxX - viewport.mapBounds.minX;
+  const height = viewport.mapBounds.maxY - viewport.mapBounds.minY;
+  const scaleX = width > 0 ? viewport.width / width : 0;
+  const scaleY = height > 0 ? viewport.height / height : 0;
+  const scale = Math.min(scaleX, scaleY);
+
+  return Number.isFinite(scale) ? scale : 0;
+}
+
+function shouldShowRoadLabel(
+  label: SyntheticMapLabel,
+  viewport: ScreenMapViewport,
+  viewportScale: number,
+  roadLabelPointsByText: ReadonlyMap<string, readonly Vec2[]>
+): boolean {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)];
+  const roadLengthMeters = label.roadLengthMeters ?? 0;
+  const roadScreenLength = roadLengthMeters * viewportScale;
+  const estimatedWidth = estimatedLabelTextWidth(label.text, style);
+
+  if (viewportScale < style.minViewportScale) {
+    return false;
+  }
+
+  if (roadScreenLength < style.minRoadScreenLength) {
+    return false;
+  }
+
+  if (estimatedWidth + style.collisionPadding * 2 > roadScreenLength * style.maxTextToRoadRatio) {
+    return false;
+  }
+
+  const screenPoint = mapToScreenPoint(label.point, viewport);
+  const existingPoints = roadLabelPointsByText.get(label.text.toLowerCase()) ?? [];
+
+  return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= style.repeatDistance);
+}
+
+function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
+  const style = labelStyleForSyntheticMapLabel(label);
+  const point = mapToScreenPoint(label.point, viewport);
+  const yOffset = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish" ? style.yOffset ?? 0 : 0;
+  const fontSize = labelFontSize(style);
+  const padding = "collisionPadding" in style ? style.collisionPadding : TOPOPASS_STREET_ATLAS_STYLE.labels.collision.defaultPadding;
+  const width = estimatedLabelTextWidth(label.text, style);
+  const height = fontSize + padding * 2;
+  const angle = label.kind === "road" && typeof label.angleRadians === "number" ? readableLabelAngle(label.angleRadians) : 0;
+  const rotatedWidth = Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height;
+  const rotatedHeight = Math.abs(Math.sin(angle)) * width + Math.abs(Math.cos(angle)) * height;
+
+  return {
+    id: label.id,
+    minX: point.x - rotatedWidth / 2 - padding,
+    minY: point.y + yOffset - rotatedHeight / 2 - padding,
+    maxX: point.x + rotatedWidth / 2 + padding,
+    maxY: point.y + yOffset + rotatedHeight / 2 + padding
+  };
+}
+
+function estimatedLabelTextWidth(text: string, style: TopopassLabelStyle | TopopassRoadLabelStyle): number {
+  const characterWidth = "approximateCharacterWidth" in style ? style.approximateCharacterWidth : labelFontSize(style) * 0.58;
+
+  return text.length * characterWidth;
+}
+
+function labelFontSize(style: TopopassLabelStyle | TopopassRoadLabelStyle): number {
+  if ("fontSize" in style) {
+    return style.fontSize;
+  }
+
+  const match = /(\d+(?:\.\d+)?)px/.exec(style.font);
+
+  return match ? Number(match[1]) : 11;
+}
+
+function readableLabelAngle(angleRadians: number): number {
+  if (angleRadians > Math.PI / 2 || angleRadians < -Math.PI / 2) {
+    return angleRadians + Math.PI;
+  }
+
+  return angleRadians;
+}
+
+function boxesIntersect(left: SyntheticLabelCollisionBox, right: SyntheticLabelCollisionBox): boolean {
+  return left.minX <= right.maxX && left.maxX >= right.minX && left.minY <= right.maxY && left.maxY >= right.minY;
+}
+
+function distanceBetweenPoints(left: Vec2, right: Vec2): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
 function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticMapLabel[] {
   const labelsByName = new Map<string, SyntheticRoadVisual[]>();
 
@@ -647,14 +861,18 @@ function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): Synthe
       text: name,
       point: { ...selectedVisual.midpoint },
       angleRadians: selectedVisual.labelAngleRadians,
-      priority: roadLabelPriority(selectedVisual.roadClass)
+      priority: roadLabelPriority(selectedVisual.roadClass, selectedVisual.osmHierarchy),
+      roadClass: selectedVisual.roadClass,
+      ...(selectedVisual.osmHierarchy ? { osmHierarchy: selectedVisual.osmHierarchy } : {}),
+      source: selectedVisual.source,
+      roadLengthMeters: roadVisualLength(selectedVisual)
     };
   });
 }
 
 function selectOsmRoadLabelVisual(visuals: readonly SyntheticRoadVisual[]): SyntheticRoadVisual {
   return [...visuals].sort((left, right) => {
-    const classPriority = roadLabelPriority(left.roadClass) - roadLabelPriority(right.roadClass);
+    const classPriority = roadLabelPriority(left.roadClass, left.osmHierarchy) - roadLabelPriority(right.roadClass, right.osmHierarchy);
 
     if (classPriority !== 0) {
       return classPriority;
@@ -1268,18 +1486,19 @@ function mapBounds(map: MapDefinition): { minX: number; minY: number; maxX: numb
   );
 }
 
-function roadLabelPriority(roadClass: SyntheticRoadClass): number {
+function roadLabelPriority(roadClass: SyntheticRoadClass, osmHierarchy?: OsmRoadVisualHierarchy): number {
   const priorities = TOPOPASS_STREET_ATLAS_STYLE.labels.priorities;
+  const tier = roadLabelTier({ roadClass, osmHierarchy });
 
-  if (roadClass === "major") {
+  if (tier === "major") {
     return priorities.majorRoad;
   }
 
-  if (roadClass === "secondary" || roadClass === "one-way") {
+  if (tier === "secondary") {
     return priorities.secondaryRoad;
   }
 
-  if (roadClass === "no-entry" || roadClass === "restricted") {
+  if (tier === "restricted") {
     return priorities.restrictedRoad;
   }
 

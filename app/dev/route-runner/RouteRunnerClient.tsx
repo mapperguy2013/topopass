@@ -128,8 +128,11 @@ import {
   buildSyntheticLinearFeatures,
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
+  filterSyntheticMapLabelsForViewport,
+  labelStyleForSyntheticMapLabel,
   sortRoadVisualsForBaseRender,
   type SyntheticBackgroundFeature,
+  type SyntheticLabelCollisionBox,
   type SyntheticLandmarkVisual,
   type SyntheticLinearFeature,
   type SyntheticMapLabel,
@@ -1242,8 +1245,6 @@ function drawSyntheticMapLabel(
 ): void {
   const point = mapToScreenPoint(label.point, viewport);
   const isRoadLabel = label.kind === "road";
-  const isAreaLabel = label.kind === "area";
-  const isLandmarkLabel = label.kind === "landmark";
   const isStopLabel = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish";
 
   context.save();
@@ -1255,20 +1256,20 @@ function drawSyntheticMapLabel(
 
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const labelStyle = isAreaLabel
-    ? TOPOPASS_STREET_ATLAS_STYLE.labels.area
-    : isStopLabel
-      ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop
-      : isLandmarkLabel
-        ? TOPOPASS_STREET_ATLAS_STYLE.labels.landmark
-        : TOPOPASS_STREET_ATLAS_STYLE.labels.road;
+  const labelStyle = labelStyleForSyntheticMapLabel(label);
   const yOffset = isStopLabel ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop.yOffset ?? 0 : 0;
 
   context.font = labelStyle.font;
   context.lineWidth = labelStyle.haloWidth;
+  context.shadowColor = labelStyle.shadowColor ?? "transparent";
+  context.shadowBlur = labelStyle.shadowBlur ?? 0;
+  context.shadowOffsetY = labelStyle.shadowOffsetY ?? 0;
   context.strokeStyle = labelStyle.haloColor;
   context.fillStyle = labelStyle.color;
   context.strokeText(label.text, 0, yOffset);
+  context.shadowColor = "transparent";
+  context.shadowBlur = 0;
+  context.shadowOffsetY = 0;
   context.fillText(label.text, 0, yOffset);
   context.restore();
 }
@@ -1280,6 +1281,7 @@ function drawSyntheticStreetMapBase(input: {
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
+  labelReservedBoxes: SyntheticLabelCollisionBox[];
   showOsmRoadLabels: boolean;
   selectedExercise?: RouteExercise;
 }): void {
@@ -1297,9 +1299,13 @@ function drawSyntheticStreetMapBase(input: {
     drawSyntheticLandmarkVisual(input.context, visual, input.viewport);
   }
 
-  const labels = buildSyntheticMapLabels(input.map, input.selectedExercise, {
+  const labels = filterSyntheticMapLabelsForViewport({
+    labels: buildSyntheticMapLabels(input.map, input.selectedExercise, {
     includeOsmRoadLabels: input.showOsmRoadLabels,
     backgroundFeatures: input.backgroundFeatures
+    }),
+    viewport: input.viewport,
+    reservedBoxes: input.labelReservedBoxes
   });
 
   for (const label of labels) {
@@ -2126,6 +2132,173 @@ function drawOsmDebugOverlay(
   context.restore();
 }
 
+function buildLabelReservationBoxes(input: {
+  map: MapDefinition;
+  viewport: ScreenMapViewport;
+  selectedExercise?: RouteExercise;
+  trace: DrawnRouteTrace;
+  routeDraft: DrawnRouteDraft;
+  fastestRoutePoints: readonly Vec2[];
+  snapPreview: SnappedRouteTraceResult;
+  pipelineResult: DrawnRoutePipelineResult;
+  routeIssueOverlays: readonly RouteIssueOverlay[];
+}): SyntheticLabelCollisionBox[] {
+  const boxes: SyntheticLabelCollisionBox[] = [];
+  const labelCollisionStyle = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
+
+  addPolylineReservationBoxes({
+    boxes,
+    idPrefix: "fastest-route",
+    points: input.fastestRoutePoints,
+    viewport: input.viewport,
+    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute.halo.strokeWidth,
+    padding: labelCollisionStyle.routePadding
+  });
+
+  visibleRawRouteStrokes(input.routeDraft, input.trace).forEach((stroke, index) => {
+    addPolylineReservationBoxes({
+      boxes,
+      idPrefix: `raw-route-${index}`,
+      points: stroke.points,
+      viewport: input.viewport,
+      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth,
+      padding: labelCollisionStyle.routePadding
+    });
+  });
+
+  addPolylineReservationBoxes({
+    boxes,
+    idPrefix: "snap-preview",
+    points: input.snapPreview.snappedPoints.map((point) => point.snappedPoint),
+    viewport: input.viewport,
+    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeWidth,
+    padding: labelCollisionStyle.routePadding
+  });
+
+  input.snapPreview.snappedPoints.forEach((point, index) => {
+    boxes.push(
+      screenPointReservationBox({
+        id: `snap-point-${index}`,
+        point: point.originalPoint,
+        viewport: input.viewport,
+        radius: TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointRadius + labelCollisionStyle.markerPadding
+      })
+    );
+  });
+
+  input.pipelineResult.matchResult?.attemptedMovements.forEach((movement, index) => {
+    const from = nodeById(movement.fromNodeId, input.map);
+    const to = nodeById(movement.toNodeId, input.map);
+
+    if (!from || !to) {
+      return;
+    }
+
+    addPolylineReservationBoxes({
+      boxes,
+      idPrefix: `matched-movement-${index}`,
+      points: [from, to],
+      viewport: input.viewport,
+      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.matchedMovement.haloWidth,
+      padding: labelCollisionStyle.routePadding
+    });
+  });
+
+  input.routeIssueOverlays.forEach((overlay, index) => {
+    addPolylineReservationBoxes({
+      boxes,
+      idPrefix: `route-issue-${index}`,
+      points: overlay.points,
+      viewport: input.viewport,
+      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.illegalLineWidth,
+      padding: labelCollisionStyle.routePadding
+    });
+  });
+
+  input.selectedExercise?.stops.forEach((stop, index) => {
+    const node = resolveStopNode(stop, input.map);
+
+    if (!node) {
+      return;
+    }
+
+    const isStart = index === 0;
+    const isFinish = index === input.selectedExercise!.stops.length - 1;
+    const markerStyle = isStart
+      ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start
+      : isFinish
+        ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination
+        : TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint;
+
+    boxes.push(
+      screenPointReservationBox({
+        id: `exercise-stop-${index}`,
+        point: node,
+        viewport: input.viewport,
+        radius:
+          markerStyle.radius +
+          TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.haloRadiusPadding +
+          labelCollisionStyle.markerPadding
+      })
+    );
+  });
+
+  return boxes;
+}
+
+function visibleRawRouteStrokes(routeDraft: DrawnRouteDraft, trace: DrawnRouteTrace): ReadonlyArray<{ points: readonly Vec2[] }> {
+  return routeDraft.strokes.length > 0
+    ? routeDraft.strokes
+    : trace.points.length > 0
+      ? [{ points: trace.points }]
+      : [];
+}
+
+function addPolylineReservationBoxes(input: {
+  boxes: SyntheticLabelCollisionBox[];
+  idPrefix: string;
+  points: readonly Vec2[];
+  viewport: ScreenMapViewport;
+  strokeWidth: number;
+  padding: number;
+}): void {
+  if (input.points.length < 2) {
+    return;
+  }
+
+  const expansion = input.strokeWidth / 2 + input.padding;
+
+  input.points.slice(1).forEach((point, index) => {
+    const from = mapToScreenPoint(input.points[index], input.viewport);
+    const to = mapToScreenPoint(point, input.viewport);
+
+    input.boxes.push({
+      id: `${input.idPrefix}-${index}`,
+      minX: Math.min(from.x, to.x) - expansion,
+      minY: Math.min(from.y, to.y) - expansion,
+      maxX: Math.max(from.x, to.x) + expansion,
+      maxY: Math.max(from.y, to.y) + expansion
+    });
+  });
+}
+
+function screenPointReservationBox(input: {
+  id: string;
+  point: Vec2;
+  viewport: ScreenMapViewport;
+  radius: number;
+}): SyntheticLabelCollisionBox {
+  const point = mapToScreenPoint(input.point, input.viewport);
+
+  return {
+    id: input.id,
+    minX: point.x - input.radius,
+    minY: point.y - input.radius,
+    maxX: point.x + input.radius,
+    maxY: point.y + input.radius
+  };
+}
+
 function drawRouteCanvas(input: {
   canvas: HTMLCanvasElement;
   map: MapDefinition;
@@ -2160,6 +2333,18 @@ function drawRouteCanvas(input: {
 
   context.lineCap = "round";
   context.lineJoin = "round";
+  const labelReservedBoxes = buildLabelReservationBoxes({
+    map: input.map,
+    viewport: input.viewport,
+    selectedExercise: input.selectedExercise,
+    trace: input.trace,
+    routeDraft: input.routeDraft,
+    fastestRoutePoints: input.fastestRoutePoints,
+    snapPreview: input.snapPreview,
+    pipelineResult: input.pipelineResult,
+    routeIssueOverlays: input.routeIssueOverlays
+  });
+
   drawSyntheticStreetMapBase({
     context,
     map: input.map,
@@ -2167,6 +2352,7 @@ function drawRouteCanvas(input: {
     backgroundFeatures: input.backgroundFeatures,
     linearFeatures: input.linearFeatures,
     roadVisuals: input.roadVisuals,
+    labelReservedBoxes,
     showOsmRoadLabels: input.showOsmRoadLabels,
     selectedExercise: input.selectedExercise
   });
@@ -2320,12 +2506,7 @@ function drawRouteCanvas(input: {
     context.setLineDash([]);
   }
 
-  const visibleRawStrokes =
-    input.routeDraft.strokes.length > 0
-      ? input.routeDraft.strokes
-      : input.trace.points.length > 0
-        ? [{ points: input.trace.points }]
-        : [];
+  const visibleRawStrokes = visibleRawRouteStrokes(input.routeDraft, input.trace);
 
   if (visibleRawStrokes.length > 0) {
     const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
@@ -3364,9 +3545,7 @@ export function RouteRunnerClient({
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
-      showOsmRoadLabels: isConvertedOsmMap
-        ? visibleOsmDebugOverlayAvailable && (osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible)
-        : true,
+      showOsmRoadLabels: true,
       selectedExercise,
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,

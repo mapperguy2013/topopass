@@ -795,6 +795,10 @@ Stage 144 strengthens the Real London base-road hierarchy with differentiated
 major/minor road widths, casings, colours, opacity, and layered Canvas drawing;
 route generation, snapping, scoring, legality, exercises, and beta gating are
 unchanged.
+Stage 145 improves street label readability with hierarchy-based typography,
+zoom and segment-fit filtering, repeated-label throttling, and simple
+screen-space reservations around learner routes, hints, checkpoints, starts,
+and destinations.
 
 ## Current Feature Set
 

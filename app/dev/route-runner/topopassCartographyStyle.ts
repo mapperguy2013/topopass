@@ -22,6 +22,19 @@ export type TopopassLabelStyle = {
   haloColor: string;
   haloWidth: number;
   yOffset?: number;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetY?: number;
+};
+
+export type TopopassRoadLabelStyle = TopopassLabelStyle & {
+  fontSize: number;
+  approximateCharacterWidth: number;
+  minViewportScale: number;
+  minRoadScreenLength: number;
+  maxTextToRoadRatio: number;
+  repeatDistance: number;
+  collisionPadding: number;
 };
 
 export type TopopassZoomThresholds = {
@@ -63,9 +76,15 @@ export type TopopassStreetAtlasStyle = {
   };
   labels: {
     road: TopopassLabelStyle;
+    roadHierarchy: Record<"major" | "secondary" | "minor" | "restricted" | "service", TopopassRoadLabelStyle>;
     area: TopopassLabelStyle;
     landmark: TopopassLabelStyle;
     stop: TopopassLabelStyle;
+    collision: {
+      defaultPadding: number;
+      routePadding: number;
+      markerPadding: number;
+    };
     priorities: {
       majorRoad: number;
       secondaryRoad: number;
@@ -385,9 +404,94 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   labels: {
     road: {
       font: "600 11px Arial, sans-serif",
-      color: "rgba(51,65,85,0.78)",
-      haloColor: "rgba(255,255,255,0.94)",
-      haloWidth: 3
+      color: "rgba(38,50,66,0.82)",
+      haloColor: "rgba(255,255,255,0.96)",
+      haloWidth: 3,
+      shadowColor: "rgba(255,255,255,0.5)",
+      shadowBlur: 2,
+      shadowOffsetY: 0
+    },
+    roadHierarchy: {
+      major: {
+        font: "700 13px Arial, sans-serif",
+        fontSize: 13,
+        approximateCharacterWidth: 7.2,
+        color: "rgba(30,41,59,0.9)",
+        haloColor: "rgba(255,255,255,0.98)",
+        haloWidth: 4,
+        shadowColor: "rgba(255,255,255,0.62)",
+        shadowBlur: 3,
+        shadowOffsetY: 0,
+        minViewportScale: 0.14,
+        minRoadScreenLength: 74,
+        maxTextToRoadRatio: 0.96,
+        repeatDistance: 210,
+        collisionPadding: 5
+      },
+      secondary: {
+        font: "650 12px Arial, sans-serif",
+        fontSize: 12,
+        approximateCharacterWidth: 6.6,
+        color: "rgba(45,55,72,0.84)",
+        haloColor: "rgba(255,255,255,0.96)",
+        haloWidth: 3.5,
+        shadowColor: "rgba(255,255,255,0.55)",
+        shadowBlur: 2,
+        shadowOffsetY: 0,
+        minViewportScale: 0.28,
+        minRoadScreenLength: 66,
+        maxTextToRoadRatio: 0.92,
+        repeatDistance: 180,
+        collisionPadding: 5
+      },
+      minor: {
+        font: "600 10.5px Arial, sans-serif",
+        fontSize: 10.5,
+        approximateCharacterWidth: 5.7,
+        color: "rgba(51,65,85,0.74)",
+        haloColor: "rgba(255,255,255,0.94)",
+        haloWidth: 3,
+        shadowColor: "rgba(255,255,255,0.44)",
+        shadowBlur: 1.5,
+        shadowOffsetY: 0,
+        minViewportScale: 0.72,
+        minRoadScreenLength: 58,
+        maxTextToRoadRatio: 0.88,
+        repeatDistance: 150,
+        collisionPadding: 4
+      },
+      restricted: {
+        font: "600 10px Arial, sans-serif",
+        fontSize: 10,
+        approximateCharacterWidth: 5.4,
+        color: "rgba(120,80,34,0.66)",
+        haloColor: "rgba(255,255,255,0.9)",
+        haloWidth: 3,
+        shadowColor: "rgba(255,255,255,0.35)",
+        shadowBlur: 1,
+        shadowOffsetY: 0,
+        minViewportScale: 1,
+        minRoadScreenLength: 70,
+        maxTextToRoadRatio: 0.82,
+        repeatDistance: 170,
+        collisionPadding: 4
+      },
+      service: {
+        font: "500 9.5px Arial, sans-serif",
+        fontSize: 9.5,
+        approximateCharacterWidth: 5.1,
+        color: "rgba(71,85,105,0.58)",
+        haloColor: "rgba(255,255,255,0.86)",
+        haloWidth: 2.5,
+        shadowColor: "rgba(255,255,255,0.3)",
+        shadowBlur: 1,
+        shadowOffsetY: 0,
+        minViewportScale: 1.45,
+        minRoadScreenLength: 82,
+        maxTextToRoadRatio: 0.78,
+        repeatDistance: 190,
+        collisionPadding: 4
+      }
     },
     area: {
       font: "600 13px Arial, sans-serif",
@@ -408,12 +512,17 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       haloWidth: 4,
       yOffset: -18
     },
+    collision: {
+      defaultPadding: 4,
+      routePadding: 8,
+      markerPadding: 10
+    },
     priorities: {
-      majorRoad: 3,
-      secondaryRoad: 4,
+      majorRoad: 2,
+      secondaryRoad: 3,
       restrictedRoad: 5,
       localRoad: 6,
-      area: 2,
+      area: 7,
       exerciseStop: 10
     }
   },
@@ -694,7 +803,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       panMargin: 80
     },
     decluttering: {
-      osmRoadLabelsRequireQaOverlay: true,
+      osmRoadLabelsRequireQaOverlay: false,
       oneWayArrowMinSpacingMeters: 50,
       longRoadArrowThresholdMeters: 180
     }
