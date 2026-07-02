@@ -110,6 +110,16 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
   assert.ok(model.knownLimitations.every((limitation) => !limitation.includes("QA")));
   assert.ok(model.legendItems.some((item) => item.id === "one-way" && /one-way/i.test(item.description)));
   assert.ok(model.legendItems.some((item) => item.id === "context-roads" && /context/i.test(item.description)));
+  assert.ok(model.legendItems.some((item) => item.id === "major-road" && /major/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "secondary-road" && /secondary/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "local-side-streets" && /local/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "finish" && /destination/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "accepted-alternative-route" && /valid/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "missed-checkpoint" && /missed/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "park" && /park/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "water" && /water/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "rail" && /rail/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "station" && /station/i.test(item.label)));
 });
 
 test("Stage 132 route attempt flow uses existing runner and remains scoreable", () => {

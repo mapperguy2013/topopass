@@ -319,6 +319,31 @@ review state a real learner would benefit from. The QA fixture demonstrates the
 visual system where those categories exist; it does not invent real pilot OSM
 data or begin Phase 7 product-flow work.
 
+## Stage 155 Visual Acceptance, Legend, And Attribution
+
+Stage 155 adds the final visual acceptance record in
+`docs/phase-6-visual-acceptance-audit.md`. The audit marks the Phase 6 map
+styling as accepted with non-blocking visual limitations: dense high-zoom
+side-street labels can still compete with review callouts, station and landmark
+markers may need stronger distinction in later polish, and some bridge/context
+or review states depend on committed fixture data.
+
+The route-runner legend is now learner-facing rather than restriction-only. It
+covers road hierarchy, one-way and restriction symbols, start/destination,
+checkpoints, attempted/correct/accepted-alternative routes, illegal segments,
+missed checkpoints, parks, water, rail, and stations. The legend is rendered as
+a compact collapsed panel inside the map frame and reuses the existing legend
+item model and TOPOPASS tone classes.
+
+OSM attribution remains in the beta screen model and is additionally visible in
+the lower-left of the map frame whenever the selected map option provides
+attribution. The attribution sits away from the top-right drawing controls and
+bottom-right zoom badge.
+
+No route logic, legality checks, scoring, exercise generation, beta gates,
+feedback tooling, OSM conversion behaviour, or route-engine behaviour changes
+were made.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -346,6 +371,8 @@ data or begin Phase 7 product-flow work.
   Stage 152 fixed visual comparison modes, viewports, expected readability
   categories, and Stage 154 final Phase 6 layer-stack metadata for dev/test
   inspection.
+- `docs/phase-6-visual-acceptance-audit.md` records the Stage 155 final visual
+  acceptance scenarios, non-blocking remaining issues, and deferrals.
 - `app/dev/route-runner/restrictionMapVisuals.ts` converts no-entry, one-way,
   restricted-road, prohibited-turn, illegal-movement, and missed-restriction
   data into map symbols and legend entries.

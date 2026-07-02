@@ -873,6 +873,11 @@ metadata, selected/focused review highlighting consolidated onto learner overlay
 tokens, quieter base restriction overlays in beta practice, and a more
 map-first Real London practice layout. This remains a visual/readability pass,
 not Phase 7 or route-engine work.
+Stage 155 adds the final Phase 6 visual acceptance audit, expands the compact
+learner legend to cover road hierarchy, route overlays, restrictions, objective
+markers, parks, water, rail, and stations, and keeps OSM attribution visible
+inside the map frame for OSM-derived maps. Remaining visual issues are recorded
+as non-blocking or future polish in `docs/phase-6-visual-acceptance-audit.md`.
 
 ## Current Feature Set
 

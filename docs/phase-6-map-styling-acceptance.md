@@ -409,6 +409,34 @@ This pass does not add route-engine alternative handling, new scoring, new
 legality checks, exercise generation, beta gates, feedback tooling, live OSM
 fetching, or Phase 7 product-flow work.
 
+## Stage 155 Visual Acceptance Audit, Legend, And Attribution
+
+Stage 155 records the final Phase 6 visual acceptance audit in
+`docs/phase-6-visual-acceptance-audit.md`. The audit reviews dense central
+streets, major/side-street hierarchy, junction-heavy restriction areas,
+park/water/rail/station context, bridges, landmarks, area names, learner
+markers, route review overlays, low/medium/high decluttering, and mobile-relevant
+layout concerns.
+
+Stage 155 also adds a compact learner-facing map legend inside the route map
+frame. It explains major roads, secondary roads, local streets, one-way arrows,
+restriction markers, start, destination, checkpoints, attempted route, correct
+route, accepted alternative route, illegal segment, missed checkpoint highlight,
+parks, water, rail, and stations. The legend uses the existing route-runner
+legend item model and central TOPOPASS tone classes rather than a separate modal
+or route-engine data.
+
+OSM attribution remains visible in the beta page and is also shown inside the
+map frame when an OSM-derived map option provides attribution. The attribution
+is intentionally small, legible, and separate from drawing controls.
+
+Known remaining visual issues are non-blocking: side-street labels can still
+compete with callouts at high zoom, station and landmark markers could be more
+distinct in a later polish pass, and some context/review states depend on
+available committed fixture data. No route logic, legality, scoring, exercise
+generation, beta gate, feedback tooling, OSM conversion, or Phase 7 product-flow
+work is included.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

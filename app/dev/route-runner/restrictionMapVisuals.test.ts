@@ -659,11 +659,16 @@ test("buildRestrictionLegendItems covers the polished restriction layer", () => 
   assert.deepEqual(
     legend.map((item) => item.id),
     [
+      "major-road",
+      "secondary-road",
+      "local-side-streets",
       "highlighted-routable-roads",
       "context-roads",
       "your-route",
       "shortest-legal-route",
+      "accepted-alternative-route",
       "illegal-movement",
+      "missed-checkpoint",
       "no-entry",
       "one-way",
       "prohibited-turn",
@@ -671,7 +676,11 @@ test("buildRestrictionLegendItems covers the polished restriction layer", () => 
       "selected-focus",
       "start",
       "checkpoint",
-      "finish"
+      "finish",
+      "park",
+      "water",
+      "rail",
+      "station"
     ]
   );
 });

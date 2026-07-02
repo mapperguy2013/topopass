@@ -78,18 +78,26 @@ export type SyntheticRouteOverlayKind =
 export type SyntheticLegendTone =
   | "route"
   | "shortest"
+  | "alternative-route"
   | "illegal"
   | "restriction"
   | "one-way"
   | "turn"
   | "restricted"
+  | "missed-checkpoint"
   | "start"
   | "checkpoint"
   | "finish"
   | "road"
+  | "secondary-road"
+  | "local-road"
   | "road-highlight"
   | "context-road"
-  | "background";
+  | "background"
+  | "park"
+  | "water"
+  | "rail"
+  | "station";
 
 export type SyntheticRoadStyle = {
   casingColor: string;

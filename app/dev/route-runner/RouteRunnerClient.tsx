@@ -760,6 +760,10 @@ function syntheticLegendToneClass(tone: SyntheticStreetMapLegendItem["tone"]): s
     return "border-purple-200 bg-purple-50 text-purple-950";
   }
 
+  if (tone === "alternative-route") {
+    return "border-teal-200 bg-teal-50 text-teal-950";
+  }
+
   if (tone === "shortest" || tone === "one-way" || tone === "start") {
     return "border-blue-200 bg-blue-50 text-blue-950";
   }
@@ -772,8 +776,20 @@ function syntheticLegendToneClass(tone: SyntheticStreetMapLegendItem["tone"]): s
     return "border-amber-200 bg-amber-50 text-amber-950";
   }
 
+  if (tone === "missed-checkpoint") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
   if (tone === "road-highlight") {
     return "border-yellow-200 bg-yellow-50 text-yellow-950";
+  }
+
+  if (tone === "secondary-road") {
+    return "border-yellow-100 bg-yellow-50 text-yellow-900";
+  }
+
+  if (tone === "local-road") {
+    return "border-stone-200 bg-stone-50 text-stone-800";
   }
 
   if (tone === "context-road" || tone === "road") {
@@ -786,6 +802,18 @@ function syntheticLegendToneClass(tone: SyntheticStreetMapLegendItem["tone"]): s
 
   if (tone === "background") {
     return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (tone === "park") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (tone === "water") {
+    return "border-cyan-200 bg-cyan-50 text-cyan-950";
+  }
+
+  if (tone === "rail" || tone === "station") {
+    return "border-slate-300 bg-slate-50 text-slate-900";
   }
 
   return "border-slate-200 bg-white text-slate-800";
@@ -5321,6 +5349,29 @@ export function RouteRunnerClient({
               <div className="pointer-events-none absolute bottom-4 right-4 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
                 {Math.round(mapViewportState.zoom * 100)}%
               </div>
+              <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex max-w-[min(28rem,calc(100%-7rem))] flex-col items-start gap-2">
+                <details className="pointer-events-auto max-w-full rounded-lg border border-slate-200 bg-white/95 text-xs text-slate-800 shadow-md">
+                  <summary className="cursor-pointer select-none px-3 py-2 font-semibold text-slate-900">
+                    Map legend
+                  </summary>
+                  <div className="grid max-h-56 gap-1 overflow-y-auto border-t border-slate-100 p-2 sm:grid-cols-2">
+                    {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
+                      <span
+                        key={item.id}
+                        title={item.description}
+                        className={`rounded-full border px-2.5 py-1 font-medium ${syntheticLegendToneClass(item.tone)}`}
+                      >
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+                {selectedMapOption.attribution ? (
+                  <div className="pointer-events-auto rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-[11px] font-semibold text-slate-600 shadow-sm">
+                    Data: {selectedMapOption.attribution}
+                  </div>
+                ) : null}
+              </div>
               <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
@@ -5943,18 +5994,20 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-700">
-              {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
-                <span
-                  key={item.id}
-                  title={item.description}
-                  className={`rounded-full border px-3 py-1 ${syntheticLegendToneClass(item.tone)}`}
-                >
-                  {item.label}
-                </span>
-              ))}
-              <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1">Green dots: snapped points</span>
-            </div>
+            {!isStudentBetaRouteRunner ? (
+              <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-700">
+                {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
+                  <span
+                    key={item.id}
+                    title={item.description}
+                    className={`rounded-full border px-3 py-1 ${syntheticLegendToneClass(item.tone)}`}
+                  >
+                    {item.label}
+                  </span>
+                ))}
+                <span className="rounded-full border border-green-200 bg-green-50 px-3 py-1">Green dots: snapped points</span>
+              </div>
+            ) : null}
           </section>
 
           <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

@@ -594,6 +594,24 @@ export function buildSelectedRestrictionHighlight(
 export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
   return [
     {
+      id: "major-road",
+      label: "Major roads",
+      description: "Wider orange roads are the strongest road hierarchy and useful for orientation.",
+      tone: "road-highlight"
+    },
+    {
+      id: "secondary-road",
+      label: "Secondary roads",
+      description: "Yellow roads show important connecting streets below major roads.",
+      tone: "secondary-road"
+    },
+    {
+      id: "local-side-streets",
+      label: "Local streets",
+      description: "Pale side streets stay visible for turn-by-turn reading without overpowering major roads.",
+      tone: "local-road"
+    },
+    {
       id: "highlighted-routable-roads",
       label: "Orange/yellow roads",
       description: "Orange and yellow roads highlight routable or important road geometry.",
@@ -613,15 +631,27 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "shortest-legal-route",
-      label: "Shortest legal route",
+      label: "Correct route",
       description: "Blue dashed line is the legal comparison route when available.",
       tone: "shortest"
     },
     {
+      id: "accepted-alternative-route",
+      label: "Also valid",
+      description: "Teal dotted line marks an accepted alternative when review or QA fixture data provides one.",
+      tone: "alternative-route"
+    },
+    {
       id: "illegal-movement",
-      label: "Review warning",
+      label: "Illegal segment",
       description: "Red review marks show the route section or warning that needs attention.",
       tone: "illegal"
+    },
+    {
+      id: "missed-checkpoint",
+      label: "Missed checkpoint",
+      description: "Red dashed checkpoint ring marks an ordered stop missed during review.",
+      tone: "missed-checkpoint"
     },
     {
       id: "no-entry",
@@ -643,7 +673,7 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "restricted-road",
-      label: "Restricted Road",
+      label: "Restricted road",
       description: "Amber symbols and dashed treatment mark restricted roads.",
       tone: "restricted"
     },
@@ -667,9 +697,33 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "finish",
-      label: "Finish",
+      label: "Destination",
       description: "Dark marker identifies the destination.",
       tone: "finish"
+    },
+    {
+      id: "park",
+      label: "Parks",
+      description: "Green areas show parks and open spaces for orientation only.",
+      tone: "park"
+    },
+    {
+      id: "water",
+      label: "Water",
+      description: "Blue areas and lines show canals, basins, and water crossings.",
+      tone: "water"
+    },
+    {
+      id: "rail",
+      label: "Rail",
+      description: "Grey dashed rail context helps orient around stations and crossings.",
+      tone: "rail"
+    },
+    {
+      id: "station",
+      label: "Stations",
+      description: "Station markers and labels identify transport context where fixture data provides it.",
+      tone: "station"
     }
   ];
 }
