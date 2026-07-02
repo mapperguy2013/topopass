@@ -30,6 +30,46 @@ export type TopopassContextMarkerVisualStyle = {
   priority: number;
 };
 
+export type TopopassLearnerMarkerStyle = {
+  fillColor: string;
+  strokeColor: string;
+  haloColor: string;
+  haloStrokeColor: string;
+  haloRadiusPadding: number;
+  strokeWidth: number;
+  radius: number;
+  font: string;
+  textColor: string;
+};
+
+export type TopopassCheckpointStateStyle = {
+  haloColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  outerRadiusPadding: number;
+  symbolColor: string;
+  symbolLineWidth: number;
+  dash?: readonly number[];
+};
+
+export type TopopassCalloutStyle = {
+  fillColor: string;
+  strokeColor: string;
+  textColor: string;
+  connectorColor: string;
+  shadowColor: string;
+  font: string;
+  strokeWidth: number;
+  connectorWidth: number;
+  paddingX: number;
+  paddingY: number;
+  borderRadius: number;
+  maxWidth: number;
+  offsetX: number;
+  offsetY: number;
+  alpha: number;
+};
+
 export type TopopassRoadClassStyle = {
   casingColor: string;
   strokeColor: string;
@@ -289,6 +329,85 @@ export type TopopassStreetAtlasStyle = {
     snappedPointStrokeColor: string;
     snappedPointStrokeWidth: number;
     snappedPointRadius: number;
+  };
+  learnerOverlays: {
+    drawOrder: readonly [
+      "base-context",
+      "roads",
+      "base-labels",
+      "correct-route",
+      "accepted-alternative-route",
+      "attempted-route",
+      "route-warnings",
+      "checkpoint-markers",
+      "start-destination-markers",
+      "hints-next-road",
+      "review-callouts",
+      "selected-focus"
+    ];
+    markerLabels: {
+      start: TopopassLabelStyle;
+      destination: TopopassLabelStyle;
+      checkpoint: TopopassLabelStyle;
+      hint: TopopassLabelStyle;
+      review: TopopassLabelStyle;
+    };
+    markers: {
+      start: TopopassLearnerMarkerStyle;
+      destination: TopopassLearnerMarkerStyle;
+      checkpointBase: TopopassLearnerMarkerStyle;
+      requiredCheckpoint: TopopassLearnerMarkerStyle;
+    };
+    checkpointStates: {
+      upcoming: TopopassCheckpointStateStyle;
+      active: TopopassCheckpointStateStyle;
+      completed: TopopassCheckpointStateStyle;
+      missed: TopopassCheckpointStateStyle;
+      focused: TopopassCheckpointStateStyle;
+      reached: TopopassCheckpointStateStyle;
+    };
+    hints: {
+      available: TopopassLineStyle;
+      revealed: TopopassLineStyle;
+      marker: {
+        radius: number;
+        fillColor: string;
+        strokeColor: string;
+        haloColor: string;
+        strokeWidth: number;
+      };
+      callout: TopopassCalloutStyle;
+      connector: TopopassLineStyle;
+      nextRoadSuggestion: TopopassLineStyle;
+    };
+    reviewCallouts: {
+      hint: TopopassCalloutStyle;
+      acceptedAlternative: TopopassCalloutStyle;
+      checkpointReached: TopopassCalloutStyle;
+      routeCompleted: TopopassCalloutStyle;
+      inefficient: TopopassCalloutStyle;
+      backtrack: TopopassCalloutStyle;
+      wrongTurn: TopopassCalloutStyle;
+      restrictedManoeuvre: TopopassCalloutStyle;
+      illegal: TopopassCalloutStyle;
+      missedCheckpoint: TopopassCalloutStyle;
+      focused: TopopassCalloutStyle;
+    };
+    warnings: {
+      wrongTurn: TopopassLineStyle;
+      restrictedManoeuvre: TopopassLineStyle;
+      illegalSegment: TopopassLineStyle;
+      inefficientSection: TopopassLineStyle;
+      backtrack: TopopassLineStyle;
+      missedCheckpoint: TopopassLineStyle;
+    };
+    selectedFocus: {
+      haloColor: string;
+      strokeColor: string;
+      strokeWidth: number;
+      routeLineWidth: number;
+      markerRadiusPadding: number;
+    };
   };
   restrictions: {
     overlay: {
@@ -1124,6 +1243,451 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     snappedPointStrokeColor: "rgba(15,23,42,0.42)",
     snappedPointStrokeWidth: 1.5,
     snappedPointRadius: 4
+  },
+  learnerOverlays: {
+    drawOrder: [
+      "base-context",
+      "roads",
+      "base-labels",
+      "correct-route",
+      "accepted-alternative-route",
+      "attempted-route",
+      "route-warnings",
+      "checkpoint-markers",
+      "start-destination-markers",
+      "hints-next-road",
+      "review-callouts",
+      "selected-focus"
+    ],
+    markerLabels: {
+      start: {
+        font: "800 10px Arial, sans-serif",
+        color: "#065f46",
+        haloColor: "rgba(255,255,255,0.96)",
+        haloWidth: 4,
+        yOffset: -33
+      },
+      destination: {
+        font: "800 10px Arial, sans-serif",
+        color: "#9f1239",
+        haloColor: "rgba(255,255,255,0.96)",
+        haloWidth: 4,
+        yOffset: -33
+      },
+      checkpoint: {
+        font: "800 9px Arial, sans-serif",
+        color: "#92400e",
+        haloColor: "rgba(255,255,255,0.94)",
+        haloWidth: 3,
+        yOffset: -28
+      },
+      hint: {
+        font: "700 10px Arial, sans-serif",
+        color: "#0f766e",
+        haloColor: "rgba(255,255,255,0.92)",
+        haloWidth: 3
+      },
+      review: {
+        font: "800 10px Arial, sans-serif",
+        color: "#7f1d1d",
+        haloColor: "rgba(255,255,255,0.96)",
+        haloWidth: 4
+      }
+    },
+    markers: {
+      start: {
+        fillColor: "#047857",
+        strokeColor: "#ffffff",
+        haloColor: "rgba(4,120,87,0.16)",
+        haloStrokeColor: "rgba(6,95,70,0.34)",
+        haloRadiusPadding: 9,
+        strokeWidth: 3.5,
+        radius: 18,
+        font: "800 9px Arial, sans-serif",
+        textColor: "#ffffff"
+      },
+      destination: {
+        fillColor: "#be123c",
+        strokeColor: "#ffffff",
+        haloColor: "rgba(190,18,60,0.16)",
+        haloStrokeColor: "rgba(159,18,57,0.36)",
+        haloRadiusPadding: 9,
+        strokeWidth: 3.5,
+        radius: 18,
+        font: "800 10px Arial, sans-serif",
+        textColor: "#ffffff"
+      },
+      checkpointBase: {
+        fillColor: "#f97316",
+        strokeColor: "#ffffff",
+        haloColor: "rgba(249,115,22,0.14)",
+        haloStrokeColor: "rgba(194,65,12,0.28)",
+        haloRadiusPadding: 7,
+        strokeWidth: 3,
+        radius: 15,
+        font: "800 9px Arial, sans-serif",
+        textColor: "#ffffff"
+      },
+      requiredCheckpoint: {
+        fillColor: "#d97706",
+        strokeColor: "#ffffff",
+        haloColor: "rgba(217,119,6,0.16)",
+        haloStrokeColor: "rgba(146,64,14,0.32)",
+        haloRadiusPadding: 8,
+        strokeWidth: 3.25,
+        radius: 16,
+        font: "800 8px Arial, sans-serif",
+        textColor: "#ffffff"
+      }
+    },
+    checkpointStates: {
+      upcoming: {
+        haloColor: "rgba(251,146,60,0.1)",
+        strokeColor: "#fb923c",
+        strokeWidth: 2.5,
+        outerRadiusPadding: 6,
+        symbolColor: "#ffffff",
+        symbolLineWidth: 2,
+        dash: [4, 4]
+      },
+      active: {
+        haloColor: "rgba(14,165,233,0.16)",
+        strokeColor: "#0284c7",
+        strokeWidth: 3,
+        outerRadiusPadding: 9,
+        symbolColor: "#ffffff",
+        symbolLineWidth: 2.2
+      },
+      completed: {
+        haloColor: "rgba(22,163,74,0.14)",
+        strokeColor: "#16a34a",
+        strokeWidth: 3,
+        outerRadiusPadding: 8,
+        symbolColor: "#ffffff",
+        symbolLineWidth: 2.4
+      },
+      missed: {
+        haloColor: "rgba(220,38,38,0.16)",
+        strokeColor: "#dc2626",
+        strokeWidth: 3.5,
+        outerRadiusPadding: 10,
+        symbolColor: "#ffffff",
+        symbolLineWidth: 3,
+        dash: [5, 4]
+      },
+      focused: {
+        haloColor: "rgba(14,165,233,0.18)",
+        strokeColor: "#0284c7",
+        strokeWidth: 4,
+        outerRadiusPadding: 13,
+        symbolColor: "#ffffff",
+        symbolLineWidth: 2.5
+      },
+      reached: {
+        haloColor: "rgba(22,163,74,0.16)",
+        strokeColor: "#059669",
+        strokeWidth: 3.25,
+        outerRadiusPadding: 9,
+        symbolColor: "#ffffff",
+        symbolLineWidth: 2.4
+      }
+    },
+    hints: {
+      available: {
+        strokeColor: "#14b8a6",
+        strokeWidth: 2,
+        alpha: 0.54,
+        dash: [3, 6]
+      },
+      revealed: {
+        strokeColor: "#0d9488",
+        strokeWidth: 2.4,
+        alpha: 0.82,
+        dash: [5, 5]
+      },
+      marker: {
+        radius: 5,
+        fillColor: "#ccfbf1",
+        strokeColor: "#0f766e",
+        haloColor: "rgba(255,255,255,0.88)",
+        strokeWidth: 1.75
+      },
+      callout: {
+        fillColor: "rgba(240,253,250,0.96)",
+        strokeColor: "#0f766e",
+        textColor: "#134e4a",
+        connectorColor: "rgba(15,118,110,0.72)",
+        shadowColor: "rgba(15,23,42,0.14)",
+        font: "700 10px Arial, sans-serif",
+        strokeWidth: 1.5,
+        connectorWidth: 1.5,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 128,
+        offsetX: 16,
+        offsetY: -34,
+        alpha: 0.94
+      },
+      connector: {
+        strokeColor: "#0f766e",
+        strokeWidth: 1.5,
+        alpha: 0.72,
+        dash: [3, 4]
+      },
+      nextRoadSuggestion: {
+        casingColor: "rgba(255,255,255,0.82)",
+        casingWidth: 6,
+        strokeColor: "#0f766e",
+        strokeWidth: 3,
+        alpha: 0.64,
+        dash: [7, 6]
+      }
+    },
+    reviewCallouts: {
+      hint: {
+        fillColor: "rgba(240,253,250,0.96)",
+        strokeColor: "#0f766e",
+        textColor: "#134e4a",
+        connectorColor: "rgba(15,118,110,0.72)",
+        shadowColor: "rgba(15,23,42,0.14)",
+        font: "700 10px Arial, sans-serif",
+        strokeWidth: 1.5,
+        connectorWidth: 1.5,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 128,
+        offsetX: 16,
+        offsetY: -34,
+        alpha: 0.94
+      },
+      acceptedAlternative: {
+        fillColor: "rgba(240,253,250,0.96)",
+        strokeColor: "#0f766e",
+        textColor: "#134e4a",
+        connectorColor: "rgba(15,118,110,0.74)",
+        shadowColor: "rgba(15,23,42,0.14)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 1.75,
+        connectorWidth: 1.5,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 134,
+        offsetX: 16,
+        offsetY: -36,
+        alpha: 0.95
+      },
+      checkpointReached: {
+        fillColor: "rgba(240,253,244,0.96)",
+        strokeColor: "#16a34a",
+        textColor: "#14532d",
+        connectorColor: "rgba(22,163,74,0.72)",
+        shadowColor: "rgba(15,23,42,0.14)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 1.75,
+        connectorWidth: 1.5,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 132,
+        offsetX: 16,
+        offsetY: -36,
+        alpha: 0.95
+      },
+      routeCompleted: {
+        fillColor: "rgba(236,253,245,0.97)",
+        strokeColor: "#047857",
+        textColor: "#064e3b",
+        connectorColor: "rgba(4,120,87,0.76)",
+        shadowColor: "rgba(15,23,42,0.16)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 2,
+        connectorWidth: 1.75,
+        paddingX: 9,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 140,
+        offsetX: 16,
+        offsetY: -38,
+        alpha: 0.96
+      },
+      inefficient: {
+        fillColor: "rgba(255,251,235,0.96)",
+        strokeColor: "#d97706",
+        textColor: "#78350f",
+        connectorColor: "rgba(217,119,6,0.74)",
+        shadowColor: "rgba(15,23,42,0.15)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 1.8,
+        connectorWidth: 1.5,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 138,
+        offsetX: 18,
+        offsetY: -38,
+        alpha: 0.96
+      },
+      backtrack: {
+        fillColor: "rgba(250,245,255,0.96)",
+        strokeColor: "#9333ea",
+        textColor: "#581c87",
+        connectorColor: "rgba(147,51,234,0.72)",
+        shadowColor: "rgba(15,23,42,0.15)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 1.8,
+        connectorWidth: 1.5,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 138,
+        offsetX: 18,
+        offsetY: -38,
+        alpha: 0.95
+      },
+      wrongTurn: {
+        fillColor: "rgba(255,247,237,0.96)",
+        strokeColor: "#ea580c",
+        textColor: "#7c2d12",
+        connectorColor: "rgba(234,88,12,0.76)",
+        shadowColor: "rgba(15,23,42,0.16)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 2,
+        connectorWidth: 1.75,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 136,
+        offsetX: 18,
+        offsetY: -40,
+        alpha: 0.96
+      },
+      restrictedManoeuvre: {
+        fillColor: "rgba(255,247,237,0.97)",
+        strokeColor: "#be123c",
+        textColor: "#7f1d1d",
+        connectorColor: "rgba(190,18,60,0.78)",
+        shadowColor: "rgba(15,23,42,0.18)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 2.25,
+        connectorWidth: 1.85,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 142,
+        offsetX: 18,
+        offsetY: -42,
+        alpha: 0.97
+      },
+      illegal: {
+        fillColor: "rgba(254,242,242,0.97)",
+        strokeColor: "#dc2626",
+        textColor: "#7f1d1d",
+        connectorColor: "rgba(220,38,38,0.82)",
+        shadowColor: "rgba(15,23,42,0.2)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 2.5,
+        connectorWidth: 2,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 144,
+        offsetX: 18,
+        offsetY: -44,
+        alpha: 0.98
+      },
+      missedCheckpoint: {
+        fillColor: "rgba(254,242,242,0.97)",
+        strokeColor: "#dc2626",
+        textColor: "#7f1d1d",
+        connectorColor: "rgba(220,38,38,0.8)",
+        shadowColor: "rgba(15,23,42,0.2)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 2.4,
+        connectorWidth: 1.9,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 146,
+        offsetX: 18,
+        offsetY: -44,
+        alpha: 0.98
+      },
+      focused: {
+        fillColor: "rgba(239,246,255,0.97)",
+        strokeColor: "#0284c7",
+        textColor: "#075985",
+        connectorColor: "rgba(2,132,199,0.82)",
+        shadowColor: "rgba(15,23,42,0.2)",
+        font: "800 10px Arial, sans-serif",
+        strokeWidth: 2.25,
+        connectorWidth: 1.85,
+        paddingX: 8,
+        paddingY: 5,
+        borderRadius: 7,
+        maxWidth: 144,
+        offsetX: 18,
+        offsetY: -42,
+        alpha: 0.98
+      }
+    },
+    warnings: {
+      wrongTurn: {
+        casingColor: "rgba(255,255,255,0.84)",
+        casingWidth: 9,
+        strokeColor: "#ea580c",
+        strokeWidth: 4.5,
+        alpha: 0.84,
+        dash: [6, 5]
+      },
+      restrictedManoeuvre: {
+        casingColor: "rgba(255,255,255,0.88)",
+        casingWidth: 10,
+        strokeColor: "#be123c",
+        strokeWidth: 5.5,
+        alpha: 0.88
+      },
+      illegalSegment: {
+        casingColor: "rgba(255,255,255,0.9)",
+        casingWidth: 12,
+        strokeColor: "#dc2626",
+        strokeWidth: 8.5,
+        alpha: 0.9
+      },
+      inefficientSection: {
+        casingColor: "rgba(255,255,255,0.82)",
+        casingWidth: 8,
+        strokeColor: "#d97706",
+        strokeWidth: 4,
+        dash: [9, 7],
+        alpha: 0.78
+      },
+      backtrack: {
+        casingColor: "rgba(255,255,255,0.82)",
+        casingWidth: 8,
+        strokeColor: "#9333ea",
+        strokeWidth: 4,
+        dash: [4, 5],
+        alpha: 0.72
+      },
+      missedCheckpoint: {
+        casingColor: "rgba(255,255,255,0.86)",
+        casingWidth: 8,
+        strokeColor: "#dc2626",
+        strokeWidth: 4.5,
+        dash: [5, 4],
+        alpha: 0.84
+      }
+    },
+    selectedFocus: {
+      haloColor: "rgba(14,165,233,0.16)",
+      strokeColor: "#0284c7",
+      strokeWidth: 4,
+      routeLineWidth: 9,
+      markerRadiusPadding: 13
+    }
   },
   restrictions: {
     overlay: {

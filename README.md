@@ -860,6 +860,13 @@ sections have softer warning styles, and missed/completed checkpoints get
 distinct review rings. This remains visual-only and does not add route-engine
 alternative, scoring, legality, exercise, beta, feedback, or OSM conversion
 behaviour.
+Stage 153 improves Real London learner overlay cartography: start/destination
+markers, required checkpoints, checkpoint states, hint paths/points, next-road
+suggestions, warning styles, review callouts, selected focus, and draw order now
+come from central TOPOPASS learner overlay tokens. The Stage 152 visual QA
+scenario metadata records those learner states for inspection. This is
+visual-only and does not change routing, legality, scoring, exercise generation,
+beta gates, feedback tooling, or OSM conversion.
 
 ## Current Feature Set
 

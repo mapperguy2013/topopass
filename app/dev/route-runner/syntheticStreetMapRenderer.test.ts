@@ -213,6 +213,54 @@ test("Stage 152.5 route review overlay tokens are distinct and severity ordered"
   assert.ok(checkpointStates.focused.outerRadiusPadding > checkpointStates.completed.outerRadiusPadding);
 });
 
+test("Stage 153 learner overlay marker hint and callout tokens are complete and distinct", () => {
+  const learnerOverlays = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays;
+
+  assert.deepEqual(learnerOverlays.drawOrder, [
+    "base-context",
+    "roads",
+    "base-labels",
+    "correct-route",
+    "accepted-alternative-route",
+    "attempted-route",
+    "route-warnings",
+    "checkpoint-markers",
+    "start-destination-markers",
+    "hints-next-road",
+    "review-callouts",
+    "selected-focus"
+  ]);
+  assert.notEqual(learnerOverlays.markers.start.fillColor, learnerOverlays.markers.destination.fillColor);
+  assert.ok(learnerOverlays.markers.start.radius > learnerOverlays.markers.checkpointBase.radius);
+  assert.ok(learnerOverlays.markers.requiredCheckpoint.radius > learnerOverlays.markers.checkpointBase.radius);
+  assert.notEqual(learnerOverlays.checkpointStates.missed.strokeColor, learnerOverlays.checkpointStates.completed.strokeColor);
+  assert.ok(
+    learnerOverlays.checkpointStates.missed.outerRadiusPadding >
+      learnerOverlays.checkpointStates.completed.outerRadiusPadding
+  );
+  assert.ok(
+    learnerOverlays.checkpointStates.focused.outerRadiusPadding >
+      learnerOverlays.checkpointStates.completed.outerRadiusPadding
+  );
+  assert.ok(learnerOverlays.checkpointStates.reached.strokeWidth >= learnerOverlays.checkpointStates.completed.strokeWidth);
+  assert.ok((learnerOverlays.hints.available.alpha ?? 1) < (learnerOverlays.hints.revealed.alpha ?? 0));
+  assert.notEqual(learnerOverlays.hints.available.dash?.join(","), learnerOverlays.hints.revealed.dash?.join(","));
+  assert.ok(learnerOverlays.hints.marker.radius < learnerOverlays.markers.checkpointBase.radius);
+  assert.notEqual(
+    learnerOverlays.hints.nextRoadSuggestion.strokeColor,
+    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.strokeColor
+  );
+  assert.ok(
+    (learnerOverlays.hints.nextRoadSuggestion.alpha ?? 1) <
+      (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.alpha ?? 1)
+  );
+  assert.notEqual(learnerOverlays.reviewCallouts.wrongTurn.strokeColor, learnerOverlays.reviewCallouts.restrictedManoeuvre.strokeColor);
+  assert.ok(learnerOverlays.reviewCallouts.illegal.strokeWidth > learnerOverlays.reviewCallouts.hint.strokeWidth);
+  assert.ok(learnerOverlays.reviewCallouts.missedCheckpoint.strokeWidth > learnerOverlays.reviewCallouts.inefficient.strokeWidth);
+  assert.notEqual(learnerOverlays.warnings.backtrack.strokeColor, learnerOverlays.warnings.inefficientSection.strokeColor);
+  assert.ok(learnerOverlays.warnings.illegalSegment.strokeWidth > learnerOverlays.warnings.wrongTurn.strokeWidth);
+});
+
 test("Stage 142 zoom and decluttering tokens are ordered finite and used by helpers", () => {
   const thresholds = TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds;
 

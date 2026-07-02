@@ -385,10 +385,37 @@ test("Stage 152 visual comparison scenarios cover expected Real London readabili
     })
   );
   const objectiveMarkers = new Set(["start", "required-via", "checkpoint", "destination"]);
+  const configuredLearnerOverlayStates = new Set([
+    "start-marker",
+    "destination-marker",
+    "required-checkpoint",
+    "upcoming-checkpoint",
+    "active-checkpoint",
+    "completed-checkpoint",
+    "missed-checkpoint",
+    "focused-checkpoint",
+    "hint-available",
+    "hint-revealed",
+    "hint-callout",
+    "next-road-suggestion",
+    "wrong-turn-warning",
+    "restricted-manoeuvre-warning",
+    "illegal-segment-callout",
+    "inefficient-callout",
+    "backtrack-callout",
+    "accepted-alternative-callout",
+    "checkpoint-reached",
+    "route-completed",
+    "selected-focus"
+  ]);
 
   assert.ok(restrictionItems.some((item) => item.symbol === "one-way-arrow"));
   assert.ok(restrictionItems.some((item) => item.symbol === "turn-ban-sign"));
   assert.ok(restrictionItems.some((item) => item.symbol === "illegal-route-section"));
+  assert.deepEqual(
+    getRealLondonVisualReadabilityScenario("learner-route-overlay-review")?.expected.learnerOverlayStates,
+    [...configuredLearnerOverlayStates]
+  );
 
   for (const scenario of REAL_LONDON_VISUAL_READABILITY_SCENARIOS) {
     for (const hierarchy of scenario.expected.roadHierarchies) {
@@ -413,6 +440,13 @@ test("Stage 152 visual comparison scenarios cover expected Real London readabili
 
     for (const marker of scenario.expected.objectiveMarkers) {
       assert.ok(objectiveMarkers.has(marker), `${scenario.id} expected objective marker ${marker}`);
+    }
+
+    for (const learnerOverlayState of scenario.expected.learnerOverlayStates) {
+      assert.ok(
+        configuredLearnerOverlayStates.has(learnerOverlayState),
+        `${scenario.id} expected learner overlay state ${learnerOverlayState}`
+      );
     }
 
     for (const restrictionSymbol of scenario.expected.restrictionSymbols) {

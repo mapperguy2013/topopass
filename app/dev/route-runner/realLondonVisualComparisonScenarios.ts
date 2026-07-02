@@ -40,6 +40,29 @@ export type RealLondonVisualReadabilityScenarioId =
   | "learner-route-overlay-review"
   | "one-way-restriction-declutter";
 
+export type RealLondonLearnerOverlayState =
+  | "start-marker"
+  | "destination-marker"
+  | "required-checkpoint"
+  | "upcoming-checkpoint"
+  | "active-checkpoint"
+  | "completed-checkpoint"
+  | "missed-checkpoint"
+  | "focused-checkpoint"
+  | "hint-available"
+  | "hint-revealed"
+  | "hint-callout"
+  | "next-road-suggestion"
+  | "wrong-turn-warning"
+  | "restricted-manoeuvre-warning"
+  | "illegal-segment-callout"
+  | "inefficient-callout"
+  | "backtrack-callout"
+  | "accepted-alternative-callout"
+  | "checkpoint-reached"
+  | "route-completed"
+  | "selected-focus";
+
 export type RealLondonVisualViewport = {
   center: { x: number; y: number };
   bounds: { minX: number; minY: number; maxX: number; maxY: number };
@@ -54,6 +77,7 @@ export type RealLondonVisualExpectedCategories = {
   linearKinds: SyntheticLinearFeatureKind[];
   routeOverlayKinds: SyntheticRouteOverlayKind[];
   objectiveMarkers: ("start" | "required-via" | "checkpoint" | "destination")[];
+  learnerOverlayStates: RealLondonLearnerOverlayState[];
   restrictionSymbols: ("one-way" | "restricted-turn" | "review-warning")[];
   decluttering: RealLondonReadabilityDeclutterTier[];
 };
@@ -148,6 +172,7 @@ const qaMapBounds = {
 
 const noRouteOverlays: SyntheticRouteOverlayKind[] = [];
 const noObjectiveMarkers: RealLondonVisualExpectedCategories["objectiveMarkers"] = [];
+const noLearnerOverlayStates: RealLondonVisualExpectedCategories["learnerOverlayStates"] = [];
 const noRestrictionSymbols: RealLondonVisualExpectedCategories["restrictionSymbols"] = [];
 
 export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabilityScenario[] = [
@@ -171,6 +196,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
       objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
       restrictionSymbols: ["one-way"],
       decluttering: ["overview", "learner"]
     }
@@ -195,6 +221,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
       objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
       restrictionSymbols: ["one-way"],
       decluttering: ["overview", "learner"]
     }
@@ -219,6 +246,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       linearKinds: ["rail", "waterway"],
       routeOverlayKinds: noRouteOverlays,
       objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
       restrictionSymbols: noRestrictionSymbols,
       decluttering: ["learner", "detail"]
     }
@@ -243,6 +271,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       linearKinds: ["bridge", "waterway"],
       routeOverlayKinds: ["illegal-movement"],
       objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: ["restricted-manoeuvre-warning", "illegal-segment-callout"],
       restrictionSymbols: ["restricted-turn", "review-warning"],
       decluttering: ["learner", "detail"]
     }
@@ -267,6 +296,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
       objectiveMarkers: noObjectiveMarkers,
+      learnerOverlayStates: noLearnerOverlayStates,
       restrictionSymbols: noRestrictionSymbols,
       decluttering: ["detail"]
     }
@@ -300,6 +330,29 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
         "illegal-movement"
       ],
       objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
+      learnerOverlayStates: [
+        "start-marker",
+        "destination-marker",
+        "required-checkpoint",
+        "upcoming-checkpoint",
+        "active-checkpoint",
+        "completed-checkpoint",
+        "missed-checkpoint",
+        "focused-checkpoint",
+        "hint-available",
+        "hint-revealed",
+        "hint-callout",
+        "next-road-suggestion",
+        "wrong-turn-warning",
+        "restricted-manoeuvre-warning",
+        "illegal-segment-callout",
+        "inefficient-callout",
+        "backtrack-callout",
+        "accepted-alternative-callout",
+        "checkpoint-reached",
+        "route-completed",
+        "selected-focus"
+      ],
       restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
       decluttering: ["learner", "detail"]
     }
@@ -324,6 +377,15 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       linearKinds: [],
       routeOverlayKinds: ["accepted-alternative-route", "inefficient-section", "backtrack-section", "illegal-movement"],
       objectiveMarkers: ["required-via"],
+      learnerOverlayStates: [
+        "required-checkpoint",
+        "missed-checkpoint",
+        "wrong-turn-warning",
+        "restricted-manoeuvre-warning",
+        "illegal-segment-callout",
+        "inefficient-callout",
+        "backtrack-callout"
+      ],
       restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
       decluttering: ["overview", "learner"]
     }

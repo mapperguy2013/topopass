@@ -150,7 +150,11 @@ import {
   type SyntheticRoadVisual,
   type SyntheticStreetMapLegendItem
 } from "./syntheticStreetMapRenderer";
-import { TOPOPASS_STREET_ATLAS_STYLE, type TopopassLineStyle } from "./topopassCartographyStyle";
+import {
+  TOPOPASS_STREET_ATLAS_STYLE,
+  type TopopassCalloutStyle,
+  type TopopassLineStyle
+} from "./topopassCartographyStyle";
 import {
   buildRestrictionLegendItems,
   buildRestrictionMapVisualItems,
@@ -1100,7 +1104,7 @@ function drawExerciseStopMarker(input: {
   reviewStatus?: "completed" | "missed";
 }): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
-  const markerStyle =
+  const legacyMarkerStyle =
     input.role === "start"
       ? style.start
       : input.role === "finish"
@@ -1108,7 +1112,15 @@ function drawExerciseStopMarker(input: {
         : input.index === 1
           ? style.requiredVia
           : style.checkpoint;
-  const fillStyle = markerStyle.fillColor;
+  const learnerMarkerStyle =
+    input.role === "start"
+      ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start
+      : input.role === "finish"
+        ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination
+        : input.index === 1
+          ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.requiredCheckpoint
+          : TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase;
+  const fillStyle = learnerMarkerStyle.fillColor;
   const markerText =
     input.role === "start"
       ? style.start.text
@@ -1117,34 +1129,37 @@ function drawExerciseStopMarker(input: {
         : input.index === 1
           ? style.requiredVia.textPrefix
           : `${style.checkpoint.textPrefix}${input.index}`;
-  const radius = markerStyle.radius;
+  const radius = learnerMarkerStyle.radius;
 
   input.context.save();
   input.context.shadowColor = style.shadowColor;
   input.context.shadowBlur = style.shadowBlur;
   input.context.shadowOffsetY = style.shadowOffsetY;
-  input.context.fillStyle = style.haloFillColor;
-  input.context.strokeStyle = fillStyle;
-  input.context.lineWidth = style.strokeWidth;
+  input.context.fillStyle = learnerMarkerStyle.haloColor;
+  input.context.strokeStyle = learnerMarkerStyle.haloStrokeColor;
+  input.context.lineWidth = learnerMarkerStyle.strokeWidth;
   input.context.beginPath();
-  input.context.arc(input.point.x, input.point.y, radius + style.haloRadiusPadding, 0, Math.PI * 2);
+  input.context.arc(input.point.x, input.point.y, radius + learnerMarkerStyle.haloRadiusPadding, 0, Math.PI * 2);
   input.context.fill();
   input.context.stroke();
   input.context.shadowColor = "transparent";
 
   input.context.fillStyle = fillStyle;
+  input.context.strokeStyle = learnerMarkerStyle.strokeColor;
+  input.context.lineWidth = learnerMarkerStyle.strokeWidth;
   input.context.beginPath();
   input.context.arc(input.point.x, input.point.y, radius, 0, Math.PI * 2);
   input.context.fill();
+  input.context.stroke();
 
-  input.context.fillStyle = style.textColor;
-  input.context.font = markerStyle.font;
+  input.context.fillStyle = learnerMarkerStyle.textColor;
+  input.context.font = learnerMarkerStyle.font || legacyMarkerStyle.font;
   input.context.textAlign = "center";
   input.context.textBaseline = "middle";
   input.context.fillText(markerText, input.point.x, input.point.y + 0.5);
 
   if (input.role === "checkpoint" && input.reviewStatus) {
-    const checkpointStyle = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints[input.reviewStatus];
+    const checkpointStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates[input.reviewStatus];
     const outerRadius = radius + checkpointStyle.outerRadiusPadding;
 
     input.context.shadowColor = "transparent";
@@ -1155,7 +1170,7 @@ function drawExerciseStopMarker(input: {
     input.context.strokeStyle = checkpointStyle.strokeColor;
     input.context.lineWidth = checkpointStyle.strokeWidth;
     input.context.setLineDash(
-      input.reviewStatus === "missed" ? [...TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints.missed.dash] : []
+      input.reviewStatus === "missed" ? [...(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.missed.dash ?? [])] : []
     );
     input.context.beginPath();
     input.context.arc(input.point.x, input.point.y, outerRadius, 0, Math.PI * 2);
@@ -1163,10 +1178,10 @@ function drawExerciseStopMarker(input: {
     input.context.setLineDash([]);
 
     if (input.reviewStatus === "missed") {
-      const missedStyle = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints.missed;
+      const missedStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.missed;
 
-      input.context.strokeStyle = missedStyle.crossColor;
-      input.context.lineWidth = missedStyle.crossLineWidth;
+      input.context.strokeStyle = missedStyle.symbolColor;
+      input.context.lineWidth = missedStyle.symbolLineWidth;
       input.context.lineCap = "round";
       input.context.beginPath();
       input.context.moveTo(input.point.x - 6, input.point.y - 6);
@@ -1175,10 +1190,10 @@ function drawExerciseStopMarker(input: {
       input.context.lineTo(input.point.x - 6, input.point.y + 6);
       input.context.stroke();
     } else {
-      const completedStyle = TOPOPASS_STREET_ATLAS_STYLE.review.checkpoints.completed;
+      const completedStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.completed;
 
-      input.context.strokeStyle = completedStyle.checkColor;
-      input.context.lineWidth = completedStyle.checkLineWidth;
+      input.context.strokeStyle = completedStyle.symbolColor;
+      input.context.lineWidth = completedStyle.symbolLineWidth;
       input.context.lineCap = "round";
       input.context.lineJoin = "round";
       input.context.beginPath();
@@ -1929,6 +1944,113 @@ function drawRouteIssueMapSymbol(context: CanvasRenderingContext2D, item: Restri
   context.restore();
 }
 
+function drawRoundedRectPath(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+): void {
+  const clampedRadius = Math.min(radius, width / 2, height / 2);
+
+  context.beginPath();
+  context.moveTo(x + clampedRadius, y);
+  context.lineTo(x + width - clampedRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + clampedRadius);
+  context.lineTo(x + width, y + height - clampedRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - clampedRadius, y + height);
+  context.lineTo(x + clampedRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - clampedRadius);
+  context.lineTo(x, y + clampedRadius);
+  context.quadraticCurveTo(x, y, x + clampedRadius, y);
+  context.closePath();
+}
+
+function compactLearnerCalloutText(label: string): string {
+  const compactLabel = label.replace(/\s+/g, " ").trim();
+
+  if (compactLabel.length <= 28) {
+    return compactLabel;
+  }
+
+  return `${compactLabel.slice(0, 25).trimEnd()}...`;
+}
+
+function reviewCalloutStyleForRestrictionItem(item: RestrictionMapVisualItem): TopopassCalloutStyle {
+  const label = item.label.toLowerCase();
+  const callouts = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.reviewCallouts;
+
+  if (label.includes("checkpoint")) {
+    return callouts.missedCheckpoint;
+  }
+
+  if (label.includes("wrong")) {
+    return callouts.wrongTurn;
+  }
+
+  if (label.includes("turn") || label.includes("restricted") || label.includes("no entry")) {
+    return callouts.restrictedManoeuvre;
+  }
+
+  return item.kind === "missed-restriction" ? callouts.restrictedManoeuvre : callouts.illegal;
+}
+
+function shouldDrawLearnerReviewCallout(item: RestrictionMapVisualItem): boolean {
+  return item.kind === "illegal-movement" || item.kind === "missed-restriction";
+}
+
+function drawLearnerOverlayCallout(
+  context: CanvasRenderingContext2D,
+  anchor: Vec2,
+  label: string,
+  style: TopopassCalloutStyle,
+  viewport: ScreenMapViewport
+): void {
+  const text = compactLearnerCalloutText(label);
+  const viewportWidth = viewport.width;
+  const viewportHeight = viewport.height;
+
+  context.save();
+  context.font = style.font;
+
+  const textWidth = Math.min(context.measureText(text).width, style.maxWidth);
+  const width = textWidth + style.paddingX * 2;
+  const height = 20 + style.paddingY * 2;
+  const x = Math.min(Math.max(anchor.x + style.offsetX, 6), Math.max(6, viewportWidth - width - 6));
+  const y = Math.min(Math.max(anchor.y + style.offsetY, 6), Math.max(6, viewportHeight - height - 6));
+  const connectorTarget = {
+    x: Math.min(Math.max(anchor.x, x + style.borderRadius), x + width - style.borderRadius),
+    y: Math.min(Math.max(anchor.y, y + style.borderRadius), y + height - style.borderRadius)
+  };
+
+  context.globalAlpha = style.alpha;
+  context.strokeStyle = style.connectorColor;
+  context.lineWidth = style.connectorWidth;
+  context.lineCap = "round";
+  context.beginPath();
+  context.moveTo(anchor.x, anchor.y);
+  context.lineTo(connectorTarget.x, connectorTarget.y);
+  context.stroke();
+
+  context.shadowColor = style.shadowColor;
+  context.shadowBlur = 10;
+  context.shadowOffsetY = 2;
+  drawRoundedRectPath(context, x, y, width, height, style.borderRadius);
+  context.fillStyle = style.fillColor;
+  context.fill();
+  context.shadowColor = "transparent";
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth;
+  context.stroke();
+
+  context.fillStyle = style.textColor;
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  context.fillText(text, x + style.paddingX, y + height / 2);
+  context.restore();
+}
+
 function drawRestrictionMapVisualItem(
   context: CanvasRenderingContext2D,
   item: RestrictionMapVisualItem,
@@ -1964,6 +2086,10 @@ function drawRestrictionMapVisualItem(
   }
 
   drawRouteIssueMapSymbol(context, item, point);
+
+  if (shouldDrawLearnerReviewCallout(item)) {
+    drawLearnerOverlayCallout(context, point, item.label, reviewCalloutStyleForRestrictionItem(item), viewport);
+  }
 }
 
 function drawSelectedRestrictionHighlight(
@@ -2444,7 +2570,7 @@ function buildLabelReservationBoxes(input: {
     idPrefix: "snap-preview",
     points: input.snapPreview.snappedPoints.map((point) => point.snappedPoint),
     viewport: input.viewport,
-    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeWidth,
+    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.revealed.strokeWidth,
     padding: labelCollisionStyle.routePadding
   });
 
@@ -2454,7 +2580,7 @@ function buildLabelReservationBoxes(input: {
         id: `snap-point-${index}`,
         point: point.originalPoint,
         viewport: input.viewport,
-        radius: TOPOPASS_STREET_ATLAS_STYLE.hints.snappedPointRadius + labelCollisionStyle.markerPadding
+        radius: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.radius + labelCollisionStyle.markerPadding
       })
     );
   });
@@ -2512,12 +2638,12 @@ function buildLabelReservationBoxes(input: {
     const isStart = index === 0;
     const isFinish = index === input.selectedExercise!.stops.length - 1;
     const markerStyle = isStart
-      ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start
+      ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start
       : isFinish
-        ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination
+        ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination
         : index === 1
-          ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia
-          : TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint;
+          ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.requiredCheckpoint
+          : TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase;
 
     boxes.push(
       screenPointReservationBox({
@@ -2526,7 +2652,7 @@ function buildLabelReservationBoxes(input: {
         viewport: input.viewport,
         radius:
           markerStyle.radius +
-          TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.haloRadiusPadding +
+          markerStyle.haloRadiusPadding +
           TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
       })
     );
@@ -2760,7 +2886,7 @@ function drawRouteCanvas(input: {
   });
 
   if (input.snapPreview.snappedPoints.length > 0) {
-    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview;
+    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.revealed;
 
     context.save();
     context.strokeStyle = hintStyle.strokeColor;
@@ -2794,20 +2920,18 @@ function drawRouteCanvas(input: {
 
   input.snapPreview.snappedPoints.forEach((point) => {
     const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
-    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.hints;
+    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker;
 
-    context.fillStyle = hintStyle.snappedPointHaloColor;
+    context.fillStyle = hintStyle.haloColor;
     context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, hintStyle.snappedPointRadius + 2, 0, Math.PI * 2);
+    context.arc(screenPoint.x, screenPoint.y, hintStyle.radius + 2, 0, Math.PI * 2);
     context.fill();
 
-    context.fillStyle = point.roadId
-      ? hintStyle.snappedPointMatchedColor
-      : hintStyle.snappedPointUnmatchedColor;
-    context.strokeStyle = hintStyle.snappedPointStrokeColor;
-    context.lineWidth = hintStyle.snappedPointStrokeWidth;
+    context.fillStyle = point.roadId ? hintStyle.fillColor : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor;
+    context.strokeStyle = point.roadId ? hintStyle.strokeColor : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.defaultColor;
+    context.lineWidth = hintStyle.strokeWidth;
     context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, hintStyle.snappedPointRadius, 0, Math.PI * 2);
+    context.arc(screenPoint.x, screenPoint.y, hintStyle.radius, 0, Math.PI * 2);
     context.fill();
     context.stroke();
   });

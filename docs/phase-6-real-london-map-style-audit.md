@@ -263,6 +263,30 @@ behaviour, route-analysis logic, legality rule, scoring rule, exercise
 generation, beta gate, feedback workflow, or OSM conversion behaviour is added
 or changed.
 
+## Stage 153 Learner Overlay Markers And Callouts
+
+Stage 153 extends the Phase 6 cartography tokens with a learner overlay layer:
+start/destination marker styles, required checkpoint and checkpoint marker
+styles, checkpoint visual states, hint available/revealed states, next-road
+suggestion styling, warning line styles, review callout styles, selected-focus
+tokens, and an explicit intended canvas draw order.
+
+The route-runner canvas now draws objective markers and missed/completed
+checkpoint review rings from those learner overlay tokens. Hint preview paths
+and snapped hint points also use learner overlay tokens so hints read as
+assistance, not route errors. Review-critical restriction items keep their
+existing issue symbols and gain compact callouts for learner explanation without
+changing the underlying review, restriction, scoring, legality, exercise, beta,
+feedback, or OSM conversion logic.
+
+The Stage 152 comparison scenario metadata now records expected learner overlay
+states such as start marker, destination marker, required checkpoint, checkpoint
+state variants, hint available/revealed, next-road suggestion, wrong turn,
+restricted manoeuvre, illegal segment, inefficient/backtrack callouts, accepted
+alternative callout, checkpoint reached, route completed, and selected focus.
+Those categories are visual QA metadata only; they do not create new fixture
+restrictions or landmarks.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -272,7 +296,8 @@ or changed.
   student-facing screen model, legend, known limitations, attribution, exercise
   labels, and compact beta diagnostics.
 - `app/dev/route-runner/RouteRunnerClient.tsx` owns the canvas rendering loop,
-  map controls, route drawing interaction, route/review overlays, restriction
+  map controls, route drawing interaction, route/review overlays, learner
+  objective markers, hint overlays, compact review callouts, restriction
   overlays, missed/completed checkpoint review markers, OSM debug overlays,
   replay markers, and compact/dev panels.
 - `app/dev/route-runner/syntheticStreetMapRenderer.ts` builds visual models for

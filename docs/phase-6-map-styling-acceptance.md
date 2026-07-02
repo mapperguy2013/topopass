@@ -324,6 +324,42 @@ sections are styling/fixture categories only unless existing review data supplie
 those classifications. This stage does not invent alternative-route acceptance
 or new route-analysis behaviour.
 
+## Stage 153 Learner Marker, Hint, And Callout Styling
+
+Stage 153 centralises learner overlay styling for start, destination,
+checkpoints, hints, warnings, review callouts, and draw order. The canvas
+renderer uses those tokens for objective markers, hint preview paths, hint
+points, missed/completed checkpoint rings, and compact review-critical
+restriction callouts.
+
+Learner overlay meanings:
+
+- Start and destination markers: larger green and red objective anchors with
+  quiet halos so the route endpoints remain visible above roads and labels.
+- Required checkpoint and checkpoint markers: orange objective markers, with the
+  first required via/checkpoint visually stronger than ordinary checkpoints.
+- Checkpoint states: upcoming, active, completed, missed, focused, and reached
+  states have distinct central tokens for rings, dashes, and check/cross symbols.
+- Hint available/revealed states: hint paths are quieter than route review
+  warnings, while revealed hints and snapped points remain readable above the
+  base map.
+- Next-road suggestion: teal dashed styling that is intentionally distinct from
+  the correct-route blue reference line.
+- Review warnings/callouts: wrong turn, restricted manoeuvre, illegal segment,
+  inefficient, backtrack, missed checkpoint, accepted alternative, checkpoint
+  reached, and route completed states have compact callout tokens and severity
+  ordering.
+
+The Stage 152 visual QA scenarios now list expected learner overlay states for
+`learner-route-overlay-review`, `bridge-crossing-context`, and
+`one-way-restriction-declutter`. These checks verify configuration and expected
+state coverage rather than pixel-perfect screenshots.
+
+Known limitations: Stage 153 does not add new route analysis, accepted
+alternative logic, checkpoint logic, hints, restrictions, landmarks, or OSM
+conversion behaviour. Review callouts only reflect existing review/restriction
+items exposed to the renderer.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta
