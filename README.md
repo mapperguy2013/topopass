@@ -911,6 +911,15 @@ draft stroke when a second finger joins, and keeps one-finger drawing, pan mode,
 wheel zoom, zoom buttons, overlays, labels, and decluttering aligned with the
 updated viewport. Manual phone QA steps are recorded in the Phase 6 map styling
 acceptance doc.
+Stage 159 completes the Phase 6 readiness gate. The final review records the
+Real London learner-map visual stack as complete across the documented
+street-atlas styling, hierarchy, labels, context, one-way/restriction,
+learner-overlay, review-callout, mobile/tablet, legend, attribution, and visual
+QA scenarios. Remaining limitations are fixture-data and QA-infrastructure
+limits only: no invented restrictions or landmarks, no live OSM fetching, and
+no pixel-perfect screenshot baselines. No route logic, legality, scoring,
+exercise generation, beta gate, OSM conversion, feedback, auth, subscription,
+or product-flow behaviour changes are part of the gate.
 
 ## Current Feature Set
 

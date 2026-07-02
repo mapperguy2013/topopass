@@ -93,6 +93,10 @@ screenshot assertions.
   Real London contexts, low/medium/high decluttering tiers, responsive
   phone/tablet coverage, and final overlay ordering without changing route or
   OSM behaviour.
+- Stage 159 closes the Phase 6 readiness gate: the final review checks the
+  documented visual QA scenarios, draw order, central cartography tokens,
+  learner overlays, review callouts, mobile/tablet interaction notes, legend,
+  attribution, and fixture-data limitations as one completed Phase 6 package.
 
 ## Remaining Visual Issues
 
@@ -107,14 +111,40 @@ screenshot assertions.
 | Stage 156 responsive QA is fixture/configuration based rather than device screenshot automation. | Future polish | Deferred | Tests verify scenario wiring, touch targets, and map layout metadata. Full device screenshot comparison belongs to a later QA investment. |
 | Stage 157 does not add separate dirty canvas layers for static base and live overlays. | Future polish | Deferred | Candidate generation and label measurement are optimized first; a multi-canvas renderer would be a larger architecture change. |
 | Stage 158 remains metadata/test based rather than pixel-perfect visual snapshot automation. | Future polish | Deferred | The release gate verifies scenario coverage, contexts, zoom tiers, and layer order. Screenshot baselines can be added later if the project adopts that infrastructure. |
+| Stage 159 does not add new map data or visual features. | Accepted | Completion gate | This gate is a final readiness review. It confirms Phase 6 scope and records deferrals rather than starting Phase 7. |
+
+## Stage 159 Completion Gate
+
+The final Phase 6 readiness review confirms that the Real London map now has a
+usable learner street-atlas presentation rather than the earlier graph-like
+view. The completed package covers land, water, parks, road hierarchy,
+junction clarity, labels, station and landmark context, area names,
+one-way/restriction cartography, learner route overlays, review warnings,
+callouts, mobile/tablet touch usability, visual comparison fixtures, and the
+release-candidate QA scenarios listed above.
+
+The reviewed layer order matches the exported
+`FINAL_PHASE_6_REAL_LONDON_LAYER_STACK`: base land/context draws first, then
+road casings/fills and hierarchy, labels and context, restriction and one-way
+symbols, learner route overlays, markers, hints, review callouts, focused
+states, compact legend, and attribution. Styling remains driven by central
+TOPOPASS cartography tokens in the route-runner styling modules.
+
+The Stage 159 gate did not change route logic, legality checks, scoring,
+exercise generation, beta gates, feedback tooling, OSM conversion behaviour,
+auth, subscriptions, or product flow. Known limitations remain intentionally
+bounded to data and QA infrastructure: fixture-derived context appears only
+where committed OSM/fixture data supplies it, restrictions and landmarks are
+not invented, and visual regression checks are scenario/configuration based
+rather than pixel-perfect screenshot automation.
 
 ## Acceptance Decision
 
-No blocking visual issues remain for the Phase 6 Real London styling pass. The
-Stage 158 gate records Phase 6 as ready for final learner-facing visual review
-after the required lint, map test, build, and diff checks pass. Known
-limitations are driven by fixture data coverage, non-pixel-perfect QA, and
-future route-review data depth.
+No blocking visual issues remain for the Phase 6 Real London styling pass.
+Stage 159 records Phase 6 as complete and ready to close after the required
+lint, map test, build, and diff checks pass. Known limitations are driven by
+fixture data coverage, non-pixel-perfect QA, and future route-review data
+depth.
 
 Future work should stay separate from Phase 6 unless it is strictly visual QA:
 new route analysis, alternative-route acceptance, new scoring rules, additional

@@ -567,6 +567,36 @@ current test stack. Stage 158.5 adds focused unit coverage for two-pointer
 pinch recognition, zoom clamping, and overlay alignment, with the checklist
 above retained for real-device QA.
 
+## Stage 159 Phase 6 Completion Gate
+
+Stage 159 is the final Phase 6 readiness gate, not a feature stage. The review
+confirms that the Real London practice map now reads as a learner street atlas
+across the documented visual QA scenarios: dense central streets, high streets
+and side streets, parks and water, bridges and river crossings, rail and
+stations, landmarks and area names, one-way/restriction-heavy junctions,
+learner route overlays, route review callouts, and mobile/tablet viewports.
+
+The gate checks the final draw order against
+`FINAL_PHASE_6_REAL_LONDON_LAYER_STACK`, including base context, road hierarchy,
+labels, one-way/restriction symbols, learner overlays, markers, hints, review
+warnings, selected focus, legend, and attribution. It also confirms that
+styling remains driven by central TOPOPASS cartography tokens and that the
+Phase 6 visual comparison and release-candidate fixtures are wired for future
+readability checks.
+
+Known limitations remain accepted for Phase 6: context labels, bridges,
+landmarks, stations, area names, and restriction symbols depend on available
+committed fixture/OSM-derived data; restrictions and landmarks are not
+invented; visual regression coverage is scenario/configuration based rather
+than pixel-perfect screenshot automation; and deeper route analysis, scoring,
+exercise-generation, product-flow, and Phase 7 work stay deferred.
+
+Stage 159 does not change route logic, legality checks, scoring, exercise
+generation, beta gates, feedback tooling, OSM conversion behaviour, auth,
+subscriptions, or product flow. After `npm.cmd run lint`,
+`npm.cmd run test:map`, `npm.cmd run build`, and `git diff --check` pass, Phase
+6 is complete and ready to close.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

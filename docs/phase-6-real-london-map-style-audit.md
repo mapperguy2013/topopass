@@ -444,6 +444,33 @@ that start/destination/checkpoint markers plus labels remain aligned after
 zooming. Automated coverage is unit-level because this project does not yet
 have browser-level pinch screenshot automation.
 
+## Stage 159 Phase 6 Readiness Gate
+
+Stage 159 closes the Phase 6 Real London map styling audit. The final review
+confirms that the current renderer, scenario metadata, responsive fixtures, and
+documentation cover the completed Phase 6 visual scope: street-atlas base
+styling, land/water/park context, road hierarchy, junction clarity, labels,
+stations, landmarks, bridges, rail, area names, one-way and restriction
+cartography, learner route overlays, hint/review callouts, legend,
+attribution, mobile/tablet readability, and pinch-to-zoom usability.
+
+The final draw stack remains token-driven and matches the exported
+`FINAL_PHASE_6_REAL_LONDON_LAYER_STACK`. Base context draws below road casings
+and fills, labels and context draw before restrictions, route/review overlays
+draw above the base map, learner markers and callouts remain top-level
+interaction aids, and attribution stays visible when OSM-derived data is in
+use.
+
+No Phase 7, routing, legality, scoring, exercise generation, beta gate,
+feedback, OSM conversion, auth, subscription, or product-flow changes are part
+of this gate. Remaining limitations are data and QA-infrastructure limits:
+fixture-backed context appears only where committed data provides it, no
+restrictions or landmarks are invented, and visual regression checks remain
+scenario/configuration based until a future screenshot-baseline system exists.
+
+With lint, `test:map`, build, and `git diff --check` passing, Phase 6 is ready
+to close.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
