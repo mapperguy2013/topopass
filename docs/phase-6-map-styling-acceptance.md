@@ -471,6 +471,37 @@ fixtures, but it does not add a new map provider, live device lab automation, or
 new OSM data. Some restrictions, landmarks, bridges, stations, and labels still
 depend on the committed OSM fixture data available to the selected map.
 
+## Stage 157 Rendering Performance Budget
+
+Stage 157 keeps the richer Phase 6 Real London map smooth without changing the
+visual design, routing, legality, scoring, exercise generation, beta gates,
+feedback tooling, accepted-route rules, checkpoint validation, or OSM
+conversion.
+
+The route-runner now memoizes static base-map visual candidates before each
+canvas draw: road visuals, context backgrounds/lines, landmark markers, map
+labels, and stop labels are derived only when the map, selected exercise,
+fixture context, or source inputs change. Per-frame work still performs viewport
+filtering, collision checks, and drawing so pan/zoom decluttering remains
+accurate.
+
+Label collision filtering now reuses cached approximate text widths and font
+sizes, and road label visibility skips width work when the current zoom tier or
+road-screen length already hides the label. Restriction visual generation can be
+keyed by zoom tier instead of the full viewport, so panning within the same tier
+does not rebuild one-way/restriction item candidates.
+
+Intentionally uncached: viewport-specific collision boxes, reserved learner
+overlay boxes, current route drawing, route-review overlays, and selected focus
+state. Those depend on the live viewport or learner attempt and must stay
+fresh.
+
+Manual performance review: open Real London practice or the dev route-runner,
+select a dense Phase 6 visual QA scenario, then pan, zoom, draw a route, submit
+for review, and toggle restriction/legend states. The expected result is stable
+Phase 6 visual output with smoother redraws and no loss of labels, hierarchy,
+context layers, restrictions, markers, hints, or review callouts.
+
 ## Stage 141 Scope Note
 
 Stage 141 does not change rendering, routing, scoring, legality, fixtures, beta

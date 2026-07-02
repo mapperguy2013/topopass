@@ -887,6 +887,13 @@ collision, and tablet context orientation. This remains visual-only and does
 not change route logic, legality, scoring, exercise generation, beta gates,
 feedback tooling, accepted route rules, checkpoint validation, or OSM
 conversion.
+Stage 157 adds a Phase 6 map rendering performance budget: the route-runner
+memoizes static base-map candidates outside the canvas draw loop, caches label
+width/font-size estimates, skips road-label width work when zoom or road length
+already hides the label, and builds restriction candidates from the current zoom
+tier instead of the full viewport when possible. Viewport collision, route
+drawing, route review, and selected-focus calculations remain live so the Phase
+6 visual output is preserved.
 
 ## Current Feature Set
 

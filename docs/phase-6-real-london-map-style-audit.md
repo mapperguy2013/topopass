@@ -370,6 +370,34 @@ automation, live OSM fetching, new restrictions, new landmarks, or route-engine
 behaviour. Restrictions and context labels still depend on available committed
 fixture data.
 
+## Stage 157 Rendering Performance Budget
+
+Stage 157 audits the Phase 6 renderer for repeated work during pan, zoom, route
+drawing, and route review. It keeps the existing visual stack intact while
+reducing unnecessary recalculation.
+
+The main optimisation is moving static base-map candidate generation out of the
+canvas draw pass. `RouteRunnerClient.tsx` now memoizes synthetic road visuals,
+context features, landmark visuals, full map labels, and stop labels from the
+current map/exercise/fixture inputs, then passes those candidates into the draw
+loop. The draw loop still filters by the current viewport and reserved learner
+overlay boxes, preserving zoom decluttering and collision behaviour.
+
+`syntheticStreetMapRenderer.ts` now caches approximate label text widths and
+parsed font sizes, and skips road label width calculations when zoom or road
+length already hides the candidate. `restrictionMapVisuals.ts` can build
+restriction visual candidates from a zoom tier, avoiding full restriction item
+rebuilds when panning inside the same tier.
+
+Work intentionally left uncached includes current viewport collision boxes,
+route-draft overlays, review issue overlays, selected restriction focus, and
+learner marker/callout reservations. Those are tied to live pan/zoom or attempt
+state and must be recalculated to preserve Phase 6 readability.
+
+Manual review should use Real London practice plus the Phase 6 visual QA
+scenarios: inspect dense central labels, context layers, one-way/restriction
+decluttering, route drawing, and route review while panning and zooming.
+
 ## Current Rendering Entry Points
 
 - `app/practice/real-london/page.tsx` is the student-facing beta page. It
@@ -381,8 +409,8 @@ fixture data.
 - `app/dev/route-runner/RouteRunnerClient.tsx` owns the canvas rendering loop,
   map controls, route drawing interaction, route/review overlays, learner
   objective markers, hint overlays, compact review callouts, restriction
-  overlays, missed/completed checkpoint review markers, OSM debug overlays,
-  replay markers, and compact/dev panels.
+  overlays, missed/completed checkpoint review markers, memoized base-map
+  candidate inputs, OSM debug overlays, replay markers, and compact/dev panels.
 - `app/dev/route-runner/syntheticStreetMapRenderer.ts` builds visual models for
   roads, OSM road hierarchy metadata, optional OSM road labels, synthetic
   parks/water/land blocks, fixture-derived OSM context where available,

@@ -67,6 +67,9 @@ screenshot assertions.
   larger in-map control tap areas, mobile-constrained legend height,
   touch/pen-safe canvas gesture handling, and label reservations that account
   for finger-sized marker, hint, and review issue targets.
+- Stage 157 preserves the same visual output while memoizing static base-map
+  candidates, caching label width/font-size estimates, skipping hidden road
+  label width work, and keying restriction candidate generation by zoom tier.
 
 ## Remaining Visual Issues
 
@@ -79,6 +82,7 @@ screenshot assertions.
 | Accepted alternative, route completed, and some hint/callout states are represented in QA fixtures and tokens, but appear only when existing review or fixture data supplies them. | Future polish | Deferred | This is expected until route-review data grows in a later phase. |
 | Mobile map space is improved, but opening the full legend on very small screens can temporarily cover the lower-left map area. | Minor | Phase 6 accepted | Stage 156 constrains legend height and keeps it collapsed by default; learners can still open it when needed. |
 | Stage 156 responsive QA is fixture/configuration based rather than device screenshot automation. | Future polish | Deferred | Tests verify scenario wiring, touch targets, and map layout metadata. Full device screenshot comparison belongs to a later QA investment. |
+| Stage 157 does not add separate dirty canvas layers for static base and live overlays. | Future polish | Deferred | Candidate generation and label measurement are optimized first; a multi-canvas renderer would be a larger architecture change. |
 
 ## Acceptance Decision
 

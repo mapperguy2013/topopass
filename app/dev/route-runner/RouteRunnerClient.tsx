@@ -160,6 +160,7 @@ import {
   buildRestrictionMapVisualItems,
   buildSelectedRestrictionHighlight,
   filterRestrictionMapVisualItemsForViewport,
+  restrictionZoomTierForViewport,
   restrictionMapVisualStyleForViewport,
   resolveRestrictionFocusTarget,
   roadRestrictionOverlayAlphaForViewport,
@@ -1569,12 +1570,11 @@ function drawSyntheticStreetMapBase(input: {
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
+  landmarkVisuals: readonly SyntheticLandmarkVisual[];
+  mapLabels: readonly SyntheticMapLabel[];
   labelReservedBoxes: SyntheticLabelCollisionBox[];
-  showOsmRoadLabels: boolean;
-  sourceOverpassFixture?: unknown;
   selectedRoadIds: readonly string[];
   hoveredRoadIds: readonly string[];
-  selectedExercise?: RouteExercise;
 }): void {
   for (const feature of input.backgroundFeatures) {
     drawSyntheticBackgroundFeature(input.context, feature, input.viewport);
@@ -1598,9 +1598,7 @@ function drawSyntheticStreetMapBase(input: {
   drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.selectedRoadIds, "selected");
 
   for (const visual of filterSyntheticLandmarkVisualsForViewport({
-    visuals: buildSyntheticLandmarkVisuals(input.map, input.selectedExercise, {
-      sourceOverpassFixture: input.sourceOverpassFixture
-    }),
+    visuals: input.landmarkVisuals,
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes
   })) {
@@ -1613,12 +1611,7 @@ function drawSyntheticStreetMapBase(input: {
   }
 
   const labels = filterSyntheticMapLabelsForViewport({
-    labels: buildSyntheticMapLabels(input.map, input.selectedExercise, {
-      includeOsmRoadLabels: input.showOsmRoadLabels,
-      backgroundFeatures: input.backgroundFeatures,
-      linearFeatures: input.linearFeatures,
-      sourceOverpassFixture: input.sourceOverpassFixture
-    }),
+    labels: input.mapLabels,
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes
   });
@@ -1634,19 +1627,10 @@ function drawSyntheticStreetMapBase(input: {
 
 function drawSyntheticStopLabels(input: {
   context: CanvasRenderingContext2D;
-  map: MapDefinition;
   viewport: ScreenMapViewport;
-  selectedExercise?: RouteExercise;
+  labels: readonly SyntheticMapLabel[];
 }): void {
-  if (!input.selectedExercise) {
-    return;
-  }
-
-  const labels = buildSyntheticMapLabels(input.map, input.selectedExercise).filter(
-    (label) => label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish"
-  );
-
-  for (const label of labels) {
+  for (const label of input.labels) {
     drawSyntheticMapLabel(input.context, label, input.viewport);
   }
 }
@@ -2770,8 +2754,9 @@ function drawRouteCanvas(input: {
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
-  sourceOverpassFixture?: unknown;
-  showOsmRoadLabels: boolean;
+  landmarkVisuals: readonly SyntheticLandmarkVisual[];
+  mapLabels: readonly SyntheticMapLabel[];
+  stopLabels: readonly SyntheticMapLabel[];
   selectedExercise?: RouteExercise;
   trace: DrawnRouteTrace;
   routeDraft: DrawnRouteDraft;
@@ -2818,14 +2803,13 @@ function drawRouteCanvas(input: {
     backgroundFeatures: input.backgroundFeatures,
     linearFeatures: input.linearFeatures,
     roadVisuals: input.roadVisuals,
+    landmarkVisuals: input.landmarkVisuals,
+    mapLabels: input.mapLabels,
     labelReservedBoxes,
-    showOsmRoadLabels: input.showOsmRoadLabels,
-    sourceOverpassFixture: input.sourceOverpassFixture,
     selectedRoadIds: input.pipelineResult.matchResult?.orderedRoadIds ?? [],
     hoveredRoadIds: uniqueOrdered(
       input.snapPreview.snappedPoints.map((point) => point.roadId).filter((roadId): roadId is string => Boolean(roadId))
-    ),
-    selectedExercise: input.selectedExercise
+    )
   });
 
   for (const overlay of input.roadRestrictionOverlays) {
@@ -3020,9 +3004,8 @@ function drawRouteCanvas(input: {
 
   drawSyntheticStopLabels({
     context,
-    map: input.map,
     viewport: input.viewport,
-    selectedExercise: input.selectedExercise
+    labels: input.stopLabels
   });
 
   for (const marker of input.routeReplayMarkers) {
@@ -3235,6 +3218,40 @@ export function RouteRunnerClient({
     [activeMap, selectedMapOption.sourceOverpassFixture]
   );
   const syntheticRoadVisuals = useMemo(() => buildSyntheticRoadVisuals(activeMap), [activeMap]);
+  const selectedExercise = useMemo<RouteExercise | undefined>(
+    () => activeExercises.find((exercise) => exercise.id === exerciseId),
+    [activeExercises, exerciseId]
+  );
+  const syntheticLandmarkVisuals = useMemo(
+    () =>
+      buildSyntheticLandmarkVisuals(activeMap, selectedExercise, {
+        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+      }),
+    [activeMap, selectedExercise, selectedMapOption.sourceOverpassFixture]
+  );
+  const syntheticMapLabels = useMemo(
+    () =>
+      buildSyntheticMapLabels(activeMap, selectedExercise, {
+        includeOsmRoadLabels: true,
+        backgroundFeatures: syntheticBackgroundFeatures,
+        linearFeatures: syntheticLinearFeatures,
+        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+      }),
+    [
+      activeMap,
+      selectedExercise,
+      selectedMapOption.sourceOverpassFixture,
+      syntheticBackgroundFeatures,
+      syntheticLinearFeatures
+    ]
+  );
+  const syntheticStopLabels = useMemo(
+    () =>
+      syntheticMapLabels.filter(
+        (label) => label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish"
+      ),
+    [syntheticMapLabels]
+  );
   const visibleRoadRestrictionOverlays = useMemo(
     () => (showRoadRestrictions ? roadRestrictionOverlays : []),
     [roadRestrictionOverlays, showRoadRestrictions]
@@ -3242,10 +3259,6 @@ export function RouteRunnerClient({
   const visibleTurnRestrictionVisuals = useMemo(
     () => (showTurnRestrictions ? turnRestrictionVisuals : []),
     [showTurnRestrictions, turnRestrictionVisuals]
-  );
-  const selectedExercise = useMemo<RouteExercise | undefined>(
-    () => activeExercises.find((exercise) => exercise.id === exerciseId),
-    [activeExercises, exerciseId]
   );
   const selectedExerciseDisplay = useMemo(
     () => (selectedExercise ? buildRouteExerciseDisplayModel(selectedExercise) : null),
@@ -3428,15 +3441,16 @@ export function RouteRunnerClient({
     () => (isDrawing ? [] : buildRouteIssueOverlays(activeMap, drawnPipelineResult)),
     [activeMap, drawnPipelineResult, isDrawing]
   );
+  const restrictionZoomTier = restrictionZoomTierForViewport(viewport);
   const restrictionMapVisualItems = useMemo(
     () =>
       buildRestrictionMapVisualItems({
         roadRestrictionOverlays: visibleRoadRestrictionOverlays,
         turnRestrictionVisuals: visibleTurnRestrictionVisuals,
         routeIssueOverlays,
-        viewport
+        zoomTier: restrictionZoomTier
       }),
-    [routeIssueOverlays, viewport, visibleRoadRestrictionOverlays, visibleTurnRestrictionVisuals]
+    [restrictionZoomTier, routeIssueOverlays, visibleRoadRestrictionOverlays, visibleTurnRestrictionVisuals]
   );
   const illegalDrawnMovements = useMemo(
     () =>
@@ -4027,8 +4041,9 @@ export function RouteRunnerClient({
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
-      sourceOverpassFixture: selectedMapOption.sourceOverpassFixture,
-      showOsmRoadLabels: true,
+      landmarkVisuals: syntheticLandmarkVisuals,
+      mapLabels: syntheticMapLabels,
+      stopLabels: syntheticStopLabels,
       selectedExercise,
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,
@@ -4050,7 +4065,6 @@ export function RouteRunnerClient({
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
-    isConvertedOsmMap,
     osmDebugOverlay,
     osmExerciseDebugOverlay,
     osmExerciseDebugOverlayState.visible,
@@ -4060,12 +4074,14 @@ export function RouteRunnerClient({
     routeIssueOverlays,
     requiredStopStatuses,
     selectedExercise,
-    selectedMapOption.sourceOverpassFixture,
     selectedRestrictionHighlight,
     snapPreview,
     syntheticBackgroundFeatures,
+    syntheticLandmarkVisuals,
     syntheticLinearFeatures,
+    syntheticMapLabels,
     syntheticRoadVisuals,
+    syntheticStopLabels,
     visibleOsmDebugOverlayAvailable,
     visibleOsmExerciseDebugOverlayAvailable,
     viewport,

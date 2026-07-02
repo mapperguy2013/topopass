@@ -271,6 +271,27 @@ test("buildRestrictionMapVisualItems returns deterministic priority ordering wit
   assert.equal(originalPoint.x, 0);
 });
 
+test("Stage 157 restriction visual generation can be keyed by zoom tier instead of full viewport", () => {
+  const viewportItems = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays,
+    viewport: mediumZoomViewport
+  });
+  const tierItems = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays,
+    zoomTier: restrictionZoomTierForViewport(mediumZoomViewport)
+  });
+
+  assert.deepEqual(tierItems, viewportItems);
+  assert.deepEqual(
+    tierItems.map((item) => item.kind),
+    ["one-way", "one-way", "no-entry", "restricted-road", "prohibited-turn", "missed-restriction", "illegal-movement"]
+  );
+});
+
 test("Stage 147 zoom tier helper classifies restriction detail deterministically", () => {
   assert.equal(restrictionZoomTierForViewport(lowZoomViewport), "low");
   assert.equal(restrictionZoomTierForViewport(mediumZoomViewport), "medium");

@@ -78,6 +78,7 @@ export type BuildRestrictionMapVisualItemsInput = {
   turnRestrictionVisuals: readonly TurnRestrictionVisual[];
   routeIssueOverlays: readonly RouteIssueOverlay[];
   viewport?: ScreenMapViewport;
+  zoomTier?: RestrictionZoomTier;
 };
 
 export type FilterRestrictionMapVisualItemsOptions = {
@@ -182,9 +183,8 @@ export function buildNoEntryVisualItems(overlays: readonly RoadRestrictionOverla
   }));
 }
 
-function oneWayArrowSpacingForViewport(viewport?: ScreenMapViewport): number {
+function oneWayArrowSpacingForZoomTier(tier: RestrictionZoomTier): number {
   const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
-  const tier = viewport ? restrictionZoomTierForViewport(viewport) : "high";
 
   if (tier === "medium") {
     return decluttering.oneWayArrowMinSpacingMeters * decluttering.mediumOneWayArrowSpacingMultiplier;
@@ -193,14 +193,20 @@ function oneWayArrowSpacingForViewport(viewport?: ScreenMapViewport): number {
   return decluttering.oneWayArrowMinSpacingMeters * decluttering.highOneWayArrowSpacingMultiplier;
 }
 
+function oneWayArrowSpacingForViewport(viewport?: ScreenMapViewport): number {
+  return oneWayArrowSpacingForZoomTier(viewport ? restrictionZoomTierForViewport(viewport) : "high");
+}
+
 export function buildOneWayVisualItems(
   overlays: readonly RoadRestrictionOverlay[],
-  options: { viewport?: ScreenMapViewport } = {}
+  options: { viewport?: ScreenMapViewport; zoomTier?: RestrictionZoomTier } = {}
 ): RestrictionMapVisualItem[] {
   const lastRenderedPointByRoadGroup = new Map<string, Vec2>();
   const items: RestrictionMapVisualItem[] = [];
   const arrowStyle = TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay;
-  const minSpacingMeters = oneWayArrowSpacingForViewport(options.viewport);
+  const minSpacingMeters = options.zoomTier
+    ? oneWayArrowSpacingForZoomTier(options.zoomTier)
+    : oneWayArrowSpacingForViewport(options.viewport);
 
   for (const overlay of roadRestrictionItemsByKind(overlays, "one-way")) {
     const direction = overlay.direction;
@@ -323,7 +329,7 @@ export function buildRestrictionMapVisualItems(
 ): RestrictionMapVisualItem[] {
   return [
     ...buildNoEntryVisualItems(input.roadRestrictionOverlays),
-    ...buildOneWayVisualItems(input.roadRestrictionOverlays, { viewport: input.viewport }),
+    ...buildOneWayVisualItems(input.roadRestrictionOverlays, { viewport: input.viewport, zoomTier: input.zoomTier }),
     ...buildRestrictedRoadVisualItems(input.roadRestrictionOverlays),
     ...buildTurnRestrictionVisualItemsOrEmpty(input.turnRestrictionVisuals),
     ...buildIllegalMovementVisualItems(input.routeIssueOverlays)

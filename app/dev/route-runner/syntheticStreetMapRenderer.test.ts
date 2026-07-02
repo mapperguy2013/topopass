@@ -15,7 +15,9 @@ import {
   deriveSyntheticRoadClass,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
+  getSyntheticLabelMeasurementCacheStats,
   labelStyleForSyntheticMapLabel,
+  resetSyntheticLabelMeasurementCache,
   roadInteractionStyleForState,
   roadJunctionRadiusForVisual,
   roadRenderRank,
@@ -820,6 +822,40 @@ test("Stage 145 label layout avoids reserved route and marker areas", () => {
     }).map((label) => label.id),
     ["clear"]
   );
+});
+
+test("Stage 157 label filtering reuses cached text measurements on repeated viewport passes", () => {
+  const labels = [
+    roadLabel({ id: "major", text: "Euston Road", roadClass: "major", osmHierarchy: "primary", roadLengthMeters: 300 }),
+    roadLabel({
+      id: "secondary",
+      text: "Grafton Place",
+      point: { x: 150, y: 80 },
+      roadClass: "secondary",
+      osmHierarchy: "secondary",
+      roadLengthMeters: 300
+    }),
+    {
+      id: "station-context",
+      kind: "station" as const,
+      text: "Euston Station",
+      point: { x: 20, y: 20 },
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.station
+    }
+  ];
+
+  resetSyntheticLabelMeasurementCache();
+
+  const firstPass = filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport });
+  const afterFirstPass = getSyntheticLabelMeasurementCacheStats();
+  const secondPass = filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport });
+  const afterSecondPass = getSyntheticLabelMeasurementCacheStats();
+
+  assert.deepEqual(secondPass, firstPass);
+  assert.ok(afterFirstPass.widthCacheMisses > 0);
+  assert.equal(afterSecondPass.widthCacheMisses, afterFirstPass.widthCacheMisses);
+  assert.ok(afterSecondPass.widthCacheHits > afterFirstPass.widthCacheHits);
+  assert.equal(afterSecondPass.widthCacheSize, afterFirstPass.widthCacheSize);
 });
 
 test("Stage 146 repeated road labels are allowed when sufficiently separated", () => {

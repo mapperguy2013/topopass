@@ -242,6 +242,15 @@ export type SyntheticStreetMapLegendItem = {
   tone: SyntheticLegendTone;
 };
 
+export type SyntheticLabelMeasurementCacheStats = {
+  widthCacheSize: number;
+  fontSizeCacheSize: number;
+  widthCacheHits: number;
+  widthCacheMisses: number;
+  fontSizeCacheHits: number;
+  fontSizeCacheMisses: number;
+};
+
 export type BuildSyntheticMapLabelOptions = {
   includeOsmRoadLabels?: boolean;
   backgroundFeatures?: readonly SyntheticBackgroundFeature[];
@@ -260,6 +269,33 @@ type RoadWithOptionalOsmMetadata = MapRoad & {
     osmWayId?: string | number;
   };
 };
+
+const labelTextWidthCache = new Map<string, number>();
+const labelFontSizeCache = new Map<string, number>();
+let labelTextWidthCacheHits = 0;
+let labelTextWidthCacheMisses = 0;
+let labelFontSizeCacheHits = 0;
+let labelFontSizeCacheMisses = 0;
+
+export function resetSyntheticLabelMeasurementCache(): void {
+  labelTextWidthCache.clear();
+  labelFontSizeCache.clear();
+  labelTextWidthCacheHits = 0;
+  labelTextWidthCacheMisses = 0;
+  labelFontSizeCacheHits = 0;
+  labelFontSizeCacheMisses = 0;
+}
+
+export function getSyntheticLabelMeasurementCacheStats(): SyntheticLabelMeasurementCacheStats {
+  return {
+    widthCacheSize: labelTextWidthCache.size,
+    fontSizeCacheSize: labelFontSizeCache.size,
+    widthCacheHits: labelTextWidthCacheHits,
+    widthCacheMisses: labelTextWidthCacheMisses,
+    fontSizeCacheHits: labelFontSizeCacheHits,
+    fontSizeCacheMisses: labelFontSizeCacheMisses
+  };
+}
 
 function osmRoadMetadata(road: MapRoad): RoadWithOptionalOsmMetadata["metadata"] | null {
   const metadata = (road as RoadWithOptionalOsmMetadata).metadata;
@@ -992,7 +1028,6 @@ function shouldShowRoadLabel(
   const style = TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)];
   const roadLengthMeters = label.roadLengthMeters ?? 0;
   const roadScreenLength = roadLengthMeters * viewportScale;
-  const estimatedWidth = estimatedLabelTextWidth(label.text, style);
 
   if (viewportScale < style.minViewportScale) {
     return false;
@@ -1001,6 +1036,8 @@ function shouldShowRoadLabel(
   if (roadScreenLength < style.minRoadScreenLength) {
     return false;
   }
+
+  const estimatedWidth = estimatedLabelTextWidth(label.text, style);
 
   if (estimatedWidth + style.collisionPadding * 2 > roadScreenLength * style.maxTextToRoadRatio) {
     return false;
@@ -1056,9 +1093,22 @@ function landmarkVisualCollisionBox(visual: SyntheticLandmarkVisual, viewport: S
 }
 
 function estimatedLabelTextWidth(text: string, style: TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle): number {
+  const key = `${labelStyleCacheKey(style)}:${text}`;
+  const cachedWidth = labelTextWidthCache.get(key);
+
+  if (cachedWidth !== undefined) {
+    labelTextWidthCacheHits += 1;
+    return cachedWidth;
+  }
+
+  labelTextWidthCacheMisses += 1;
   const characterWidth = "approximateCharacterWidth" in style ? style.approximateCharacterWidth : labelFontSize(style) * 0.58;
 
-  return text.length * characterWidth;
+  const width = text.length * characterWidth;
+
+  labelTextWidthCache.set(key, width);
+
+  return width;
 }
 
 function labelFontSize(style: TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle): number {
@@ -1066,9 +1116,29 @@ function labelFontSize(style: TopopassLabelStyle | TopopassRoadLabelStyle | Topo
     return style.fontSize;
   }
 
+  const cachedSize = labelFontSizeCache.get(style.font);
+
+  if (cachedSize !== undefined) {
+    labelFontSizeCacheHits += 1;
+    return cachedSize;
+  }
+
+  labelFontSizeCacheMisses += 1;
   const match = /(\d+(?:\.\d+)?)px/.exec(style.font);
 
-  return match ? Number(match[1]) : 11;
+  const size = match ? Number(match[1]) : 11;
+
+  labelFontSizeCache.set(style.font, size);
+
+  return size;
+}
+
+function labelStyleCacheKey(style: TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle): string {
+  const approximateCharacterWidth =
+    "approximateCharacterWidth" in style ? style.approximateCharacterWidth : "auto";
+  const fontSize = "fontSize" in style ? style.fontSize : "auto";
+
+  return `${style.font}|${fontSize}|${approximateCharacterWidth}`;
 }
 
 function readableLabelAngle(angleRadians: number): number {
