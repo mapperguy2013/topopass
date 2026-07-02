@@ -15,6 +15,7 @@ import {
   REAL_LONDON_BETA_LABEL,
   buildPhase5RealLondonBetaReadinessReview,
   buildRealLondonBetaPracticePanelModel,
+  getRouteRunnerDevQaMapOptions,
   getRouteRunnerVisibleMapOptions,
   isRealLondonBetaAccessEnabled,
   resolveRealLondonBetaMapAccess
@@ -61,6 +62,18 @@ test("Stage 130 beta users can access real London practice maps", () => {
   assert.equal(access.state, "available");
   assert.equal(access.selectedMapOption.map.id, realLondonOsmPilotRouteMap.id);
   assert.equal(access.unavailableState, null);
+});
+
+test("dev QA route-runner map options expose every registered map regardless of beta flag", () => {
+  const publicNonBetaMapIds = getRouteRunnerVisibleMapOptions({ betaEnabled: false }).map((option) => option.map.id);
+  const devQaMapIds = getRouteRunnerDevQaMapOptions().map((option) => option.map.id);
+
+  assert.equal(publicNonBetaMapIds.includes(realLondonOsmPilotRouteMap.id), false);
+  assert.equal(publicNonBetaMapIds.includes(realLondonOsmPilotTwoRouteMap.id), false);
+  assert.deepEqual(devQaMapIds, ROUTE_RUNNER_MAP_OPTIONS.map((option) => option.map.id));
+  assert.equal(devQaMapIds.includes(realLondonOsmPilotRouteMap.id), true);
+  assert.equal(devQaMapIds.includes(realLondonOsmPilotTwoRouteMap.id), true);
+  assert.equal(devQaMapIds.includes("osm-large-london"), true);
 });
 
 test("Stage 130 requesting real London while disabled returns safe unavailable state", () => {

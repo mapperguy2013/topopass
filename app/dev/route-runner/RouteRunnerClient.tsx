@@ -208,10 +208,12 @@ import {
   ROUTE_RUNNER_MAP_OPTIONS,
   getRealLondonPilotExerciseMetadata,
   getRouteRunnerMapViewportBounds,
-  isConvertedOsmRouteRunnerMap
+  isConvertedOsmRouteRunnerMap,
+  type RouteRunnerMapOption
 } from "./routeRunnerMaps";
 import {
   buildRealLondonBetaPracticePanelModel,
+  getRouteRunnerDevQaMapOptions,
   getRouteRunnerVisibleMapOptions,
   isRealLondonBetaAccessEnabled,
   resolveRealLondonBetaMapAccess
@@ -266,6 +268,14 @@ const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
 const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
+
+function requireRouteRunnerMapOption(option: RouteRunnerMapOption | undefined): RouteRunnerMapOption {
+  if (!option) {
+    throw new Error("Route runner requires at least one registered map option.");
+  }
+
+  return option;
+}
 
 type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
@@ -2364,18 +2374,37 @@ export function RouteRunnerClient({
   const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
   const [showDevQaPanels, setShowDevQaPanels] = useState(false);
+  const isDevRouteRunner = mode === "dev";
 
   const visibleMapOptions = useMemo(
-    () => getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED }),
-    []
+    () =>
+      isDevRouteRunner
+        ? getRouteRunnerDevQaMapOptions()
+        : getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED }),
+    [isDevRouteRunner]
   );
   const betaMapAccess = useMemo(
-    () =>
-      resolveRealLondonBetaMapAccess({
+    () => {
+      if (isDevRouteRunner) {
+        return {
+          requestedMapId: mapOptionId,
+          selectedMapOption: requireRouteRunnerMapOption(
+            visibleMapOptions.find((option) => option.id === mapOptionId) ??
+              visibleMapOptions[0] ??
+              ROUTE_RUNNER_MAP_OPTIONS[0]
+          ),
+          state: "available" as const,
+          betaEnabled: REAL_LONDON_BETA_ENABLED,
+          unavailableState: null
+        };
+      }
+
+      return resolveRealLondonBetaMapAccess({
         requestedMapId: mapOptionId,
         betaEnabled: REAL_LONDON_BETA_ENABLED
-      }),
-    [mapOptionId]
+      });
+    },
+    [isDevRouteRunner, mapOptionId, visibleMapOptions]
   );
   const selectedMapOption = betaMapAccess.selectedMapOption;
   const activeMap = selectedMapOption.map;
@@ -3536,11 +3565,16 @@ export function RouteRunnerClient({
   }
 
   function handleMapOptionChange(nextMapOptionId: string) {
-    const nextMapAccess = resolveRealLondonBetaMapAccess({
-      requestedMapId: nextMapOptionId,
-      betaEnabled: REAL_LONDON_BETA_ENABLED
-    });
-    const nextMapOption = nextMapAccess.selectedMapOption;
+    const nextMapOption = isDevRouteRunner
+      ? requireRouteRunnerMapOption(
+          visibleMapOptions.find((option) => option.id === nextMapOptionId) ??
+            visibleMapOptions[0] ??
+            ROUTE_RUNNER_MAP_OPTIONS[0]
+        )
+      : resolveRealLondonBetaMapAccess({
+          requestedMapId: nextMapOptionId,
+          betaEnabled: REAL_LONDON_BETA_ENABLED
+        }).selectedMapOption;
 
     setMapOptionId(nextMapOptionId);
     setExerciseId(nextMapOption.defaultExerciseId);

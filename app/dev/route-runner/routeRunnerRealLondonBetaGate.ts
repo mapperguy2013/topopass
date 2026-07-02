@@ -120,6 +120,12 @@ export function getRouteRunnerVisibleMapOptions(input: {
   return mapOptions.filter((option) => betaEnabled || !isRealLondonBetaMapId(option.map.id));
 }
 
+export function getRouteRunnerDevQaMapOptions(
+  mapOptions: readonly RouteRunnerMapOption[] = ROUTE_RUNNER_MAP_OPTIONS
+): RouteRunnerMapOption[] {
+  return [...mapOptions];
+}
+
 export function resolveRealLondonBetaMapAccess(input: {
   requestedMapId: string;
   betaEnabled?: boolean;
