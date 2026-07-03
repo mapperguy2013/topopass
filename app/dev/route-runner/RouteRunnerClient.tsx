@@ -131,6 +131,7 @@ import {
   buildSyntheticRoadVisuals,
   buildRoadRenderPasses,
   cartographicMarkerScaleForViewport,
+  cartographicStyleScaleForZoom,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
@@ -1091,9 +1092,9 @@ function nodeLabel(nodeId: string, map: MapDefinition): string {
   return node?.label ? `${node.label} (${nodeId})` : nodeId;
 }
 
-function drawArrowHead(context: CanvasRenderingContext2D, fromPoint: Vec2, toPoint: Vec2): void {
+function drawArrowHead(context: CanvasRenderingContext2D, fromPoint: Vec2, toPoint: Vec2, scale = 1): void {
   const angle = Math.atan2(toPoint.y - fromPoint.y, toPoint.x - fromPoint.x);
-  const arrowLength = 10;
+  const arrowLength = 10 * scale;
 
   context.beginPath();
   context.moveTo(toPoint.x, toPoint.y);
@@ -1185,9 +1186,14 @@ function drawStyledMapPolyline(
   context: CanvasRenderingContext2D,
   points: readonly Vec2[],
   viewport: ScreenMapViewport,
-  style: TopopassLineStyle
+  style: TopopassLineStyle,
+  widthScale = 1
 ): void {
-  drawStyledPolyline(context, points.map((point) => mapToScreenPoint(point, viewport)), style);
+  drawStyledPolyline(context, points.map((point) => mapToScreenPoint(point, viewport)), {
+    ...style,
+    strokeWidth: style.strokeWidth * widthScale,
+    ...(style.casingWidth ? { casingWidth: style.casingWidth * widthScale } : {})
+  });
 }
 
 function drawExerciseStopMarker(input: {
@@ -1196,8 +1202,10 @@ function drawExerciseStopMarker(input: {
   role: "start" | "checkpoint" | "finish";
   index: number;
   reviewStatus?: "completed" | "missed";
+  currentZoom?: number;
 }): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
+  const scale = Math.min(cartographicStyleScaleForZoom(input.currentZoom ?? 1).marker, 1.36);
   const legacyMarkerStyle =
     input.role === "start"
       ? style.start
@@ -1223,7 +1231,7 @@ function drawExerciseStopMarker(input: {
         : input.index === 1
           ? style.requiredVia.textPrefix
           : `${style.checkpoint.textPrefix}${input.index}`;
-  const radius = learnerMarkerStyle.radius;
+  const radius = learnerMarkerStyle.radius * scale;
 
   input.context.save();
   input.context.shadowColor = style.shadowColor;
@@ -1231,16 +1239,16 @@ function drawExerciseStopMarker(input: {
   input.context.shadowOffsetY = style.shadowOffsetY;
   input.context.fillStyle = learnerMarkerStyle.haloColor;
   input.context.strokeStyle = learnerMarkerStyle.haloStrokeColor;
-  input.context.lineWidth = learnerMarkerStyle.strokeWidth;
+  input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
   input.context.beginPath();
-  input.context.arc(input.point.x, input.point.y, radius + learnerMarkerStyle.haloRadiusPadding, 0, Math.PI * 2);
+  input.context.arc(input.point.x, input.point.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
   input.context.fill();
   input.context.stroke();
   input.context.shadowColor = "transparent";
 
   input.context.fillStyle = fillStyle;
   input.context.strokeStyle = learnerMarkerStyle.strokeColor;
-  input.context.lineWidth = learnerMarkerStyle.strokeWidth;
+  input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
   input.context.beginPath();
   input.context.arc(input.point.x, input.point.y, radius, 0, Math.PI * 2);
   input.context.fill();
@@ -1254,15 +1262,15 @@ function drawExerciseStopMarker(input: {
 
   if (input.role === "checkpoint" && input.reviewStatus) {
     const checkpointStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates[input.reviewStatus];
-    const outerRadius = radius + checkpointStyle.outerRadiusPadding;
+    const outerRadius = radius + checkpointStyle.outerRadiusPadding * scale;
 
     input.context.shadowColor = "transparent";
     input.context.fillStyle = checkpointStyle.haloColor;
     input.context.beginPath();
-    input.context.arc(input.point.x, input.point.y, outerRadius + 2, 0, Math.PI * 2);
+    input.context.arc(input.point.x, input.point.y, outerRadius + 2 * scale, 0, Math.PI * 2);
     input.context.fill();
     input.context.strokeStyle = checkpointStyle.strokeColor;
-    input.context.lineWidth = checkpointStyle.strokeWidth;
+    input.context.lineWidth = checkpointStyle.strokeWidth * scale;
     input.context.setLineDash(
       input.reviewStatus === "missed" ? [...(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.missed.dash ?? [])] : []
     );
@@ -1275,25 +1283,25 @@ function drawExerciseStopMarker(input: {
       const missedStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.missed;
 
       input.context.strokeStyle = missedStyle.symbolColor;
-      input.context.lineWidth = missedStyle.symbolLineWidth;
+      input.context.lineWidth = missedStyle.symbolLineWidth * scale;
       input.context.lineCap = "round";
       input.context.beginPath();
-      input.context.moveTo(input.point.x - 6, input.point.y - 6);
-      input.context.lineTo(input.point.x + 6, input.point.y + 6);
-      input.context.moveTo(input.point.x + 6, input.point.y - 6);
-      input.context.lineTo(input.point.x - 6, input.point.y + 6);
+      input.context.moveTo(input.point.x - 6 * scale, input.point.y - 6 * scale);
+      input.context.lineTo(input.point.x + 6 * scale, input.point.y + 6 * scale);
+      input.context.moveTo(input.point.x + 6 * scale, input.point.y - 6 * scale);
+      input.context.lineTo(input.point.x - 6 * scale, input.point.y + 6 * scale);
       input.context.stroke();
     } else {
       const completedStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.completed;
 
       input.context.strokeStyle = completedStyle.symbolColor;
-      input.context.lineWidth = completedStyle.symbolLineWidth;
+      input.context.lineWidth = completedStyle.symbolLineWidth * scale;
       input.context.lineCap = "round";
       input.context.lineJoin = "round";
       input.context.beginPath();
-      input.context.moveTo(input.point.x - 7, input.point.y);
-      input.context.lineTo(input.point.x - 2, input.point.y + 5);
-      input.context.lineTo(input.point.x + 8, input.point.y - 6);
+      input.context.moveTo(input.point.x - 7 * scale, input.point.y);
+      input.context.lineTo(input.point.x - 2 * scale, input.point.y + 5 * scale);
+      input.context.lineTo(input.point.x + 8 * scale, input.point.y - 6 * scale);
       input.context.stroke();
     }
   }
@@ -1375,14 +1383,15 @@ function drawSyntheticRoadVisualLayer(
   context: CanvasRenderingContext2D,
   visual: SyntheticRoadVisual,
   viewport: ScreenMapViewport,
-  layer: SyntheticRoadRenderLayer
+  layer: SyntheticRoadRenderLayer,
+  currentZoom?: number
 ): void {
   if (visual.points.length < 2) {
     return;
   }
 
   const screenPoints = visual.points.map((point) => mapToScreenPoint(point, viewport));
-  const style = roadStyleForViewport(visual, viewport);
+  const style = roadStyleForViewport(visual, viewport, currentZoom);
   const geometry = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry;
   const lineWidth = layer === "casing" ? style.casingWidth : style.strokeWidth;
 
@@ -1414,14 +1423,15 @@ function drawSyntheticRoadJunctionCaps(
   context: CanvasRenderingContext2D,
   visual: SyntheticRoadVisual,
   viewport: ScreenMapViewport,
-  layer: SyntheticRoadRenderLayer
+  layer: SyntheticRoadRenderLayer,
+  currentZoom?: number
 ): void {
   if (visual.points.length < 2) {
     return;
   }
 
-  const style = roadStyleForViewport(visual, viewport);
-  const radius = roadJunctionRadiusForVisual(visual, viewport, layer);
+  const style = roadStyleForViewport(visual, viewport, currentZoom);
+  const radius = roadJunctionRadiusForVisual(visual, viewport, layer, currentZoom);
 
   if (radius <= 0) {
     return;
@@ -1446,11 +1456,12 @@ function drawSyntheticRoadJunctionCaps(
 function drawSyntheticRoadVisualsByHierarchy(
   context: CanvasRenderingContext2D,
   roadVisuals: readonly SyntheticRoadVisual[],
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): void {
   for (const pass of buildRoadRenderPasses(roadVisuals)) {
-    drawSyntheticRoadVisualLayer(context, pass.visual, viewport, pass.layer);
-    drawSyntheticRoadJunctionCaps(context, pass.visual, viewport, pass.layer);
+    drawSyntheticRoadVisualLayer(context, pass.visual, viewport, pass.layer, currentZoom);
+    drawSyntheticRoadJunctionCaps(context, pass.visual, viewport, pass.layer, currentZoom);
   }
 }
 
@@ -1459,7 +1470,8 @@ function drawSyntheticRoadInteractionFocus(
   roadVisuals: readonly SyntheticRoadVisual[],
   viewport: ScreenMapViewport,
   roadIds: readonly string[],
-  state: SyntheticRoadInteractionState
+  state: SyntheticRoadInteractionState,
+  currentZoom?: number
 ): void {
   if (roadIds.length === 0) {
     return;
@@ -1468,6 +1480,7 @@ function drawSyntheticRoadInteractionFocus(
   const roadIdSet = new Set(roadIds);
   const focusVisuals = sortRoadVisualsForBaseRender(roadVisuals).filter((visual) => roadIdSet.has(visual.roadId));
   const style = roadInteractionStyleForState(state);
+  const scale = cartographicStyleScaleForZoom(currentZoom ?? 1).marker;
 
   for (const visual of focusVisuals) {
     if (visual.points.length < 2) {
@@ -1482,7 +1495,7 @@ function drawSyntheticRoadInteractionFocus(
     context.globalAlpha = style.alpha;
     context.setLineDash([]);
     context.strokeStyle = style.haloColor;
-    context.lineWidth = style.haloWidth;
+    context.lineWidth = style.haloWidth * scale;
     context.beginPath();
     context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1492,7 +1505,7 @@ function drawSyntheticRoadInteractionFocus(
 
     context.stroke();
     context.strokeStyle = style.strokeColor;
-    context.lineWidth = style.strokeWidth;
+    context.lineWidth = style.strokeWidth * scale;
     context.beginPath();
     context.moveTo(screenPoints[0].x, screenPoints[0].y);
 
@@ -1509,10 +1522,11 @@ function drawSyntheticLandmarkVisual(
   context: CanvasRenderingContext2D,
   visual: SyntheticLandmarkVisual,
   viewport: ScreenMapViewport,
-  alpha = 1
+  alpha = 1,
+  currentZoom?: number
 ): void {
   const point = mapToScreenPoint(visual.point, viewport);
-  const scale = cartographicMarkerScaleForViewport(viewport);
+  const scale = cartographicMarkerScaleForViewport(viewport, currentZoom);
   const radius = visual.radius * scale;
 
   context.save();
@@ -1597,7 +1611,8 @@ function readableRoadLabelAngle(angleRadians: number): number {
 function drawSyntheticMapLabel(
   context: CanvasRenderingContext2D,
   label: SyntheticMapLabel,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): void {
   const point = mapToScreenPoint(label.point, viewport);
   const isRoadLabel = label.kind === "road";
@@ -1612,7 +1627,7 @@ function drawSyntheticMapLabel(
 
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const labelStyle = labelStyleForSyntheticMapLabel(label, viewport);
+  const labelStyle = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
   const yOffset = isStopLabel ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop.yOffset ?? 0 : 0;
 
   context.font = labelStyle.font;
@@ -1634,6 +1649,7 @@ function drawSyntheticStreetMapBase(input: {
   context: CanvasRenderingContext2D;
   map: MapDefinition;
   viewport: ScreenMapViewport;
+  currentZoom?: number;
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
@@ -1660,27 +1676,44 @@ function drawSyntheticStreetMapBase(input: {
     );
   }
 
-  drawSyntheticRoadVisualsByHierarchy(input.context, input.roadVisuals, input.viewport);
-  drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.hoveredRoadIds, "hovered");
-  drawSyntheticRoadInteractionFocus(input.context, input.roadVisuals, input.viewport, input.selectedRoadIds, "selected");
+  drawSyntheticRoadVisualsByHierarchy(input.context, input.roadVisuals, input.viewport, input.currentZoom);
+  drawSyntheticRoadInteractionFocus(
+    input.context,
+    input.roadVisuals,
+    input.viewport,
+    input.hoveredRoadIds,
+    "hovered",
+    input.currentZoom
+  );
+  drawSyntheticRoadInteractionFocus(
+    input.context,
+    input.roadVisuals,
+    input.viewport,
+    input.selectedRoadIds,
+    "selected",
+    input.currentZoom
+  );
 
   for (const visual of filterSyntheticLandmarkVisualsForViewport({
     visuals: input.landmarkVisuals,
     viewport: input.viewport,
-    reservedBoxes: input.labelReservedBoxes
+    reservedBoxes: input.labelReservedBoxes,
+    currentZoom: input.currentZoom
   })) {
     drawSyntheticLandmarkVisual(
       input.context,
       visual,
       input.viewport,
-      syntheticLandmarkVisualAlphaForViewport(visual, input.viewport)
+      syntheticLandmarkVisualAlphaForViewport(visual, input.viewport),
+      input.currentZoom
     );
   }
 
   const labels = filterSyntheticMapLabelsForViewport({
     labels: input.mapLabels,
     viewport: input.viewport,
-    reservedBoxes: input.labelReservedBoxes
+    reservedBoxes: input.labelReservedBoxes,
+    currentZoom: input.currentZoom
   });
 
   for (const label of labels) {
@@ -1688,7 +1721,7 @@ function drawSyntheticStreetMapBase(input: {
       continue;
     }
 
-    drawSyntheticMapLabel(input.context, label, input.viewport);
+    drawSyntheticMapLabel(input.context, label, input.viewport, input.currentZoom);
   }
 }
 
@@ -1696,9 +1729,10 @@ function drawSyntheticStopLabels(input: {
   context: CanvasRenderingContext2D;
   viewport: ScreenMapViewport;
   labels: readonly SyntheticMapLabel[];
+  currentZoom?: number;
 }): void {
   for (const label of input.labels) {
-    drawSyntheticMapLabel(input.context, label, input.viewport);
+    drawSyntheticMapLabel(input.context, label, input.viewport, input.currentZoom);
   }
 }
 
@@ -1765,7 +1799,8 @@ function restrictionOverlayStyle(kind: RoadRestrictionOverlay["kind"]): {
 function drawRoadRestrictionOverlay(
   context: CanvasRenderingContext2D,
   overlay: RoadRestrictionOverlay,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): void {
   if (overlay.points.length < 2) {
     return;
@@ -1773,13 +1808,14 @@ function drawRoadRestrictionOverlay(
 
   const colour = restrictionOverlayColour(overlay.kind);
   const overlayStyle = restrictionOverlayStyle(overlay.kind);
+  const scale = Math.min(cartographicStyleScaleForZoom(currentZoom ?? 1).restrictionSymbol, 1.3);
   const screenPoints = overlay.points.map((point) => mapToScreenPoint(point, viewport));
 
   context.save();
   context.strokeStyle = colour;
   context.fillStyle = colour;
   context.globalAlpha = (overlayStyle.alpha ?? 1) * roadRestrictionOverlayAlphaForViewport(overlay, viewport);
-  context.lineWidth = overlayStyle.strokeWidth;
+  context.lineWidth = overlayStyle.strokeWidth * scale;
   context.setLineDash([...(overlayStyle.dash ?? [])]);
   context.beginPath();
   context.moveTo(screenPoints[0].x, screenPoints[0].y);
@@ -1889,7 +1925,7 @@ function drawOneWayMapSymbol(
   context.moveTo(tail.x, tail.y);
   context.lineTo(tip.x, tip.y);
   context.stroke();
-  drawArrowHead(context, tail, tip);
+  drawArrowHead(context, tail, tip, scale);
   context.restore();
 }
 
@@ -2147,10 +2183,11 @@ function drawLearnerOverlayCallout(
 function drawRestrictionMapVisualItem(
   context: CanvasRenderingContext2D,
   item: RestrictionMapVisualItem,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): void {
   const point = mapToScreenPoint(item.point, viewport);
-  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport);
+  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport, currentZoom);
   const direction = item.direction
     ? {
         from: mapToScreenPoint(item.direction.from, viewport),
@@ -2310,9 +2347,16 @@ function drawRouteIssueOverlay(
 function drawFastestRouteOverlay(
   context: CanvasRenderingContext2D,
   routePoints: readonly Vec2[],
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): void {
-  drawStyledMapPolyline(context, routePoints, viewport, TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute);
+  drawStyledMapPolyline(
+    context,
+    routePoints,
+    viewport,
+    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
+    Math.min(cartographicStyleScaleForZoom(currentZoom ?? 1).marker, 1.24)
+  );
 }
 
 function drawOsmExerciseDebugRouteOverlay(
@@ -2818,6 +2862,7 @@ function drawRouteCanvas(input: {
   canvas: HTMLCanvasElement;
   map: MapDefinition;
   viewport: ScreenMapViewport;
+  currentZoom: number;
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
@@ -2867,6 +2912,7 @@ function drawRouteCanvas(input: {
     context,
     map: input.map,
     viewport: input.viewport,
+    currentZoom: input.currentZoom,
     backgroundFeatures: input.backgroundFeatures,
     linearFeatures: input.linearFeatures,
     roadVisuals: input.roadVisuals,
@@ -2880,12 +2926,12 @@ function drawRouteCanvas(input: {
   });
 
   for (const overlay of input.roadRestrictionOverlays) {
-    drawRoadRestrictionOverlay(context, overlay, input.viewport);
+    drawRoadRestrictionOverlay(context, overlay, input.viewport, input.currentZoom);
   }
 
   drawOsmDebugOverlay(context, input.osmDebugOverlay, input.viewport);
 
-  drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport);
+  drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport, input.currentZoom);
   drawOsmExerciseDebugOverlay(context, input.osmExerciseDebugOverlay, input.viewport);
 
   input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
@@ -2940,9 +2986,10 @@ function drawRouteCanvas(input: {
   }
 
   for (const item of filterRestrictionMapVisualItemsForViewport(input.restrictionMapVisualItems, input.viewport, {
-    reservedBoxes: labelReservedBoxes
+    reservedBoxes: labelReservedBoxes,
+    currentZoom: input.currentZoom
   })) {
-    drawRestrictionMapVisualItem(context, item, input.viewport);
+    drawRestrictionMapVisualItem(context, item, input.viewport, input.currentZoom);
   }
 
   if (input.selectedRestrictionHighlight) {
@@ -2988,10 +3035,11 @@ function drawRouteCanvas(input: {
 
   if (input.snapPreview.snappedPoints.length > 0) {
     const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.revealed;
+    const hintScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 1.3);
 
     context.save();
     context.strokeStyle = hintStyle.strokeColor;
-    context.lineWidth = hintStyle.strokeWidth;
+    context.lineWidth = hintStyle.strokeWidth * hintScale;
     context.globalAlpha = hintStyle.alpha ?? 1;
     context.setLineDash([...(hintStyle.dash ?? [])]);
     input.snapPreview.snappedPoints.forEach((point, index) => {
@@ -3013,26 +3061,28 @@ function drawRouteCanvas(input: {
 
   if (visibleRawStrokes.length > 0) {
     const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
+    const routeScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 1.24);
 
     visibleRawStrokes.forEach((stroke) => {
-      drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle);
+      drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle, routeScale);
     });
   }
 
   input.snapPreview.snappedPoints.forEach((point) => {
     const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
     const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker;
+    const hintScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 1.32);
 
     context.fillStyle = hintStyle.haloColor;
     context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, hintStyle.radius + 2, 0, Math.PI * 2);
+    context.arc(screenPoint.x, screenPoint.y, (hintStyle.radius + 2) * hintScale, 0, Math.PI * 2);
     context.fill();
 
     context.fillStyle = point.roadId ? hintStyle.fillColor : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor;
     context.strokeStyle = point.roadId ? hintStyle.strokeColor : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.defaultColor;
-    context.lineWidth = hintStyle.strokeWidth;
+    context.lineWidth = hintStyle.strokeWidth * hintScale;
     context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, hintStyle.radius, 0, Math.PI * 2);
+    context.arc(screenPoint.x, screenPoint.y, hintStyle.radius * hintScale, 0, Math.PI * 2);
     context.fill();
     context.stroke();
   });
@@ -3060,6 +3110,7 @@ function drawRouteCanvas(input: {
         point,
         role,
         index,
+        currentZoom: input.currentZoom,
         reviewStatus:
           role === "checkpoint" && requiredStopStatus
             ? requiredStopStatus.visited
@@ -3073,7 +3124,8 @@ function drawRouteCanvas(input: {
   drawSyntheticStopLabels({
     context,
     viewport: input.viewport,
-    labels: input.stopLabels
+    labels: input.stopLabels,
+    currentZoom: input.currentZoom
   });
 
   for (const marker of input.routeReplayMarkers) {
@@ -4265,6 +4317,7 @@ export function RouteRunnerClient({
       canvas,
       map: activeMap,
       viewport,
+      currentZoom: mapViewportState.zoom,
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
@@ -4292,6 +4345,7 @@ export function RouteRunnerClient({
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
+    mapViewportState.zoom,
     osmDebugOverlay,
     osmExerciseDebugOverlay,
     osmExerciseDebugOverlayState.visible,

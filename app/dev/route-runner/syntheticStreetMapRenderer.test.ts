@@ -10,6 +10,7 @@ import {
   buildSyntheticStreetMapLegendItems,
   buildRoadRenderPasses,
   cartographicRoadScaleForVisual,
+  cartographicStyleScaleForZoom,
   deriveOsmRoadRenderMetadata,
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
@@ -884,6 +885,47 @@ test("Stage 161.6.9 road strokes scale with zoom without making major roads domi
   assert.ok(residentialHigh.casingWidth > residential.style.casingWidth);
 });
 
+test("Stage 161.6.8 explicit semantic zoom scales roads even when viewport bounds are unchanged", () => {
+  const primary = roadVisual({
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const residential = roadVisual({
+    roadClass: "local",
+    osmHierarchy: "residential",
+    style: roadStyleForOsmHierarchy("residential")
+  });
+  const basePrimary = roadStyleForViewport(primary, labelTestViewport, 1);
+  const highPrimary = roadStyleForViewport(primary, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
+  const baseResidential = roadStyleForViewport(residential, labelTestViewport, 1);
+  const highResidential = roadStyleForViewport(residential, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
+  const maxedResidential = roadStyleForViewport(residential, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom * 10);
+
+  assert.ok(highPrimary.strokeWidth > basePrimary.strokeWidth);
+  assert.ok(highResidential.strokeWidth > baseResidential.strokeWidth * 1.9);
+  assert.equal(maxedResidential.strokeWidth, highResidential.strokeWidth);
+  assert.ok(highResidential.strokeWidth / baseResidential.strokeWidth > highPrimary.strokeWidth / basePrimary.strokeWidth);
+});
+
+test("Stage 161.6.8 zoom style scale follows capped TOPOPASS cartography tokens", () => {
+  const base = cartographicStyleScaleForZoom(1);
+  const mid = cartographicStyleScaleForZoom(5);
+  const max = cartographicStyleScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
+  const beyondMax = cartographicStyleScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom * 10);
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+
+  assert.equal(base.localRoad, 1);
+  assert.ok(mid.localRoad > base.localRoad);
+  assert.ok(max.localRoad > mid.localRoad);
+  assert.equal(max.localRoad, scaleTokens.roadMaxMultiplier.local);
+  assert.equal(beyondMax.localRoad, max.localRoad);
+  assert.ok(max.majorRoad < max.localRoad);
+  assert.ok(max.marker <= scaleTokens.markerMaxMultiplier);
+  assert.ok(max.restrictionSymbol <= scaleTokens.restrictionMaxMultiplier);
+});
+
 test("Stage 145.5 inactive and restricted roads stay quieter than active residential streets", () => {
   const residential = roadVisual({
     roadClass: "local",
@@ -1007,6 +1049,25 @@ test("Stage 161.6.9 street labels scale up at high zoom with local labels gainin
   assert.ok(minorHigh.fontSize / minorBase.fontSize > majorHigh.fontSize / majorBase.fontSize);
   assert.ok(minorHigh.haloWidth > minorBase.haloWidth);
   assert.ok(minorHigh.haloWidth < minorBase.haloWidth * 1.7);
+});
+
+test("Stage 161.6.8 explicit semantic zoom scales label text and halo at fixed viewport size", () => {
+  const majorLabel = roadLabel({ roadClass: "major", osmHierarchy: "primary" });
+  const minorLabel = roadLabel({ roadClass: "local", osmHierarchy: "residential" });
+  const majorBase = labelStyleForSyntheticMapLabel(majorLabel, labelTestViewport, 1);
+  const minorBase = labelStyleForSyntheticMapLabel(minorLabel, labelTestViewport, 1);
+  const majorHigh = labelStyleForSyntheticMapLabel(majorLabel, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
+  const minorHigh = labelStyleForSyntheticMapLabel(minorLabel, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+
+  assert.ok("fontSize" in majorBase);
+  assert.ok("fontSize" in minorBase);
+  assert.ok("fontSize" in majorHigh);
+  assert.ok("fontSize" in minorHigh);
+  assert.ok(majorHigh.fontSize > majorBase.fontSize);
+  assert.ok(minorHigh.fontSize > minorBase.fontSize * 1.7);
+  assert.ok(minorHigh.fontSize / minorBase.fontSize > majorHigh.fontSize / majorBase.fontSize);
+  assert.ok(minorHigh.haloWidth <= minorBase.haloWidth * scaleTokens.labelHaloMaxMultiplier);
 });
 
 test("Stage 145 label visibility reduces minor roads at low zoom", () => {

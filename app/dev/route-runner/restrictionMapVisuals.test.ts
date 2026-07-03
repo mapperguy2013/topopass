@@ -18,6 +18,7 @@ import {
   restrictionZoomTierForViewport,
   resolveRestrictionFocusTarget
 } from "./restrictionMapVisuals.ts";
+import { ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 const roadRestrictionOverlays: RoadRestrictionOverlay[] = [
@@ -619,6 +620,27 @@ test("Stage 161.6.9 restriction and one-way symbols scale at very high zoom with
         TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale.restrictionMaxMultiplier
   );
   assert.deepEqual(restrictionMapVisualStyleForViewport(reviewItem, veryHighZoomViewport), {
+    alpha: 1,
+    scale: 1
+  });
+});
+
+test("Stage 161.6.8 explicit semantic zoom scales base restriction symbols at fixed viewport size", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays
+  });
+  const oneWayItem = items.find((item) => item.kind === "one-way");
+  const reviewItem = items.find((item) => item.kind === "illegal-movement");
+
+  assert.ok(oneWayItem);
+  assert.ok(reviewItem);
+  assert.ok(
+    restrictionMapVisualStyleForViewport(oneWayItem, highZoomViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom).scale >
+      restrictionMapVisualStyleForViewport(oneWayItem, highZoomViewport, 1).scale
+  );
+  assert.deepEqual(restrictionMapVisualStyleForViewport(reviewItem, highZoomViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom), {
     alpha: 1,
     scale: 1
   });

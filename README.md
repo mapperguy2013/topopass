@@ -1045,6 +1045,13 @@ zoom uses the viewport centre, and the map continues to use one isotropic scale
 so roads, markers, labels, drawing, and submit matching stay aligned at high
 zoom. High zoom is intended for learner inspection, not for increasing base-map
 label density beyond the existing decluttering rules.
+Stage 161.6.8 makes that high zoom visually useful by feeding the current
+route-runner zoom into the central TOPOPASS cartographic scale helpers. Roads,
+casings, street-label fonts and halos, context markers, one-way/restriction
+symbols, snap hints, learner drawing, and start/checkpoint/finish markers now
+grow with capped semantic multipliers even when screen-space styling would
+otherwise look fixed. Geometry zoom, pan alignment, drawing coordinates,
+matching, scoring, legality, and fixture data are unchanged.
 Stage 161.6.9 separates geometry zoom from cartographic symbol scaling. The
 map viewport still uses one isotropic geometry scale, while roads, casings,
 road labels, label halos, context markers, one-way arrows, and restriction

@@ -344,6 +344,17 @@ markers, overlays, drawn routes, and submit matching stay aligned and do not
 stretch. High zoom is for learner inspection only and should not bypass
 existing label/context decluttering budgets.
 
+Stage 161.6.8 corrects high-zoom visual sizing by passing the current
+route-runner zoom into the central TOPOPASS cartographic scale helpers. The
+geometry zoom remains unchanged and isotropic, but roads, casings, label
+fonts, label halos, context markers, one-way/restriction symbols, learner
+route drawing, snap hints, and start/checkpoint/finish markers now use capped
+semantic scaling even when the viewport bounds alone would make screen-space
+styles look fixed. The scale remains damped and token-driven: local roads and
+minor labels gain more readability than major roads, while learner overlays
+and restriction overlays use lower caps so they stay clear without dominating
+the base map.
+
 Stage 161.6.9 adds zoom-aware cartographic symbol scaling on top of the
 existing geometry zoom. Geometry remains isotropic and controls which map area
 is visible; symbol scaling separately makes roads, casings, labels, label

@@ -222,12 +222,14 @@ export type FilterSyntheticMapLabelsOptions = {
   labels: readonly SyntheticMapLabel[];
   viewport: ScreenMapViewport;
   reservedBoxes?: readonly SyntheticLabelCollisionBox[];
+  currentZoom?: number;
 };
 
 export type FilterSyntheticLandmarkVisualsOptions = {
   visuals: readonly SyntheticLandmarkVisual[];
   viewport: ScreenMapViewport;
   reservedBoxes?: readonly SyntheticLabelCollisionBox[];
+  currentZoom?: number;
 };
 
 export type SyntheticRouteOverlayVisual = {
@@ -553,7 +555,11 @@ export function buildRoadRenderPasses(roadVisuals: readonly SyntheticRoadVisual[
   ];
 }
 
-export function roadStyleForViewport(visual: SyntheticRoadVisual, viewport: ScreenMapViewport): SyntheticRoadStyle {
+export function roadStyleForViewport(
+  visual: SyntheticRoadVisual,
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): SyntheticRoadStyle {
   const style = {
     ...visual.style,
     ...(visual.style.dash ? { dash: [...visual.style.dash] } : {})
@@ -577,7 +583,7 @@ export function roadStyleForViewport(visual: SyntheticRoadVisual, viewport: Scre
     }
   }
 
-  const widthScale = cartographicRoadScaleForVisual(visual, viewport);
+  const widthScale = cartographicRoadScaleForVisual(visual, viewport, currentZoom);
 
   return {
     ...style,
@@ -589,9 +595,10 @@ export function roadStyleForViewport(visual: SyntheticRoadVisual, viewport: Scre
 export function roadJunctionRadiusForVisual(
   visual: SyntheticRoadVisual,
   viewport: ScreenMapViewport,
-  layer: SyntheticRoadRenderLayer
+  layer: SyntheticRoadRenderLayer,
+  currentZoom?: number
 ): number {
-  const style = roadStyleForViewport(visual, viewport);
+  const style = roadStyleForViewport(visual, viewport, currentZoom);
   const lineWidth = layer === "casing" ? style.casingWidth : style.strokeWidth;
   const rank = roadRenderRank(visual);
   const junctions = TOPOPASS_STREET_ATLAS_STYLE.roads.junctions;
@@ -798,12 +805,13 @@ export function roadLabelTier(label: Pick<SyntheticMapLabel, "roadClass" | "osmH
 
 export function labelStyleForSyntheticMapLabel(
   label: SyntheticMapLabel,
-  viewport?: ScreenMapViewport
+  viewport?: ScreenMapViewport,
+  currentZoom?: number
 ): TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle {
   if (label.kind === "road") {
     return scaleLabelStyleForViewport(
       TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)],
-      cartographicLabelScaleForTier(roadLabelTier(label), viewport),
+      cartographicLabelScaleForTier(roadLabelTier(label), viewport, currentZoom),
       viewport
     );
   }
@@ -811,14 +819,14 @@ export function labelStyleForSyntheticMapLabel(
   if (isContextMapLabelKind(label.kind)) {
     return scaleLabelStyleForViewport(
       TOPOPASS_STREET_ATLAS_STYLE.labels.context[label.kind],
-      cartographicLabelScaleForTier("context", viewport),
+      cartographicLabelScaleForTier("context", viewport, currentZoom),
       viewport
     );
   }
 
   return scaleLabelStyleForViewport(
     TOPOPASS_STREET_ATLAS_STYLE.labels.stop,
-    cartographicLabelScaleForTier("stop", viewport),
+    cartographicLabelScaleForTier("stop", viewport, currentZoom),
     viewport
   );
 }
@@ -832,7 +840,10 @@ export function filterSyntheticMapLabelsForViewport(
   const viewportScale = syntheticMapViewportScale(options.viewport);
 
   for (const label of [...options.labels].sort(compareLabelsForLayout)) {
-    if (label.kind === "road" && !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText)) {
+    if (
+      label.kind === "road" &&
+      !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText, options.currentZoom)
+    ) {
       continue;
     }
 
@@ -840,7 +851,7 @@ export function filterSyntheticMapLabelsForViewport(
       continue;
     }
 
-    const box = labelCollisionBox(label, options.viewport);
+    const box = labelCollisionBox(label, options.viewport, options.currentZoom);
 
     if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
       continue;
@@ -873,7 +884,7 @@ export function filterSyntheticLandmarkVisualsForViewport(
       continue;
     }
 
-    const box = landmarkVisualCollisionBox(visual, options.viewport);
+    const box = landmarkVisualCollisionBox(visual, options.viewport, options.currentZoom);
 
     if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
       continue;
@@ -1036,8 +1047,18 @@ function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+function cartographicScaleInputForViewport(viewport: ScreenMapViewport, currentZoom?: number): number {
+  const viewportScale = syntheticMapViewportScale(viewport);
+
+  if (!Number.isFinite(currentZoom) || currentZoom === undefined || currentZoom <= 0) {
+    return viewportScale;
+  }
+
+  return Math.max(viewportScale, currentZoom);
+}
+
 function dampedCartographicMultiplier(
-  viewportScale: number,
+  scaleInput: number,
   gain: number,
   maxMultiplier: number,
   minMultiplier = 1
@@ -1045,11 +1066,11 @@ function dampedCartographicMultiplier(
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
   const referenceScale = Math.max(0.000001, scaleTokens.referenceViewportScale);
 
-  if (!Number.isFinite(viewportScale) || viewportScale <= 0) {
+  if (!Number.isFinite(scaleInput) || scaleInput <= 0) {
     return 1;
   }
 
-  const zoomSteps = Math.log2(viewportScale / referenceScale);
+  const zoomSteps = Math.log2(scaleInput / referenceScale);
   const multiplier = 1 + zoomSteps * gain;
 
   return clampNumber(multiplier, minMultiplier, maxMultiplier);
@@ -1079,13 +1100,14 @@ function roadScaleTierForVisual(visual: Pick<SyntheticRoadVisual, "roadClass" | 
 
 export function cartographicRoadScaleForVisual(
   visual: Pick<SyntheticRoadVisual, "roadClass" | "osmHierarchy">,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
   const tier = roadScaleTierForVisual(visual);
 
   return dampedCartographicMultiplier(
-    syntheticMapViewportScale(viewport),
+    cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.roadGain[tier],
     scaleTokens.roadMaxMultiplier[tier],
     tier === "major" ? 1 : scaleTokens.roadMinMultiplier
@@ -1094,7 +1116,8 @@ export function cartographicRoadScaleForVisual(
 
 export function cartographicLabelScaleForTier(
   tier: SyntheticCartographicLabelScaleTier,
-  viewport?: ScreenMapViewport
+  viewport?: ScreenMapViewport,
+  currentZoom?: number
 ): number {
   if (!viewport) {
     return 1;
@@ -1103,30 +1126,80 @@ export function cartographicLabelScaleForTier(
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
   return dampedCartographicMultiplier(
-    syntheticMapViewportScale(viewport),
+    cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.labelGain[tier],
     scaleTokens.labelMaxMultiplier[tier]
   );
 }
 
-export function cartographicMarkerScaleForViewport(viewport: ScreenMapViewport): number {
+export function cartographicMarkerScaleForViewport(viewport: ScreenMapViewport, currentZoom?: number): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
   return dampedCartographicMultiplier(
-    syntheticMapViewportScale(viewport),
+    cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.markerGain,
     scaleTokens.markerMaxMultiplier
   );
 }
 
-export function cartographicRestrictionSymbolScaleForViewport(viewport: ScreenMapViewport): number {
+export function cartographicRestrictionSymbolScaleForViewport(viewport: ScreenMapViewport, currentZoom?: number): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
   return dampedCartographicMultiplier(
-    syntheticMapViewportScale(viewport),
+    cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.restrictionGain,
     scaleTokens.restrictionMaxMultiplier
   );
+}
+
+export function cartographicStyleScaleForZoom(currentZoom: number): {
+  majorRoad: number;
+  secondaryRoad: number;
+  localRoad: number;
+  serviceRoad: number;
+  restrictedRoad: number;
+  majorLabel: number;
+  secondaryLabel: number;
+  minorLabel: number;
+  contextLabel: number;
+  marker: number;
+  restrictionSymbol: number;
+} {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
+
+  return {
+    majorRoad: dampedCartographicMultiplier(scaleInput, scaleTokens.roadGain.major, scaleTokens.roadMaxMultiplier.major),
+    secondaryRoad: dampedCartographicMultiplier(scaleInput, scaleTokens.roadGain.secondary, scaleTokens.roadMaxMultiplier.secondary),
+    localRoad: dampedCartographicMultiplier(
+      scaleInput,
+      scaleTokens.roadGain.local,
+      scaleTokens.roadMaxMultiplier.local,
+      scaleTokens.roadMinMultiplier
+    ),
+    serviceRoad: dampedCartographicMultiplier(
+      scaleInput,
+      scaleTokens.roadGain.service,
+      scaleTokens.roadMaxMultiplier.service,
+      scaleTokens.roadMinMultiplier
+    ),
+    restrictedRoad: dampedCartographicMultiplier(
+      scaleInput,
+      scaleTokens.roadGain.restricted,
+      scaleTokens.roadMaxMultiplier.restricted,
+      scaleTokens.roadMinMultiplier
+    ),
+    majorLabel: dampedCartographicMultiplier(scaleInput, scaleTokens.labelGain.major, scaleTokens.labelMaxMultiplier.major),
+    secondaryLabel: dampedCartographicMultiplier(
+      scaleInput,
+      scaleTokens.labelGain.secondary,
+      scaleTokens.labelMaxMultiplier.secondary
+    ),
+    minorLabel: dampedCartographicMultiplier(scaleInput, scaleTokens.labelGain.minor, scaleTokens.labelMaxMultiplier.minor),
+    contextLabel: dampedCartographicMultiplier(scaleInput, scaleTokens.labelGain.context, scaleTokens.labelMaxMultiplier.context),
+    marker: dampedCartographicMultiplier(scaleInput, scaleTokens.markerGain, scaleTokens.markerMaxMultiplier),
+    restrictionSymbol: dampedCartographicMultiplier(scaleInput, scaleTokens.restrictionGain, scaleTokens.restrictionMaxMultiplier)
+  };
 }
 
 function roadLabelMinLengthMultiplierForViewport(viewportScale: number): number {
@@ -1182,10 +1255,11 @@ function shouldShowRoadLabel(
   label: SyntheticMapLabel,
   viewport: ScreenMapViewport,
   viewportScale: number,
-  roadLabelPointsByText: ReadonlyMap<string, readonly Vec2[]>
+  roadLabelPointsByText: ReadonlyMap<string, readonly Vec2[]>,
+  currentZoom?: number
 ): boolean {
   const tier = roadLabelTier(label);
-  const style = labelStyleForSyntheticMapLabel(label, viewport) as TopopassRoadLabelStyle;
+  const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom) as TopopassRoadLabelStyle;
   const roadLengthMeters = label.roadLengthMeters ?? 0;
   const roadScreenLength = roadLengthMeters * viewportScale;
   const visibilityMultiplier = roadLabelMinLengthMultiplierForViewport(viewportScale);
@@ -1206,7 +1280,7 @@ function shouldShowRoadLabel(
 
   const screenPoint = mapToScreenPoint(label.point, viewport);
   const existingPoints = roadLabelPointsByText.get(label.text.toLowerCase()) ?? [];
-  const repeatDistance = style.repeatDistance / Math.min(cartographicLabelScaleForTier(tier, viewport), 1.6);
+  const repeatDistance = style.repeatDistance / Math.min(cartographicLabelScaleForTier(tier, viewport, currentZoom), 1.6);
 
   return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= repeatDistance);
 }
@@ -1219,8 +1293,8 @@ function shouldShowContextLabel(label: SyntheticMapLabel, viewportScale: number)
   return viewportScale >= TOPOPASS_STREET_ATLAS_STYLE.labels.context[label.kind].minViewportScale;
 }
 
-function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
-  const style = labelStyleForSyntheticMapLabel(label, viewport);
+function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport, currentZoom?: number): SyntheticLabelCollisionBox {
+  const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
   const point = mapToScreenPoint(label.point, viewport);
   const yOffset = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish" ? style.yOffset ?? 0 : 0;
   const fontSize = labelFontSize(style);
@@ -1240,10 +1314,14 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
   };
 }
 
-function landmarkVisualCollisionBox(visual: SyntheticLandmarkVisual, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
+function landmarkVisualCollisionBox(
+  visual: SyntheticLandmarkVisual,
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): SyntheticLabelCollisionBox {
   const point = mapToScreenPoint(visual.point, viewport);
   const markerStyle = contextMarkerStyleForVisual(visual);
-  const scale = cartographicMarkerScaleForViewport(viewport);
+  const scale = cartographicMarkerScaleForViewport(viewport, currentZoom);
   const radius = visual.radius * scale + markerStyle.collisionPadding;
 
   return {

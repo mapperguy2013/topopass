@@ -236,6 +236,23 @@ overlays, start/checkpoint/finish markers, labels, and submit matching must
 remain aligned after high zoom. High zoom does not change fixture budgets or
 force extra labels/features beyond the existing Phase 6 decluttering rules.
 
+## Stage 161.6.8 Explicit Zoom-Adaptive Symbol Scaling
+
+Stage 161.6.8 fixes the case where the exponential viewport zoom reached
+5000% but road strokes and labels still felt close to their 100% screen-space
+sizes. The renderer now passes the current route-runner zoom into the shared
+cartographic scale helpers, so fixed-viewport high zoom still increases road
+strokes, casings, street-label font sizes, label halos, context markers,
+one-way/restriction symbols, snap hints, learner route drawing, and
+start/checkpoint/finish markers.
+
+The correction keeps geometry and symbol sizing separate. Map projection,
+pan/zoom alignment, drawing coordinates, route matching, scoring, legality,
+and fixture data are unchanged. Symbol scaling remains capped by
+`zoom.cartographicScale` tokens: local roads and minor labels gain the most
+high-zoom readability, major roads grow modestly, and learner overlays use
+smaller caps so they remain above the base map without overpowering it.
+
 ## Stage 161.6.9 Zoom-Aware Road And Label Scaling
 
 Stage 161.6.9 makes high zoom useful for learner inspection by scaling

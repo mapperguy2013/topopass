@@ -87,6 +87,7 @@ export type BuildRestrictionMapVisualItemsInput = {
 
 export type FilterRestrictionMapVisualItemsOptions = {
   reservedBoxes?: readonly SyntheticLabelCollisionBox[];
+  currentZoom?: number;
 };
 
 const LONG_ROAD_ARROW_THRESHOLD = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.longRoadArrowThresholdMeters;
@@ -389,7 +390,7 @@ export function filterRestrictionMapVisualItemsForViewport(
   });
 
   for (const item of rankedBaseItems) {
-    const itemBox = restrictionSymbolCollisionBox(item, viewport);
+    const itemBox = restrictionSymbolCollisionBox(item, viewport, options.currentZoom);
 
     if (options.reservedBoxes?.some((box) => boxIntersects(itemBox, box))) {
       continue;
@@ -408,7 +409,8 @@ export function filterRestrictionMapVisualItemsForViewport(
 
 export function restrictionMapVisualStyleForViewport(
   item: RestrictionMapVisualItem,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  currentZoom?: number
 ): RestrictionMapVisualZoomStyle {
   if (isRouteReviewVisualItem(item)) {
     return { alpha: 1, scale: 1 };
@@ -416,7 +418,7 @@ export function restrictionMapVisualStyleForViewport(
 
   const tier = restrictionZoomTierForViewport(viewport);
   const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
-  const cartographicScale = cartographicRestrictionSymbolScaleForViewport(viewport);
+  const cartographicScale = cartographicRestrictionSymbolScaleForViewport(viewport, currentZoom);
 
   if (tier === "low") {
     return {
@@ -463,9 +465,13 @@ function restrictionCollisionPriority(item: RestrictionMapVisualItem, reviewPoin
   return item.priority + (nearReviewIssue ? 25 : 0);
 }
 
-function restrictionSymbolCollisionBox(item: RestrictionMapVisualItem, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
+function restrictionSymbolCollisionBox(
+  item: RestrictionMapVisualItem,
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): SyntheticLabelCollisionBox {
   const point = mapPointToScreen(item.point, viewport);
-  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport);
+  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport, currentZoom);
   const radius = restrictionSymbolRadius(item) * zoomStyle.scale + TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.restrictionSymbolCollisionPadding;
 
   return {
