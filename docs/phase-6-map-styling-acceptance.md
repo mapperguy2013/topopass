@@ -24,6 +24,84 @@ implementation.
   competing with active learner overlays.
 - Styling decisions should be judged in student-facing Real London practice
   and, where relevant, dev QA/review states.
+- Street-atlas inspiration means general cartographic principles only:
+  hierarchy, cased roads, calm land/context colours, readable labels, and
+  restrained decluttering. It does not permit copying A-Z, Google, OS, or any
+  other proprietary tiles, screenshots, palettes, icons, fonts, label
+  placement, or artwork.
+- The TOPOPASS identity should remain visible through the central token
+  palette: learner overlays use the established route/review colours, while
+  the base map stays quieter and printed-atlas-like.
+
+## Stage 160 TOPOPASS Street-Atlas Design Principles
+
+Stage 160 extends Phase 6 after the original Stage 159 gate. It is a visual
+refinement pass only and does not approve Phase 7 work.
+
+The intended identity is an original TOPOPASS London learner map: calm paper
+land, warm cased primary/secondary roads, quieter local and service streets,
+soft park and water washes, restrained rail/bridge context, legible label
+halos, and learner overlays that remain unmistakably above the base map. The
+work is inspired by general street-atlas cartography, not by copying any
+commercial or proprietary map design.
+
+Road hierarchy rules:
+
+- Primary/A-road style roads are widest and warmest, with clear casing and
+  labels available at lower zooms.
+- Secondary roads remain obvious but are less saturated and slightly narrower.
+- Tertiary and local streets provide navigable texture without competing with
+  learner overlays.
+- Service, pedestrian, inactive, and restricted roads are thinner, quieter, and
+  harder to label until higher zooms.
+- Junctions preserve rounded cased strokes and endpoint blends so dense graph
+  geometry reads as connected streets.
+
+Label rules:
+
+- Major-road labels receive the strongest halo, longest repeat distance, and
+  lowest zoom threshold.
+- Secondary and local labels progressively require longer on-screen segments
+  and more zoom before rendering.
+- Service labels are deliberately sparse.
+- Area, park, water, bridge, station, landmark, and public-building labels stay
+  below learner overlays and use collision filtering against route, marker,
+  hint, and review reservations.
+
+Layer and overlay rules:
+
+- Land, parks, water, rail, bridges, landmarks, and area names stay below road
+  hierarchy and labels.
+- One-way and restriction cartography remains zoom-aware and subordinate to
+  route-review warnings.
+- Correct route, attempted route, accepted alternative, illegal sections,
+  checkpoints, hints, review callouts, selected focus, legend, and attribution
+  stay above the base map in the documented Phase 6 layer order.
+- Mobile readability keeps 44 px touch targets, map-first scenarios, and
+  pinch/pan/draw separation from Stage 158.5.
+
+Stage 160 visual QA fixtures are documented through the deterministic
+`STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES` catalogue. It covers dense central
+streets, major roads with side streets, high streets, suburban estates, park
+edges, a Thames-bridge-style crossing proxy using fixture-backed water/bridge
+data, rail/station-heavy context, awkward junctions, one-way systems, learner
+review mistakes, and mobile viewports.
+
+Final Stage 160 visual acceptance checklist:
+
+- [ ] The base map feels calm, professional, London street-atlas-inspired, and
+      recognisably TOPOPASS.
+- [ ] Road hierarchy is readable at overview, learner, and detail zoom tiers.
+- [ ] Labels are useful and decluttered rather than dense decoration.
+- [ ] Parks, water, rail, stations, bridges, landmarks, and area names orient
+      learners without competing with route decisions.
+- [ ] Learner route, review, hint, checkpoint, warning, and selected-focus
+      overlays remain visually dominant and mobile-usable.
+- [ ] No proprietary cartographic assets, colours, fonts, icons, screenshots,
+      label placement, or copied map artwork are used.
+- [ ] No routing, legality, scoring, exercise generation, beta gate, feedback,
+      OSM conversion, auth, subscription, product-flow, or Phase 7 behaviour
+      changes are included.
 
 ## Acceptance Checklist
 

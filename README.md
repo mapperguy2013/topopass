@@ -920,6 +920,17 @@ limits only: no invented restrictions or landmarks, no live OSM fetching, and
 no pixel-perfect screenshot baselines. No route logic, legality, scoring,
 exercise generation, beta gate, OSM conversion, feedback, auth, subscription,
 or product-flow behaviour changes are part of the gate.
+Stage 160 extends Phase 6 with a TOPOPASS London street-atlas identity pass.
+The central cartography tokens now use a calmer original paper-land palette,
+clearer warm cased primary/secondary roads, quieter local/service/pedestrian
+roads, stronger label halo and decluttering rules, refined park, water, rail,
+bridge, and station context, and explicit Stage 160 visual QA fixture mappings for
+dense central streets, high streets, estates, park edges, bridge crossings,
+rail/station areas, awkward junctions, one-way systems, learner review
+mistakes, and mobile viewports. The pass uses only original TOPOPASS styling
+and permitted fixture data; it does not copy proprietary map assets or change
+routing, legality, scoring, exercise generation, beta gates, OSM conversion,
+feedback, auth, subscriptions, product flow, or Phase 7 scope.
 
 ## Current Feature Set
 

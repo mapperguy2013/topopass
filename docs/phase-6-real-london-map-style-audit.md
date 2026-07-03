@@ -10,6 +10,37 @@ map behavior.
 This audit should be read with the Phase 6 acceptance contract in
 [docs/phase-6-map-styling-acceptance.md](phase-6-map-styling-acceptance.md).
 
+## Stage 160 TOPOPASS London Street Atlas Identity Pass
+
+Stage 160 extends Phase 6 after the original Stage 159 readiness gate. It is a
+cartographic refinement pass only: route logic, legality checks, scoring,
+exercise generation, beta gates, feedback tooling, OSM conversion behaviour,
+auth, subscriptions, product flow, and Phase 7 learning features are unchanged.
+
+The pass strengthens the original TOPOPASS street-atlas identity without
+copying A-Z, Google, OS, or any other proprietary map tiles, screenshots,
+colours, icons, fonts, label placement, or cartographic artwork. The design
+uses general street-atlas principles only: cased roads, clear hierarchy,
+quiet land/context washes, readable label halos, and deterministic
+decluttering.
+
+Cartographic changes are central-token driven. The land background is calmer,
+primary and secondary roads have warmer but less muddy casing/fill contrast,
+local streets are slightly quieter, service/pedestrian/inactive roads recede
+more at low zoom, major labels get stronger halos and wider repeat spacing,
+minor/service labels require more zoom and screen length, context labels use
+softer halos, water/park washes are clearer, rail/bridge context is restrained,
+and station markers no longer share the same strong red as restriction and
+review warnings.
+
+The Stage 160 QA catalogue `STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES` maps
+the existing deterministic visual scenarios to the requested inspection areas:
+dense central streets, major-road/side-street hierarchy, high street,
+suburban estate, park edge, Thames-bridge-style crossing proxy, rail/station
+heavy context, awkward junction, one-way system, learner review with mistakes,
+and mobile viewport readability. The Thames entry is a fixture-backed
+water/bridge proxy; no Thames feature or proprietary reference is invented.
+
 ## Stage 143 Styling Application
 
 Stage 143 applies the first TOPOPASS street-atlas base map styling pass. The

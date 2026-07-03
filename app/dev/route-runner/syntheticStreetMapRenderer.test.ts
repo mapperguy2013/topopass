@@ -66,12 +66,12 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#d99a22");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#d99a22");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#c46f1f");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#c46f1f");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe9cd");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#6b7280");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#dc2626");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#d7e6c8");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#596475");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#334155");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#047857");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#be123c");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#f97316");
@@ -194,6 +194,22 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 56);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
+});
+
+test("Stage 160 atlas identity tokens keep hierarchy calm and original", () => {
+  const style = TOPOPASS_STREET_ATLAS_STYLE;
+
+  assert.notEqual(style.canvas.backgroundColor, "#f5f0e5");
+  assert.ok(style.roads.osm.primary.casingWidth > style.roads.osm.secondary.casingWidth);
+  assert.ok(style.roads.osm.secondary.casingWidth > style.roads.osm.residential.casingWidth);
+  assert.ok(style.roads.osm.residential.strokeWidth > style.roads.osm.service.strokeWidth);
+  assert.ok((style.roads.osm.service.alpha ?? 1) < 0.75);
+  assert.ok((style.roads.osm.pedestrian.alpha ?? 1) < (style.roads.osm.service.alpha ?? 1));
+  assert.ok(style.labels.roadHierarchy.major.haloWidth > style.labels.roadHierarchy.minor.haloWidth);
+  assert.ok(style.labels.roadHierarchy.major.repeatDistance > style.labels.roadHierarchy.secondary.repeatDistance);
+  assert.ok(style.labels.roadHierarchy.service.minViewportScale > style.labels.roadHierarchy.minor.minViewportScale);
+  assert.ok(style.contextFeatures.rail.highZoomAlpha < 0.8);
+  assert.notEqual(style.station.strokeColor, style.restrictions.noEntryMarker.strokeColor);
 });
 
 test("Stage 152.5 route review overlay tokens are distinct and severity ordered", () => {
@@ -330,10 +346,10 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#fff2c7",
-    strokeColor: "#d99a22",
-    casingWidth: 19,
-    strokeWidth: 10.5
+    casingColor: "#f8e7b1",
+    strokeColor: "#c46f1f",
+    casingWidth: 20,
+    strokeWidth: 10.8
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -497,7 +513,7 @@ test("synthetic road styling keeps a clear London-inspired hierarchy", () => {
 
   assert.ok(majorStyle.casingWidth > localStyle.casingWidth);
   assert.ok(localStyle.strokeWidth > serviceStyle.strokeWidth);
-  assert.equal(oneWayStyle.strokeColor, "#8bbcdf");
+  assert.equal(oneWayStyle.strokeColor, "#7eaed0");
 });
 
 test("converted OSM road visuals expose deterministic hierarchy metadata", () => {
@@ -743,7 +759,7 @@ test("Stage 145 label styles follow road hierarchy", () => {
 
   assert.equal(roadLabelTier(majorLabel), "major");
   assert.equal(roadLabelTier(minorLabel), "minor");
-  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13px Arial, sans-serif");
+  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13.5px Arial, sans-serif");
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.major.fontSize >
       TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.minor.fontSize
@@ -871,7 +887,7 @@ test("Stage 146 repeated road labels are allowed when sufficiently separated", (
     roadLabel({
       id: "far-repeat",
       text: "Grafton Place",
-      point: { x: 190, y: 80 },
+      point: { x: 198, y: 82 },
       roadClass: "local",
       osmHierarchy: "residential",
       roadLengthMeters: 300

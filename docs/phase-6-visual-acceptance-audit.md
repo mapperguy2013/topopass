@@ -150,3 +150,16 @@ Future work should stay separate from Phase 6 unless it is strictly visual QA:
 new route analysis, alternative-route acceptance, new scoring rules, additional
 exercise generation, live OSM fetching, or broader product flow belongs to a
 later phase.
+
+## Stage 160 Extension Note
+
+Phase 6 remains active after Stage 159. Stage 160 reopens the visual acceptance
+gate for a TOPOPASS London street-atlas identity pass: calmer original base-map
+tokens, sharper road hierarchy, quieter local/service streets, stronger label
+readability rules, refined context colours, and explicit atlas-identity QA
+fixtures.
+
+This extension remains visual-only. It does not copy A-Z, Google, OS, or other
+proprietary cartographic assets, and it does not change routing, legality,
+scoring, exercise generation, beta gates, OSM conversion, feedback tooling,
+auth, subscriptions, product flow, or Phase 7 scope.

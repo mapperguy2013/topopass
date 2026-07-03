@@ -225,6 +225,27 @@ export type RealLondonPhase6ReleaseCandidateGate = {
   mustNotChange: readonly string[];
 };
 
+export type Stage160AtlasIdentityFixtureCategory =
+  | "dense-central"
+  | "major-road-side-streets"
+  | "high-street"
+  | "suburban-estate"
+  | "park-edge"
+  | "thames-bridge-proxy"
+  | "rail-station-heavy"
+  | "awkward-junction"
+  | "one-way-system"
+  | "learner-review-mistakes"
+  | "mobile-viewport";
+
+export type Stage160AtlasIdentityFixture = {
+  category: Stage160AtlasIdentityFixtureCategory;
+  label: string;
+  scenarioId: RealLondonVisualReadabilityScenarioId;
+  responsiveScenarioId?: RealLondonResponsiveVisualScenarioId;
+  designFocus: readonly string[];
+};
+
 export const REAL_LONDON_VISUAL_COMPARISON_MODES: RealLondonVisualComparisonMode[] = [
   {
     id: "plain-route-graph",
@@ -1225,6 +1246,76 @@ export const REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE: RealLondonPhase6Release
   ]
 };
 
+export const STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES: Stage160AtlasIdentityFixture[] = [
+  {
+    category: "dense-central",
+    label: "Dense Central London atlas readability",
+    scenarioId: "dense-central-readability",
+    designFocus: ["low-contrast land", "major-road hierarchy", "street-label decluttering"]
+  },
+  {
+    category: "major-road-side-streets",
+    label: "Major road with side-street network",
+    scenarioId: "major-road-side-street-hierarchy",
+    designFocus: ["primary-road casing", "secondary-road separation", "quiet local streets"]
+  },
+  {
+    category: "high-street",
+    label: "High street typography and hierarchy",
+    scenarioId: "high-street-side-street-readability",
+    designFocus: ["high-street labels", "medium-zoom casing", "one-way subtlety"]
+  },
+  {
+    category: "suburban-estate",
+    label: "Suburban estate local-road quietness",
+    scenarioId: "estate-residential-blocks",
+    designFocus: ["local-road texture", "service-road quietness", "area-name context"]
+  },
+  {
+    category: "park-edge",
+    label: "Park edge and open-space context",
+    scenarioId: "park-open-space-edge",
+    designFocus: ["park wash", "water context", "roads above background polygons"]
+  },
+  {
+    category: "thames-bridge-proxy",
+    label: "Thames bridge-style crossing context",
+    scenarioId: "bridge-river-crossing-review",
+    designFocus: ["water crossing legibility", "bridge label hierarchy", "review restrictions above context"]
+  },
+  {
+    category: "rail-station-heavy",
+    label: "Rail and station-heavy orientation",
+    scenarioId: "rail-station-interchange-context",
+    designFocus: ["rail line restraint", "station marker clarity", "transport labels below learner overlays"]
+  },
+  {
+    category: "awkward-junction",
+    label: "Awkward junction decision readability",
+    scenarioId: "awkward-junction-restriction-review",
+    designFocus: ["junction casing clarity", "restriction marker priority", "review warning separation"]
+  },
+  {
+    category: "one-way-system",
+    label: "One-way system decluttering",
+    scenarioId: "one-way-restriction-declutter",
+    designFocus: ["one-way arrow spacing", "restriction collision filtering", "overview zoom quietness"]
+  },
+  {
+    category: "learner-review-mistakes",
+    label: "Learner route review with mistakes",
+    scenarioId: "learner-route-overlay-review",
+    designFocus: ["attempted route", "correct route", "illegal and missed-checkpoint callouts"]
+  },
+  {
+    category: "mobile-viewport",
+    label: "Mobile atlas readability",
+    scenarioId: "dense-central-readability",
+    responsiveScenarioId: "mobile-dense-central-readability",
+    designFocus: ["mobile label thinning", "44 px touch targets", "map-first viewport"]
+  }
+];
+
 export function getRealLondonVisualReadabilityScenario(
   scenarioId: RealLondonVisualReadabilityScenarioId
 ): RealLondonVisualReadabilityScenario | undefined {
@@ -1245,6 +1336,8 @@ export function buildRealLondonVisualComparisonScenarioSummary() {
     scenarioIds: REAL_LONDON_VISUAL_READABILITY_SCENARIOS.map((scenario) => scenario.id),
     responsiveViewportIds: REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS.map((viewport) => viewport.id),
     responsiveScenarioIds: REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.map((scenario) => scenario.id),
+    stage160AtlasIdentityFixtureCategories: STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES.map((fixture) => fixture.category),
+    stage160AtlasIdentityScenarioIds: STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES.map((fixture) => fixture.scenarioId),
     viewportBounds: qaMapBounds,
     finalPhase6LayerStack: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
     releaseCandidateGateId: REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.id,

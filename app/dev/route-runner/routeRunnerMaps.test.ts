@@ -47,6 +47,7 @@ import {
   REAL_LONDON_RESPONSIVE_VISUAL_VIEWPORTS,
   REAL_LONDON_VISUAL_COMPARISON_MODES,
   REAL_LONDON_VISUAL_READABILITY_SCENARIOS,
+  STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES,
   buildRealLondonVisualComparisonScenarioSummary,
   getRealLondonResponsiveVisualScenario,
   getRealLondonVisualReadabilityScenario,
@@ -377,6 +378,38 @@ test("Stage 158 final visual regression gate covers release-candidate contexts",
   assert.ok(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.mustNotChange.includes("route logic"));
   assert.ok(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.mustNotChange.includes("OSM conversion behaviour"));
   assert.deepEqual(REAL_LONDON_PHASE_6_RELEASE_CANDIDATE_GATE.finalLayerStack, FINAL_PHASE_6_REAL_LONDON_LAYER_STACK);
+});
+
+test("Stage 160 atlas identity fixtures cover the requested visual refinement contexts", () => {
+  const comparisonSummary = buildRealLondonVisualComparisonScenarioSummary();
+  const scenarioIds = new Set(REAL_LONDON_VISUAL_READABILITY_SCENARIOS.map((scenario) => scenario.id));
+  const responsiveScenarioIds = new Set(REAL_LONDON_RESPONSIVE_VISUAL_SCENARIOS.map((scenario) => scenario.id));
+  const categories = new Set(STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES.map((fixture) => fixture.category));
+
+  assert.deepEqual(comparisonSummary.stage160AtlasIdentityFixtureCategories, [
+    "dense-central",
+    "major-road-side-streets",
+    "high-street",
+    "suburban-estate",
+    "park-edge",
+    "thames-bridge-proxy",
+    "rail-station-heavy",
+    "awkward-junction",
+    "one-way-system",
+    "learner-review-mistakes",
+    "mobile-viewport"
+  ]);
+  assert.equal(STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES.length, categories.size);
+
+  for (const fixture of STAGE_160_TOPOPASS_ATLAS_IDENTITY_FIXTURES) {
+    assert.ok(scenarioIds.has(fixture.scenarioId), fixture.scenarioId);
+    assert.ok(fixture.label.length > 0, fixture.category);
+    assert.ok(fixture.designFocus.length >= 3, fixture.category);
+
+    if (fixture.responsiveScenarioId) {
+      assert.ok(responsiveScenarioIds.has(fixture.responsiveScenarioId), fixture.responsiveScenarioId);
+    }
+  }
 });
 
 test("Stage 158 final Phase 6 layer stack preserves visual overlay order", () => {
