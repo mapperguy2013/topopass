@@ -381,8 +381,8 @@ in the stress probe. The acceptance rule is therefore:
   `betaPracticeAllowed=false`.
 - It must not offer scored route exercises until loading, matching, and scoring
   performance are validated for the larger graph.
-- Learner practice must load only the stable pilot plus Piccadilly Circus,
-  Waterloo Bridge, one-way system area, and quiet residential curated fixtures.
+- Learner practice must load only the stable pilot plus fixtures that pass this
+  same budget, route preflight, synthetic matching, and scoring gate.
 - Oversized or dev-only stress fixtures must not be eagerly imported by
   learner-facing catalogues.
 - OSM attribution remains visible and no runtime Overpass calls are introduced.
@@ -400,6 +400,33 @@ beta-practice allowed, stays within the fixture budget, and has validated
 scoreable route exercises where scoring is offered. Larger future imports need
 controlled scripted import, simplification, lazy loading, tiling, or a
 Geofabrik-based pipeline before learner exposure.
+
+## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
+
+Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled beta
+candidate. The fixture id is `kingsCrossEuston`, the display label is
+`King's Cross / Euston curated OSM`, and scored exercise ids use the prefix
+`osm-curated-kings-cross-euston`.
+
+The fixture is 4,679,303 bytes and contains 25,746 OSM elements: 21,484 nodes,
+4,134 ways, 128 relations, 1,977 named road ways, 1,002 one-way tagged ways,
+112 raw turn-restriction relations, 621 access-restricted ways, 24 bridge ways,
+86 tunnel ways, 17 water features, 124 park/open-space features, 365 rail
+features, 11 station features, and station-area landmark/amenity/place context.
+
+The budget probe converted it to 6,829 route nodes, 6,963 road segments, and
+12,062 directed edges. Diagnostics reported 64 routable components and a
+largest drivable component of 5,390 nodes. Render preparation exposed 835
+context features and 649 label candidates. Local probe timing was about 83 ms
+for conversion, 48 ms for graph build, 24 ms for diagnostics, and 531 ms for
+label preparation.
+
+The fixture passes the current beta gate: `betaPracticeAllowed=true`,
+`devOnlyStressTest=false`, three scored exercises are registered, every
+preflight finds a legal path, and synthetic perfect drawn attempts reach
+matching and 100% scoring. Known limitation: generated safe routes are
+station-corridor length rather than short local hops, because route anchors are
+selected from the largest safe drivable component inside the bounded extract.
 
 ## Acceptance Checklist
 

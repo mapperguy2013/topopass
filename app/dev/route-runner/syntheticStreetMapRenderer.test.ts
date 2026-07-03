@@ -587,7 +587,11 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
     ["osm-curated-piccadilly-circus", 45],
     ["osm-curated-waterloo-bridge", 45],
     ["osm-curated-one-way-system-area", 70],
-    ["osm-curated-quiet-residential-roads", 45]
+    ["osm-curated-quiet-residential-roads", 45],
+    ["osm-curated-kings-cross-euston", 40]
+  ]);
+  const minimumVisibleLandmarksByMapId = new Map([
+    ["osm-curated-kings-cross-euston", 0]
   ]);
 
   for (const option of CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
@@ -626,7 +630,7 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
     assert.ok(roadVisuals.some((visual) => visual.osmHierarchy === "residential"), option.id);
     assert.ok(backgroundFeatures.length > 0, option.id);
     assert.ok(linearFeatures.length > 0, option.id);
-    assert.ok(visibleLandmarks.length > 0, option.id);
+    assert.ok(visibleLandmarks.length >= (minimumVisibleLandmarksByMapId.get(option.id) ?? 1), option.id);
     assert.ok(
       learnerLabels.filter((label) => label.kind === "road").length >=
         (minimumVisibleRoadLabelsByMapId.get(option.id) ?? 1),

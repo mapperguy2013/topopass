@@ -1057,14 +1057,24 @@ zero scored beta exercises. It remains useful for explicit large-area stress
 inspection without weakening matching, legality, scoring, or route validation.
 Stage 161.8.1 disables that oversized fixture from `/practice/real-london`
 after real page loading proved too slow, with about two-minute partial loads in
-the current Phase 6 practice UI. The beta practice catalogue now loads only the
-stable Real London pilot plus Piccadilly Circus, Waterloo Bridge, one-way
-system, and quiet residential curated fixtures. Central London remains
+the current Phase 6 practice UI. At that point the beta practice catalogue was
+narrowed to the stable Real London pilot plus Piccadilly Circus, Waterloo
+Bridge, one-way system, and quiet residential curated fixtures. Central London remains
 metadata-only as a `devOnlyStressTest`; it is not offered as scored practice,
 does not appear in the practice selector, and is not imported by the normal
 learner catalogue. Future larger imports must pass fixture budget checks and
 should use controlled scripted import, simplification, lazy loading, tiling, or
 a Geofabrik-based pipeline before they can be exposed to beta learners.
+Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled beta
+candidate with fixture id `kingsCrossEuston`, display label
+`King's Cross / Euston curated OSM`, and route id prefix
+`osm-curated-kings-cross-euston`. The 4,679,303-byte fixture contains 25,746
+OSM elements and converts to 6,963 road segments with 12,062 directed edges.
+It stays within the current 50,000-element beta budget, generates context and
+label coverage for the station area, and has three validated scored exercises
+whose synthetic perfect drawn attempts reach scoring at 100%. It is therefore
+`betaPracticeAllowed=true`, `devOnlyStressTest=false`, and appears in
+`/practice/real-london` without exposing dev QA panels.
 
 ## Current Feature Set
 

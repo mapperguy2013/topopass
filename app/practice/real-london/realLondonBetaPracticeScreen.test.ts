@@ -295,6 +295,7 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.ok(mapIds.includes("osm-curated-waterloo-bridge"));
   assert.ok(mapIds.includes("osm-curated-one-way-system-area"));
   assert.ok(mapIds.includes("osm-curated-quiet-residential-roads"));
+  assert.ok(mapIds.includes("osm-curated-kings-cross-euston"));
   assert.equal(mapIds.includes("osm-curated-centralLondon"), false);
   assert.ok(model.mapRows.every((row) => row.description.length > 0));
   assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
@@ -346,7 +347,8 @@ test("Stage 161.6.3 imported curated maps expose multiple scoreable beta exercis
     "osm-curated-piccadilly-circus",
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
-    "osm-curated-quiet-residential-roads"
+    "osm-curated-quiet-residential-roads",
+    "osm-curated-kings-cross-euston"
   ];
 
   for (const mapId of expectedImportedMapIds) {
@@ -419,7 +421,8 @@ test("Stage 161.6.4 every imported curated map resolves each offered route exerc
     "osm-curated-piccadilly-circus",
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
-    "osm-curated-quiet-residential-roads"
+    "osm-curated-quiet-residential-roads",
+    "osm-curated-kings-cross-euston"
   ];
 
   for (const mapId of expectedImportedMapIds) {

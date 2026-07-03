@@ -92,6 +92,7 @@ not live runtime API calls, and they do not replace
 | `waterlooBridgeOverpass.json` | Thames, bridge, rail/station, and central context | `2026-07-03T00:11:45Z` |
 | `oneWaySystemAreaOverpass.json` | One-way and restriction cartography | `2026-07-03T00:13:44Z` |
 | `quietResidentialRoadsOverpass.json` | Suburban learner-driver readability | `2026-07-03T00:14:43Z` |
+| `kingsCrossEustonOverpass.json` | King's Cross / Euston station-area beta fixture validation | `2026-07-03T21:15:15Z` |
 | `centralLondonOverpass.json` | Larger Central London map-engine, renderer, and beta UI stress test | `2026-07-03T00:00:00Z` |
 
 The four new fixtures are registered as dev-only route-runner map options and
@@ -108,6 +109,7 @@ Coverage summary:
 | `waterlooBridgeOverpass.json` | 14,286 | 3,037 | 44 | 784 | 455 | 41 | 62 | 14 | 89 | 3 | 36 |
 | `oneWaySystemAreaOverpass.json` | 9,635 | 3,719 | 50 | 1,104 | 632 | 50 | 49 | 2 | 24 | 4 | 46 |
 | `quietResidentialRoadsOverpass.json` | 2,859 | 468 | 12 | 177 | 35 | 12 | 19 | 4 | 0 | 0 | 8 |
+| `kingsCrossEustonOverpass.json` | 21,484 | 4,134 | 128 | 1,977 | 1,002 | 112 | 124 | 17 | 365 | 11 | 250 |
 | `centralLondonOverpass.json` | 213,466 | 36,579 | 1,228 | 16,783 | 8,373 | 1,032 | 1,153 | 244 | 2,438 | 97 | 2,458 |
 
 The renderer-facing categories remain derived from OSM tags at conversion or
@@ -160,9 +162,10 @@ Stage 161.8.1 disables Central London from the learner-facing
 take around two minutes and still only partially load, so it is now treated as a
 metadata-only `devOnlyStressTest`: `betaPracticeAllowed=false`,
 `devOnlyStressTest=true`, and it must not be eagerly imported by learner
-practice code. The active beta practice set remains the stable pilot fixture
-plus the four smaller curated Overpass fixtures: Piccadilly Circus, Waterloo
-Bridge, one-way system area, and quiet residential roads.
+practice code. At Stage 161.8.1 the active beta practice set was narrowed to
+the stable pilot fixture plus the four smaller curated Overpass fixtures:
+Piccadilly Circus, Waterloo Bridge, one-way system area, and quiet residential
+roads, with later additions required to pass the same budget and scoring gate.
 
 Fixture budgets now record total elements, nodes, ways, relations, optional
 converted road segment counts, approximate rendered feature counts, fixture
@@ -172,6 +175,26 @@ be scored, and should not be added to learner-facing bundles without passing a
 budget check. Larger future imports should use a controlled scripted import,
 simplification, lazy loading, tiling, or a Geofabrik-based pipeline before they
 are exposed to beta learners.
+
+Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as fixture id
+`kingsCrossEuston` with display label `King's Cross / Euston curated OSM`.
+The raw file is 4,679,303 bytes and contains 25,746 OSM elements, so it remains
+inside the current 50,000-element beta practice budget. Conversion produced a
+6,829-node, 6,963-road route graph with 12,062 directed edges, 64 routable
+components, and a largest drivable component of 5,390 nodes. Render preparation
+reported 835 context features and 649 label candidates; the probe measured
+about 83 ms for conversion, 48 ms for graph build, 24 ms for diagnostics, and
+531 ms for label preparation in this local environment.
+
+The fixture is `betaPracticeAllowed=true` and `devOnlyStressTest=false`.
+Three scored beta exercises are registered with route id prefix
+`osm-curated-kings-cross-euston`, and synthetic perfect drawn attempts reached
+matching and 100% scoring for all three. Known limitation: the generated
+routes are longer station-corridor routes, roughly 4.0-4.7 km, because the
+largest drivable component and safe anchor selection are shaped by the fixture
+boundary. Source OSM turn restriction relations are present, but the current
+converter still does not expose those relations as scored prohibited-turn
+restrictions.
 
 Attribution requirement: these fixtures are OpenStreetMap-derived data made
 available under ODbL, so OSM attribution must stay visible wherever they are

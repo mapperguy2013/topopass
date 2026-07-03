@@ -181,15 +181,44 @@ legality checks, scoring, or exercise validation.
 Stage 161.8.1 disables Central London from `/practice/real-london` after the
 current Phase 6 practice page took around two minutes and still only partially
 loaded it. It remains metadata-only as a `devOnlyStressTest` with
-`betaPracticeAllowed=false`; the learner beta selector loads only the stable
-pilot plus the four smaller curated fixtures. Known limitation before larger
-scripted imports: the engine can convert and inspect this bounded extract, but
-learner-facing loading and scored route matching need performance work before
-similarly large fixtures should be offered as practice.
+`betaPracticeAllowed=false`; learner beta selection is limited to fixtures that
+pass the same budget, route preflight, synthetic matching, and scoring gate.
+Known limitation before larger scripted imports: the engine can convert and
+inspect this bounded extract, but learner-facing loading and scored route
+matching need performance work before similarly large fixtures should be
+offered as practice.
 
 Future large imports should use controlled scripted import, simplification,
 lazy loading, tiling, or a Geofabrik-based pipeline, and must pass fixture
 budget checks before beta exposure.
+
+## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
+
+Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled
+OSM-derived beta fixture candidate for the King's Cross / Euston station area.
+The code id is `kingsCrossEuston`, the display label is
+`King's Cross / Euston curated OSM`, and route ids use
+`osm-curated-kings-cross-euston`.
+
+The fixture is 4,679,303 bytes with 25,746 OSM elements. It includes 1,977
+named road ways, 1,002 one-way tagged ways, 112 raw turn-restriction
+relations, 621 access-restricted ways, bridge and tunnel tags, water and park
+context, 365 rail features, 11 station features, and station-area
+landmark/amenity/place labels.
+
+The conversion and render-preparation budget is acceptable for Phase 6 beta
+practice: 6,963 road segments, 12,062 directed edges, 64 routable components,
+a 5,390-node largest drivable component, 835 context features, and 649 label
+candidates. Local probe timing was about 83 ms for conversion, 48 ms for graph
+build, 24 ms for diagnostics, and 531 ms for label preparation.
+
+The fixture is `betaPracticeAllowed=true` and `devOnlyStressTest=false`.
+Three scored route exercises are registered and all pass preflight plus
+synthetic perfect drawn-route matching/scoring at 100%. The main known
+limitation is route length: generated safe routes are roughly 4.0-4.7 km
+station-corridor exercises, not short local hops. Raw OSM turn restriction
+relations remain source context until the converter exposes them as scored
+route-engine restrictions.
 
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 

@@ -3,6 +3,7 @@ import {
   type RouteExerciseDifficulty
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OsmRouteGraphMapDefinition } from "../../../lib/map-engine/osm/index.ts";
+import kingsCrossEustonOverpassFixture from "../../../lib/map-engine/osm/fixtures/kingsCrossEustonOverpass.json" with { type: "json" };
 import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixtures/oneWaySystemAreaOverpass.json" with { type: "json" };
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
 import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
@@ -25,6 +26,7 @@ const PICCADILLY_CIRCUS_OSM_MAP_ID = "osm-curated-piccadilly-circus";
 const WATERLOO_BRIDGE_OSM_MAP_ID = "osm-curated-waterloo-bridge";
 const ONE_WAY_SYSTEM_AREA_OSM_MAP_ID = "osm-curated-one-way-system-area";
 const QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID = "osm-curated-quiet-residential-roads";
+const KINGS_CROSS_EUSTON_OSM_MAP_ID = "osm-curated-kings-cross-euston";
 
 function buildCuratedRealLondonOsmMap(
   fixture: unknown,
@@ -66,6 +68,12 @@ export const quietResidentialRoadsOsmRouteMap = buildCuratedRealLondonOsmMap(qui
   mapId: QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID,
   name: "Quiet residential curated OSM map",
   description: "Dev-only curated Overpass fixture for suburban learner-driver Phase 6 visual QA."
+});
+
+export const kingsCrossEustonOsmRouteMap = buildCuratedRealLondonOsmMap(kingsCrossEustonOverpassFixture, {
+  mapId: KINGS_CROSS_EUSTON_OSM_MAP_ID,
+  name: "King's Cross / Euston curated OSM map",
+  description: "Curated Overpass fixture for King's Cross / Euston beta practice validation."
 });
 
 function buildCuratedRealLondonRoutableExercisePreflight(
@@ -293,6 +301,46 @@ export const quietResidentialRoadsOsmRoutePreflight = requireDefaultPreflight(
   "quiet-residential-roads"
 );
 
+export const kingsCrossEustonOsmRoutePreflights = [
+  buildCuratedRealLondonRoutableExercisePreflight(kingsCrossEustonOsmRouteMap, kingsCrossEustonOverpassFixture, {
+    idPrefix: "osm-curated-kings-cross-euston",
+    suffix: "station-corridor-route",
+    title: "King's Cross / Euston: station corridor route",
+    description: "Beta route for station-area roads, labels, and learner overlays.",
+    difficulty: "medium",
+    routeType: "direct",
+    includeCheckpoint: false,
+    routeOrdinal: 0,
+    minimumStraightLineDistanceMeters: 180
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(kingsCrossEustonOsmRouteMap, kingsCrossEustonOverpassFixture, {
+    idPrefix: "osm-curated-kings-cross-euston",
+    suffix: "main-road-side-road-route",
+    title: "King's Cross / Euston: main road to side road",
+    description: "Beta route for main-road to side-street transitions around King's Cross and Euston.",
+    difficulty: "hard",
+    routeType: "direct",
+    includeCheckpoint: false,
+    routeOrdinal: 1,
+    minimumStraightLineDistanceMeters: 220
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(kingsCrossEustonOsmRouteMap, kingsCrossEustonOverpassFixture, {
+    idPrefix: "osm-curated-kings-cross-euston",
+    suffix: "checkpoint-route",
+    title: "King's Cross / Euston: checkpoint route",
+    description: "Checkpoint beta route for station-area orientation and route review overlays.",
+    difficulty: "hard",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 2,
+    minimumStraightLineDistanceMeters: 260
+  })
+];
+export const kingsCrossEustonOsmRoutePreflight = requireDefaultPreflight(
+  kingsCrossEustonOsmRoutePreflights,
+  "kings-cross-euston"
+);
+
 function exercisesFromPreflights(preflights: readonly CuratedFixtureRoutePreflight[]): RouteExercise[] {
   return preflights.flatMap((preflight) => (preflight.exercise ? [preflight.exercise] : []));
 }
@@ -301,6 +349,7 @@ export const piccadillyCircusOsmRouteExercises = exercisesFromPreflights(piccadi
 export const waterlooBridgeOsmRouteExercises = exercisesFromPreflights(waterlooBridgeOsmRoutePreflights);
 export const oneWaySystemAreaOsmRouteExercises = exercisesFromPreflights(oneWaySystemAreaOsmRoutePreflights);
 export const quietResidentialRoadsOsmRouteExercises = exercisesFromPreflights(quietResidentialRoadsOsmRoutePreflights);
+export const kingsCrossEustonOsmRouteExercises = exercisesFromPreflights(kingsCrossEustonOsmRoutePreflights);
 
 export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   {
@@ -358,6 +407,20 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     sourceOverpassFixture: quietResidentialRoadsOverpassFixture,
     devOnly: true,
     fixtureUse: quietResidentialRoadsOsmRoutePreflight.fixtureUse
+  },
+  {
+    id: kingsCrossEustonOsmRouteMap.id,
+    label: "King's Cross / Euston curated OSM",
+    description: getCuratedRealLondonFixtureMetadata("kingsCrossEuston").areaPurpose,
+    source: "converted-osm",
+    map: kingsCrossEustonOsmRouteMap,
+    exercises: kingsCrossEustonOsmRouteExercises,
+    defaultExerciseId: kingsCrossEustonOsmRouteExercises[0]?.id ?? "",
+    attribution: getCuratedRealLondonFixtureMetadata("kingsCrossEuston").attribution.text,
+    fixtureName: "kingsCrossEustonOverpass.json",
+    sourceOverpassFixture: kingsCrossEustonOverpassFixture,
+    devOnly: true,
+    fixtureUse: kingsCrossEustonOsmRoutePreflight.fixtureUse
   }
 ];
 

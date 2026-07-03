@@ -38,6 +38,7 @@ export type CuratedRealLondonOverpassFixtureId =
   | "waterloo-bridge"
   | "one-way-system-area"
   | "quiet-residential-roads"
+  | "kingsCrossEuston"
   | "centralLondon";
 
 export type CuratedRealLondonFixtureBudget = {
@@ -328,6 +329,31 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       nodes: 2859,
       ways: 468,
       relations: 12,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    betaPracticeAllowed: true,
+    devOnlyStressTest: false
+  },
+  {
+    id: "kingsCrossEuston",
+    fixtureName: "kingsCrossEustonOverpass.json",
+    label: "King's Cross / Euston",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-03T21:15:15Z",
+    areaPurpose: "King's Cross / Euston station-area beta fixture candidate.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Bounded station-area extract, not full London coverage.",
+      "Turn restriction relation data is present in the source export, but the current route graph converter does not yet turn those relations into scored restrictions.",
+      "Generated beta routes are longer station-corridor routes rather than very short local hops because the largest drivable component shape is constrained by the fixture boundary."
+    ],
+    fixtureBudget: {
+      totalElements: 25746,
+      nodes: 21484,
+      ways: 4134,
+      relations: 128,
+      roadSegments: 6963,
+      approximateRenderedFeatureCount: 8447,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: true,

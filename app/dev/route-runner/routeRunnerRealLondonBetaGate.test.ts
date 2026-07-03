@@ -83,7 +83,8 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     "osm-curated-piccadilly-circus",
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
-    "osm-curated-quiet-residential-roads"
+    "osm-curated-quiet-residential-roads",
+    "osm-curated-kings-cross-euston"
   ];
   const access = resolveRealLondonBetaMapAccess({
     requestedMapId: "osm-curated-waterloo-bridge",

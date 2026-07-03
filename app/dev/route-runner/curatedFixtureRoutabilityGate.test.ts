@@ -11,6 +11,7 @@ import {
   type RouteExercise,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
+import kingsCrossEustonOverpassFixture from "../../../lib/map-engine/osm/fixtures/kingsCrossEustonOverpass.json" with { type: "json" };
 import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixtures/oneWaySystemAreaOverpass.json" with { type: "json" };
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
 import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
@@ -18,6 +19,9 @@ import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/
 import { validateExerciseReachability } from "./exerciseValidation.ts";
 import {
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
+  kingsCrossEustonOsmRouteMap,
+  kingsCrossEustonOsmRoutePreflight,
+  kingsCrossEustonOsmRoutePreflights,
   oneWaySystemAreaOsmRouteMap,
   oneWaySystemAreaOsmRoutePreflight,
   oneWaySystemAreaOsmRoutePreflights,
@@ -83,6 +87,15 @@ const CURATED_PREFLIGHT_CASES = [
     preflights: quietResidentialRoadsOsmRoutePreflights,
     minTurnRestrictions: 10,
     requiredHighways: ["primary", "tertiary", "residential"]
+  },
+  {
+    id: "kings-cross-euston",
+    map: kingsCrossEustonOsmRouteMap,
+    fixture: kingsCrossEustonOverpassFixture,
+    preflight: kingsCrossEustonOsmRoutePreflight,
+    preflights: kingsCrossEustonOsmRoutePreflights,
+    minTurnRestrictions: 100,
+    requiredHighways: ["primary", "secondary", "tertiary", "residential"]
   }
 ] as const;
 
