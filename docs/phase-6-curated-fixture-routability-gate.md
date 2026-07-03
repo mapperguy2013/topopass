@@ -36,6 +36,63 @@ For curated fixtures that can support learner-style visual QA routes, Stage 160.
 
 Candidate routes are accepted only after `findShortestLegalRouteThroughStops` confirms a legal route through the generated start, checkpoint, and destination stops. This preserves one-way and restriction behavior instead of weakening it.
 
+## Stage 161.4 Submit Matching Gate
+
+Stage 160.6 proves that a fixture can generate a legal route. Stage 161.4 adds
+the separate drawn-route submit check: a learner-style drawn polyline must also
+snap, match, visit the required stops, and reach scoring on the same converted
+fixture graph.
+
+The submit pipeline is:
+
+1. Capture pointer/touch points in map coordinates.
+2. Validate that the gesture has enough points and movement.
+3. Simplify the trace for normal performance.
+4. Snap points to candidate route-graph roads.
+5. Match snapped roads into an ordered node/road sequence.
+6. Run the existing exercise scorer against the selected exercise stops.
+7. Let the existing legality engine reject wrong-way, no-entry, closed-road,
+   prohibited-turn, U-turn, or disconnected movements.
+
+Curated OSM fixtures contain many very short split-way segments near junctions.
+When simplification removes one of those tiny points, a visually correct drawn
+route can appear disconnected to the matcher. For converted OSM maps only, the
+pipeline now retries matching against the unsimplified raw trace when the
+simplified trace cannot produce a ready match. This does not change synthetic
+map matching and does not alter route scoring rules.
+
+If snapping at a start or destination junction chooses an adjacent split road,
+the pipeline may repair the matched route back to the required endpoint only
+when the drawn endpoint is within the normal snap tolerance of that required
+marker and a legal connector exists in the same graph. This is an endpoint
+attachment repair, not a scoring shortcut. Required checkpoints are still
+verified by the scorer from the matched node sequence.
+
+Diagnostics:
+
+- `osm_simplification_retry`: converted OSM matching retried without
+  simplification to preserve split-way geometry.
+- `start_anchor_repaired`: the matched route was legally anchored back to the
+  required start node because the drawn endpoint was near the start marker.
+- `destination_anchor_repaired`: the matched route was legally anchored forward
+  to the required destination node because the drawn endpoint was near the
+  destination marker.
+- Existing snapping and matching diagnostics still distinguish off-road points,
+  disconnected selected roads, unmatched points, unknown roads, and unresolved
+  legal direction.
+
+Learner-facing copy now avoids the generic "matching failed" wording where
+possible. A match block tells the learner that the drawn route could not be
+matched to the road network and to draw closer to the roads. The detailed OSM
+retry/anchor diagnostics stay in dev/test output rather than becoming noisy
+learner warnings.
+
+Tests cover the generated legal route geometry for the existing Real London
+pilot fixture plus Piccadilly Circus, Waterloo Bridge, one-way system, and
+quiet residential curated fixtures. They also cover a wobbled Waterloo submit
+inside normal snap tolerance and a genuine wrong-way one-way submit that still
+fails through the existing legality engine.
+
 ## Curated Fixture Status
 
 The four Stage 160.5 curated fixtures currently preflight as `routableExercise`:

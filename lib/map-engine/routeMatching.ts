@@ -23,7 +23,10 @@ export type RouteMatchingDiagnosticCode =
   | "unknown_road"
   | "disconnected_roads"
   | "ambiguous_transition"
-  | "unresolved_direction";
+  | "unresolved_direction"
+  | "start_anchor_repaired"
+  | "destination_anchor_repaired"
+  | "osm_simplification_retry";
 
 export type RouteMatchingDiagnosticSeverity = "info" | "warning";
 
@@ -147,7 +150,17 @@ function failureReasonFromDiagnostics(
     return "invalid_road_sequence";
   }
 
-  return firstWarning.code;
+  if (
+    firstWarning.code === "empty_input" ||
+    firstWarning.code === "insufficient_points" ||
+    firstWarning.code === "unmatched_point" ||
+    firstWarning.code === "unknown_road" ||
+    firstWarning.code === "disconnected_roads"
+  ) {
+    return firstWarning.code;
+  }
+
+  return "invalid_road_sequence";
 }
 
 function routeDistanceMeters(graph: MapGraph, orderedRoadIds: readonly string[]): number {

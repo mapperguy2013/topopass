@@ -114,6 +114,17 @@ visual-model time: `majorRoad`, `secondaryRoad`, `localRoad`, `serviceRoad`,
 `restrictedTurn`, `park`, `water`, `rail`, `station`, `landmark`, and
 `areaLabel`. Raw fixture data does not contain TOPOPASS styling decisions.
 
+Stage 161.4 adds submit-matching coverage for these committed fixtures. The
+routability preflight route, revealed legal route, drawn-route matcher, and
+scoring engine all use the same converted `MapDefinition` graph, node IDs, road
+IDs, coordinates, and converted restriction model. Converted OSM submit
+matching may retry with the unsimplified raw drawn trace when normal trace
+simplification removes tiny split-way junction geometry. Start and destination
+anchoring is repaired only when the drawn endpoint is within the normal snap
+tolerance of the required marker and a legal connector exists in the same
+graph. No restriction, road, landmark, or route data is invented, and the app
+still does not call Overpass at runtime.
+
 Attribution requirement: these fixtures are OpenStreetMap-derived data made
 available under ODbL, so OSM attribution must stay visible wherever they are
 shown. No A-Z, Google, Apple, Ordnance Survey, proprietary tiles, screenshots,

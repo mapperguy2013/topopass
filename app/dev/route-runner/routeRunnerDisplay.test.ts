@@ -879,7 +879,7 @@ test("drawn route score display distinguishes blocked, pass, fail, and drawing s
   assert.deepEqual(matchingFailedDisplay, {
     state: "blocked",
     label: "Blocked before scoring",
-    summary: "The drawn route could not reach scoring because drawing, snapping, or matching failed."
+    summary: "We could not match your drawn route to the road network. Try drawing closer to the roads."
   });
   assert.notEqual(matchingFailedDisplay.label, "Route scored: pass");
   assert.notEqual(matchingFailedDisplay.label, "Route scored: fail");

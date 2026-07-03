@@ -682,6 +682,18 @@ function messageForPipelineWarning(warning: DrawnRoutePipelineResult["warnings"]
     return "A matched movement has no legal directed edge, usually because it is wrong-way or restricted.";
   }
 
+  if (warning.code === "osm_simplification_retry") {
+    return "Converted OSM route matching retried without simplification to preserve small split-way geometry.";
+  }
+
+  if (warning.code === "start_anchor_repaired") {
+    return "The matched route was anchored back to the required start marker after snapping to an adjacent split road.";
+  }
+
+  if (warning.code === "destination_anchor_repaired") {
+    return "The matched route was anchored forward to the required destination marker after snapping to an adjacent split road.";
+  }
+
   if (warning.code === "exercise_failed") {
     return `The matched route could not be scored: ${warning.message}`;
   }
@@ -788,6 +800,10 @@ export function getPipelineIssueGroups(
   }
 
   for (const warning of result.warnings) {
+    if (warning.source === "matching" && warning.severity === "info") {
+      continue;
+    }
+
     addGroupedMessage(
       groups,
       groupLabelForWarning(warning.source, warning.code),
@@ -841,7 +857,10 @@ export function getDrawnRouteScoreDisplay(
     return {
       state: "blocked",
       label: "Blocked before scoring",
-      summary: "The drawn route could not reach scoring because drawing, snapping, or matching failed."
+      summary:
+        result.status === "matching_failed"
+          ? "We could not match your drawn route to the road network. Try drawing closer to the roads."
+          : "The drawn route could not reach scoring because drawing, snapping, or matching failed."
     };
   }
 

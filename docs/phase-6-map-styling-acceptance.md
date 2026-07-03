@@ -178,6 +178,33 @@ Known limitations: labels are still point/segment based rather than curved
 along-road labels, and fixture context remains limited to the OSM tags present
 in the committed extracts.
 
+## Stage 161.4 Curated Fixture Submit Matching
+
+Stage 161.4 fixes a Phase 6 blocker where the curated fixtures could preflight
+and display legal routes but a correct drawn submit could stop at
+`matching_failed`. This was caused by converted OSM split-way geometry: normal
+trace simplification could remove tiny junction points, and start/destination
+junction snapping could choose an adjacent segment rather than the required
+marker node.
+
+The fix is deliberately narrow:
+
+- Converted OSM maps retry submit matching with the unsimplified raw trace when
+  simplified matching cannot produce a ready route.
+- Start/destination endpoint anchoring is repaired only when the drawn endpoint
+  is within normal snap tolerance of the required marker and a legal connector
+  exists in the same converted graph.
+- Existing scoring, legality, one-way, no-entry, closed-road, and
+  prohibited-turn behavior remains authoritative.
+- Dev/test diagnostics distinguish OSM simplification retry and endpoint anchor
+  repair, while learner-facing copy says to draw closer to the roads when a
+  match cannot be made.
+
+Tests cover generated legal submits for the existing Real London pilot,
+Piccadilly Circus, Waterloo Bridge, one-way system, and quiet residential
+fixtures; a wobbled Waterloo submit; and a wrong-way one-way submit that still
+fails.
+
 ## Stage 161.5 Waterloo / Thames Correction
 
 Stage 161.5 applies a targeted correction from the Waterloo Bridge /

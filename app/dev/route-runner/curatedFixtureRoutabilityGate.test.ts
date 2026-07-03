@@ -2,9 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildMapGraph,
+  createDrawnRouteTrace,
+  findShortestLegalRouteThroughStops,
+  runDrawnRoutePipeline,
   type MapDefinition,
+  type MapGraph,
   type MapRoad,
-  type RouteExercise
+  type RouteExercise,
+  type Vec2
 } from "../../../lib/map-engine/index.ts";
 import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixtures/oneWaySystemAreaOverpass.json" with { type: "json" };
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
@@ -20,12 +25,17 @@ import {
   quietResidentialRoadsOsmRouteMap,
   quietResidentialRoadsOsmRoutePreflight,
   waterlooBridgeOsmRouteMap,
+  waterlooBridgeOsmRouteExercises,
   waterlooBridgeOsmRoutePreflight
 } from "./curatedRealLondonRouteRunnerMaps.ts";
 import {
   buildCuratedFixtureConnectivityDiagnostics,
   buildCuratedFixtureRoutableExercise
 } from "./curatedFixtureRoutabilityGate.ts";
+import {
+  realLondonOsmPilotRouteExercises,
+  realLondonOsmPilotRouteMap
+} from "./routeRunnerMaps.ts";
 
 type RoadWithOsmMetadata = MapRoad & {
   metadata?: {
@@ -89,6 +99,121 @@ test("Stage 160.6 curated fixture preflight builds legal routable exercises for 
     assert.equal(availability.isValid, true, `${fixtureCase.id}: ${availability.errors.join("; ")}`);
     assert.equal(availability.missingLegs.length, 0, fixtureCase.id);
   }
+});
+
+test("Stage 161.4 curated and real pilot generated routes submit through drawn-route matching and scoring", () => {
+  const realPilotExercise = requireExercise(realLondonOsmPilotRouteExercises, "osm-real-pilot-checkpoint-route");
+  const realPilotGraph = buildMapGraph(realLondonOsmPilotRouteMap);
+  const realPilotRoute = findShortestLegalRouteThroughStops({
+    graph: realPilotGraph,
+    stopNodeIds: nodeStopIds(realPilotExercise),
+    restrictions: realLondonOsmPilotRouteMap.restrictions
+  });
+
+  assert.equal(realPilotRoute.found, true, realPilotExercise.id);
+
+  const cases = [
+    ...CURATED_PREFLIGHT_CASES.map((fixtureCase) => ({
+      id: fixtureCase.id,
+      map: fixtureCase.map,
+      exercises: [fixtureCase.preflight.exercise],
+      exercise: fixtureCase.preflight.exercise,
+      routeNodeIds: fixtureCase.preflight.routeNodeIds
+    })),
+    {
+      id: "real-london-pilot",
+      map: realLondonOsmPilotRouteMap,
+      exercises: realLondonOsmPilotRouteExercises,
+      exercise: realPilotExercise,
+      routeNodeIds: realPilotRoute.nodeIds
+    }
+  ];
+
+  for (const fixtureCase of cases) {
+    assert.ok(fixtureCase.exercise, fixtureCase.id);
+
+    const graph = buildMapGraph(fixtureCase.map);
+    const result = runDrawnRoutePipeline({
+      map: fixtureCase.map,
+      exercises: fixtureCase.exercises.filter((exercise): exercise is RouteExercise => Boolean(exercise)),
+      exerciseId: fixtureCase.exercise.id,
+      drawnTrace: createDrawnRouteTrace(pointsForNodeIds(graph, fixtureCase.routeNodeIds)),
+      options: {
+        maximumSnapDistance: 24
+      }
+    });
+
+    assert.equal(result.status, "scored", `${fixtureCase.id}: ${result.warnings.map((warning) => warning.code).join(",")}`);
+    assert.equal(result.matchResult?.status, "matched", fixtureCase.id);
+    assert.equal(result.exerciseResult?.score.passed, true, fixtureCase.id);
+    assert.equal(result.exerciseResult?.score.scorePercent, 100, fixtureCase.id);
+    assert.deepEqual(result.exerciseResult?.score.failureReasons, [], fixtureCase.id);
+
+    for (const stopNodeId of nodeStopIds(fixtureCase.exercise)) {
+      assert.ok(result.exerciseResult.normalisedAttempt.selectedNodeIds.includes(stopNodeId), `${fixtureCase.id}: ${stopNodeId}`);
+    }
+  }
+});
+
+test("Stage 161.4 curated Waterloo matching tolerates normal drawn-route wobble", () => {
+  const exercise = waterlooBridgeOsmRoutePreflight.exercise;
+
+  assert.ok(exercise);
+
+  const graph = buildMapGraph(waterlooBridgeOsmRouteMap);
+  const wobbledPoints = pointsForNodeIds(graph, waterlooBridgeOsmRoutePreflight.routeNodeIds).map((point, index) => ({
+    x: point.x + (index % 2 === 0 ? 1.4 : -1.1),
+    y: point.y + (index % 3 === 0 ? 1.2 : -0.9)
+  }));
+  const result = runDrawnRoutePipeline({
+    map: waterlooBridgeOsmRouteMap,
+    exercises: waterlooBridgeOsmRouteExercises,
+    exerciseId: exercise.id,
+    drawnTrace: createDrawnRouteTrace(wobbledPoints),
+    options: {
+      maximumSnapDistance: 24
+    }
+  });
+
+  assert.equal(result.status, "scored", result.warnings.map((warning) => warning.message).join("\n"));
+  assert.equal(result.matchResult?.status, "matched");
+  assert.equal(result.exerciseResult?.score.passed, true);
+  assert.equal(result.exerciseResult?.score.scorePercent, 100);
+  assert.ok(result.warnings.some((warning) => warning.code === "osm_simplification_retry"));
+});
+
+test("Stage 161.4 curated one-way matching still rejects genuinely wrong-way submit attempts", () => {
+  const graph = buildMapGraph(oneWaySystemAreaOsmRouteMap);
+  const oneWayRoad = findLongestOneWayRoad(oneWaySystemAreaOsmRouteMap);
+  const exercise: RouteExercise = {
+    id: "stage-161-4-wrong-way-submit",
+    title: "Stage 161.4 wrong-way submit",
+    mapId: oneWaySystemAreaOsmRouteMap.id,
+    stops: [
+      { type: "node", nodeId: oneWayRoad.toNodeId },
+      { type: "node", nodeId: oneWayRoad.fromNodeId }
+    ]
+  };
+  const result = runDrawnRoutePipeline({
+    map: oneWaySystemAreaOsmRouteMap,
+    exercises: [exercise],
+    exerciseId: exercise.id,
+    drawnTrace: createDrawnRouteTrace(reverseRoadPoints(graph, oneWayRoad)),
+    options: {
+      maximumSnapDistance: 8,
+      simplifyTolerance: 0
+    }
+  });
+
+  assert.equal(result.status, "scored");
+  assert.equal(result.matchResult?.status, "matched");
+  assert.equal(result.exerciseResult?.score.passed, false);
+  assert.deepEqual(result.exerciseResult?.score.failureReasons, ["illegal_route"]);
+  assert.ok(
+    result.exerciseResult?.score.legality.illegalMovements.some(
+      (movement) => movement.type === "wrong_way_one_way"
+    )
+  );
 });
 
 test("Stage 160.6 curated fixture diagnostics report graph coverage and selected route legality", () => {
@@ -209,6 +334,55 @@ function assertAnchorHighways(map: MapDefinition, nodeId: string, message: strin
 
   assert.ok(incidentHighways.some((highway) => DRIVABLE_ANCHOR_HIGHWAYS.has(highway)), message);
   assert.equal(incidentHighways.every((highway) => !UNSAFE_ANCHOR_HIGHWAYS.has(highway)), true, message);
+}
+
+function requireExercise(exercises: readonly RouteExercise[], exerciseId: string): RouteExercise {
+  const exercise = exercises.find((candidate) => candidate.id === exerciseId);
+
+  assert.ok(exercise, exerciseId);
+
+  return exercise;
+}
+
+function nodeStopIds(exercise: RouteExercise): string[] {
+  return exercise.stops.map((stop) => {
+    assert.equal(stop.type, "node", `${exercise.id} should use node stops`);
+
+    return stop.nodeId;
+  });
+}
+
+function pointsForNodeIds(graph: MapGraph, nodeIds: readonly string[]): Vec2[] {
+  return nodeIds.map((nodeId) => {
+    const node = graph.nodesById[nodeId];
+
+    assert.ok(node, nodeId);
+
+    return { x: node.x, y: node.y };
+  });
+}
+
+function findLongestOneWayRoad(map: MapDefinition): MapRoad {
+  const road = [...map.roads]
+    .filter((candidate) => candidate.isOneWay)
+    .sort((left, right) => right.distanceMeters - left.distanceMeters || left.id.localeCompare(right.id))[0];
+
+  assert.ok(road, `${map.id} should include a one-way road`);
+
+  return road;
+}
+
+function reverseRoadPoints(graph: MapGraph, road: MapRoad): Vec2[] {
+  const fromNode = graph.nodesById[road.fromNodeId];
+  const toNode = graph.nodesById[road.toNodeId];
+
+  assert.ok(fromNode);
+  assert.ok(toNode);
+
+  return [0.88, 0.5, 0.12].map((ratio) => ({
+    x: fromNode.x + (toNode.x - fromNode.x) * ratio,
+    y: fromNode.y + (toNode.y - fromNode.y) * ratio
+  }));
 }
 
 function disconnectedFixtureMap(): MapDefinition {
