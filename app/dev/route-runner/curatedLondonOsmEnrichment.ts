@@ -40,6 +40,16 @@ export type CuratedRealLondonOverpassFixtureId =
   | "quiet-residential-roads"
   | "centralLondon";
 
+export type CuratedRealLondonFixtureBudget = {
+  totalElements: number;
+  nodes: number;
+  ways: number;
+  relations: number;
+  roadSegments?: number;
+  approximateRenderedFeatureCount?: number;
+  maxBetaPracticeElements: number;
+};
+
 export type CuratedRealLondonOverpassFixtureMetadata = {
   id: CuratedRealLondonOverpassFixtureId;
   fixtureName: string;
@@ -49,6 +59,9 @@ export type CuratedRealLondonOverpassFixtureMetadata = {
   areaPurpose: string;
   attribution: typeof CURATED_LONDON_OSM_ATTRIBUTION;
   knownLimitations: readonly string[];
+  fixtureBudget: CuratedRealLondonFixtureBudget;
+  betaPracticeAllowed: boolean;
+  devOnlyStressTest: boolean;
 };
 
 export type CuratedLondonRenderCategory =
@@ -100,6 +113,8 @@ export const CURATED_LONDON_OSM_ATTRIBUTION = {
   licence: "ODbL",
   url: "https://www.openstreetmap.org/copyright"
 } as const;
+
+export const CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS = 50000;
 
 export const CURATED_LONDON_OSM_TAG_WHITELIST = [
   "@id",
@@ -241,7 +256,16 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     knownLimitations: [
       "Small bounded extract, not full London coverage.",
       "OSM access, amenity, and landmark tags depend on local source completeness."
-    ]
+    ],
+    fixtureBudget: {
+      totalElements: 5269,
+      nodes: 3855,
+      ways: 1401,
+      relations: 13,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    betaPracticeAllowed: true,
+    devOnlyStressTest: false
   },
   {
     id: "waterloo-bridge",
@@ -254,7 +278,16 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     knownLimitations: [
       "Small bounded extract, not full London coverage.",
       "Bridge, rail, station, and water detail is limited to tags present in the export."
-    ]
+    ],
+    fixtureBudget: {
+      totalElements: 17367,
+      nodes: 14286,
+      ways: 3037,
+      relations: 44,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    betaPracticeAllowed: true,
+    devOnlyStressTest: false
   },
   {
     id: "one-way-system-area",
@@ -267,7 +300,16 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     knownLimitations: [
       "Small bounded extract, not full London coverage.",
       "Turn restrictions are only those explicitly present in OSM relation data."
-    ]
+    ],
+    fixtureBudget: {
+      totalElements: 13404,
+      nodes: 9635,
+      ways: 3719,
+      relations: 50,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    betaPracticeAllowed: true,
+    devOnlyStressTest: false
   },
   {
     id: "quiet-residential-roads",
@@ -280,7 +322,16 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     knownLimitations: [
       "Small bounded extract, not full London coverage.",
       "Rail/station context is not expected in this residential fixture."
-    ]
+    ],
+    fixtureBudget: {
+      totalElements: 3339,
+      nodes: 2859,
+      ways: 468,
+      relations: 12,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    betaPracticeAllowed: true,
+    devOnlyStressTest: false
   },
   {
     id: "centralLondon",
@@ -292,11 +343,33 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     attribution: CURATED_LONDON_OSM_ATTRIBUTION,
     knownLimitations: [
       "Larger bounded extract, not full London coverage.",
-      "Kept visual QA only because perfect-route matching over generated 6.5 km stress routes is too slow for scored beta practice.",
+      "Disabled from learner practice because the current Phase 6 page can take around two minutes and only partially load it.",
+      "Kept as a dev-only stress fixture until larger imports use simplification, lazy loading, tiling, or a controlled Geofabrik-style pipeline.",
       "Turn restriction relation data is present in the source export, but the current route graph converter does not yet turn those relations into scored restrictions."
-    ]
+    ],
+    fixtureBudget: {
+      totalElements: 251273,
+      nodes: 213466,
+      ways: 36579,
+      relations: 1228,
+      roadSegments: 70074,
+      approximateRenderedFeatureCount: 79000,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    betaPracticeAllowed: false,
+    devOnlyStressTest: true
   }
 ];
+
+export function curatedRealLondonFixtureAllowedForBetaPractice(
+  metadata: CuratedRealLondonOverpassFixtureMetadata
+): boolean {
+  return (
+    metadata.betaPracticeAllowed &&
+    !metadata.devOnlyStressTest &&
+    metadata.fixtureBudget.totalElements <= metadata.fixtureBudget.maxBetaPracticeElements
+  );
+}
 
 function emptyCoverage(): CuratedLondonFixtureCoverage {
   return {

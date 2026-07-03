@@ -155,6 +155,24 @@ scored beta practice. No Central London scored exercises are offered until a
 future route/matching performance pass can validate them within the normal beta
 practice budget.
 
+Stage 161.8.1 disables Central London from the learner-facing
+`/practice/real-london` catalogue. In the current Phase 6 practice page it can
+take around two minutes and still only partially load, so it is now treated as a
+metadata-only `devOnlyStressTest`: `betaPracticeAllowed=false`,
+`devOnlyStressTest=true`, and it must not be eagerly imported by learner
+practice code. The active beta practice set remains the stable pilot fixture
+plus the four smaller curated Overpass fixtures: Piccadilly Circus, Waterloo
+Bridge, one-way system area, and quiet residential roads.
+
+Fixture budgets now record total elements, nodes, ways, relations, optional
+converted road segment counts, approximate rendered feature counts, fixture
+purpose, `betaPracticeAllowed`, and `devOnlyStressTest`. Oversized or
+dev-only-stress fixtures cannot be offered on `/practice/real-london`, cannot
+be scored, and should not be added to learner-facing bundles without passing a
+budget check. Larger future imports should use a controlled scripted import,
+simplification, lazy loading, tiling, or a Geofabrik-based pipeline before they
+are exposed to beta learners.
+
 Attribution requirement: these fixtures are OpenStreetMap-derived data made
 available under ODbL, so OSM attribution must stay visible wherever they are
 shown. No A-Z, Google, Apple, Ordnance Survey, proprietary tiles, screenshots,

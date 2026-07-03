@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   buildBlockedDirectedEdgeKeys,
@@ -37,8 +38,6 @@ import {
 import {
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
   ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON,
-  centralLondonOsmRouteExercises,
-  centralLondonOsmRouteMap,
   oneWaySystemAreaOsmRouteExercises,
   oneWaySystemAreaOsmRouteMap,
   piccadillyCircusOsmRouteExercises,
@@ -51,6 +50,7 @@ import {
 import {
   CURATED_REAL_LONDON_OVERPASS_FIXTURES,
   auditCuratedLondonOsmFixture,
+  curatedRealLondonFixtureAllowedForBetaPractice,
   summariseCuratedLondonHighwayClasses,
   summariseCuratedLondonRenderCategories
 } from "./curatedLondonOsmEnrichment.ts";
@@ -58,7 +58,6 @@ import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixture
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
 import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
 import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/waterlooBridgeOverpass.json" with { type: "json" };
-import centralLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/centralLondonOverpass.json" with { type: "json" };
 import { auditRealLondonContextCoverage } from "./realLondonContextData.ts";
 import {
   buildPhase6VisualQaScenarioSummary,
@@ -178,7 +177,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const waterlooOption = getExtendedMapOption(waterlooBridgeOsmRouteMap.id);
   const oneWayOption = getExtendedMapOption(oneWaySystemAreaOsmRouteMap.id);
   const quietResidentialOption = getExtendedMapOption(quietResidentialRoadsOsmRouteMap.id);
-  const centralLondonOption = getExtendedMapOption(centralLondonOsmRouteMap.id);
+  const centralLondonOption = getExtendedMapOption("osm-curated-centralLondon");
   const phase6QaOption = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
 
   assert.ok(syntheticOption);
@@ -191,7 +190,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.ok(waterlooOption);
   assert.ok(oneWayOption);
   assert.ok(quietResidentialOption);
-  assert.ok(centralLondonOption);
+  assert.equal(centralLondonOption, undefined);
   assert.ok(phase6QaOption);
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
@@ -203,17 +202,15 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.equal(waterlooOption.source, "converted-osm");
   assert.equal(oneWayOption.source, "converted-osm");
   assert.equal(quietResidentialOption.source, "converted-osm");
-  assert.equal(centralLondonOption.source, "converted-osm");
   assert.equal(phase6QaOption.source, "converted-osm");
   assert.equal(isDevOnlyRouteRunnerMapOption(piccadillyOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(waterlooOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(oneWayOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(quietResidentialOption), true);
-  assert.equal(isDevOnlyRouteRunnerMapOption(centralLondonOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(phase6QaOption), true);
   assert.equal(convertedOptions.length, 6);
-  assert.equal(extendedConvertedOptions.length, 11);
-  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, 5);
+  assert.equal(extendedConvertedOptions.length, 10);
+  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, 4);
   assert.equal(getRouteRunnerMapOption(piccadillyCircusOsmRouteMap.id), undefined);
   assert.deepEqual(
     [realPilotOption.id, realPilotTwoOption.id, largeOption.id],
@@ -229,15 +226,13 @@ test("converted OSM exercises only appear when the converted OSM map is selected
       piccadillyOption.fixtureName,
       waterlooOption.fixtureName,
       oneWayOption.fixtureName,
-      quietResidentialOption.fixtureName,
-      centralLondonOption.fixtureName
+      quietResidentialOption.fixtureName
     ],
     [
       "piccadillyCircusOverpass.json",
       "waterlooBridgeOverpass.json",
       "oneWaySystemAreaOverpass.json",
-      "quietResidentialRoadsOverpass.json",
-      "centralLondonOverpass.json"
+      "quietResidentialRoadsOverpass.json"
     ]
   );
   assert.deepEqual(
@@ -282,13 +277,6 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     quietResidentialRoadsOsmRouteExercises.map((exercise) => exercise.id)
   );
   assert.deepEqual(
-    centralLondonOption.exercises.map((exercise) => exercise.id),
-    centralLondonOsmRouteExercises.map((exercise) => exercise.id)
-  );
-  assert.equal(centralLondonOption.label, "Central London curated OSM - Stress test");
-  assert.equal(centralLondonOption.fixtureUse, "visualQaOnly");
-  assert.equal(centralLondonOption.defaultExerciseId, "");
-  assert.deepEqual(
     phase6QaOption.exercises.map((exercise) => exercise.id),
     phase6RealLondonVisualQaRouteExercises.map((exercise) => exercise.id)
   );
@@ -307,7 +295,6 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.ok(
     quietResidentialOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-quiet-residential-roads-"))
   );
-  assert.equal(centralLondonOption.exercises.length, 0);
   assert.ok(phase6QaOption.exercises.every((exercise) => exercise.id.startsWith("osm-phase-6-")));
 });
 
@@ -352,29 +339,6 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       minTurnRestrictions: 10,
       requiredHighways: ["primary", "tertiary", "residential"],
       requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn", "park", "water"]
-    },
-    {
-      metadataId: "centralLondon",
-      fixture: centralLondonOverpassFixture,
-      map: centralLondonOsmRouteMap,
-      minNamedRoads: 16000,
-      minOneWayWays: 8000,
-      minTurnRestrictions: 1000,
-      requiredHighways: ["primary", "secondary", "tertiary", "residential"],
-      requiredCategories: [
-        "majorRoad",
-        "secondaryRoad",
-        "localRoad",
-        "serviceRoad",
-        "bridgeRoad",
-        "tunnelRoad",
-        "oneWaySegment",
-        "restrictedTurn",
-        "park",
-        "water",
-        "rail",
-        "station"
-      ]
     }
   ] as const;
 
@@ -419,6 +383,28 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       assert.ok(renderCategories[category] > 0, `${fixture.metadataId} category=${category}`);
     }
   }
+});
+
+test("Stage 161.8.1 oversized Central London fixture is metadata-only and absent from beta catalogues", () => {
+  const metadata = CURATED_REAL_LONDON_OVERPASS_FIXTURES.find((item) => item.id === "centralLondon");
+  const catalogueSource = readFileSync("app/dev/route-runner/curatedRealLondonRouteRunnerMaps.ts", "utf8");
+
+  assert.ok(metadata);
+  assert.equal(metadata.fixtureName, "centralLondonOverpass.json");
+  assert.equal(metadata.devOnlyStressTest, true);
+  assert.equal(metadata.betaPracticeAllowed, false);
+  assert.equal(metadata.fixtureBudget.totalElements, 251273);
+  assert.equal(metadata.fixtureBudget.roadSegments, 70074);
+  assert.equal(curatedRealLondonFixtureAllowedForBetaPractice(metadata), false);
+  assert.equal(
+    CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.some((option) => option.id === "osm-curated-centralLondon"),
+    false
+  );
+  assert.equal(
+    ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.some((option) => option.id === "osm-curated-centralLondon"),
+    false
+  );
+  assert.equal(catalogueSource.includes("centralLondonOverpass.json"), false);
 });
 
 test("Stage 151 visual QA scenario demonstrates combined Phase 6 map styling deterministically", () => {

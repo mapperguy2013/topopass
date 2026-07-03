@@ -3,7 +3,6 @@ import {
   type RouteExerciseDifficulty
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OsmRouteGraphMapDefinition } from "../../../lib/map-engine/osm/index.ts";
-import centralLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/centralLondonOverpass.json" with { type: "json" };
 import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixtures/oneWaySystemAreaOverpass.json" with { type: "json" };
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
 import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
@@ -26,7 +25,6 @@ const PICCADILLY_CIRCUS_OSM_MAP_ID = "osm-curated-piccadilly-circus";
 const WATERLOO_BRIDGE_OSM_MAP_ID = "osm-curated-waterloo-bridge";
 const ONE_WAY_SYSTEM_AREA_OSM_MAP_ID = "osm-curated-one-way-system-area";
 const QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID = "osm-curated-quiet-residential-roads";
-const CENTRAL_LONDON_OSM_MAP_ID = "osm-curated-centralLondon";
 
 function buildCuratedRealLondonOsmMap(
   fixture: unknown,
@@ -68,12 +66,6 @@ export const quietResidentialRoadsOsmRouteMap = buildCuratedRealLondonOsmMap(qui
   mapId: QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID,
   name: "Quiet residential curated OSM map",
   description: "Dev-only curated Overpass fixture for suburban learner-driver Phase 6 visual QA."
-});
-
-export const centralLondonOsmRouteMap = buildCuratedRealLondonOsmMap(centralLondonOverpassFixture, {
-  mapId: CENTRAL_LONDON_OSM_MAP_ID,
-  name: "Central London curated OSM stress test",
-  description: "Dev-only larger Central London Overpass fixture for Phase 6 map-engine and renderer stress testing."
 });
 
 function buildCuratedRealLondonRoutableExercisePreflight(
@@ -301,8 +293,6 @@ export const quietResidentialRoadsOsmRoutePreflight = requireDefaultPreflight(
   "quiet-residential-roads"
 );
 
-export const centralLondonOsmRoutePreflights: CuratedFixtureRoutePreflight[] = [];
-
 function exercisesFromPreflights(preflights: readonly CuratedFixtureRoutePreflight[]): RouteExercise[] {
   return preflights.flatMap((preflight) => (preflight.exercise ? [preflight.exercise] : []));
 }
@@ -311,7 +301,6 @@ export const piccadillyCircusOsmRouteExercises = exercisesFromPreflights(piccadi
 export const waterlooBridgeOsmRouteExercises = exercisesFromPreflights(waterlooBridgeOsmRoutePreflights);
 export const oneWaySystemAreaOsmRouteExercises = exercisesFromPreflights(oneWaySystemAreaOsmRoutePreflights);
 export const quietResidentialRoadsOsmRouteExercises = exercisesFromPreflights(quietResidentialRoadsOsmRoutePreflights);
-export const centralLondonOsmRouteExercises = exercisesFromPreflights(centralLondonOsmRoutePreflights);
 
 export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   {
@@ -369,20 +358,6 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     sourceOverpassFixture: quietResidentialRoadsOverpassFixture,
     devOnly: true,
     fixtureUse: quietResidentialRoadsOsmRoutePreflight.fixtureUse
-  },
-  {
-    id: centralLondonOsmRouteMap.id,
-    label: "Central London curated OSM - Stress test",
-    description: getCuratedRealLondonFixtureMetadata("centralLondon").areaPurpose,
-    source: "converted-osm",
-    map: centralLondonOsmRouteMap,
-    exercises: centralLondonOsmRouteExercises,
-    defaultExerciseId: "",
-    attribution: getCuratedRealLondonFixtureMetadata("centralLondon").attribution.text,
-    fixtureName: "centralLondonOverpass.json",
-    sourceOverpassFixture: centralLondonOverpassFixture,
-    devOnly: true,
-    fixtureUse: "visualQaOnly"
   }
 ];
 

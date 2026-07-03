@@ -1053,8 +1053,18 @@ relations, relation-backed water polygons, rail/station context, parks,
 landmarks, bridges, and tunnels. It converts to a 67,216-node routable graph
 with 119,024 directed edges, but generated 6.5 km perfect-route matching took
 about 80 seconds in the stress probe, so it is deliberately `visualQaOnly` with
-zero scored beta exercises. This keeps the beta selector useful for large-area
-visual QA without weakening matching, legality, scoring, or route validation.
+zero scored beta exercises. It remains useful for explicit large-area stress
+inspection without weakening matching, legality, scoring, or route validation.
+Stage 161.8.1 disables that oversized fixture from `/practice/real-london`
+after real page loading proved too slow, with about two-minute partial loads in
+the current Phase 6 practice UI. The beta practice catalogue now loads only the
+stable Real London pilot plus Piccadilly Circus, Waterloo Bridge, one-way
+system, and quiet residential curated fixtures. Central London remains
+metadata-only as a `devOnlyStressTest`; it is not offered as scored practice,
+does not appear in the practice selector, and is not imported by the normal
+learner catalogue. Future larger imports must pass fixture budget checks and
+should use controlled scripted import, simplification, lazy loading, tiling, or
+a Geofabrik-based pipeline before they can be exposed to beta learners.
 
 ## Current Feature Set
 

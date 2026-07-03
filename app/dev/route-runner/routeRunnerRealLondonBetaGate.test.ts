@@ -83,8 +83,7 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     "osm-curated-piccadilly-circus",
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
-    "osm-curated-quiet-residential-roads",
-    "osm-curated-centralLondon"
+    "osm-curated-quiet-residential-roads"
   ];
   const access = resolveRealLondonBetaMapAccess({
     requestedMapId: "osm-curated-waterloo-bridge",
@@ -97,6 +96,8 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     assert.equal(nonBetaVisibleMapIds.includes(mapId), false, mapId);
   }
 
+  assert.equal(visibleMapIds.includes("osm-curated-centralLondon"), false);
+  assert.equal(nonBetaVisibleMapIds.includes("osm-curated-centralLondon"), false);
   assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
   assert.equal(access.state, "available");
   assert.equal(access.selectedMapOption.map.id, "osm-curated-waterloo-bridge");
@@ -109,9 +110,9 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
   });
 
-  assert.equal(centralLondonAccess.state, "available");
-  assert.equal(centralLondonAccess.selectedMapOption.fixtureUse, "visualQaOnly");
-  assert.equal(centralLondonAccess.selectedMapOption.exercises.length, 0);
+  assert.equal(centralLondonAccess.state, "unknown-map");
+  assert.equal(centralLondonAccess.selectedMapOption.map.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
+  assert.equal(centralLondonAccess.unavailableState?.reasonCode, "unknown-map");
 });
 
 test("dev QA route-runner map options expose every registered map regardless of beta flag", () => {

@@ -375,13 +375,31 @@ largest drivable component of 62,152 nodes, 21,124 one-way directed edges, and
 exercises because generated 6.5 km perfect-route matching took about 80 seconds
 in the stress probe. The acceptance rule is therefore:
 
-- Central London may appear in the beta map selector as a labelled stress-test
-  map.
-- Central London must not offer scored route exercises until matching/scoring
-  performance is validated for the larger graph.
-- Visual-only selection must still hide dev QA panels on `/practice/real-london`
-  and must not weaken legality, matching, scoring, or route validation.
+- Central London must not appear in the `/practice/real-london` beta map
+  selector while it is oversized for the current practice-page loading model.
+- Central London remains metadata-only as `devOnlyStressTest` with
+  `betaPracticeAllowed=false`.
+- It must not offer scored route exercises until loading, matching, and scoring
+  performance are validated for the larger graph.
+- Learner practice must load only the stable pilot plus Piccadilly Circus,
+  Waterloo Bridge, one-way system area, and quiet residential curated fixtures.
+- Oversized or dev-only stress fixtures must not be eagerly imported by
+  learner-facing catalogues.
 - OSM attribution remains visible and no runtime Overpass calls are introduced.
+
+## Stage 161.8.1 Fixture Budget Gate
+
+Stage 161.8.1 isolates the oversized Central London fixture after current
+practice-page testing showed around two-minute partial loads. Fixture metadata
+now records element counts, node/way/relation counts, optional road segment and
+rendered feature counts, `betaPracticeAllowed`, and `devOnlyStressTest`.
+
+The Phase 6 beta practice rule is: a fixture can be offered on
+`/practice/real-london` only when it is not dev-only stress data, is explicitly
+beta-practice allowed, stays within the fixture budget, and has validated
+scoreable route exercises where scoring is offered. Larger future imports need
+controlled scripted import, simplification, lazy loading, tiling, or a
+Geofabrik-based pipeline before learner exposure.
 
 ## Acceptance Checklist
 

@@ -15,12 +15,9 @@ import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixture
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
 import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
 import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/waterlooBridgeOverpass.json" with { type: "json" };
-import centralLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/centralLondonOverpass.json" with { type: "json" };
 import { validateExerciseReachability } from "./exerciseValidation.ts";
 import {
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
-  centralLondonOsmRouteExercises,
-  centralLondonOsmRouteMap,
   oneWaySystemAreaOsmRouteMap,
   oneWaySystemAreaOsmRoutePreflight,
   oneWaySystemAreaOsmRoutePreflights,
@@ -360,7 +357,11 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
   );
 
   assert.equal(scoreableCuratedOptions.length, CURATED_PREFLIGHT_CASES.length);
-  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, CURATED_PREFLIGHT_CASES.length + 1);
+  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, CURATED_PREFLIGHT_CASES.length);
+  assert.equal(
+    CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.some((option) => option.id === "osm-curated-centralLondon"),
+    false
+  );
 
   for (const fixtureCase of CURATED_PREFLIGHT_CASES) {
     const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find((candidate) => candidate.map.id === fixtureCase.map.id);
@@ -376,34 +377,6 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
     );
     assert.equal(option.exercises.length, 3, fixtureCase.id);
   }
-});
-
-test("Stage 161.8 centralLondon stress fixture stays visual QA only because scoring is too slow", () => {
-  const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
-    (candidate) => candidate.id === "osm-curated-centralLondon"
-  );
-  const diagnostics = buildCuratedFixtureConnectivityDiagnostics({
-    map: centralLondonOsmRouteMap,
-    sourceOverpassFixture: centralLondonOverpassFixture
-  });
-
-  assert.ok(option);
-  assert.equal(option.label, "Central London curated OSM - Stress test");
-  assert.equal(option.fixtureUse, "visualQaOnly");
-  assert.equal(option.defaultExerciseId, "");
-  assert.deepEqual(option.exercises, []);
-  assert.deepEqual(centralLondonOsmRouteExercises, []);
-  assert.ok(diagnostics.routableNodeCount > 60000);
-  assert.ok(diagnostics.routableEdgeCount > 100000);
-  assert.ok(diagnostics.connectedComponentCount > 100);
-  assert.ok(diagnostics.largestConnectedComponentSize > 60000);
-  assert.ok(diagnostics.oneWayEdgeCount > 20000);
-  assert.equal(diagnostics.sourceTurnRestrictionRelationCount, 1032);
-  assert.ok(diagnostics.accessRestrictedRoadCount > 300);
-  assert.ok(
-    diagnostics.diagnosticMessages.some((message) => message.includes("routable components")),
-    diagnostics.diagnosticMessages.join("\n")
-  );
 });
 
 test("Stage 160.6 generated exercise anchors stay on preferred drivable roads", () => {

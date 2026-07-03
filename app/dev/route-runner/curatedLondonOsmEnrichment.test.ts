@@ -13,8 +13,10 @@ import {
   CURATED_LONDON_OSM_TAG_WHITELIST,
   CURATED_LONDON_OSM_ZONES,
   CURATED_LONDON_RENDER_CATEGORIES,
+  CURATED_REAL_LONDON_OVERPASS_FIXTURES,
   auditCuratedLondonOsmFixture,
   auditCurrentRealLondonFixtureSet,
+  curatedRealLondonFixtureAllowedForBetaPractice,
   summariseCuratedLondonRenderCategories
 } from "./curatedLondonOsmEnrichment.ts";
 import { buildRealLondonContextFeatures } from "./realLondonContextData.ts";
@@ -141,6 +143,7 @@ test("Stage 160.5 curated fixture converts safely and supplies render context fe
 });
 
 test("Stage 161.8 centralLondon fixture audits larger coverage and relation-backed water", () => {
+  const metadata = CURATED_REAL_LONDON_OVERPASS_FIXTURES.find((fixture) => fixture.id === "centralLondon");
   const coverage = auditCuratedLondonOsmFixture(centralLondonOverpassFixture);
   const categories = summariseCuratedLondonRenderCategories(centralLondonOverpassFixture);
   const waterMultipolygonRelations = (centralLondonOverpassFixture.elements ?? []).filter(
@@ -150,6 +153,14 @@ test("Stage 161.8 centralLondon fixture audits larger coverage and relation-back
       (element.tags.natural === "water" || Boolean(element.tags.water) || Boolean(element.tags.waterway))
   );
 
+  assert.ok(metadata);
+  assert.equal(metadata.devOnlyStressTest, true);
+  assert.equal(metadata.betaPracticeAllowed, false);
+  assert.equal(metadata.fixtureBudget.totalElements, 251273);
+  assert.equal(metadata.fixtureBudget.nodes, 213466);
+  assert.equal(metadata.fixtureBudget.ways, 36579);
+  assert.equal(metadata.fixtureBudget.relations, 1228);
+  assert.equal(curatedRealLondonFixtureAllowedForBetaPractice(metadata), false);
   assert.ok(coverage.elementCount > 250000);
   assert.ok(coverage.nodeCount > 200000);
   assert.ok(coverage.wayCount > 35000);

@@ -178,9 +178,18 @@ seconds, so the fixture is registered as `visualQaOnly` with zero exercises.
 This keeps larger-area visual QA available without weakening route matching,
 legality checks, scoring, or exercise validation.
 
-Known limitation before larger scripted imports: the engine can convert and
-inspect this bounded extract, but scored route matching needs performance work
-before similarly large fixtures should be offered as learner practice.
+Stage 161.8.1 disables Central London from `/practice/real-london` after the
+current Phase 6 practice page took around two minutes and still only partially
+loaded it. It remains metadata-only as a `devOnlyStressTest` with
+`betaPracticeAllowed=false`; the learner beta selector loads only the stable
+pilot plus the four smaller curated fixtures. Known limitation before larger
+scripted imports: the engine can convert and inspect this bounded extract, but
+learner-facing loading and scored route matching need performance work before
+similarly large fixtures should be offered as practice.
+
+Future large imports should use controlled scripted import, simplification,
+lazy loading, tiling, or a Geofabrik-based pipeline, and must pass fixture
+budget checks before beta exposure.
 
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 
