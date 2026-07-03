@@ -38,8 +38,9 @@ import {
 import {
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
   ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON,
-  kingsCrossEustonOsmRouteExercises,
-  kingsCrossEustonOsmRouteMap,
+  KINGS_CROSS_EUSTON_LAZY_LOAD_ID,
+  KINGS_CROSS_EUSTON_OSM_MAP_ID,
+  kingsCrossEustonLazyPlaceholderRouteMap,
   oneWaySystemAreaOsmRouteExercises,
   oneWaySystemAreaOsmRouteMap,
   piccadillyCircusOsmRouteExercises,
@@ -49,6 +50,13 @@ import {
   waterlooBridgeOsmRouteExercises,
   waterlooBridgeOsmRouteMap
 } from "./curatedRealLondonRouteRunnerMaps.ts";
+import {
+  KINGS_CROSS_EUSTON_FIXTURE_LOAD_TIMING,
+  kingsCrossEustonOsmRouteExercises,
+  kingsCrossEustonOsmRouteMap,
+  kingsCrossEustonOsmRouteRunnerMapOption
+} from "./curatedKingsCrossEustonRouteRunnerMap.ts";
+import { routeRunnerMapOptionNeedsLazyLoad } from "./lazyRouteRunnerMapOptions.ts";
 import {
   CURATED_REAL_LONDON_OVERPASS_FIXTURES,
   auditCuratedLondonOsmFixture,
@@ -180,7 +188,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const waterlooOption = getExtendedMapOption(waterlooBridgeOsmRouteMap.id);
   const oneWayOption = getExtendedMapOption(oneWaySystemAreaOsmRouteMap.id);
   const quietResidentialOption = getExtendedMapOption(quietResidentialRoadsOsmRouteMap.id);
-  const kingsCrossEustonOption = getExtendedMapOption(kingsCrossEustonOsmRouteMap.id);
+  const kingsCrossEustonOption = getExtendedMapOption(KINGS_CROSS_EUSTON_OSM_MAP_ID);
   const centralLondonOption = getExtendedMapOption("osm-curated-centralLondon");
   const phase6QaOption = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
 
@@ -208,6 +216,11 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.equal(oneWayOption.source, "converted-osm");
   assert.equal(quietResidentialOption.source, "converted-osm");
   assert.equal(kingsCrossEustonOption.source, "converted-osm");
+  assert.equal(kingsCrossEustonOption.map.id, kingsCrossEustonLazyPlaceholderRouteMap.id);
+  assert.equal(kingsCrossEustonOption.lazyLoadId, KINGS_CROSS_EUSTON_LAZY_LOAD_ID);
+  assert.equal(kingsCrossEustonOption.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
+  assert.equal(routeRunnerMapOptionNeedsLazyLoad(kingsCrossEustonOption), true);
+  assert.equal(kingsCrossEustonOption.sourceOverpassFixture, undefined);
   assert.equal(phase6QaOption.source, "converted-osm");
   assert.equal(isDevOnlyRouteRunnerMapOption(piccadillyOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(waterlooOption), true);
@@ -287,6 +300,10 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   );
   assert.deepEqual(
     kingsCrossEustonOption.exercises.map((exercise) => exercise.id),
+    []
+  );
+  assert.deepEqual(
+    kingsCrossEustonOsmRouteRunnerMapOption.exercises.map((exercise) => exercise.id),
     kingsCrossEustonOsmRouteExercises.map((exercise) => exercise.id)
   );
   assert.deepEqual(
@@ -309,7 +326,9 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     quietResidentialOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-quiet-residential-roads-"))
   );
   assert.ok(
-    kingsCrossEustonOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-kings-cross-euston-"))
+    kingsCrossEustonOsmRouteRunnerMapOption.exercises.every((exercise) =>
+      exercise.id.startsWith("osm-curated-kings-cross-euston-")
+    )
   );
   assert.ok(phase6QaOption.exercises.every((exercise) => exercise.id.startsWith("osm-phase-6-")));
 });
@@ -446,6 +465,31 @@ test("Stage 161.8.1 oversized Central London fixture is metadata-only and absent
     false
   );
   assert.equal(catalogueSource.includes("centralLondonOverpass.json"), false);
+});
+
+test("Stage 161.8.4 King's Cross fixture is beta-gated behind lazy loading", () => {
+  const metadata = CURATED_REAL_LONDON_OVERPASS_FIXTURES.find((item) => item.id === "kingsCrossEuston");
+  const catalogueSource = readFileSync("app/dev/route-runner/curatedRealLondonRouteRunnerMaps.ts", "utf8");
+  const option = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find(
+    (candidate) => candidate.id === KINGS_CROSS_EUSTON_OSM_MAP_ID
+  );
+
+  assert.ok(metadata);
+  assert.ok(option);
+  assert.equal(metadata.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
+  assert.equal(metadata.fixtureBudget.totalElements, 25746);
+  assert.equal(metadata.fixtureBudget.roadSegments, 6963);
+  assert.equal(metadata.fixtureBudget.approximateRenderedFeatureCount, 8447);
+  assert.equal(metadata.fixtureBudget.directedEdges, 14192);
+  assert.equal(curatedRealLondonFixtureAllowedForBetaPractice(metadata), true);
+  assert.equal(option.lazyLoadId, KINGS_CROSS_EUSTON_LAZY_LOAD_ID);
+  assert.equal(option.exercises.length, 0);
+  assert.equal(option.sourceOverpassFixture, undefined);
+  assert.equal(catalogueSource.includes("kingsCrossEustonOverpass.json\" with { type: \"json\" }"), false);
+  assert.equal(kingsCrossEustonOsmRouteRunnerMapOption.exercises.length, 3);
+  assert.equal(kingsCrossEustonOsmRouteRunnerMapOption.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
+  assert.equal(KINGS_CROSS_EUSTON_FIXTURE_LOAD_TIMING.fixtureName, "kingsCrossEustonOverpass.json");
+  assert.ok(KINGS_CROSS_EUSTON_FIXTURE_LOAD_TIMING.osmConversionMs >= 0);
 });
 
 test("Stage 151 visual QA scenario demonstrates combined Phase 6 map styling deterministically", () => {

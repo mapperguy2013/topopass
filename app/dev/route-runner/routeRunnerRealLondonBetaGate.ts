@@ -253,7 +253,7 @@ export function buildPhase5RealLondonBetaReadinessReview(input: {
   );
   const readinessReports = readinessReportOptions.map((option) => buildLondonPilotReadinessReportForMapId(option.map.id));
   const scoreableRealLondonMapOptions = realLondonMapOptions.filter(
-    (option) => option.fixtureUse === undefined || option.fixtureUse === "routableExercise"
+    (option) => !option.lazyLoadId && (option.fixtureUse === undefined || option.fixtureUse === "routableExercise")
   );
   const attemptVersioningOk = scoreableRealLondonMapOptions.every((option) => buildAttemptVersioningStatus(option));
   const studentRouteFlowOk = scoreableRealLondonMapOptions.every((option) => buildStudentRouteFlowStatus(option));

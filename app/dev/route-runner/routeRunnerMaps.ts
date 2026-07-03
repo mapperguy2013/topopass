@@ -21,6 +21,11 @@ import {
 
 export type RouteRunnerMapSource = "synthetic-dev" | "converted-osm";
 export type RouteRunnerFixtureUse = "visualQaOnly" | "routableExercise" | "routeReviewFixture";
+export type RouteRunnerFixturePerformanceGate =
+  | "betaPracticeAllowed"
+  | "betaPracticeAllowedWithLoading"
+  | "devOnlyStressTest"
+  | "visualQaOnly";
 
 export type RouteRunnerMapOption = {
   id: string;
@@ -35,6 +40,9 @@ export type RouteRunnerMapOption = {
   sourceOverpassFixture?: unknown;
   devOnly?: boolean;
   fixtureUse?: RouteRunnerFixtureUse;
+  fixturePerformanceGate?: RouteRunnerFixturePerformanceGate;
+  lazyLoadId?: string;
+  lazyLoadingLabel?: string;
 };
 
 export type RouteRunnerMapBounds = {

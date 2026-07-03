@@ -19,9 +19,6 @@ import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/
 import { validateExerciseReachability } from "./exerciseValidation.ts";
 import {
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
-  kingsCrossEustonOsmRouteMap,
-  kingsCrossEustonOsmRoutePreflight,
-  kingsCrossEustonOsmRoutePreflights,
   oneWaySystemAreaOsmRouteMap,
   oneWaySystemAreaOsmRoutePreflight,
   oneWaySystemAreaOsmRoutePreflights,
@@ -36,6 +33,12 @@ import {
   waterlooBridgeOsmRoutePreflight,
   waterlooBridgeOsmRoutePreflights
 } from "./curatedRealLondonRouteRunnerMaps.ts";
+import {
+  kingsCrossEustonOsmRouteMap,
+  kingsCrossEustonOsmRoutePreflight,
+  kingsCrossEustonOsmRoutePreflights,
+  kingsCrossEustonOsmRouteRunnerMapOption
+} from "./curatedKingsCrossEustonRouteRunnerMap.ts";
 import {
   buildCuratedFixtureConnectivityDiagnostics,
   buildCuratedFixtureRoutableExercise
@@ -377,7 +380,11 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
   );
 
   for (const fixtureCase of CURATED_PREFLIGHT_CASES) {
-    const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find((candidate) => candidate.map.id === fixtureCase.map.id);
+    const catalogueOption = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
+      (candidate) => candidate.map.id === fixtureCase.map.id
+    );
+    const option =
+      fixtureCase.id === "kings-cross-euston" ? kingsCrossEustonOsmRouteRunnerMapOption : catalogueOption;
 
     assert.ok(option, fixtureCase.id);
     assert.equal(option.devOnly, true, fixtureCase.id);
@@ -390,6 +397,15 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
     );
     assert.equal(option.exercises.length, 3, fixtureCase.id);
   }
+
+  const kingsCrossPlaceholder = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
+    (option) => option.id === kingsCrossEustonOsmRouteRunnerMapOption.id
+  );
+
+  assert.ok(kingsCrossPlaceholder);
+  assert.equal(kingsCrossPlaceholder.lazyLoadId, "kingsCrossEuston");
+  assert.equal(kingsCrossPlaceholder.defaultExerciseId, "");
+  assert.equal(kingsCrossPlaceholder.exercises.length, 0);
 });
 
 test("Stage 160.6 generated exercise anchors stay on preferred drivable roads", () => {

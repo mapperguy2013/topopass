@@ -44,6 +44,7 @@ import {
 import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
 import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
 import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondonRouteRunnerMaps.ts";
+import { kingsCrossEustonOsmRouteRunnerMapOption } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
 
 function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
   if (Array.isArray(value)) {
@@ -603,9 +604,14 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
     ["osm-curated-kings-cross-euston", 0]
   ]);
 
-  for (const option of CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
-    (candidate) => candidate.fixtureUse === "routableExercise"
-  )) {
+  const routableRenderOptions = [
+    ...CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
+      (candidate) => candidate.fixtureUse === "routableExercise" && !candidate.lazyLoadId
+    ),
+    kingsCrossEustonOsmRouteRunnerMapOption
+  ];
+
+  for (const option of routableRenderOptions) {
     const roadVisuals = buildSyntheticRoadVisuals(option.map);
     const backgroundFeatures = buildSyntheticBackgroundFeatures(option.map, {
       sourceOverpassFixture: option.sourceOverpassFixture

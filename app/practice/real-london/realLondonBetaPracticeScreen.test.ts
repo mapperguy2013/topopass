@@ -299,6 +299,11 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.equal(mapIds.includes("osm-curated-centralLondon"), false);
   assert.ok(model.mapRows.every((row) => row.description.length > 0));
   assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
+  const kingsCrossRow = model.mapRows.find((row) => row.id === "osm-curated-kings-cross-euston");
+
+  assert.ok(kingsCrossRow);
+  assert.equal(kingsCrossRow.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
+  assert.equal(kingsCrossRow.lazyLoadId, "kingsCrossEuston");
 });
 
 test("Stage 161.6 beta screen can select a curated routable fixture", () => {
@@ -347,8 +352,7 @@ test("Stage 161.6.3 imported curated maps expose multiple scoreable beta exercis
     "osm-curated-piccadilly-circus",
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
-    "osm-curated-quiet-residential-roads",
-    "osm-curated-kings-cross-euston"
+    "osm-curated-quiet-residential-roads"
   ];
 
   for (const mapId of expectedImportedMapIds) {
@@ -378,6 +382,30 @@ test("Stage 161.6.3 imported curated maps expose multiple scoreable beta exercis
     assert.equal(model.routeFlow.shortestRouteFound, true, mapId);
     assert.equal(model.routeFlow.existingRunnerScorePassed, true, mapId);
   }
+});
+
+test("Stage 161.8.4 beta screen labels King's Cross as lazy loaded scored practice", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: "osm-curated-kings-cross-euston"
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available") {
+    throw new Error("Expected available King's Cross beta practice screen.");
+  }
+
+  assert.equal(model.mapId, "osm-curated-kings-cross-euston");
+  assert.equal(model.selectedMap.fixtureUse, "routableExercise");
+  assert.equal(model.selectedMap.scoreable, true);
+  assert.equal(model.selectedMap.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
+  assert.equal(model.selectedMap.lazyLoadId, "kingsCrossEuston");
+  assert.equal(model.selectedMap.lazyLoadingLabel, "Loading King's Cross / Euston map...");
+  assert.equal(model.exerciseRows.length, 0);
+  assert.equal(model.selectedExercise, null);
+  assert.equal(model.routeFlow.shortestRouteFound, false);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, false);
 });
 
 test("Stage 161.6.4 curated route exercise selector changes active stops and route flow", () => {
@@ -421,8 +449,7 @@ test("Stage 161.6.4 every imported curated map resolves each offered route exerc
     "osm-curated-piccadilly-circus",
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
-    "osm-curated-quiet-residential-roads",
-    "osm-curated-kings-cross-euston"
+    "osm-curated-quiet-residential-roads"
   ];
 
   for (const mapId of expectedImportedMapIds) {

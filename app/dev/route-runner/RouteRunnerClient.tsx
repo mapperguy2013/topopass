@@ -251,6 +251,10 @@ import {
   resolveRealLondonBetaMapAccess
 } from "./routeRunnerRealLondonBetaGate";
 import {
+  loadLazyRouteRunnerMapOption,
+  routeRunnerMapOptionNeedsLazyLoad
+} from "./lazyRouteRunnerMapOptions";
+import {
   buildCompactRestrictionOverlayModel,
   buildPracticeExercisesPanelModel,
   buildRouteRunnerPanelVisibility
@@ -3164,26 +3168,33 @@ export function RouteRunnerClient({
   const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
   const [showDevQaPanels, setShowDevQaPanels] = useState(false);
+  const [lazyMapOptionsById, setLazyMapOptionsById] = useState<Record<string, RouteRunnerMapOption>>({});
+  const [lazyMapLoadingById, setLazyMapLoadingById] = useState<Record<string, boolean>>({});
+  const [lazyMapLoadErrorById, setLazyMapLoadErrorById] = useState<Record<string, string | null>>({});
   const isDevRouteRunner = mode === "dev";
   const practiceModePanelVisibility = useMemo(
     () => buildRouteRunnerPracticeModePanelVisibility({ mode }),
     [mode]
   );
   const showDeveloperPanels = practiceModePanelVisibility.showDeveloperPanels;
+  const effectiveMapOptions = useMemo(
+    () => mapOptions.map((option) => lazyMapOptionsById[option.id] ?? option),
+    [lazyMapOptionsById, mapOptions]
+  );
 
   const visibleMapOptions = useMemo(
     () => {
       if (isDevRouteRunner) {
-        return getRouteRunnerDevQaMapOptions(mapOptions);
+        return getRouteRunnerDevQaMapOptions(effectiveMapOptions);
       }
 
       if (isStudentBetaRouteRunner) {
-        return getRealLondonBetaMapOptions(mapOptions);
+        return getRealLondonBetaMapOptions(effectiveMapOptions);
       }
 
-      return getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED, mapOptions });
+      return getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED, mapOptions: effectiveMapOptions });
     },
-    [isDevRouteRunner, isStudentBetaRouteRunner, mapOptions]
+    [effectiveMapOptions, isDevRouteRunner, isStudentBetaRouteRunner]
   );
   const betaMapAccess = useMemo(
     () => {
@@ -3205,7 +3216,7 @@ export function RouteRunnerClient({
         const selectedRealLondonMapOption =
           visibleMapOptions.find((option) => option.id === mapOptionId) ??
           visibleMapOptions[0] ??
-          requireRouteRunnerMapOption(mapOptions[0]);
+          requireRouteRunnerMapOption(effectiveMapOptions[0]);
 
         return {
           requestedMapId: mapOptionId,
@@ -3219,12 +3230,18 @@ export function RouteRunnerClient({
       return resolveRealLondonBetaMapAccess({
         requestedMapId: mapOptionId,
         betaEnabled: REAL_LONDON_BETA_ENABLED,
-        mapOptions
+        mapOptions: effectiveMapOptions
       });
     },
-    [isDevRouteRunner, isStudentBetaRouteRunner, mapOptionId, mapOptions, visibleMapOptions]
+    [effectiveMapOptions, isDevRouteRunner, isStudentBetaRouteRunner, mapOptionId, visibleMapOptions]
   );
   const selectedMapOption = betaMapAccess.selectedMapOption;
+  const selectedMapOptionNeedsLazyLoad = routeRunnerMapOptionNeedsLazyLoad(selectedMapOption);
+  const selectedMapOptionIsLoading =
+    selectedMapOptionNeedsLazyLoad &&
+    (lazyMapOptionsById[selectedMapOption.id] === undefined || lazyMapLoadingById[selectedMapOption.id] === true);
+  const selectedMapLoadingLabel = selectedMapOption.lazyLoadingLabel ?? `Loading ${selectedMapOption.label} map...`;
+  const selectedMapLoadError = lazyMapLoadErrorById[selectedMapOption.id] ?? null;
   const activeMap = selectedMapOption.map;
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
@@ -3270,6 +3287,69 @@ export function RouteRunnerClient({
       }),
     [activeExercises, selectedExerciseId]
   );
+
+  useEffect(() => {
+    const lazyLoadId = selectedMapOption.lazyLoadId;
+
+    if (!lazyLoadId || lazyMapOptionsById[selectedMapOption.id]) {
+      return;
+    }
+
+    let cancelled = false;
+
+    setLazyMapLoadingById((currentState) => ({
+      ...currentState,
+      [selectedMapOption.id]: true
+    }));
+    setLazyMapLoadErrorById((currentState) => ({
+      ...currentState,
+      [selectedMapOption.id]: null
+    }));
+
+    loadLazyRouteRunnerMapOption(lazyLoadId)
+      .then((loadedOption) => {
+        if (cancelled) {
+          return;
+        }
+
+        setLazyMapOptionsById((currentState) => ({
+          ...currentState,
+          [selectedMapOption.id]: loadedOption
+        }));
+        setExerciseId((currentExerciseId) =>
+          resolveRouteRunnerExerciseSelection({
+            exercises: loadedOption.exercises,
+            requestedExerciseId: currentExerciseId,
+            defaultExerciseId: loadedOption.defaultExerciseId,
+            scoreable: routeRunnerMapOptionIsScoreable(loadedOption)
+          })
+        );
+      })
+      .catch((caughtError) => {
+        if (cancelled) {
+          return;
+        }
+
+        setLazyMapLoadErrorById((currentState) => ({
+          ...currentState,
+          [selectedMapOption.id]: readableError(caughtError)
+        }));
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setLazyMapLoadingById((currentState) => ({
+          ...currentState,
+          [selectedMapOption.id]: false
+        }));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lazyMapOptionsById, selectedMapOption.id, selectedMapOption.lazyLoadId]);
 
   useEffect(() => {
     if (exerciseId !== selectedExerciseId) {
@@ -4566,12 +4646,12 @@ export function RouteRunnerClient({
         ? requireRouteRunnerMapOption(
             visibleMapOptions.find((option) => option.id === nextMapOptionId) ??
               visibleMapOptions[0] ??
-              mapOptions[0]
+              effectiveMapOptions[0]
           )
       : resolveRealLondonBetaMapAccess({
           requestedMapId: nextMapOptionId,
           betaEnabled: REAL_LONDON_BETA_ENABLED,
-          mapOptions
+          mapOptions: effectiveMapOptions
         }).selectedMapOption;
 
     const nextExerciseId = resolveRouteRunnerExerciseSelection({
@@ -5059,7 +5139,13 @@ export function RouteRunnerClient({
               <button
                 type="button"
                 onClick={submitDrawnAttempt}
-                disabled={drawnTrace.points.length === 0 || isDrawing || !selectedExercise || !selectedMapIsScoreable}
+                disabled={
+                  selectedMapOptionIsLoading ||
+                  drawnTrace.points.length === 0 ||
+                  isDrawing ||
+                  !selectedExercise ||
+                  !selectedMapIsScoreable
+                }
                 className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 Submit Attempt
@@ -5135,6 +5221,11 @@ export function RouteRunnerClient({
                   <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-blue-800">
                     {selectedMapFixtureUseLabel}
                   </span>
+                  {selectedMapOptionIsLoading ? (
+                    <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-900">
+                      Preparing map
+                    </span>
+                  ) : null}
                   {!selectedMapIsScoreable ? (
                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900">
                       Map inspection only
@@ -5166,6 +5257,18 @@ export function RouteRunnerClient({
               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
                 <p className="font-semibold">{betaMapAccess.unavailableState.title}</p>
                 <p className="mt-1">{betaMapAccess.unavailableState.message}</p>
+              </div>
+            ) : null}
+            {selectedMapOptionIsLoading ? (
+              <div className="mt-2 rounded-md border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-950">
+                <p className="font-semibold">{selectedMapLoadingLabel}</p>
+                <p className="mt-1">Submit is disabled until the selected map and exercises are ready.</p>
+              </div>
+            ) : null}
+            {selectedMapLoadError ? (
+              <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs leading-5 text-red-950">
+                <p className="font-semibold">Map failed to load.</p>
+                <p className="mt-1">{selectedMapLoadError}</p>
               </div>
             ) : null}
             {realLondonBetaPanel ? (
@@ -5217,10 +5320,12 @@ export function RouteRunnerClient({
               id="route-exercise"
               value={selectedExerciseId}
               onChange={(event) => handleExerciseChange(event.target.value)}
-              disabled={!selectedMapIsScoreable || practiceExercisesPanel.exerciseRows.length === 0}
+              disabled={selectedMapOptionIsLoading || !selectedMapIsScoreable || practiceExercisesPanel.exerciseRows.length === 0}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {practiceExercisesPanel.exerciseRows.length === 0 ? (
+              {selectedMapOptionIsLoading ? (
+                <option value="">{selectedMapLoadingLabel}</option>
+              ) : practiceExercisesPanel.exerciseRows.length === 0 ? (
                 <option value="">No scored exercise for this map</option>
               ) : (
                 practiceExercisesPanel.exerciseRows.map((row) => {
@@ -5793,6 +5898,14 @@ export function RouteRunnerClient({
                   </div>
                 ) : null}
               </div>
+              {selectedMapOptionIsLoading ? (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900/10 px-4">
+                  <div className="max-w-sm rounded-lg border border-sky-200 bg-white/95 px-4 py-3 text-center text-sm text-sky-950 shadow-md">
+                    <p className="font-semibold">{selectedMapLoadingLabel}</p>
+                    <p className="mt-1 text-xs leading-5 text-sky-800">Preparing roads, labels, and route exercises.</p>
+                  </div>
+                </div>
+              ) : null}
               <canvas
                 ref={canvasRef}
                 width={canvasWidth}

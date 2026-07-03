@@ -452,6 +452,32 @@ matching and 100% scoring. Known limitation: generated safe routes are
 station-corridor length rather than short local hops, because route anchors are
 selected from the largest safe drivable component inside the bounded extract.
 
+## Stage 161.8.4 King's Cross / Euston Performance Gate
+
+Stage 161.8.4 keeps the King's Cross / Euston fixture available to beta testers
+only behind a loading gate. It remains a bounded OSM-derived beta candidate,
+but it is larger than the smaller curated fixtures and must not be imported,
+parsed, or converted during the normal `/practice/real-london` page load unless
+the tester selects it.
+
+The practice catalogue now carries a lightweight placeholder for
+`osm-curated-kings-cross-euston` with
+`fixturePerformanceGate="betaPracticeAllowedWithLoading"` and lazy-load id
+`kingsCrossEuston`. The full `kingsCrossEustonOverpass.json` import,
+conversion, route preflights, source fixture, and three scored exercises live
+in a separate lazy module. Selecting the map shows "Loading King's Cross /
+Euston map...", disables Submit while preparation is in progress, and replaces
+the placeholder with the validated scored exercises once the map is ready.
+
+Budget guardrails now record raw element counts plus road-segment and rendered
+feature ceilings. The smaller curated fixtures remain
+`betaPracticeAllowed`; King's Cross / Euston is
+`betaPracticeAllowedWithLoading`; Central London remains `devOnlyStressTest`
+and is still excluded from the learner catalogue. Larger raw Overpass fixtures
+must pass budget checks and should use lazy loading, preprocessing,
+simplification, tiling, or a later controlled import pipeline before wider
+practice use.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

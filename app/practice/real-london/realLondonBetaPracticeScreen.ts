@@ -50,6 +50,9 @@ export type RealLondonBetaPracticeMapRow = {
   fixtureUseLabel: string;
   scoreable: boolean;
   selected: boolean;
+  fixturePerformanceGate: RouteRunnerMapOption["fixturePerformanceGate"] | null;
+  lazyLoadId: string | null;
+  lazyLoadingLabel: string | null;
 };
 
 export type RealLondonBetaPracticeExerciseRow = {
@@ -383,6 +386,9 @@ function buildPracticeMapRow(option: RouteRunnerMapOption, selected: boolean): R
     fixtureUse,
     fixtureUseLabel: fixtureUseLabel(fixtureUse),
     scoreable: fixtureUseIsScoreable(fixtureUse),
+    fixturePerformanceGate: option.fixturePerformanceGate ?? null,
+    lazyLoadId: option.lazyLoadId ?? null,
+    lazyLoadingLabel: option.lazyLoadingLabel ?? null,
     selected
   };
 }

@@ -48,8 +48,19 @@ export type CuratedRealLondonFixtureBudget = {
   relations: number;
   roadSegments?: number;
   approximateRenderedFeatureCount?: number;
+  directedEdges?: number;
+  contextFeatures?: number;
+  labelCandidates?: number;
+  maxRoadSegments?: number;
+  maxApproximateRenderedFeatureCount?: number;
   maxBetaPracticeElements: number;
 };
+
+export type CuratedRealLondonFixturePerformanceGate =
+  | "betaPracticeAllowed"
+  | "betaPracticeAllowedWithLoading"
+  | "devOnlyStressTest"
+  | "visualQaOnly";
 
 export type CuratedRealLondonOverpassFixtureMetadata = {
   id: CuratedRealLondonOverpassFixtureId;
@@ -63,6 +74,7 @@ export type CuratedRealLondonOverpassFixtureMetadata = {
   fixtureBudget: CuratedRealLondonFixtureBudget;
   betaPracticeAllowed: boolean;
   devOnlyStressTest: boolean;
+  fixturePerformanceGate: CuratedRealLondonFixturePerformanceGate;
 };
 
 export type CuratedLondonRenderCategory =
@@ -266,7 +278,8 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: true,
-    devOnlyStressTest: false
+    devOnlyStressTest: false,
+    fixturePerformanceGate: "betaPracticeAllowed"
   },
   {
     id: "waterloo-bridge",
@@ -288,7 +301,8 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: true,
-    devOnlyStressTest: false
+    devOnlyStressTest: false,
+    fixturePerformanceGate: "betaPracticeAllowed"
   },
   {
     id: "one-way-system-area",
@@ -310,7 +324,8 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: true,
-    devOnlyStressTest: false
+    devOnlyStressTest: false,
+    fixturePerformanceGate: "betaPracticeAllowed"
   },
   {
     id: "quiet-residential-roads",
@@ -332,7 +347,8 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: true,
-    devOnlyStressTest: false
+    devOnlyStressTest: false,
+    fixturePerformanceGate: "betaPracticeAllowed"
   },
   {
     id: "kingsCrossEuston",
@@ -354,10 +370,14 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       relations: 128,
       roadSegments: 6963,
       approximateRenderedFeatureCount: 8447,
+      directedEdges: 14192,
+      maxRoadSegments: 10000,
+      maxApproximateRenderedFeatureCount: 12000,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: true,
-    devOnlyStressTest: false
+    devOnlyStressTest: false,
+    fixturePerformanceGate: "betaPracticeAllowedWithLoading"
   },
   {
     id: "centralLondon",
@@ -380,10 +400,13 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       relations: 1228,
       roadSegments: 70074,
       approximateRenderedFeatureCount: 79000,
+      maxRoadSegments: 10000,
+      maxApproximateRenderedFeatureCount: 12000,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
     betaPracticeAllowed: false,
-    devOnlyStressTest: true
+    devOnlyStressTest: true,
+    fixturePerformanceGate: "devOnlyStressTest"
   }
 ];
 
@@ -393,7 +416,14 @@ export function curatedRealLondonFixtureAllowedForBetaPractice(
   return (
     metadata.betaPracticeAllowed &&
     !metadata.devOnlyStressTest &&
-    metadata.fixtureBudget.totalElements <= metadata.fixtureBudget.maxBetaPracticeElements
+    metadata.fixtureBudget.totalElements <= metadata.fixtureBudget.maxBetaPracticeElements &&
+    (metadata.fixtureBudget.maxRoadSegments === undefined ||
+      metadata.fixtureBudget.roadSegments === undefined ||
+      metadata.fixtureBudget.roadSegments <= metadata.fixtureBudget.maxRoadSegments) &&
+    (metadata.fixtureBudget.maxApproximateRenderedFeatureCount === undefined ||
+      metadata.fixtureBudget.approximateRenderedFeatureCount === undefined ||
+      metadata.fixtureBudget.approximateRenderedFeatureCount <=
+        metadata.fixtureBudget.maxApproximateRenderedFeatureCount)
   );
 }
 

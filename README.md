@@ -1094,6 +1094,15 @@ whose synthetic perfect drawn attempts reach scoring at 100%. It is therefore
 `betaPracticeAllowed=true`, `devOnlyStressTest=false`, and appears in
 `/practice/real-london` without exposing dev QA panels.
 
+Stage 161.8.4 accepts King's Cross / Euston only as
+`betaPracticeAllowedWithLoading`. The normal Real London practice catalogue now
+uses a lightweight placeholder for the map and lazy-loads the full Overpass
+JSON, conversion output, route preflights, and scored exercises only after a
+tester selects it. The page shows "Loading King's Cross / Euston map..." and
+disables Submit while the map is being prepared. Smaller curated beta fixtures
+remain immediately available; oversized/dev-only stress fixtures remain blocked
+from scored practice by fixture budget metadata.
+
 ## Current Feature Set
 
 - Landing page with private-hire applicant positioning
