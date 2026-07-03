@@ -125,6 +125,14 @@ tolerance of the required marker and a legal connector exists in the same
 graph. No restriction, road, landmark, or route data is invented, and the app
 still does not call Overpass at runtime.
 
+Stage 161.4.1 adds focused coverage for the quiet-residential Cricklewood route
+from `osm-node-5222445789` through `osm-node-13120968904` to
+`osm-node-623044867`. Sparse manual traces may skip short split OSM fragments,
+so converted OSM submit matching can fill those local gaps only with legal
+connectors from the same committed graph and only when the connector remains
+consistent with the drawn segment. The supplied Cricklewood/Finchley road IDs
+are checked for fixture coverage; no new OSM data is fetched or invented.
+
 Attribution requirement: these fixtures are OpenStreetMap-derived data made
 available under ODbL, so OSM attribution must stay visible wherever they are
 shown. No A-Z, Google, Apple, Ordnance Survey, proprietary tiles, screenshots,

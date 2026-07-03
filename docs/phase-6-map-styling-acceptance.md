@@ -205,6 +205,17 @@ Piccadilly Circus, Waterloo Bridge, one-way system, and quiet residential
 fixtures; a wobbled Waterloo submit; and a wrong-way one-way submit that still
 fails.
 
+Stage 161.4.1 fixes the Cricklewood quiet-residential submit regression where a
+real sparse manual trace from `osm-node-5222445789` through
+`osm-node-13120968904` to `osm-node-623044867` could still stop at
+`matching_failed`. For converted OSM maps only, the matcher can now recover
+from selected road candidates that skip tiny split-way or unnamed connector
+fragments by filling the gap with a legal connector from the same graph, bounded
+by the drawn segment corridor. The supplied Cricklewood/Finchley road IDs are
+kept under regression coverage for fixture presence; scoring still uses the
+continuous legal graph route and the existing legality engine remains
+authoritative.
+
 ## Stage 161.5 Waterloo / Thames Correction
 
 Stage 161.5 applies a targeted correction from the Waterloo Bridge /

@@ -686,6 +686,10 @@ function messageForPipelineWarning(warning: DrawnRoutePipelineResult["warnings"]
     return "Converted OSM route matching retried without simplification to preserve small split-way geometry.";
   }
 
+  if (warning.code === "osm_sparse_connector_retry") {
+    return "Converted OSM route matching filled legal split-way connectors between sparse drawn anchors.";
+  }
+
   if (warning.code === "start_anchor_repaired") {
     return "The matched route was anchored back to the required start marker after snapping to an adjacent split road.";
   }

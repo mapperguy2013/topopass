@@ -972,6 +972,13 @@ correct submit, then anchors the match to the required start/destination only
 when the drawn endpoints are actually near those markers. Correct generated
 fixture routes and modestly wobbled Waterloo attempts score successfully, while
 wrong-way one-way attempts still fail through the existing legality engine.
+Stage 161.4.1 fixes the Cricklewood quiet-residential submit regression by
+recovering sparse converted-OSM drawn traces across short legal split-way
+connectors in the same graph. The Cricklewood route from
+`osm-node-5222445789` through `osm-node-13120968904` to
+`osm-node-623044867` now reaches scoring, and the supplied road IDs remain
+checked for fixture coverage. No OSM data is fetched at runtime and scoring,
+one-way, and restriction legality remain unchanged.
 Stage 161.5 applies a targeted Waterloo/Thames correction: committed OSM water
 polygons render as stronger filled Thames context, waterway lines use a wider
 calm river corridor where polygon coverage is thin, major base roads are calmer

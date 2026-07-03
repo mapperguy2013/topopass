@@ -26,7 +26,8 @@ export type RouteMatchingDiagnosticCode =
   | "unresolved_direction"
   | "start_anchor_repaired"
   | "destination_anchor_repaired"
-  | "osm_simplification_retry";
+  | "osm_simplification_retry"
+  | "osm_sparse_connector_retry";
 
 export type RouteMatchingDiagnosticSeverity = "info" | "warning";
 

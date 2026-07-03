@@ -80,6 +80,49 @@ const CURATED_PREFLIGHT_CASES = [
 
 const DRIVABLE_ANCHOR_HIGHWAYS = new Set(["primary", "secondary", "tertiary", "residential", "living_street", "unclassified"]);
 const UNSAFE_ANCHOR_HIGHWAYS = new Set(["service", "track", "footway", "cycleway", "path", "pedestrian", "steps"]);
+const CRICKLEWOOD_REGRESSION_STOP_NODE_IDS = [
+  "osm-node-5222445789",
+  "osm-node-13120968904",
+  "osm-node-623044867"
+];
+const CRICKLEWOOD_LISTED_ROUTE_ROAD_IDS = `
+osm-way-50218080-segment-0 osm-way-50218080-segment-1 osm-way-50218080-segment-2
+osm-way-50218080-segment-3 osm-way-50218080-segment-4 osm-way-50218080-segment-5
+osm-way-50218080-segment-6 osm-way-50218080-segment-7 osm-way-50218080-segment-8
+osm-way-50218080-segment-9 osm-way-50218080-segment-10 osm-way-50218080-segment-11
+osm-way-50218080-segment-12 osm-way-50218080-segment-13 osm-way-50218080-segment-14
+osm-way-50218080-segment-15 osm-way-115413465-segment-0 osm-way-50218080-segment-16
+osm-way-50218080-segment-17 osm-way-50218080-segment-18 osm-way-50218080-segment-19
+osm-way-1429930538-segment-0 osm-way-1429930538-segment-1 osm-way-1429930538-segment-2
+osm-way-1429930538-segment-3 osm-way-1429930537-segment-0 osm-way-1429930536-segment-0
+osm-way-1429930537-segment-1 osm-way-1429930537-segment-2 osm-way-1429930537-segment-3
+osm-way-97667228-segment-0 osm-way-1429930537-segment-4 osm-way-4270165-segment-15
+osm-way-1429930537-segment-5 osm-way-1315615233-segment-0 osm-way-1315615233-segment-1
+osm-way-1315615233-segment-2 osm-way-368996212-segment-0 osm-way-1315615232-segment-0
+osm-way-1315615232-segment-1 osm-way-1315615232-segment-2 osm-way-1315615232-segment-3
+osm-way-1427274398-segment-0 osm-way-1427284617-segment-0 osm-way-4364748-segment-0
+osm-way-1427284617-segment-1 osm-way-1427284617-segment-2 osm-way-1427284617-segment-3
+osm-way-1427284617-segment-4 osm-way-1427284616-segment-0 osm-way-1427284616-segment-1
+osm-way-1427284616-segment-2 osm-way-1427284616-segment-3 osm-way-1427284616-segment-4
+osm-way-97715618-segment-0 osm-way-97715618-segment-1 osm-way-97715618-segment-2
+osm-way-97715618-segment-3 osm-way-97715618-segment-4 osm-way-97715618-segment-5
+osm-way-97715618-segment-6 osm-way-97715618-segment-7 osm-way-97715618-segment-8
+osm-way-97715618-segment-9 osm-way-960868086-segment-0 osm-way-960868086-segment-1
+osm-way-960868086-segment-2 osm-way-960868086-segment-3 osm-way-960974643-segment-0
+osm-way-960974643-segment-1 osm-way-960974643-segment-2 osm-way-960974643-segment-3
+osm-way-960974643-segment-4 osm-way-960974643-segment-5 osm-way-960974643-segment-6
+osm-way-960974643-segment-7 osm-way-960974643-segment-8 osm-way-960974643-segment-9
+osm-way-960974643-segment-10 osm-way-960974643-segment-11 osm-way-960974643-segment-12
+osm-way-960974643-segment-13 osm-way-960974643-segment-14 osm-way-960974643-segment-15
+osm-way-960974643-segment-16 osm-way-960974643-segment-17 osm-way-960974643-segment-18
+osm-way-960974643-segment-19 osm-way-960974643-segment-20 osm-way-960974643-segment-21
+osm-way-960974643-segment-22 osm-way-960974643-segment-23 osm-way-960974643-segment-24
+osm-way-960974643-segment-25 osm-way-960974643-segment-26 osm-way-960974643-segment-27
+osm-way-960974643-segment-28 osm-way-960974643-segment-29 osm-way-960974643-segment-30
+osm-way-960974643-segment-31 osm-way-960974643-segment-32 osm-way-960974643-segment-33
+osm-way-960974643-segment-34 osm-way-960974643-segment-35 osm-way-960974643-segment-36
+osm-way-960974643-segment-37 osm-way-960974643-segment-38
+`.match(/osm-way-\d+-segment-\d+/g) ?? [];
 
 test("Stage 160.6 curated fixture preflight builds legal routable exercises for selected London fixtures", () => {
   for (const fixtureCase of CURATED_PREFLIGHT_CASES) {
@@ -152,6 +195,53 @@ test("Stage 161.4 curated and real pilot generated routes submit through drawn-r
     for (const stopNodeId of nodeStopIds(fixtureCase.exercise)) {
       assert.ok(result.exerciseResult.normalisedAttempt.selectedNodeIds.includes(stopNodeId), `${fixtureCase.id}: ${stopNodeId}`);
     }
+  }
+});
+
+test("Stage 161.4.1 Cricklewood sparse submit reaches scoring across split OSM ways", () => {
+  const graph = buildMapGraph(quietResidentialRoadsOsmRouteMap);
+  const route = findShortestLegalRouteThroughStops({
+    graph,
+    stopNodeIds: CRICKLEWOOD_REGRESSION_STOP_NODE_IDS,
+    restrictions: quietResidentialRoadsOsmRouteMap.restrictions
+  });
+
+  assert.equal(route.found, true);
+  if (!route.found) {
+    return;
+  }
+
+  for (const roadId of CRICKLEWOOD_LISTED_ROUTE_ROAD_IDS) {
+    assert.ok(graph.roadsById[roadId], roadId);
+  }
+
+  const exercise: RouteExercise = {
+    id: "stage-161-4-1-cricklewood-submit-regression",
+    title: "Stage 161.4.1 Cricklewood submit regression",
+    mapId: quietResidentialRoadsOsmRouteMap.id,
+    stops: CRICKLEWOOD_REGRESSION_STOP_NODE_IDS.map((nodeId) => ({ type: "node", nodeId }))
+  };
+  const result = runDrawnRoutePipeline({
+    map: quietResidentialRoadsOsmRouteMap,
+    exercises: [exercise],
+    exerciseId: exercise.id,
+    drawnTrace: createDrawnRouteTrace(
+      sparsePointsForRouteNodeIds(graph, route.nodeIds, CRICKLEWOOD_REGRESSION_STOP_NODE_IDS, 8)
+    ),
+    options: {
+      maximumSnapDistance: 24
+    }
+  });
+
+  assert.equal(result.status, "scored", result.warnings.map((warning) => warning.message).join("\n"));
+  assert.equal(result.matchResult?.status, "matched");
+  assert.equal(result.exerciseResult?.score.passed, true);
+  assert.equal(result.exerciseResult?.score.scorePercent, 100);
+  assert.deepEqual(result.exerciseResult?.score.failureReasons, []);
+  assert.ok(result.warnings.some((warning) => warning.code === "osm_sparse_connector_retry"));
+
+  for (const stopNodeId of CRICKLEWOOD_REGRESSION_STOP_NODE_IDS) {
+    assert.ok(result.exerciseResult.normalisedAttempt.selectedNodeIds.includes(stopNodeId), stopNodeId);
   }
 });
 
@@ -360,6 +450,32 @@ function pointsForNodeIds(graph: MapGraph, nodeIds: readonly string[]): Vec2[] {
 
     return { x: node.x, y: node.y };
   });
+}
+
+function sparsePointsForRouteNodeIds(
+  graph: MapGraph,
+  routeNodeIds: readonly string[],
+  requiredStopNodeIds: readonly string[],
+  step: number
+): Vec2[] {
+  const routeIndexes = new Set<number>([0, routeNodeIds.length - 1]);
+
+  for (const stopNodeId of requiredStopNodeIds) {
+    const stopIndex = routeNodeIds.indexOf(stopNodeId);
+
+    if (stopIndex >= 0) {
+      routeIndexes.add(stopIndex);
+    }
+  }
+
+  for (let index = 0; index < routeNodeIds.length; index += step) {
+    routeIndexes.add(index);
+  }
+
+  return pointsForNodeIds(
+    graph,
+    [...routeIndexes].sort((left, right) => left - right).map((index) => routeNodeIds[index])
+  );
 }
 
 function findLongestOneWayRoad(map: MapDefinition): MapRoad {

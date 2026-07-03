@@ -80,6 +80,12 @@ type SnappingAndMatchingAttempt = {
   matchingWarnings: DrawnRoutePipelineWarning[];
 };
 
+type SparseOsmRecoveryAnchor = {
+  nodeId: string;
+  pointIndex: number;
+  originalPoint: { x: number; y: number };
+};
+
 function pipelineWarning(warning: DrawnRoutePipelineWarning): DrawnRoutePipelineWarning {
   return warning;
 }
@@ -151,6 +157,23 @@ function pointDistance(left: { x: number; y: number }, right: { x: number; y: nu
   return Math.hypot(right.x - left.x, right.y - left.y);
 }
 
+function pathMapDistance(graph: MapGraph, nodeIds: readonly string[]): number {
+  let distance = 0;
+
+  for (let index = 0; index < nodeIds.length - 1; index += 1) {
+    const from = graph.nodesById[nodeIds[index]];
+    const to = graph.nodesById[nodeIds[index + 1]];
+
+    if (!from || !to) {
+      return Number.POSITIVE_INFINITY;
+    }
+
+    distance += pointDistance(from, to);
+  }
+
+  return distance;
+}
+
 function pointIsNearNode(input: {
   graph: MapGraph;
   point: { x: number; y: number } | undefined;
@@ -171,6 +194,37 @@ function directedEdgeForMovement(
   return graph.edges.find(
     (edge) => edge.roadId === roadId && edge.fromNodeId === fromNodeId && edge.toNodeId === toNodeId
   );
+}
+
+function routeConfidenceForSnappedPoints(snappedPoints: readonly SnappedRoutePoint[]): {
+  average: number;
+  minimum: number;
+  label: RouteMatchingResult["confidence"];
+} {
+  const confidences = snappedPoints
+    .map((point) => point.confidence)
+    .filter((confidence) => Number.isFinite(confidence));
+
+  if (confidences.length === 0) {
+    return {
+      average: 0,
+      minimum: 0,
+      label: "failed"
+    };
+  }
+
+  const average = Math.round((confidences.reduce((sum, confidence) => sum + confidence, 0) / confidences.length) * 1000) / 1000;
+  const minimum = Math.round(Math.min(...confidences) * 1000) / 1000;
+
+  if (minimum < 0.5 || average < 0.65) {
+    return { average, minimum, label: "low" };
+  }
+
+  if (minimum < 0.75 || average < 0.85) {
+    return { average, minimum, label: "medium" };
+  }
+
+  return { average, minimum, label: "high" };
 }
 
 function rebuildMatchResultWithSelection(input: {
@@ -211,6 +265,54 @@ function rebuildMatchResultWithSelection(input: {
       nodeIds: [...input.nodeIds],
       roadIds: [...input.roadIds]
     }
+  };
+}
+
+function buildRecoveredMatchResultWithSelection(input: {
+  graph: MapGraph;
+  snappedRoute: SnappedRouteTraceResult;
+  nodeIds: string[];
+  roadIds: string[];
+  diagnostics: RouteMatchingResult["diagnostics"];
+}): RouteMatchingResult {
+  const confidence = routeConfidenceForSnappedPoints(input.snappedRoute.snappedPoints);
+  const attemptedMovements = input.roadIds.map((roadId, index) => {
+    const fromNodeId = input.nodeIds[index];
+    const toNodeId = input.nodeIds[index + 1];
+    const directedEdge = directedEdgeForMovement(input.graph, roadId, fromNodeId, toNodeId);
+
+    return {
+      roadId,
+      fromNodeId,
+      toNodeId,
+      directedEdgeId: directedEdge?.id ?? null
+    };
+  });
+  const directedEdgeSequence = attemptedMovements.map((movement) => movement.directedEdgeId);
+  const directedEdgeIds = directedEdgeSequence.filter((edgeId): edgeId is string => Boolean(edgeId));
+  const routeDistanceMeters = input.roadIds.reduce(
+    (total, roadId) => total + (input.graph.roadsById[roadId]?.distanceMeters ?? 0),
+    0
+  );
+
+  return {
+    status: "matched",
+    isReadyForRunRouteExercise: true,
+    confidence: confidence.label,
+    averageSnappedPointConfidence: confidence.average,
+    minimumSnappedPointConfidence: confidence.minimum,
+    routeDistanceMeters,
+    orderedRoadIds: [...input.roadIds],
+    transitionNodeIds: input.nodeIds.slice(1, -1),
+    nodeIds: [...input.nodeIds],
+    directedEdgeIds,
+    directedEdgeSequence,
+    attemptedMovements,
+    selection: {
+      nodeIds: [...input.nodeIds],
+      roadIds: [...input.roadIds]
+    },
+    diagnostics: [...input.diagnostics]
   };
 }
 
@@ -347,6 +449,134 @@ function repairRequiredEndpointAnchors(input: {
     ...matchResult,
     diagnostics
   };
+}
+
+function nearestRoadEndpointAnchor(input: {
+  graph: MapGraph;
+  point: SnappedRoutePoint;
+  pointIndex: number;
+}): SparseOsmRecoveryAnchor | null {
+  if (!input.point.roadId) {
+    return null;
+  }
+
+  const road = input.graph.roadsById[input.point.roadId];
+  const from = road ? input.graph.nodesById[road.fromNodeId] : undefined;
+  const to = road ? input.graph.nodesById[road.toNodeId] : undefined;
+
+  if (!road || !from || !to) {
+    return null;
+  }
+
+  const distanceToFrom = pointDistance(input.point.originalPoint, from);
+  const distanceToTo = pointDistance(input.point.originalPoint, to);
+
+  return {
+    nodeId: distanceToFrom <= distanceToTo ? road.fromNodeId : road.toNodeId,
+    pointIndex: input.pointIndex,
+    originalPoint: { ...input.point.originalPoint }
+  };
+}
+
+function sparseOsmRecoveryAnchors(input: {
+  graph: MapGraph;
+  snappedRoute: SnappedRouteTraceResult;
+}): SparseOsmRecoveryAnchor[] {
+  const anchors: SparseOsmRecoveryAnchor[] = [];
+
+  input.snappedRoute.snappedPoints.forEach((point, pointIndex) => {
+    const anchor = nearestRoadEndpointAnchor({
+      graph: input.graph,
+      point,
+      pointIndex
+    });
+
+    if (!anchor || anchors[anchors.length - 1]?.nodeId === anchor.nodeId) {
+      return;
+    }
+
+    anchors.push(anchor);
+  });
+
+  return anchors;
+}
+
+function recoverSparseConvertedOsmMatch(input: {
+  map: MapDefinition;
+  graph: MapGraph;
+  snappedRoute: SnappedRouteTraceResult;
+  maximumSnapDistance: number;
+}): RouteMatchingResult | null {
+  if (!input.snappedRoute.isValidTrace || input.snappedRoute.hasOffRoadPoints) {
+    return null;
+  }
+
+  const anchors = sparseOsmRecoveryAnchors({
+    graph: input.graph,
+    snappedRoute: input.snappedRoute
+  });
+
+  if (anchors.length < 2) {
+    return null;
+  }
+
+  const firstBreak = input.snappedRoute.connectivity.disconnectedTransitions[0];
+  const recoveredNodeIds: string[] = [anchors[0].nodeId];
+  const recoveredRoadIds: string[] = [];
+
+  for (let index = 0; index < anchors.length - 1; index += 1) {
+    const fromAnchor = anchors[index];
+    const toAnchor = anchors[index + 1];
+
+    if (fromAnchor.nodeId === toAnchor.nodeId) {
+      continue;
+    }
+
+    const connector = findShortestLegalRoute({
+      graph: input.graph,
+      startNodeId: fromAnchor.nodeId,
+      endNodeId: toAnchor.nodeId,
+      restrictions: input.map.restrictions
+    });
+
+    if (!connector.found) {
+      return null;
+    }
+
+    const drawnSegmentDistance = pointDistance(fromAnchor.originalPoint, toAnchor.originalPoint);
+    const connectorMapDistance = pathMapDistance(input.graph, connector.nodeIds);
+    const maximumConnectorDistance = drawnSegmentDistance * 2 + input.maximumSnapDistance * 2;
+
+    if (connectorMapDistance > maximumConnectorDistance) {
+      return null;
+    }
+
+    recoveredNodeIds.push(...connector.nodeIds.slice(1));
+    recoveredRoadIds.push(...connector.roadIds);
+  }
+
+  if (recoveredRoadIds.length === 0) {
+    return null;
+  }
+
+  return buildRecoveredMatchResultWithSelection({
+    graph: input.graph,
+    snappedRoute: input.snappedRoute,
+    nodeIds: recoveredNodeIds,
+    roadIds: recoveredRoadIds,
+    diagnostics: [
+      {
+        code: "osm_sparse_connector_retry",
+        severity: "info",
+        message: firstBreak
+          ? `Converted OSM route matching filled legal split-way connectors after selected candidates broke between ${firstBreak.fromRoadId} and ${firstBreak.toRoadId}.`
+          : "Converted OSM route matching filled legal split-way connectors between sparse drawn anchors.",
+        pointIndex: firstBreak?.pointIndex,
+        fromRoadId: firstBreak?.fromRoadId,
+        toRoadId: firstBreak?.toRoadId
+      }
+    ]
+  });
 }
 
 function snapAndMatchTrace(input: {
@@ -592,6 +822,30 @@ export function runDrawnRoutePipeline(input: RunDrawnRoutePipelineInput): DrawnR
       endpointTolerance: maximumSnapDistance
     });
     matchingWarnings = matchResult.diagnostics.map(warningFromMatchingDiagnostic);
+  }
+
+  if (
+    isConvertedOsmMap(input.map) &&
+    (!matchResult || matchResult.status !== "matched" || !matchResult.isReadyForRunRouteExercise)
+  ) {
+    const recoveredMatchResult = recoverSparseConvertedOsmMatch({
+      map: input.map,
+      graph,
+      snappedRoute,
+      maximumSnapDistance
+    });
+
+    if (recoveredMatchResult) {
+      matchResult = repairRequiredEndpointAnchors({
+        map: input.map,
+        graph,
+        rawTrace,
+        matchResult: recoveredMatchResult,
+        requiredStopNodeIds,
+        endpointTolerance: maximumSnapDistance
+      });
+      matchingWarnings = matchResult.diagnostics.map(warningFromMatchingDiagnostic);
+    }
   }
 
   if (!matchResult || matchResult.status !== "matched" || !matchResult.isReadyForRunRouteExercise) {

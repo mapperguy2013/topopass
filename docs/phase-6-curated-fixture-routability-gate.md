@@ -61,6 +61,16 @@ pipeline now retries matching against the unsimplified raw trace when the
 simplified trace cannot produce a ready match. This does not change synthetic
 map matching and does not alter route scoring rules.
 
+Stage 161.4.1 adds a second converted-OSM-only recovery for sparse manual
+submits. If snapping selected nearby roads but the selected roads skip over
+short split-way or unnamed connector fragments, the pipeline can fill those
+local gaps from the same graph only when each gap has a legal connector and the
+connector stays within the drawn segment corridor. This is used for the
+Cricklewood quiet-residential regression route from `osm-node-5222445789`
+through `osm-node-13120968904` to `osm-node-623044867`. The supplied diagnostic
+road sequence remains checked for fixture coverage, but scoring still uses the
+continuous legal graph route through the required stops.
+
 If snapping at a start or destination junction chooses an adjacent split road,
 the pipeline may repair the matched route back to the required endpoint only
 when the drawn endpoint is within the normal snap tolerance of that required
@@ -72,6 +82,9 @@ Diagnostics:
 
 - `osm_simplification_retry`: converted OSM matching retried without
   simplification to preserve split-way geometry.
+- `osm_sparse_connector_retry`: converted OSM matching filled legal split-way
+  connectors between sparse drawn anchors after selected road candidates broke
+  across adjacent fixture fragments.
 - `start_anchor_repaired`: the matched route was legally anchored back to the
   required start node because the drawn endpoint was near the start marker.
 - `destination_anchor_repaired`: the matched route was legally anchored forward
@@ -90,8 +103,9 @@ learner warnings.
 Tests cover the generated legal route geometry for the existing Real London
 pilot fixture plus Piccadilly Circus, Waterloo Bridge, one-way system, and
 quiet residential curated fixtures. They also cover a wobbled Waterloo submit
-inside normal snap tolerance and a genuine wrong-way one-way submit that still
-fails through the existing legality engine.
+inside normal snap tolerance, the sparse Cricklewood route submit regression,
+and a genuine wrong-way one-way submit that still fails through the existing
+legality engine.
 
 ## Curated Fixture Status
 
