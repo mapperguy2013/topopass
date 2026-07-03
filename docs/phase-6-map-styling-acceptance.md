@@ -298,6 +298,18 @@ scoring is reached. `visualQaOnly` fixtures remain map-inspection only, and
 `routeReviewFixture` fixtures stay labelled for review workflows rather than
 normal scored practice.
 
+Stage 161.6.4 tightens the route exercise selector wiring for the curated
+fixtures. The selected map id and selected exercise id now resolve through a
+single deterministic rule on both the server model and client route runner:
+valid exercise choices are honoured, invalid or missing choices fall back to
+the map default, and non-scoreable fixtures expose no scored exercise. Changing
+the route exercise resets the current drawing, result, matching error, viewport,
+reveal route, and debug overlay state, then redraws start, checkpoint, finish,
+expected route, metadata, QA panels, and submit scoring from the newly selected
+exercise. Stable `?map=` and `?exercise=` URLs continue to work for Piccadilly
+Circus, Waterloo Bridge / Thames corridor, the one-way system area, and quiet
+residential roads.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

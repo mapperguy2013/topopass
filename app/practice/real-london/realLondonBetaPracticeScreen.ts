@@ -16,6 +16,7 @@ import {
   type RouteRunnerMapOption
 } from "../../dev/route-runner/routeRunnerMaps.ts";
 import { buildPracticeExercisesPanelModel } from "../../dev/route-runner/routeRunnerCompactPracticePanels.ts";
+import { resolveRouteRunnerExerciseSelection } from "../../dev/route-runner/routeRunnerInitialState.ts";
 import {
   ONE_WAY_ARROW_MIN_SPACING_METERS,
   buildRestrictionLegendItems
@@ -205,11 +206,14 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
   const betaMapOptions = getRealLondonBetaMapOptions(mapOptions);
   const mapRows = betaMapOptions.map((option) => buildPracticeMapRow(option, option.map.id === mapOption.map.id));
   const selectedMap = mapRows.find((row) => row.id === mapOption.map.id) ?? buildPracticeMapRow(mapOption, true);
-  const selectedExercise = selectedMap.scoreable
-    ? mapOption.exercises.find((exercise) => exercise.id === input.selectedExerciseId) ??
-      mapOption.exercises.find((exercise) => exercise.id === mapOption.defaultExerciseId) ??
-      mapOption.exercises[0] ??
-      null
+  const selectedExerciseId = resolveRouteRunnerExerciseSelection({
+    exercises: mapOption.exercises,
+    requestedExerciseId: input.selectedExerciseId,
+    defaultExerciseId: mapOption.defaultExerciseId,
+    scoreable: selectedMap.scoreable
+  });
+  const selectedExercise = selectedExerciseId
+    ? mapOption.exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null
     : null;
 
   const practicePanel = buildPracticeExercisesPanelModel({

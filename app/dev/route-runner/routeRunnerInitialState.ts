@@ -25,6 +25,29 @@ export type RouteRunnerInitialHydrationState = {
   adaptiveLauncherState: AdaptivePracticeLauncherState;
 };
 
+export function resolveRouteRunnerExerciseSelection(input: {
+  exercises: readonly { id: string }[];
+  requestedExerciseId?: string | null;
+  defaultExerciseId?: string | null;
+  scoreable?: boolean;
+}): string {
+  if (input.scoreable === false || input.exercises.length === 0) {
+    return "";
+  }
+
+  const requestedExerciseId = input.requestedExerciseId?.trim();
+  if (requestedExerciseId && input.exercises.some((exercise) => exercise.id === requestedExerciseId)) {
+    return requestedExerciseId;
+  }
+
+  const defaultExerciseId = input.defaultExerciseId?.trim();
+  if (defaultExerciseId && input.exercises.some((exercise) => exercise.id === defaultExerciseId)) {
+    return defaultExerciseId;
+  }
+
+  return input.exercises[0]?.id ?? "";
+}
+
 export function createRouteRunnerInitialHydrationState(
   input: RouteRunnerInitialSelectionInput = {}
 ): RouteRunnerInitialHydrationState {
@@ -33,10 +56,11 @@ export function createRouteRunnerInitialHydrationState(
     mapOptions.find((option) => option.id === (input.initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID)) ??
     mapOptions[0] ??
     ROUTE_RUNNER_MAP_OPTIONS[0];
-  const initialExerciseId =
-    input.initialExerciseId && initialMapOption.exercises.some((exercise) => exercise.id === input.initialExerciseId)
-      ? input.initialExerciseId
-      : initialMapOption.defaultExerciseId;
+  const initialExerciseId = resolveRouteRunnerExerciseSelection({
+    exercises: initialMapOption.exercises,
+    requestedExerciseId: input.initialExerciseId,
+    defaultExerciseId: initialMapOption.defaultExerciseId
+  });
 
   return {
     mapOptionId: initialMapOption.id,

@@ -1014,6 +1014,14 @@ validated at test time for existing map anchors, legal shortest route
 availability, drawn-route matching, and score creation before it can be offered
 to beta testers. `visualQaOnly` and `routeReviewFixture` maps remain clearly
 labelled and are not treated as normal scored practice.
+Stage 161.6.4 fixes curated route exercise switching by resolving the selected
+exercise through one shared server/client rule. Choosing a different route in
+the dropdown now changes the active start, checkpoint, finish, expected route,
+metadata, QA/debug panels, and submit scoring target, while clearing the current
+drawing, score/result, matching error, viewport, reveal, and debug state. Stable
+`?map=` and `?exercise=` URLs continue to select valid curated exercises, and
+invalid or non-scoreable choices fall back deterministically instead of keeping
+the first/default route alive behind the UI.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

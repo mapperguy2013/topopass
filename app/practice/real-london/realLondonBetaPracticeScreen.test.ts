@@ -369,6 +369,85 @@ test("Stage 161.6.3 imported curated maps expose multiple scoreable beta exercis
   }
 });
 
+test("Stage 161.6.4 curated route exercise selector changes active stops and route flow", () => {
+  const mapId = "osm-curated-one-way-system-area";
+  const exerciseIds = [
+    "osm-curated-one-way-system-area-short-one-way-route",
+    "osm-curated-one-way-system-area-restriction-checkpoint-route",
+    "osm-curated-one-way-system-area-longer-one-way-route"
+  ];
+  const selectedModels = exerciseIds.map((selectedExerciseId) => {
+    const model = buildRealLondonBetaPracticeScreenModel({
+      betaEnabled: true,
+      requestedMapId: mapId,
+      selectedExerciseId
+    });
+
+    assert.equal(model.state, "available", selectedExerciseId);
+
+    if (model.state !== "available" || !model.selectedExercise) {
+      throw new Error(`Expected selected scoreable exercise for ${selectedExerciseId}.`);
+    }
+
+    assert.equal(model.mapId, mapId);
+    assert.equal(model.selectedExercise.id, selectedExerciseId);
+    assert.deepEqual(
+      model.exerciseRows.map((row) => [row.id, row.selected]),
+      exerciseIds.map((exerciseId) => [exerciseId, exerciseId === selectedExerciseId])
+    );
+    assert.equal(model.routeFlow.shortestRouteFound, true);
+    assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+
+    return model;
+  });
+
+  assert.ok(new Set(selectedModels.map((model) => model.selectedExercise.compactStopSummary)).size > 1);
+  assert.ok(new Set(selectedModels.map((model) => model.routeFlow.selectedEdgeCount)).size > 1);
+});
+
+test("Stage 161.6.4 every imported curated map resolves each offered route exercise", () => {
+  const expectedImportedMapIds = [
+    "osm-curated-piccadilly-circus",
+    "osm-curated-waterloo-bridge",
+    "osm-curated-one-way-system-area",
+    "osm-curated-quiet-residential-roads"
+  ];
+
+  for (const mapId of expectedImportedMapIds) {
+    const initialModel = buildRealLondonBetaPracticeScreenModel({
+      betaEnabled: true,
+      requestedMapId: mapId
+    });
+
+    assert.equal(initialModel.state, "available", mapId);
+
+    if (initialModel.state !== "available") {
+      throw new Error(`Expected available beta practice screen for ${mapId}.`);
+    }
+
+    for (const row of initialModel.exerciseRows) {
+      const selectedModel = buildRealLondonBetaPracticeScreenModel({
+        betaEnabled: true,
+        requestedMapId: mapId,
+        selectedExerciseId: row.id
+      });
+
+      assert.equal(selectedModel.state, "available", `${mapId} ${row.id}`);
+
+      if (selectedModel.state !== "available" || !selectedModel.selectedExercise) {
+        throw new Error(`Expected selected beta practice exercise for ${mapId} ${row.id}.`);
+      }
+
+      assert.equal(selectedModel.selectedExercise.id, row.id);
+      assert.equal(selectedModel.exerciseRows.filter((exerciseRow) => exerciseRow.selected).length, 1);
+      assert.equal(selectedModel.routeFlow.shortestRouteFound, true);
+      assert.equal(selectedModel.routeFlow.existingRunnerScorePassed, true);
+      assert.ok(selectedModel.selectedExercise.startLabel.length > 0);
+      assert.ok(selectedModel.selectedExercise.destinationLabel.length > 0);
+    }
+  }
+});
+
 test("Stage 161.6 visual QA fixtures are labelled and not treated as scoreable practice", () => {
   const visualOnlyOption: RouteRunnerMapOption = {
     id: "osm-curated-visual-only-test",

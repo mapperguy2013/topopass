@@ -255,7 +255,10 @@ import {
 import {
   buildRouteRunnerPracticeModePanelVisibility
 } from "./routeRunnerPracticeModePanels";
-import { createRouteRunnerInitialHydrationState } from "./routeRunnerInitialState";
+import {
+  createRouteRunnerInitialHydrationState,
+  resolveRouteRunnerExerciseSelection
+} from "./routeRunnerInitialState";
 import {
   buildOsmDebugOverlayModel,
   canOfferOsmDebugOverlay,
@@ -3222,6 +3225,16 @@ export function RouteRunnerClient({
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
   const selectedMapIsScoreable = routeRunnerMapOptionIsScoreable(selectedMapOption);
   const selectedMapFixtureUseLabel = routeRunnerFixtureUseLabel(selectedMapOption);
+  const selectedExerciseId = useMemo(
+    () =>
+      resolveRouteRunnerExerciseSelection({
+        exercises: activeExercises,
+        requestedExerciseId: exerciseId,
+        defaultExerciseId: selectedMapOption.defaultExerciseId,
+        scoreable: selectedMapIsScoreable
+      }),
+    [activeExercises, exerciseId, selectedMapIsScoreable, selectedMapOption.defaultExerciseId]
+  );
   const realLondonBetaPanel = useMemo(
     () =>
       buildRealLondonBetaPracticePanelModel({
@@ -3248,10 +3261,16 @@ export function RouteRunnerClient({
     () =>
       buildPracticeExercisesPanelModel({
         exercises: activeExercises,
-        selectedExerciseId: exerciseId
+        selectedExerciseId: selectedExerciseId || null
       }),
-    [activeExercises, exerciseId]
+    [activeExercises, selectedExerciseId]
   );
+
+  useEffect(() => {
+    if (exerciseId !== selectedExerciseId) {
+      setExerciseId(selectedExerciseId);
+    }
+  }, [exerciseId, selectedExerciseId]);
 
   useEffect(() => {
     if (isStudentBetaRouteRunner && isConvertedOsmMap) {
@@ -3309,8 +3328,8 @@ export function RouteRunnerClient({
   );
   const syntheticRoadVisuals = useMemo(() => buildSyntheticRoadVisuals(activeMap), [activeMap]);
   const selectedExercise = useMemo<RouteExercise | undefined>(
-    () => activeExercises.find((exercise) => exercise.id === exerciseId),
-    [activeExercises, exerciseId]
+    () => activeExercises.find((exercise) => exercise.id === selectedExerciseId),
+    [activeExercises, selectedExerciseId]
   );
   const syntheticLandmarkVisuals = useMemo(
     () =>
@@ -3456,20 +3475,20 @@ export function RouteRunnerClient({
     [activeMap, activeMapGraph, selectedExercise, selectedExerciseAvailability]
   );
   const selectedExerciseMetadata = useMemo(
-    () => (isConvertedOsmMap ? null : getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, exerciseId)),
-    [exerciseId, isConvertedOsmMap]
+    () => (isConvertedOsmMap ? null : getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, selectedExerciseId)),
+    [isConvertedOsmMap, selectedExerciseId]
   );
   const selectedMapMetadata = useMemo(
-    () => (isConvertedOsmMap ? null : getMapMetadataForExercise(MARLOWE_DISTRICT_METADATA_CATALOGUE, exerciseId)),
-    [exerciseId, isConvertedOsmMap]
+    () => (isConvertedOsmMap ? null : getMapMetadataForExercise(MARLOWE_DISTRICT_METADATA_CATALOGUE, selectedExerciseId)),
+    [isConvertedOsmMap, selectedExerciseId]
   );
   const selectedSyntheticScenario = useMemo(
-    () => (isConvertedOsmMap ? null : getRealisticSyntheticScenarioForExercise(exerciseId)),
-    [exerciseId, isConvertedOsmMap]
+    () => (isConvertedOsmMap ? null : getRealisticSyntheticScenarioForExercise(selectedExerciseId)),
+    [isConvertedOsmMap, selectedExerciseId]
   );
   const selectedExerciseIndex = useMemo(
-    () => activeExercises.findIndex((exercise) => exercise.id === exerciseId),
-    [activeExercises, exerciseId]
+    () => activeExercises.findIndex((exercise) => exercise.id === selectedExerciseId),
+    [activeExercises, selectedExerciseId]
   );
   const selectedStartStop = selectedExercise?.stops[0] ?? null;
   const selectedCheckpointStops = selectedExercise ? selectedExercise.stops.slice(1, -1) : [];
@@ -3507,7 +3526,7 @@ export function RouteRunnerClient({
     return runDrawnRoutePipeline({
       map: activeMap,
       exercises: activeExercises,
-      exerciseId,
+      exerciseId: selectedExerciseId,
       drawnTrace: pipelineTrace,
       options: {
         minimumGesturePointCount: MIN_DRAWN_GESTURE_POINT_COUNT,
@@ -3515,7 +3534,7 @@ export function RouteRunnerClient({
         maximumSnapDistance: SNAP_TOLERANCE
       }
     });
-  }, [activeExercises, activeMap, drawnTrace, exerciseId, isDrawing, selectedExerciseAvailability]);
+  }, [activeExercises, activeMap, drawnTrace, isDrawing, selectedExerciseAvailability, selectedExerciseId]);
   const snapPreview = drawnPipelineResult.snappedRoute ?? emptySnapPreview();
   const drawnDisplayStatus = getDrawnPipelineDisplayStatus(drawnPipelineResult, isDrawing);
   const pipelineStageBadges = getPipelineStageBadges(drawnPipelineResult, isDrawing);
@@ -3695,7 +3714,7 @@ export function RouteRunnerClient({
     const lastPoint = drawnTrace.points[drawnTrace.points.length - 1];
 
     return [
-      exerciseId,
+      selectedExerciseId,
       drawnPipelineResult.status,
       drawnAttemptReview.status,
       drawnAttemptReview.scoreLabel,
@@ -3705,7 +3724,14 @@ export function RouteRunnerClient({
       drawnAttemptReview.recommendedPracticeQueue.map((item) => item.id).join("|"),
       drawnPipelineResult.warnings.map((warning) => warning.code).join("|")
     ].join("::");
-  }, [drawnAttemptReview, drawnPipelineResult.status, drawnPipelineResult.warnings, drawnTrace.points, exerciseId, isDrawing]);
+  }, [
+    drawnAttemptReview,
+    drawnPipelineResult.status,
+    drawnPipelineResult.warnings,
+    drawnTrace.points,
+    isDrawing,
+    selectedExerciseId
+  ]);
   const strongestWeakAreas = useMemo(() => getStrongestWeakAreas(weakAreaProfile, 4), [weakAreaProfile]);
   const weakAreaPracticeFocus = useMemo(() => getLearnerWeakAreaPracticeFocus(weakAreaProfile), [weakAreaProfile]);
   const attemptHistoryInsights = useMemo(() => buildAttemptHistoryInsights(attemptHistory), [attemptHistory]);
@@ -3936,7 +3962,7 @@ export function RouteRunnerClient({
 
     saveRouteAttempt({
       userId: null,
-      exerciseId,
+      exerciseId: selectedExerciseId,
       mapId: activeMap.id,
       mapVersion: activeMap.mapVersion,
       exerciseVersion: selectedExercise?.exerciseVersion,
@@ -3988,8 +4014,8 @@ export function RouteRunnerClient({
     activeMap.mapVersion,
     drawnAttemptReview,
     drawnPipelineResult,
-    exerciseId,
     selectedExercise?.exerciseVersion,
+    selectedExerciseId,
     weakAreaAttemptKey
   ]);
 
@@ -4465,7 +4491,7 @@ export function RouteRunnerClient({
     const completedAt = new Date().toISOString();
     const feedback = buildAdaptivePracticeOutcomeFeedback({
       practiceItem: item,
-      exerciseId: launchableRouteExerciseId(item, mapOptions) ?? exerciseId,
+      exerciseId: launchableRouteExerciseId(item, mapOptions) ?? selectedExerciseId,
       completedAt,
       review: drawnAttemptReview
     });
@@ -4487,9 +4513,16 @@ export function RouteRunnerClient({
   }
 
   function handleExerciseChange(nextExerciseId: string) {
-    setExerciseId(nextExerciseId);
+    const nextResolvedExerciseId = resolveRouteRunnerExerciseSelection({
+      exercises: activeExercises,
+      requestedExerciseId: nextExerciseId,
+      defaultExerciseId: selectedMapOption.defaultExerciseId,
+      scoreable: selectedMapIsScoreable
+    });
+
+    setExerciseId(nextResolvedExerciseId);
     if (isStudentBetaRouteRunner) {
-      updateStudentBetaRouteRunnerUrl(selectedMapOption.id, nextExerciseId);
+      updateStudentBetaRouteRunnerUrl(selectedMapOption.id, nextResolvedExerciseId);
     }
     setResult(null);
     setError(null);
@@ -4521,10 +4554,17 @@ export function RouteRunnerClient({
           mapOptions
         }).selectedMapOption;
 
+    const nextExerciseId = resolveRouteRunnerExerciseSelection({
+      exercises: nextMapOption.exercises,
+      requestedExerciseId: nextMapOption.defaultExerciseId,
+      defaultExerciseId: nextMapOption.defaultExerciseId,
+      scoreable: routeRunnerMapOptionIsScoreable(nextMapOption)
+    });
+
     setMapOptionId(nextMapOption.id);
-    setExerciseId(nextMapOption.defaultExerciseId);
+    setExerciseId(nextExerciseId);
     if (isStudentBetaRouteRunner) {
-      updateStudentBetaRouteRunnerUrl(nextMapOption.id, nextMapOption.defaultExerciseId);
+      updateStudentBetaRouteRunnerUrl(nextMapOption.id, nextExerciseId);
     }
     setNodeIdsText("");
     setRoadIdsText("");
@@ -4835,7 +4875,7 @@ export function RouteRunnerClient({
       const runResult = runRouteExercise({
         map: activeMap,
         exercises: activeExercises,
-        exerciseId,
+        exerciseId: selectedExerciseId,
         userRoute: {
           nodeIds: parseCommaSeparatedIds(nodeIdsText),
           roadIds: parseCommaSeparatedIds(roadIdsText)
@@ -5161,7 +5201,7 @@ export function RouteRunnerClient({
             </label>
             <select
               id="route-exercise"
-              value={exerciseId}
+              value={selectedExerciseId}
               onChange={(event) => handleExerciseChange(event.target.value)}
               disabled={!selectedMapIsScoreable || practiceExercisesPanel.exerciseRows.length === 0}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
