@@ -344,6 +344,18 @@ markers, overlays, drawn routes, and submit matching stay aligned and do not
 stretch. High zoom is for learner inspection only and should not bypass
 existing label/context decluttering budgets.
 
+Stage 161.6.9 adds zoom-aware cartographic symbol scaling on top of the
+existing geometry zoom. Geometry remains isotropic and controls which map area
+is visible; symbol scaling separately makes roads, casings, labels, label
+halos, context markers, one-way arrows, and restriction icons easier to read at
+high zoom. The scale curve is damped and token-driven rather than linear:
+local/minor roads and labels gain the most readability, major roads grow more
+modestly, service roads become clearer but stay quiet, and symbols are capped
+before 5000% so dense junctions do not become muddy. High zoom should make
+minor roads and local street names inspectable while learner route overlays,
+start/destination/checkpoint markers, illegal segments, and review warnings
+remain visually above the base map.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

@@ -130,6 +130,7 @@ import {
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
   buildRoadRenderPasses,
+  cartographicMarkerScaleForViewport,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
@@ -1507,72 +1508,74 @@ function drawSyntheticLandmarkVisual(
   alpha = 1
 ): void {
   const point = mapToScreenPoint(visual.point, viewport);
+  const scale = cartographicMarkerScaleForViewport(viewport);
+  const radius = visual.radius * scale;
 
   context.save();
   context.globalAlpha = alpha;
   context.fillStyle = visual.haloColor;
   context.beginPath();
-  context.arc(point.x, point.y, visual.radius + 8, 0, Math.PI * 2);
+  context.arc(point.x, point.y, radius + 8 * scale, 0, Math.PI * 2);
   context.fill();
 
   context.fillStyle = visual.fillColor;
   context.strokeStyle = visual.strokeColor;
-  context.lineWidth = visual.kind === "station" ? TOPOPASS_STREET_ATLAS_STYLE.station.markerStrokeWidth : 2.5;
+  context.lineWidth = (visual.kind === "station" ? TOPOPASS_STREET_ATLAS_STYLE.station.markerStrokeWidth : 2.5) * scale;
   context.beginPath();
-  context.arc(point.x, point.y, visual.radius, 0, Math.PI * 2);
+  context.arc(point.x, point.y, radius, 0, Math.PI * 2);
   context.fill();
   context.stroke();
 
   if (visual.kind === "station") {
     context.strokeStyle = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineColor;
-    context.lineWidth = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineWidth;
+    context.lineWidth = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineWidth * scale;
     context.lineCap = "round";
     context.beginPath();
-    context.moveTo(point.x - visual.radius - 4, point.y);
-    context.lineTo(point.x + visual.radius + 4, point.y);
+    context.moveTo(point.x - radius - 4 * scale, point.y);
+    context.lineTo(point.x + radius + 4 * scale, point.y);
     context.stroke();
   } else if (visual.kind === "hospital") {
     context.strokeStyle = TOPOPASS_STREET_ATLAS_STYLE.landmarks.hospital.strokeColor;
-    context.lineWidth = 2.4;
+    context.lineWidth = 2.4 * scale;
     context.lineCap = "round";
     context.beginPath();
-    context.moveTo(point.x - 4, point.y);
-    context.lineTo(point.x + 4, point.y);
-    context.moveTo(point.x, point.y - 4);
-    context.lineTo(point.x, point.y + 4);
+    context.moveTo(point.x - 4 * scale, point.y);
+    context.lineTo(point.x + 4 * scale, point.y);
+    context.moveTo(point.x, point.y - 4 * scale);
+    context.lineTo(point.x, point.y + 4 * scale);
     context.stroke();
   } else if (visual.kind === "park") {
     context.fillStyle = TOPOPASS_STREET_ATLAS_STYLE.landmarks.park.strokeColor;
     context.beginPath();
-    context.arc(point.x, point.y, 3, 0, Math.PI * 2);
+    context.arc(point.x, point.y, 3 * scale, 0, Math.PI * 2);
     context.fill();
   } else if (visual.kind === "public-building") {
     context.strokeStyle = visual.strokeColor;
-    context.lineWidth = 2;
+    context.lineWidth = 2 * scale;
     context.beginPath();
-    context.rect(point.x - 4, point.y - 4, 8, 8);
+    context.rect(point.x - 4 * scale, point.y - 4 * scale, 8 * scale, 8 * scale);
     context.stroke();
   } else if (visual.kind === "open-space") {
     context.fillStyle = visual.strokeColor;
     context.beginPath();
-    context.arc(point.x, point.y, 2.8, 0, Math.PI * 2);
+    context.arc(point.x, point.y, 2.8 * scale, 0, Math.PI * 2);
     context.fill();
   } else if (visual.kind === "learner-reference" || visual.kind === "important-landmark") {
     context.strokeStyle = visual.strokeColor;
-    context.lineWidth = 2;
+    context.lineWidth = 2 * scale;
     context.beginPath();
-    context.moveTo(point.x, point.y - 5);
-    context.lineTo(point.x + 5, point.y + 4);
-    context.lineTo(point.x - 5, point.y + 4);
+    context.moveTo(point.x, point.y - 5 * scale);
+    context.lineTo(point.x + 5 * scale, point.y + 4 * scale);
+    context.lineTo(point.x - 5 * scale, point.y + 4 * scale);
     context.closePath();
     context.stroke();
   } else if (visual.kind === "market" || visual.kind === "dock") {
     context.strokeStyle = visual.strokeColor;
-    context.lineWidth = 2;
+    context.lineWidth = 2 * scale;
     context.beginPath();
-    context.moveTo(point.x - 4, point.y + 3);
-    context.lineTo(point.x, point.y - 4);
-    context.lineTo(point.x + 4, point.y + 3);
+    context.moveTo(point.x - 4 * scale, point.y + 3 * scale);
+    context.lineTo(point.x, point.y - 4 * scale);
+    context.lineTo(point.x + 4 * scale, point.y + 3 * scale);
     context.stroke();
   }
 
@@ -1605,7 +1608,7 @@ function drawSyntheticMapLabel(
 
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const labelStyle = labelStyleForSyntheticMapLabel(label);
+  const labelStyle = labelStyleForSyntheticMapLabel(label, viewport);
   const yOffset = isStopLabel ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop.yOffset ?? 0 : 0;
 
   context.font = labelStyle.font;

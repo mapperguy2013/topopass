@@ -203,6 +203,13 @@ export type SyntheticMapLabel = {
 
 export type SyntheticRoadLabelTier = "major" | "secondary" | "minor" | "restricted" | "service";
 
+export type SyntheticCartographicRoadScaleTier = "major" | "secondary" | "local" | "service" | "restricted";
+
+export type SyntheticCartographicLabelScaleTier =
+  | SyntheticRoadLabelTier
+  | "context"
+  | "stop";
+
 export type SyntheticLabelCollisionBox = {
   id: string;
   minX: number;
@@ -554,38 +561,29 @@ export function roadStyleForViewport(visual: SyntheticRoadVisual, viewport: Scre
   const geometry = TOPOPASS_STREET_ATLAS_STYLE.roads.geometry;
   const viewportScale = syntheticMapViewportScale(viewport);
 
-  if (viewportScale >= geometry.lowZoomViewportScale) {
-    return style;
-  }
-
   const rank = roadRenderRank(visual);
 
-  if (rank <= 0) {
-    return {
-      ...style,
-      alpha: (style.alpha ?? 1) * geometry.restrictedLowZoomAlphaMultiplier
-    };
+  if (viewportScale < geometry.lowZoomViewportScale) {
+    if (rank <= 0) {
+      style.alpha = (style.alpha ?? 1) * geometry.restrictedLowZoomAlphaMultiplier;
+    } else if (rank === 1) {
+      style.casingWidth *= geometry.serviceLowZoomWidthMultiplier;
+      style.strokeWidth *= geometry.serviceLowZoomWidthMultiplier;
+      style.alpha = (style.alpha ?? 1) * geometry.serviceLowZoomAlphaMultiplier;
+    } else if (rank === 2) {
+      style.casingWidth *= geometry.minorLowZoomWidthMultiplier;
+      style.strokeWidth *= geometry.minorLowZoomWidthMultiplier;
+      style.alpha = (style.alpha ?? 1) * geometry.minorLowZoomAlphaMultiplier;
+    }
   }
 
-  if (rank === 1) {
-    return {
-      ...style,
-      casingWidth: style.casingWidth * geometry.serviceLowZoomWidthMultiplier,
-      strokeWidth: style.strokeWidth * geometry.serviceLowZoomWidthMultiplier,
-      alpha: (style.alpha ?? 1) * geometry.serviceLowZoomAlphaMultiplier
-    };
-  }
+  const widthScale = cartographicRoadScaleForVisual(visual, viewport);
 
-  if (rank === 2) {
-    return {
-      ...style,
-      casingWidth: style.casingWidth * geometry.minorLowZoomWidthMultiplier,
-      strokeWidth: style.strokeWidth * geometry.minorLowZoomWidthMultiplier,
-      alpha: (style.alpha ?? 1) * geometry.minorLowZoomAlphaMultiplier
-    };
-  }
-
-  return style;
+  return {
+    ...style,
+    casingWidth: style.casingWidth * widthScale,
+    strokeWidth: style.strokeWidth * widthScale
+  };
 }
 
 export function roadJunctionRadiusForVisual(
@@ -798,16 +796,31 @@ export function roadLabelTier(label: Pick<SyntheticMapLabel, "roadClass" | "osmH
   return "minor";
 }
 
-export function labelStyleForSyntheticMapLabel(label: SyntheticMapLabel): TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle {
+export function labelStyleForSyntheticMapLabel(
+  label: SyntheticMapLabel,
+  viewport?: ScreenMapViewport
+): TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle {
   if (label.kind === "road") {
-    return TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)];
+    return scaleLabelStyleForViewport(
+      TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)],
+      cartographicLabelScaleForTier(roadLabelTier(label), viewport),
+      viewport
+    );
   }
 
   if (isContextMapLabelKind(label.kind)) {
-    return TOPOPASS_STREET_ATLAS_STYLE.labels.context[label.kind];
+    return scaleLabelStyleForViewport(
+      TOPOPASS_STREET_ATLAS_STYLE.labels.context[label.kind],
+      cartographicLabelScaleForTier("context", viewport),
+      viewport
+    );
   }
 
-  return TOPOPASS_STREET_ATLAS_STYLE.labels.stop;
+  return scaleLabelStyleForViewport(
+    TOPOPASS_STREET_ATLAS_STYLE.labels.stop,
+    cartographicLabelScaleForTier("stop", viewport),
+    viewport
+  );
 }
 
 export function filterSyntheticMapLabelsForViewport(
@@ -1019,21 +1032,169 @@ export function syntheticMapViewportScale(viewport: ScreenMapViewport): number {
   return Number.isFinite(scale) ? scale : 0;
 }
 
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function dampedCartographicMultiplier(
+  viewportScale: number,
+  gain: number,
+  maxMultiplier: number,
+  minMultiplier = 1
+): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const referenceScale = Math.max(0.000001, scaleTokens.referenceViewportScale);
+
+  if (!Number.isFinite(viewportScale) || viewportScale <= 0) {
+    return 1;
+  }
+
+  const zoomSteps = Math.log2(viewportScale / referenceScale);
+  const multiplier = 1 + zoomSteps * gain;
+
+  return clampNumber(multiplier, minMultiplier, maxMultiplier);
+}
+
+function roadScaleTierForVisual(visual: Pick<SyntheticRoadVisual, "roadClass" | "osmHierarchy">): SyntheticCartographicRoadScaleTier {
+  const rank = roadRenderRank(visual);
+
+  if (rank <= 0) {
+    return "restricted";
+  }
+
+  if (rank === 1) {
+    return "service";
+  }
+
+  if (rank <= 3) {
+    return "local";
+  }
+
+  if (rank === 4) {
+    return "secondary";
+  }
+
+  return "major";
+}
+
+export function cartographicRoadScaleForVisual(
+  visual: Pick<SyntheticRoadVisual, "roadClass" | "osmHierarchy">,
+  viewport: ScreenMapViewport
+): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const tier = roadScaleTierForVisual(visual);
+
+  return dampedCartographicMultiplier(
+    syntheticMapViewportScale(viewport),
+    scaleTokens.roadGain[tier],
+    scaleTokens.roadMaxMultiplier[tier],
+    tier === "major" ? 1 : scaleTokens.roadMinMultiplier
+  );
+}
+
+export function cartographicLabelScaleForTier(
+  tier: SyntheticCartographicLabelScaleTier,
+  viewport?: ScreenMapViewport
+): number {
+  if (!viewport) {
+    return 1;
+  }
+
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+
+  return dampedCartographicMultiplier(
+    syntheticMapViewportScale(viewport),
+    scaleTokens.labelGain[tier],
+    scaleTokens.labelMaxMultiplier[tier]
+  );
+}
+
+export function cartographicMarkerScaleForViewport(viewport: ScreenMapViewport): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+
+  return dampedCartographicMultiplier(
+    syntheticMapViewportScale(viewport),
+    scaleTokens.markerGain,
+    scaleTokens.markerMaxMultiplier
+  );
+}
+
+export function cartographicRestrictionSymbolScaleForViewport(viewport: ScreenMapViewport): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+
+  return dampedCartographicMultiplier(
+    syntheticMapViewportScale(viewport),
+    scaleTokens.restrictionGain,
+    scaleTokens.restrictionMaxMultiplier
+  );
+}
+
+function roadLabelMinLengthMultiplierForViewport(viewportScale: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+
+  if (viewportScale >= scaleTokens.veryHighZoomViewportScale) {
+    return scaleTokens.veryHighZoomMinRoadLengthMultiplier;
+  }
+
+  if (viewportScale >= scaleTokens.highZoomViewportScale) {
+    return scaleTokens.highZoomMinRoadLengthMultiplier;
+  }
+
+  return 1;
+}
+
+function scaleFontString(font: string, multiplier: number): string {
+  return font.replace(/(\d+(?:\.\d+)?)px/, (_match, size: string) => `${Number(size) * multiplier}px`);
+}
+
+function scaleLabelStyleForViewport<
+  T extends TopopassLabelStyle | TopopassRoadLabelStyle | TopopassContextLabelStyle
+>(style: T, multiplier: number, viewport?: ScreenMapViewport): T {
+  if (!viewport || Math.abs(multiplier - 1) < 0.000001) {
+    return { ...style };
+  }
+
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const haloMultiplier = Math.min(multiplier, scaleTokens.labelHaloMaxMultiplier);
+  const collisionMultiplier = Math.min(multiplier, scaleTokens.labelCollisionMaxMultiplier);
+  const scaledStyle = {
+    ...style,
+    font: scaleFontString(style.font, multiplier),
+    haloWidth: style.haloWidth * haloMultiplier
+  };
+
+  if ("fontSize" in scaledStyle) {
+    scaledStyle.fontSize *= multiplier;
+  }
+
+  if ("approximateCharacterWidth" in scaledStyle) {
+    scaledStyle.approximateCharacterWidth *= multiplier;
+  }
+
+  if ("collisionPadding" in scaledStyle) {
+    scaledStyle.collisionPadding *= collisionMultiplier;
+  }
+
+  return scaledStyle;
+}
+
 function shouldShowRoadLabel(
   label: SyntheticMapLabel,
   viewport: ScreenMapViewport,
   viewportScale: number,
   roadLabelPointsByText: ReadonlyMap<string, readonly Vec2[]>
 ): boolean {
-  const style = TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy[roadLabelTier(label)];
+  const tier = roadLabelTier(label);
+  const style = labelStyleForSyntheticMapLabel(label, viewport) as TopopassRoadLabelStyle;
   const roadLengthMeters = label.roadLengthMeters ?? 0;
   const roadScreenLength = roadLengthMeters * viewportScale;
+  const visibilityMultiplier = roadLabelMinLengthMultiplierForViewport(viewportScale);
 
   if (viewportScale < style.minViewportScale) {
     return false;
   }
 
-  if (roadScreenLength < style.minRoadScreenLength) {
+  if (roadScreenLength < style.minRoadScreenLength * visibilityMultiplier) {
     return false;
   }
 
@@ -1045,8 +1206,9 @@ function shouldShowRoadLabel(
 
   const screenPoint = mapToScreenPoint(label.point, viewport);
   const existingPoints = roadLabelPointsByText.get(label.text.toLowerCase()) ?? [];
+  const repeatDistance = style.repeatDistance / Math.min(cartographicLabelScaleForTier(tier, viewport), 1.6);
 
-  return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= style.repeatDistance);
+  return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= repeatDistance);
 }
 
 function shouldShowContextLabel(label: SyntheticMapLabel, viewportScale: number): boolean {
@@ -1058,7 +1220,7 @@ function shouldShowContextLabel(label: SyntheticMapLabel, viewportScale: number)
 }
 
 function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
-  const style = labelStyleForSyntheticMapLabel(label);
+  const style = labelStyleForSyntheticMapLabel(label, viewport);
   const point = mapToScreenPoint(label.point, viewport);
   const yOffset = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish" ? style.yOffset ?? 0 : 0;
   const fontSize = labelFontSize(style);
@@ -1081,7 +1243,8 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
 function landmarkVisualCollisionBox(visual: SyntheticLandmarkVisual, viewport: ScreenMapViewport): SyntheticLabelCollisionBox {
   const point = mapToScreenPoint(visual.point, viewport);
   const markerStyle = contextMarkerStyleForVisual(visual);
-  const radius = visual.radius + markerStyle.collisionPadding;
+  const scale = cartographicMarkerScaleForViewport(viewport);
+  const radius = visual.radius * scale + markerStyle.collisionPadding;
 
   return {
     id: `landmark-marker-${visual.id}`,

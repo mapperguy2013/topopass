@@ -148,6 +148,17 @@ const highZoomViewport = {
   }
 };
 
+const veryHighZoomViewport = {
+  width: 10000,
+  height: 10000,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
+
 test("buildNoEntryVisualItems creates clear no-entry symbols from existing overlays", () => {
   const items = buildNoEntryVisualItems(roadRestrictionOverlays);
 
@@ -583,6 +594,34 @@ test("Stage 147 medium zoom shows useful restriction symbols and reduces their s
     restrictionMapVisualStyleForViewport(noEntryItem, mediumZoomViewport).alpha <
       restrictionMapVisualStyleForViewport(noEntryItem, highZoomViewport).alpha
   );
+});
+
+test("Stage 161.6.9 restriction and one-way symbols scale at very high zoom without changing review markers", () => {
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays,
+    turnRestrictionVisuals: [turnVisual()],
+    routeIssueOverlays
+  });
+  const oneWayItem = items.find((item) => item.kind === "one-way");
+  const noEntryItem = items.find((item) => item.kind === "no-entry");
+  const reviewItem = items.find((item) => item.kind === "illegal-movement");
+
+  assert.ok(oneWayItem);
+  assert.ok(noEntryItem);
+  assert.ok(reviewItem);
+  assert.ok(
+    restrictionMapVisualStyleForViewport(oneWayItem, veryHighZoomViewport).scale >
+      restrictionMapVisualStyleForViewport(oneWayItem, highZoomViewport).scale
+  );
+  assert.ok(
+    restrictionMapVisualStyleForViewport(noEntryItem, veryHighZoomViewport).scale <=
+      TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.highRestrictionSymbolScale *
+        TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale.restrictionMaxMultiplier
+  );
+  assert.deepEqual(restrictionMapVisualStyleForViewport(reviewItem, veryHighZoomViewport), {
+    alpha: 1,
+    scale: 1
+  });
 });
 
 test("Stage 147 road restriction overlay alpha declutters at low zoom", () => {

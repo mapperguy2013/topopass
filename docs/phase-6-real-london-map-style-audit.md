@@ -236,6 +236,28 @@ overlays, start/checkpoint/finish markers, labels, and submit matching must
 remain aligned after high zoom. High zoom does not change fixture budgets or
 force extra labels/features beyond the existing Phase 6 decluttering rules.
 
+## Stage 161.6.9 Zoom-Aware Road And Label Scaling
+
+Stage 161.6.9 makes high zoom useful for learner inspection by scaling
+cartographic symbols separately from geometry. The map still uses one
+isotropic viewport transform, but road strokes, casings, street-label font
+sizes, label halos, context markers, one-way arrows, and restriction icons now
+receive capped damped multipliers from `zoom.cartographicScale` tokens.
+
+The rule is intentionally asymmetric: major roads grow modestly so they keep
+hierarchy without looking like learner route overlays, while local and service
+roads gain more readability at high zoom. Minor-road labels scale more than
+major-road labels and high-zoom thresholds relax enough for useful local
+street labels to appear when collision filtering allows them. Restriction and
+one-way symbols also scale at very high zoom, while route-review issue symbols
+and learner overlays stay above the base map and do not lose priority.
+
+High zoom therefore has two separate meanings: geometry zoom selects a closer
+area, and cartographic symbol scaling makes that closer area readable. The
+renderer must preserve drawing alignment, marker alignment, and submit
+matching after zooming; it must not stretch X/Y differently or scale symbols
+linearly to 5000%.
+
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 
 Stage 161.5 corrects the Waterloo Bridge / Blackfriars / Thames corridor after

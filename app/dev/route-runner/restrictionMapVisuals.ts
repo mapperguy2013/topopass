@@ -1,6 +1,10 @@
 import type { ScreenMapViewport, TurnRestrictionVisual, TurnRestrictionVisualKind, Vec2 } from "../../../lib/map-engine/index.ts";
 import type { RoadRestrictionOverlay, RouteIssueOverlay } from "./routeRunnerDisplay.ts";
-import type { SyntheticLabelCollisionBox, SyntheticStreetMapLegendItem } from "./syntheticStreetMapRenderer.ts";
+import {
+  cartographicRestrictionSymbolScaleForViewport,
+  type SyntheticLabelCollisionBox,
+  type SyntheticStreetMapLegendItem
+} from "./syntheticStreetMapRenderer.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 
 export type RestrictionMapVisualKind =
@@ -412,24 +416,25 @@ export function restrictionMapVisualStyleForViewport(
 
   const tier = restrictionZoomTierForViewport(viewport);
   const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+  const cartographicScale = cartographicRestrictionSymbolScaleForViewport(viewport);
 
   if (tier === "low") {
     return {
       alpha: decluttering.lowRestrictionSymbolAlpha,
-      scale: decluttering.lowRestrictionSymbolScale
+      scale: decluttering.lowRestrictionSymbolScale * cartographicScale
     };
   }
 
   if (tier === "medium") {
     return {
       alpha: decluttering.mediumRestrictionSymbolAlpha,
-      scale: decluttering.mediumRestrictionSymbolScale
+      scale: decluttering.mediumRestrictionSymbolScale * cartographicScale
     };
   }
 
   return {
     alpha: decluttering.highRestrictionSymbolAlpha,
-    scale: decluttering.highRestrictionSymbolScale
+    scale: decluttering.highRestrictionSymbolScale * cartographicScale
   };
 }
 

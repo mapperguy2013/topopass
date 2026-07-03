@@ -1045,6 +1045,15 @@ zoom uses the viewport centre, and the map continues to use one isotropic scale
 so roads, markers, labels, drawing, and submit matching stay aligned at high
 zoom. High zoom is intended for learner inspection, not for increasing base-map
 label density beyond the existing decluttering rules.
+Stage 161.6.9 separates geometry zoom from cartographic symbol scaling. The
+map viewport still uses one isotropic geometry scale, while roads, casings,
+road labels, label halos, context markers, one-way arrows, and restriction
+symbols now use damped zoom-aware multipliers from central TOPOPASS tokens.
+Local and service roads gain more high-zoom readability than major roads, minor
+street labels become larger and easier to place at high zoom, and one-way /
+restriction symbols grow modestly without overpowering learner overlays. At
+5000%, symbols are capped rather than scaled linearly, so the map remains
+usable for close learner inspection without turning junctions into visual mud.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

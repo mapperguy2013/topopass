@@ -9,6 +9,7 @@ import {
   buildSyntheticRouteOverlayVisuals,
   buildSyntheticStreetMapLegendItems,
   buildRoadRenderPasses,
+  cartographicRoadScaleForVisual,
   deriveOsmRoadRenderMetadata,
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
@@ -310,12 +311,19 @@ test("Stage 156 mobile touch readability tokens are central and finger-safe", ()
 
 test("Stage 142 zoom and decluttering tokens are ordered finite and used by helpers", () => {
   const thresholds = TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds;
+  const cartographicScale = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
   assert.ok(thresholds.minZoom < thresholds.defaultZoom);
   assert.ok(thresholds.defaultZoom < thresholds.maxZoom);
   assert.ok(thresholds.stepRatio > 1);
   assert.ok(thresholds.wheelSensitivity > 0);
   assert.ok(thresholds.panMargin >= 0);
+  assert.ok(cartographicScale.referenceViewportScale > 0);
+  assert.ok(cartographicScale.roadGain.local > cartographicScale.roadGain.major);
+  assert.ok(cartographicScale.roadMaxMultiplier.local > cartographicScale.roadMaxMultiplier.major);
+  assert.ok(cartographicScale.labelGain.minor > cartographicScale.labelGain.major);
+  assert.ok(cartographicScale.labelMaxMultiplier.minor > cartographicScale.labelMaxMultiplier.major);
+  assert.ok(cartographicScale.restrictionMaxMultiplier > 1);
   assert.deepEqual(ROUTE_RUNNER_MAP_ZOOM_LIMITS, thresholds);
   assert.equal(
     ONE_WAY_ARROW_MIN_SPACING_METERS,
@@ -779,6 +787,17 @@ const highZoomRoadViewport = {
   }
 };
 
+const veryHighZoomRoadViewport = {
+  width: 10000,
+  height: 10000,
+  mapBounds: {
+    minX: 0,
+    minY: 0,
+    maxX: 1000,
+    maxY: 1000
+  }
+};
+
 test("Stage 145.5 road render passes keep all casings below all fills in hierarchy order", () => {
   const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
   const ordered = sortRoadVisualsForBaseRender(visuals);
@@ -823,7 +842,40 @@ test("Stage 147 high zoom restores residential road detail", () => {
   });
 
   assert.ok(roadStyleForViewport(residential, lowZoomRoadViewport).strokeWidth < residential.style.strokeWidth);
-  assert.deepEqual(roadStyleForViewport(residential, highZoomRoadViewport), residential.style);
+  assert.ok(roadStyleForViewport(residential, highZoomRoadViewport).strokeWidth >= residential.style.strokeWidth);
+});
+
+test("Stage 161.6.9 road strokes scale with zoom without making major roads dominate", () => {
+  const primary = roadVisual({
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const residential = roadVisual({
+    roadClass: "local",
+    osmHierarchy: "residential",
+    style: roadStyleForOsmHierarchy("residential")
+  });
+  const service = roadVisual({
+    roadClass: "service",
+    osmHighway: "service",
+    osmHierarchy: "service",
+    style: roadStyleForOsmHierarchy("service")
+  });
+  const primaryHigh = roadStyleForViewport(primary, veryHighZoomRoadViewport);
+  const residentialHigh = roadStyleForViewport(residential, veryHighZoomRoadViewport);
+  const serviceHigh = roadStyleForViewport(service, veryHighZoomRoadViewport);
+
+  assert.equal(roadStyleForViewport(primary, lowZoomRoadViewport).strokeWidth, primary.style.strokeWidth);
+  assert.ok(residentialHigh.strokeWidth > residential.style.strokeWidth * 1.7);
+  assert.ok(serviceHigh.strokeWidth > service.style.strokeWidth * 1.45);
+  assert.ok(primaryHigh.strokeWidth < primary.style.strokeWidth * 1.35);
+  assert.ok(
+    cartographicRoadScaleForVisual(residential, veryHighZoomRoadViewport) >
+      cartographicRoadScaleForVisual(primary, veryHighZoomRoadViewport)
+  );
+  assert.ok(residentialHigh.casingWidth > residential.style.casingWidth);
 });
 
 test("Stage 145.5 inactive and restricted roads stay quieter than active residential streets", () => {
@@ -932,6 +984,25 @@ test("Stage 145 label styles follow road hierarchy", () => {
   );
 });
 
+test("Stage 161.6.9 street labels scale up at high zoom with local labels gaining more readability", () => {
+  const majorLabel = roadLabel({ roadClass: "major", osmHierarchy: "primary" });
+  const minorLabel = roadLabel({ roadClass: "local", osmHierarchy: "residential" });
+  const majorBase = labelStyleForSyntheticMapLabel(majorLabel);
+  const minorBase = labelStyleForSyntheticMapLabel(minorLabel);
+  const majorHigh = labelStyleForSyntheticMapLabel(majorLabel, veryHighZoomRoadViewport);
+  const minorHigh = labelStyleForSyntheticMapLabel(minorLabel, veryHighZoomRoadViewport);
+
+  assert.ok("fontSize" in majorBase);
+  assert.ok("fontSize" in minorBase);
+  assert.ok("fontSize" in majorHigh);
+  assert.ok("fontSize" in minorHigh);
+  assert.ok(majorHigh.fontSize > majorBase.fontSize);
+  assert.ok(minorHigh.fontSize > minorBase.fontSize * 1.45);
+  assert.ok(minorHigh.fontSize / minorBase.fontSize > majorHigh.fontSize / majorBase.fontSize);
+  assert.ok(minorHigh.haloWidth > minorBase.haloWidth);
+  assert.ok(minorHigh.haloWidth < minorBase.haloWidth * 1.7);
+});
+
 test("Stage 145 label visibility reduces minor roads at low zoom", () => {
   const lowZoomViewport = {
     width: 160,
@@ -951,6 +1022,27 @@ test("Stage 145 label visibility reduces minor roads at low zoom", () => {
   assert.deepEqual(
     filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomViewport }).map((label) => label.id),
     ["major"]
+  );
+});
+
+test("Stage 161.6.9 high zoom makes useful local-road labels available", () => {
+  const labels = [
+    roadLabel({
+      id: "local-short",
+      text: "Store Street",
+      roadClass: "local",
+      osmHierarchy: "residential",
+      roadLengthMeters: 72
+    })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomRoadViewport }).map((label) => label.id),
+    []
+  );
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: veryHighZoomRoadViewport }).map((label) => label.id),
+    ["local-short"]
   );
 });
 
