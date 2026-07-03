@@ -103,6 +103,35 @@ Final Stage 160 visual acceptance checklist:
       OSM conversion, auth, subscription, product-flow, or Phase 7 behaviour
       changes are included.
 
+## Stage 160.5 Curated OSM Data Enrichment
+
+Stage 160.5 improves the fixture data available for Phase 6 Real London visual
+QA. It adds a bounded, deterministic enrichment script that reads the existing
+local OSM-derived GeoJSON cache and writes
+`curatedLondonStage1605Overpass.json` as an Overpass-like fixture with
+provenance, OSM attribution, a tag whitelist, import timestamp metadata, and
+small named London fixture zones. The app still does not fetch Overpass data at
+runtime.
+
+Learner benefit: the renderer now has a richer committed fixture for checking
+street-atlas readability, including real road names and hierarchy, one-way
+tags, access tags, bridges, tunnels, rail, stations, parks, water, landmarks,
+and area-label candidates where the local OSM cache provides them. This makes
+Phase 6 cartography easier to inspect without inventing landmarks,
+restrictions, or proprietary map content.
+
+The curated fixture normalises coverage into renderer-facing categories:
+`majorRoad`, `secondaryRoad`, `localRoad`, `serviceRoad`, `nonDrivingPath`,
+`bridgeRoad`, `tunnelRoad`, `oneWaySegment`, `restrictedTurn`, `park`, `water`,
+`rail`, `station`, `landmark`, `areaLabel`, and `learnerOverlay`. Styling stays
+in TOPOPASS cartography tokens rather than in the raw import data.
+
+Known limitations: the current local cache does not produce turn-restriction
+relations, crossings, or traffic-signal nodes in the Stage 160.5 fixture, and
+the defined Thames bridge zone requires a wider future OSM source because the
+current cache is central/north-central London only. OSM access, speed, lane,
+landmark, and public-building tags remain dependent on source data quality.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

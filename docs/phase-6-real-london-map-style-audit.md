@@ -41,6 +41,60 @@ heavy context, awkward junction, one-way system, learner review with mistakes,
 and mobile viewport readability. The Thames entry is a fixture-backed
 water/bridge proxy; no Thames feature or proprietary reference is invented.
 
+## Stage 160.5 Curated Real London OSM Data Enrichment
+
+Stage 160.5 keeps Phase 6 in visual/data-fixture scope. It adds a controlled
+curated OSM enrichment script for small bounded Real London fixture zones and
+does not change routing, legality checks, scoring, exercise generation, beta
+gates, OSM conversion behaviour, feedback tooling, auth, subscriptions,
+product flow, or Phase 7 learning features.
+
+The source path is the committed local OSM-derived GeoJSON cache at
+`public/maps/kings-cross-euston/osm-raw.geojson`. The script
+`scripts/maps/enrich-curated-london-osm.ts` writes deterministic Overpass-like
+fixture data to
+`lib/map-engine/osm/fixtures/curatedLondonStage1605Overpass.json` using named
+bounded zones, a tag whitelist, stable synthetic element ids, source metadata,
+import timestamp metadata, and OSM attribution. It is a manual dev/test data
+preparation tool; the app does not call Overpass at runtime.
+
+The Stage 160.5 curated fixture currently audits as:
+
+- Elements: `6,014`
+- Ways: `1,111`
+- Nodes: `4,903`
+- Road-class ways: `671`
+- Named road ways: `609`
+- One-way tagged ways: `346`
+- Access-restriction tagged ways: `143`
+- Bridge tagged ways: `13`
+- Tunnel tagged ways: `11`
+- Rail features: `387`
+- Station features: `12`
+- Park/open-space features: `26`
+- Water features: `7`
+- Landmark-like features: `2`
+- Area-name candidates: `1`
+- Public-building features: `1`
+- Turn-restriction relations: `0`
+- Crossing features: `0`
+- Traffic-signal features: `0`
+
+The intended render category audit covers `majorRoad`, `secondaryRoad`,
+`localRoad`, `serviceRoad`, `nonDrivingPath`, `bridgeRoad`, `tunnelRoad`,
+`oneWaySegment`, `restrictedTurn`, `park`, `water`, `rail`, `station`,
+`landmark`, `areaLabel`, and `learnerOverlay`. The current fixture has no
+turn-restriction relations and no learner overlay data because it is base-map
+OSM fixture data only.
+
+Known limitations: the local cached extract is central/north-central London,
+not all London; the defined Thames bridge zone needs a wider future cached
+source; crossings and traffic signals are absent from the generated fixture;
+and OSM access, maxspeed, lane, landmark, public-building, and restriction tags
+depend on source coverage quality. Future broader coverage should use a
+cached/offline OSM source such as a bounded Geofabrik-derived extract through
+the same whitelist and fixture-output path rather than live runtime fetching.
+
 ## Stage 143 Styling Application
 
 Stage 143 applies the first TOPOPASS street-atlas base map styling pass. The

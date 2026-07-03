@@ -931,6 +931,17 @@ mistakes, and mobile viewports. The pass uses only original TOPOPASS styling
 and permitted fixture data; it does not copy proprietary map assets or change
 routing, legality, scoring, exercise generation, beta gates, OSM conversion,
 feedback, auth, subscriptions, product flow, or Phase 7 scope.
+Stage 160.5 adds curated Real London OSM fixture enrichment for Phase 6 visual
+QA. `npm.cmd run map:enrich:curated-london-osm` reads the existing local
+OSM-derived GeoJSON cache, applies small bounded London fixture zones and a tag
+whitelist, and writes deterministic Overpass-like data to
+`curatedLondonStage1605Overpass.json` with provenance and OSM attribution. The
+result gives the map tests richer real road names, hierarchy, one-way/access
+tags, bridges, tunnels, rail, stations, parks, water, landmarks, and area-label
+candidates where the cache contains them. The app still does not fetch live OSM
+data at runtime, does not import all London, does not invent restrictions or
+landmarks, and does not change route logic, legality, scoring, beta gates,
+feedback, OSM conversion behaviour, or Phase 7 scope.
 
 ## Current Feature Set
 

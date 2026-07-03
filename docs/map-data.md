@@ -12,6 +12,72 @@ fetch online map tiles or call live map APIs at runtime.
 - Projection/config: `src/data/maps/kings-cross-euston/map-config.json`
 - Attribution: OpenStreetMap contributors, ODbL
 
+## Curated Real London OSM Enrichment
+
+Stage 160.5 adds a controlled dev/test enrichment path for Phase 6 visual QA:
+
+- Script: `scripts/maps/enrich-curated-london-osm.ts`
+- Command: `npm.cmd run map:enrich:curated-london-osm`
+- Default source cache: `public/maps/kings-cross-euston/osm-raw.geojson`
+- Default fixture output:
+  `lib/map-engine/osm/fixtures/curatedLondonStage1605Overpass.json`
+- Zone definitions and audit helpers:
+  `app/dev/route-runner/curatedLondonOsmEnrichment.ts`
+
+The script reads a local OSM-derived GeoJSON cache and writes deterministic
+Overpass-like fixture JSON for small named London fixture zones. It does not
+call Overpass or any other live map API at runtime, and the learner app does
+not depend on a public OSM service. The output includes TOPOPASS provenance
+metadata, source path, source timestamp where available, OSM attribution,
+curated zone definitions, the tag whitelist, and the per-zone feature cap used
+for the pull.
+
+The current curated zones cover dense central streets, major roads with side
+streets, high streets, a residential-estate proxy inside the local cache, park
+edges, rail/station-heavy areas, awkward junctions, one-way-heavy streets,
+learner route-review context, mobile viewport stress, and a small Thames bridge
+zone for future wider source extracts. The zones are intentionally bounded and
+small; this stage does not import all London.
+
+Supported enriched render categories are:
+
+- `majorRoad`
+- `secondaryRoad`
+- `localRoad`
+- `serviceRoad`
+- `nonDrivingPath`
+- `bridgeRoad`
+- `tunnelRoad`
+- `oneWaySegment`
+- `restrictedTurn`
+- `park`
+- `water`
+- `rail`
+- `station`
+- `landmark`
+- `areaLabel`
+- `learnerOverlay`
+
+Styling is not stored in the raw fixture. The script preserves whitelisted OSM
+tags so the existing renderer and TOPOPASS cartography tokens can classify
+roads, context, one-way streets, restrictions, parks, water, rail, stations,
+landmarks, and area labels without hard-coding visual decisions into import
+data.
+
+Known gaps in the current Stage 160.5 generated fixture:
+
+- The local source cache has no turn-restriction relations in the generated
+  curated output, so `restrictedTurn` currently audits to zero.
+- Crossings and traffic-signal nodes are not present in the generated output.
+- The Thames bridge zone is defined for future controlled extracts, but the
+  current local cache is central/north-central and does not cover the Thames.
+- OSM access, maxspeed, lane, landmark, and public-building tags vary by area
+  and can be incomplete.
+
+A future broader import should use an offline Geofabrik extract or another
+cached OSM-derived source through the same bounded-zone and whitelist approach,
+rather than making the live app call Overpass.
+
 ## Actual GeoJSON Coverage
 
 The current raw GeoJSON contains:
