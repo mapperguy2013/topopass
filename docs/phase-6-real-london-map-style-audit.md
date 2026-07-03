@@ -157,6 +157,33 @@ landmark markers, visible road labels, visible context labels, and overview
 decluttering. It also checks the Waterloo/Thames bridge corridor labels
 directly.
 
+## Stage 161.5 Waterloo / Thames Atlas Readability Correction
+
+Stage 161.5 corrects the Waterloo Bridge / Blackfriars / Thames corridor after
+visual screenshot review. The work stays Phase 6 visual-only and uses only the
+committed OSM-derived fixture data.
+
+Implementation changes:
+
+- Existing closed water features render as more legible filled Thames context,
+  and OSM waterway lines use a wider calm river corridor when polygon coverage
+  is incomplete.
+- Major base-road tokens are calmer and slightly narrower so Victoria
+  Embankment, Strand, Waterloo Bridge, Blackfriars Bridge, Southwark Street,
+  and Upper Thames Street remain readable without looking like learner routes.
+- Residential/local roads gain slightly stronger low/medium-zoom visibility,
+  while service/access roads remain quiet.
+- Rail line opacity and station density are reduced near dense bridge context.
+  Repeated rail/context labels are deduplicated before collision filtering, so
+  repeated Thameslink labels no longer clutter the corridor.
+- Destination marker halo/radius is reduced so the finish marker appears
+  visually attached to the road/route rather than floating above it.
+
+The Stage 161.5 renderer test checks Waterloo water polygons, widened waterway
+corridor styling, bridge labels, key corridor road labels, deduplicated
+Thameslink labels, the calmer major-road relationship to learner route tokens,
+minor-road visibility, and destination marker attachment tokens.
+
 ## Stage 143 Styling Application
 
 Stage 143 applies the first TOPOPASS street-atlas base map styling pass. The

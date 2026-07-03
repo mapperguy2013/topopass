@@ -962,6 +962,12 @@ changing routing, legality, scoring, OSM conversion, or Phase 7 scope. The
 visual direction is general printed London street-atlas readability only; no
 A-Z, Google, Apple, Ordnance Survey, proprietary tiles, screenshots, colours,
 icons, typography, label placement, or copied map artwork are used.
+Stage 161.5 applies a targeted Waterloo/Thames correction: committed OSM water
+polygons render as stronger filled Thames context, waterway lines use a wider
+calm river corridor where polygon coverage is thin, major base roads are calmer
+than learner route overlays, local streets remain visible at learner zoom,
+repeated rail labels are deduplicated, and destination marker halos are tighter
+so the finish point reads attached to the route.
 
 ## Current Feature Set
 

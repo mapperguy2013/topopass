@@ -178,6 +178,26 @@ Known limitations: labels are still point/segment based rather than curved
 along-road labels, and fixture context remains limited to the OSM tags present
 in the committed extracts.
 
+## Stage 161.5 Waterloo / Thames Correction
+
+Stage 161.5 applies a targeted correction from the Waterloo Bridge /
+Blackfriars / Thames corridor screenshots:
+
+- Thames rendering uses existing OSM-derived water data only. Closed water
+  features render as stronger filled areas, while `waterway=*` lines use a
+  wider calm blue corridor where polygon coverage is thin.
+- Bridge roads remain above water; Waterloo Bridge and Blackfriars Bridge keep
+  their road and bridge context labels.
+- Major base roads are calmer and slightly narrower so they remain clear
+  atlas hierarchy rather than reading like learner route overlays.
+- Local and residential streets keep stronger low/medium-zoom visibility so
+  Waterloo side-street texture remains useful.
+- Rail lines and station context are quieter, and repeated context labels are
+  deduplicated by kind/text before collision filtering. Thameslink should not
+  repeat across every split rail segment.
+- Destination marker radius/halo is tightened so the finish point remains
+  visually attached to the destination road and route.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

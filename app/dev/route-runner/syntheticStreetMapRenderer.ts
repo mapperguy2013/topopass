@@ -775,7 +775,7 @@ export function buildSyntheticMapLabels(
     });
   }
 
-  return labels.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+  return dedupeContextMapLabels(labels).sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
 export function roadLabelTier(label: Pick<SyntheticMapLabel, "roadClass" | "osmHierarchy">): SyntheticRoadLabelTier {
@@ -1169,6 +1169,27 @@ function isContextMapLabelKind(kind: SyntheticMapLabelKind): kind is SyntheticCo
     kind === "learner_reference" ||
     kind === "bridge"
   );
+}
+
+function dedupeContextMapLabels(labels: readonly SyntheticMapLabel[]): SyntheticMapLabel[] {
+  const labelsByKey = new Map<string, SyntheticMapLabel>();
+  const dedupedLabels: SyntheticMapLabel[] = [];
+
+  for (const label of labels) {
+    if (!isContextMapLabelKind(label.kind)) {
+      dedupedLabels.push(label);
+      continue;
+    }
+
+    const key = `${label.kind}:${label.text.trim().toLowerCase()}`;
+    const existing = labelsByKey.get(key);
+
+    if (!existing || label.priority < existing.priority || (label.priority === existing.priority && label.id.localeCompare(existing.id) < 0)) {
+      labelsByKey.set(key, label);
+    }
+  }
+
+  return [...dedupedLabels, ...labelsByKey.values()];
 }
 
 function contextLabelKindForBackgroundFeature(feature: SyntheticBackgroundFeature): SyntheticContextMapLabelKind {

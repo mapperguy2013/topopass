@@ -218,6 +218,14 @@ the deterministic total length of its split OSM route-graph segments, while the
 label anchor stays on the best deterministic segment. This makes curated London
 fixtures more readable without changing routing data or inventing labels.
 
+Stage 161.5 keeps the Waterloo/Thames correction fixture-backed. Closed OSM
+water features such as committed `natural=water` / `water=*` ways render as
+filled water areas, and OSM `waterway=*` lines render as a wider calm river
+corridor when polygon coverage is incomplete. Rail and other repeated context
+labels are deduplicated by label kind and text before viewport collision
+filtering, so names such as Thameslink do not repeat across every split OSM
+rail segment.
+
 ## Driver Access Classification
 
 Driver access logic is implemented in:

@@ -67,8 +67,8 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#b86a28");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#b86a28");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#a96532");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#a96532");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe8c6");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#647184");
@@ -349,9 +349,9 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
     casingColor: "#f8e4b0",
-    strokeColor: "#b86a28",
-    casingWidth: 21,
-    strokeWidth: 11
+    strokeColor: "#a96532",
+    casingWidth: 19.6,
+    strokeWidth: 9.6
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -654,11 +654,23 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   const roadLabels = new Set(labels.filter((label) => label.kind === "road").map((label) => label.text));
   const bridgeLabels = new Set(linearFeatures.filter((feature) => feature.kind === "bridge").map((feature) => feature.label));
   const contextLabels = new Set(labels.filter((label) => label.kind !== "road").map((label) => label.text));
+  const waterFeatures = backgroundFeatures.filter((feature) => feature.kind === "water");
+  const waterwayFeatures = linearFeatures.filter((feature) => feature.kind === "waterway");
+  const thameslinkLabels = labels.filter((label) => label.text === "Thameslink");
 
-  assert.ok(backgroundFeatures.some((feature) => feature.kind === "water"), "Waterloo fixture should render Thames water polygons");
+  assert.ok(waterFeatures.length > 0, "Waterloo fixture should render Thames water polygons");
+  assert.ok(waterFeatures.every((feature) => feature.fillColor === TOPOPASS_STREET_ATLAS_STYLE.background.water.basin.fillColor));
+  assert.ok(waterwayFeatures.some((feature) => feature.strokeWidth >= 9), "Thames waterway corridor should read at learner zoom");
   assert.ok(contextLabels.has("River Thames"), "Waterloo fixture should label the Thames context");
   assert.ok(bridgeLabels.has("Waterloo Bridge"));
   assert.ok(bridgeLabels.has("Blackfriars Bridge"));
+  assert.ok(thameslinkLabels.length <= 1, "Repeated rail labels should be deduplicated");
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth < TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth * 2);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 5);
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding <
+      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.haloRadiusPadding
+  );
 
   for (const label of [
     "Victoria Embankment",
@@ -891,7 +903,7 @@ test("Stage 145 label styles follow road hierarchy", () => {
 
   assert.equal(roadLabelTier(majorLabel), "major");
   assert.equal(roadLabelTier(minorLabel), "minor");
-  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13.25px Arial, sans-serif");
+  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13px Arial, sans-serif");
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.major.fontSize >
       TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.minor.fontSize
