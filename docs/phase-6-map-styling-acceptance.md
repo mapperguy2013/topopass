@@ -320,6 +320,18 @@ undo, erase, reset, submit, and review the scored attempt. The same QA/debug
 tools remain available in `/dev/route-runner` and explicit dev QA mode; the
 practice page defaults to the clean beta-student view.
 
+Stage 161.6.6 fixes the learner-facing Real London Pan mode crash. The route
+runner now safely treats `setPointerCapture`, `hasPointerCapture`, and
+`releasePointerCapture` as best-effort browser APIs, so stale pointer ids,
+unsupported targets, detached canvases, or remounts cannot crash the page when
+Pan mode starts or ends. Switching Draw/Pan, changing map, changing route
+exercise, clicking outside the map, or unmounting the page clears active pan,
+draw, and pinch pointer refs. Pan mode must move the map without adding route
+points, and switching back to Draw must preserve the existing drawing and allow
+continued route input. This is interaction stability only; route scoring,
+matching, legality, exercise generation, cartography styling, and dev QA
+visibility are unchanged.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

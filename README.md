@@ -1030,6 +1030,12 @@ dashboard stay available in `/dev/route-runner` or explicit dev QA mode, but
 beta testers now see the clean practice flow: choose a curated map, choose a
 validated route exercise, draw, undo, erase, reset, submit, and review the
 score/result with OSM attribution visible.
+Stage 161.6.6 fixes a Real London practice interaction crash in Pan mode. The
+route-runner now treats browser pointer capture as optional and clears stale
+pan, draw, and pinch pointer refs when the user changes controls, maps, route
+exercises, or leaves the map. Draw/Pan switching remains learner-facing only on
+`/practice/real-london`; dev QA panels stay hidden, and scoring, legality,
+matching, and route generation are unchanged.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

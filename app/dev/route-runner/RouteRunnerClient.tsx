@@ -203,6 +203,8 @@ import {
   resetMapViewport,
   setMapInteractionMode,
   shouldPreventWheelPageScrollOverMap,
+  tryReleaseMapPointerCapture,
+  trySetMapPointerCapture,
   updateMapScrollLockForOutsidePointerDown,
   zoomInMapView,
   zoomOutMapView,
@@ -4088,8 +4090,13 @@ export function RouteRunnerClient({
       );
 
       if (!pointerDownInsideMap) {
+        activeMapPointersRef.current.clear();
+        activePinchGestureRef.current = null;
         panDragPointRef.current = null;
+        panPointerIdRef.current = null;
+        drawingPointerIdRef.current = null;
         setIsPanningMap(false);
+        setIsDrawing(false);
       }
     };
 
@@ -4097,6 +4104,18 @@ export function RouteRunnerClient({
 
     return () => {
       document.removeEventListener("pointerdown", handleDocumentPointerDown, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const activeMapPointers = activeMapPointersRef.current;
+
+    return () => {
+      activeMapPointers.clear();
+      activePinchGestureRef.current = null;
+      panDragPointRef.current = null;
+      panPointerIdRef.current = null;
+      drawingPointerIdRef.current = null;
     };
   }, []);
 
@@ -4269,9 +4288,7 @@ export function RouteRunnerClient({
   }
 
   function releaseMapPointerCapture(canvas: HTMLCanvasElement | null, pointerId: number) {
-    if (canvas?.hasPointerCapture(pointerId)) {
-      canvas.releasePointerCapture(pointerId);
-    }
+    tryReleaseMapPointerCapture(canvas, pointerId);
   }
 
   function activePinchPointerPair(): [MapPinchPointer, MapPinchPointer] | null {
@@ -4605,17 +4622,13 @@ export function RouteRunnerClient({
     }
 
     if (beginPinchGestureIfReady()) {
-      if (canvas.isConnected) {
-        canvas.setPointerCapture(event.pointerId);
-      }
+      trySetMapPointerCapture(canvas, event.pointerId);
 
       return;
     }
 
     if (isPanMode || isMiddleButtonPan) {
-      if (canvas.isConnected) {
-        canvas.setPointerCapture(event.pointerId);
-      }
+      trySetMapPointerCapture(canvas, event.pointerId);
 
       panPointerIdRef.current = event.pointerId;
       panDragPointRef.current = {
@@ -4637,9 +4650,7 @@ export function RouteRunnerClient({
       return;
     }
 
-    if (canvas.isConnected) {
-      canvas.setPointerCapture(event.pointerId);
-    }
+    trySetMapPointerCapture(canvas, event.pointerId);
 
     setIsDrawing(true);
     drawingPointerIdRef.current = event.pointerId;

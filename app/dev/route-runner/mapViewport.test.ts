@@ -41,6 +41,8 @@ import {
   shouldPreventWheelPageScrollOverMap,
   shouldPreventMapWheelDefault,
   toggleMapPanMode,
+  tryReleaseMapPointerCapture,
+  trySetMapPointerCapture,
   updateMapScrollLockForOutsidePointerDown,
   zoomMapViewAroundPoint,
   zoomInMapView,
@@ -338,6 +340,51 @@ test("left mouse and touch can still start route drawing", () => {
   assert.equal(canStartDrawingWithMapPointer({ button: 0, pointerType: "mouse" }), true);
   assert.equal(canStartDrawingWithMapPointer({ button: 0, pointerType: "touch" }), true);
   assert.equal(isMiddleButtonMapPanPointer({ button: 0, pointerType: "mouse" }), false);
+});
+
+test("Stage 161.6.6 pointer capture helpers do not crash pan mode on unsupported or stale targets", () => {
+  assert.equal(trySetMapPointerCapture(null, 1), false);
+  assert.equal(tryReleaseMapPointerCapture(null, 1), false);
+  assert.equal(trySetMapPointerCapture({ isConnected: false }, 1), false);
+  assert.equal(tryReleaseMapPointerCapture({ isConnected: false }, 1), false);
+
+  let capturedPointerId: number | null = null;
+  const captureTarget = {
+    isConnected: true,
+    setPointerCapture(pointerId: number) {
+      capturedPointerId = pointerId;
+    },
+    hasPointerCapture(pointerId: number) {
+      return capturedPointerId === pointerId;
+    },
+    releasePointerCapture(pointerId: number) {
+      if (capturedPointerId === pointerId) {
+        capturedPointerId = null;
+      }
+    }
+  };
+
+  assert.equal(trySetMapPointerCapture(captureTarget, 42), true);
+  assert.equal(capturedPointerId, 42);
+  assert.equal(tryReleaseMapPointerCapture(captureTarget, 42), true);
+  assert.equal(capturedPointerId, null);
+  assert.equal(tryReleaseMapPointerCapture(captureTarget, 42), false);
+
+  const throwingTarget = {
+    isConnected: true,
+    setPointerCapture() {
+      throw new Error("Invalid pointer id");
+    },
+    hasPointerCapture() {
+      throw new Error("Pointer target is stale");
+    },
+    releasePointerCapture() {
+      throw new Error("Should not be reached");
+    }
+  };
+
+  assert.equal(trySetMapPointerCapture(throwingTarget, 7), false);
+  assert.equal(tryReleaseMapPointerCapture(throwingTarget, 7), false);
 });
 
 test("legacy pan helpers map onto explicit interaction modes", () => {

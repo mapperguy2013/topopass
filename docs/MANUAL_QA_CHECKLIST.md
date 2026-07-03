@@ -89,6 +89,17 @@ Knowledge questions currently appear in the mock exam and admin tools.
 - [ ] Previous route and Next route change the question and reset the attempt.
 - [ ] On a touch device, drawing and panning are usable.
 
+## Real London Practice Pan Mode
+
+- [ ] Open `/practice/real-london`.
+- [ ] Press Pan before drawing; the page does not crash.
+- [ ] Drag the map in Pan mode; no route points are added.
+- [ ] Press Draw, draw part of a route, then press Pan again; the existing route remains visible.
+- [ ] Press Draw again and continue drawing or use Erase route to redraw.
+- [ ] Change the practice map and route exercise, then repeat Draw/Pan switching.
+- [ ] Submit after panning and redrawing; score/review appears for scoreable exercises.
+- [ ] Confirm dev QA panels remain hidden and OSM attribution remains visible.
+
 ## Route Demo
 
 - [ ] Open `/route-demo`.

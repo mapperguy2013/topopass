@@ -52,6 +52,13 @@ export type MapPointerInput = {
   pointerType?: string;
 };
 
+export type MapPointerCaptureTarget = {
+  isConnected?: boolean;
+  setPointerCapture?: (pointerId: number) => void;
+  hasPointerCapture?: (pointerId: number) => boolean;
+  releasePointerCapture?: (pointerId: number) => void;
+};
+
 export type MapScrollLockState = {
   pointerInsideMap: boolean;
 };
@@ -401,6 +408,41 @@ export function isMiddleButtonMapPanActive(input: Pick<MapPointerInput, "buttons
 
 export function canStartDrawingWithMapPointer(input: MapPointerInput): boolean {
   return !isMiddleButtonMapPanPointer(input) && (!isMouseLikePointer(input) || input.button === 0);
+}
+
+export function trySetMapPointerCapture(target: MapPointerCaptureTarget | null, pointerId: number): boolean {
+  if (!target?.isConnected || typeof target.setPointerCapture !== "function" || !Number.isFinite(pointerId)) {
+    return false;
+  }
+
+  try {
+    target.setPointerCapture(pointerId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function tryReleaseMapPointerCapture(target: MapPointerCaptureTarget | null, pointerId: number): boolean {
+  if (
+    !target?.isConnected ||
+    typeof target.hasPointerCapture !== "function" ||
+    typeof target.releasePointerCapture !== "function" ||
+    !Number.isFinite(pointerId)
+  ) {
+    return false;
+  }
+
+  try {
+    if (!target.hasPointerCapture(pointerId)) {
+      return false;
+    }
+
+    target.releasePointerCapture(pointerId);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function setMapPanMode(state: MapViewportState, isPanModeEnabled: boolean): MapViewportState {
