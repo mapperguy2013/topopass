@@ -20,6 +20,7 @@ import {
 } from "./realLondonVisualQaScenario.ts";
 
 export type RouteRunnerMapSource = "synthetic-dev" | "converted-osm";
+export type RouteRunnerFixtureUse = "visualQaOnly" | "routableExercise" | "routeReviewFixture";
 
 export type RouteRunnerMapOption = {
   id: string;
@@ -33,6 +34,7 @@ export type RouteRunnerMapOption = {
   fixtureName?: string;
   sourceOverpassFixture?: unknown;
   devOnly?: boolean;
+  fixtureUse?: RouteRunnerFixtureUse;
 };
 
 export type RouteRunnerMapBounds = {
