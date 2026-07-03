@@ -952,6 +952,16 @@ scenarios for dense Central London, Thames/bridge context, one-way/restriction
 cartography, and quieter residential learner readability. They preserve OSM
 attribution, do not overwrite `realLondonPilotOverpass.json`, do not call
 Overpass at runtime, and are not full-London coverage.
+Stage 161 uses those curated fixtures for an atlas-style visual refinement
+pass. The renderer now uses calmer original TOPOPASS road tones, clearer casing
+hierarchy, quieter service/pedestrian/rail/restriction layers, and more useful
+learner-zoom context labels. Converted OSM road labels now fit against the
+total deterministic length of a named OSM road group rather than only one split
+graph segment, making real street names visible in the curated fixtures without
+changing routing, legality, scoring, OSM conversion, or Phase 7 scope. The
+visual direction is general printed London street-atlas readability only; no
+A-Z, Google, Apple, Ordnance Survey, proprietary tiles, screenshots, colours,
+icons, typography, label placement, or copied map artwork are used.
 
 ## Current Feature Set
 

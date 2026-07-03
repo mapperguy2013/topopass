@@ -141,6 +141,43 @@ rail/stations, parks/water, one-way tags, and turn-restriction relation data,
 but they remain small bounded extracts rather than full London coverage.
 Production practice still does not call Overpass at runtime.
 
+## Stage 161 Curated Fixture Visual Refinement
+
+Stage 161 tunes the TOPOPASS canvas cartography against the four curated
+manual Overpass fixtures. The pass keeps the design original while taking only
+general inspiration from printed London street-atlas readability: clear cased
+roads, restrained land/context washes, useful labels, and strong route-overlay
+priority. It does not copy A-Z, Google, Apple, Ordnance Survey, or any other
+proprietary tiles, screenshots, colours, icons, typography, label placement, or
+cartographic artwork.
+
+Changes:
+
+- Major and secondary roads use calmer original TOPOPASS atlas tones with
+  clearer casing hierarchy.
+- Residential roads remain readable at learner zoom, while service,
+  pedestrian, inactive, and restricted roads are quieter.
+- Base map node dots are disabled in the normal atlas view so converted London
+  fixtures read as streets rather than a graph. Matched-route nodes and the
+  explicit OSM debug overlay still have their own marker rendering.
+- Converted OSM road labels now judge fit using the deterministic total length
+  of the named OSM road group instead of a single split graph segment. This
+  makes real London street names visible in Piccadilly, Waterloo, the one-way
+  fixture, and the quiet residential fixture without changing route geometry.
+- Waterloo Bridge visual QA now explicitly checks Thames water context,
+  Waterloo Bridge and Blackfriars Bridge bridge context, and the key road
+  labels Victoria Embankment, Strand, Stamford Street, Upper Thames Street, and
+  Southwark Street.
+- Station, bridge, water, park, public-building, landmark, and area labels
+  enter at slightly more useful learner zooms while overview zoom remains
+  decluttered.
+- Rail and restriction overlays are quieter so attempted routes, correct
+  routes, checkpoints, hints, and review warnings remain dominant.
+
+Known limitations: labels are still point/segment based rather than curved
+along-road labels, and fixture context remains limited to the OSM tags present
+in the committed extracts.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

@@ -2895,23 +2895,24 @@ function drawRouteCanvas(input: {
     drawSelectedRestrictionHighlight(context, input.selectedRestrictionHighlight, input.viewport);
   }
 
-  for (const node of input.map.nodes) {
-    const point = mapToScreenPoint(node, input.viewport);
+  const nodeStyle = TOPOPASS_STREET_ATLAS_STYLE.nodes;
 
-    const nodeStyle = TOPOPASS_STREET_ATLAS_STYLE.nodes;
+  if (nodeStyle.showBaseMapNodes) {
+    for (const node of input.map.nodes) {
+      const point = mapToScreenPoint(node, input.viewport);
 
-    context.fillStyle = nodeStyle.fillColor;
-    context.strokeStyle = nodeStyle.strokeColor;
-    context.lineWidth = nodeStyle.strokeWidth;
-    context.beginPath();
-    context.arc(point.x, point.y, nodeStyle.radius, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
+      context.fillStyle = nodeStyle.fillColor;
+      context.strokeStyle = nodeStyle.strokeColor;
+      context.lineWidth = nodeStyle.strokeWidth;
+      context.beginPath();
+      context.arc(point.x, point.y, nodeStyle.radius, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    }
   }
 
   input.pipelineResult.matchResult?.nodeIds.forEach((nodeId, index) => {
     const node = nodeById(nodeId, input.map);
-    const nodeStyle = TOPOPASS_STREET_ATLAS_STYLE.nodes;
 
     if (!node) {
       return;

@@ -42,6 +42,7 @@ import {
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
 import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
+import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondonRouteRunnerMaps.ts";
 
 function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
   if (Array.isArray(value)) {
@@ -66,19 +67,20 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#c46f1f");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#c46f1f");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#b86a28");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#b86a28");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#d7e6c8");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#596475");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#334155");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe8c6");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#647184");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#26384c");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#047857");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#be123c");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#f97316");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.fillColor, "#d97706");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#0d9488");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.color, "#1d4ed8");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.color, "#245da8");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute.route.strokeColor, "#0284c7");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.nodes.showBaseMapNodes, false);
 });
 
 test("Stage 142 road hierarchy route restriction and one-way token groups are complete", () => {
@@ -346,10 +348,10 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#f8e7b1",
-    strokeColor: "#c46f1f",
-    casingWidth: 20,
-    strokeWidth: 10.8
+    casingColor: "#f8e4b0",
+    strokeColor: "#b86a28",
+    casingWidth: 21,
+    strokeWidth: 11
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -513,7 +515,7 @@ test("synthetic road styling keeps a clear London-inspired hierarchy", () => {
 
   assert.ok(majorStyle.casingWidth > localStyle.casingWidth);
   assert.ok(localStyle.strokeWidth > serviceStyle.strokeWidth);
-  assert.equal(oneWayStyle.strokeColor, "#7eaed0");
+  assert.equal(oneWayStyle.strokeColor, "#7fa9c6");
 });
 
 test("converted OSM road visuals expose deterministic hierarchy metadata", () => {
@@ -539,6 +541,136 @@ test("converted OSM hierarchy maps to expected road style widths", () => {
   assert.ok(roadStyleForOsmHierarchy("residential").strokeWidth > roadStyleForOsmHierarchy("service").strokeWidth);
   assert.ok(roadStyleForOsmHierarchy("service").strokeWidth > roadStyleForOsmHierarchy("pedestrian").strokeWidth);
   assert.ok((roadStyleForOsmHierarchy("inactive").alpha ?? 1) < (roadStyleForOsmHierarchy("residential").alpha ?? 1));
+});
+
+function mapNodeBounds(map: MapDefinition): { minX: number; minY: number; maxX: number; maxY: number } {
+  return map.nodes.reduce(
+    (bounds, node) => ({
+      minX: Math.min(bounds.minX, node.x),
+      minY: Math.min(bounds.minY, node.y),
+      maxX: Math.max(bounds.maxX, node.x),
+      maxY: Math.max(bounds.maxY, node.y)
+    }),
+    {
+      minX: Number.POSITIVE_INFINITY,
+      minY: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      maxY: Number.NEGATIVE_INFINITY
+    }
+  );
+}
+
+function insetViewportForMap(map: MapDefinition, fraction: number) {
+  const bounds = mapNodeBounds(map);
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+  const width = (bounds.maxX - bounds.minX) * fraction;
+  const height = (bounds.maxY - bounds.minY) * fraction;
+
+  return {
+    width: 430,
+    height: 620,
+    mapBounds: {
+      minX: centerX - width / 2,
+      minY: centerY - height / 2,
+      maxX: centerX + width / 2,
+      maxY: centerY + height / 2
+    }
+  };
+}
+
+test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and context at learner zoom", () => {
+  const minimumVisibleRoadLabelsByMapId = new Map([
+    ["osm-curated-piccadilly-circus", 45],
+    ["osm-curated-waterloo-bridge", 45],
+    ["osm-curated-one-way-system-area", 70],
+    ["osm-curated-quiet-residential-roads", 45]
+  ]);
+
+  for (const option of CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS) {
+    const roadVisuals = buildSyntheticRoadVisuals(option.map);
+    const backgroundFeatures = buildSyntheticBackgroundFeatures(option.map, {
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const linearFeatures = buildSyntheticLinearFeatures(option.map, {
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const landmarkVisuals = buildSyntheticLandmarkVisuals(option.map, option.exercises[0], {
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const labels = buildSyntheticMapLabels(option.map, option.exercises[0], {
+      includeOsmRoadLabels: true,
+      backgroundFeatures,
+      linearFeatures,
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const learnerViewport = insetViewportForMap(option.map, 0.18);
+    const overviewViewport = {
+      width: 390,
+      height: 620,
+      mapBounds: mapNodeBounds(option.map)
+    };
+    const learnerLabels = filterSyntheticMapLabelsForViewport({ labels, viewport: learnerViewport });
+    const overviewLabels = filterSyntheticMapLabelsForViewport({ labels, viewport: overviewViewport });
+    const visibleLandmarks = filterSyntheticLandmarkVisualsForViewport({
+      visuals: landmarkVisuals,
+      viewport: learnerViewport
+    });
+
+    assert.ok(roadVisuals.some((visual) => visual.osmHierarchy === "primary"), option.id);
+    assert.ok(roadVisuals.some((visual) => visual.osmHierarchy === "residential"), option.id);
+    assert.ok(backgroundFeatures.length > 0, option.id);
+    assert.ok(linearFeatures.length > 0, option.id);
+    assert.ok(visibleLandmarks.length > 0, option.id);
+    assert.ok(
+      learnerLabels.filter((label) => label.kind === "road").length >=
+        (minimumVisibleRoadLabelsByMapId.get(option.id) ?? 1),
+      option.id
+    );
+    assert.ok(learnerLabels.some((label) => label.kind !== "road"), option.id);
+    assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 6, option.id);
+  }
+});
+
+test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels readable", () => {
+  const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
+    (candidate) => candidate.id === "osm-curated-waterloo-bridge"
+  );
+
+  assert.ok(option);
+
+  const backgroundFeatures = buildSyntheticBackgroundFeatures(option.map, {
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const linearFeatures = buildSyntheticLinearFeatures(option.map, {
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const labels = buildSyntheticMapLabels(option.map, option.exercises[0], {
+    includeOsmRoadLabels: true,
+    backgroundFeatures,
+    linearFeatures,
+    sourceOverpassFixture: option.sourceOverpassFixture
+  });
+  const roadLabels = new Set(labels.filter((label) => label.kind === "road").map((label) => label.text));
+  const bridgeLabels = new Set(linearFeatures.filter((feature) => feature.kind === "bridge").map((feature) => feature.label));
+  const contextLabels = new Set(labels.filter((label) => label.kind !== "road").map((label) => label.text));
+
+  assert.ok(backgroundFeatures.some((feature) => feature.kind === "water"), "Waterloo fixture should render Thames water polygons");
+  assert.ok(contextLabels.has("River Thames"), "Waterloo fixture should label the Thames context");
+  assert.ok(bridgeLabels.has("Waterloo Bridge"));
+  assert.ok(bridgeLabels.has("Blackfriars Bridge"));
+
+  for (const label of [
+    "Victoria Embankment",
+    "Strand",
+    "Stamford Street",
+    "Upper Thames Street",
+    "Southwark Street",
+    "Waterloo Bridge",
+    "Blackfriars Bridge"
+  ]) {
+    assert.ok(roadLabels.has(label), label);
+  }
 });
 
 test("Stage 144 road hierarchy ranks base roads below learner overlays", () => {
@@ -759,7 +891,7 @@ test("Stage 145 label styles follow road hierarchy", () => {
 
   assert.equal(roadLabelTier(majorLabel), "major");
   assert.equal(roadLabelTier(minorLabel), "minor");
-  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13.5px Arial, sans-serif");
+  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13.25px Arial, sans-serif");
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.major.fontSize >
       TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.minor.fontSize

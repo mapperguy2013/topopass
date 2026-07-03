@@ -1269,6 +1269,7 @@ function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): Synthe
 
   return [...labelsByName.entries()].map(([name, visuals]) => {
     const selectedVisual = selectOsmRoadLabelVisual(visuals);
+    const namedRoadLengthMeters = visuals.reduce((sum, visual) => sum + roadVisualLength(visual), 0);
 
     return {
       id: `road-label-osm-${slugifyLabelId(name)}`,
@@ -1280,7 +1281,7 @@ function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): Synthe
       roadClass: selectedVisual.roadClass,
       ...(selectedVisual.osmHierarchy ? { osmHierarchy: selectedVisual.osmHierarchy } : {}),
       source: selectedVisual.source,
-      roadLengthMeters: roadVisualLength(selectedVisual)
+      roadLengthMeters: Math.max(roadVisualLength(selectedVisual), namedRoadLengthMeters)
     };
   });
 }

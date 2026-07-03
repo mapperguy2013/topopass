@@ -185,10 +185,11 @@ the active training area, so the present render still keeps all source
 features. If a wider/all-London GeoJSON is supplied later, the same filtering
 step will exclude far-away features before rendering.
 
-## A-Z-Style Rendering Goals
+## Street-Atlas-Inspired Rendering Goals
 
 The generated map intentionally avoids Google/Apple/Mapbox/OSM default tile
-styling. It uses:
+styling and does not copy commercial London atlas artwork. It uses original
+TOPOPASS cartography inspired by general printed street-atlas readability:
 
 - Pale paper/off-white background
 - Dense street network
@@ -212,8 +213,10 @@ The renderer styles roads by OSM `highway` hierarchy:
 
 All named publicly drivable roads are considered for labels, including minor and
 local roads. Labels are deduplicated and collision-filtered so the map remains
-readable. In the current generated SVG there are `260` road labels, including
-`217` local/service/minor road labels.
+readable. Stage 161 refined converted OSM label fit checks so a named road uses
+the deterministic total length of its split OSM route-graph segments, while the
+label anchor stays on the best deterministic segment. This makes curated London
+fixtures more readable without changing routing data or inventing labels.
 
 ## Driver Access Classification
 

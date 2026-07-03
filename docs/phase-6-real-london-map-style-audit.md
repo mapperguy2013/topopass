@@ -119,6 +119,44 @@ and raw OSM-derived data boundaries. They do not overwrite
 copy proprietary map artwork, change route logic, change legality checks,
 change scoring, or start Phase 7 learning features.
 
+## Stage 161 TOPOPASS Atlas-Style Visual Refinement
+
+Stage 161 uses the four manual curated Overpass fixtures as visual QA inputs
+for a cartography tuning pass. The work is visual only and keeps TOPOPASS as an
+original design. General printed London street-atlas principles are used as
+inspiration, but no A-Z, Google, Apple, Ordnance Survey, proprietary tiles,
+screenshots, colours, icons, typography, label placement, or cartographic
+artwork are copied.
+
+Implementation changes:
+
+- Road tokens now give primary and secondary roads a calmer but clearer cased
+  hierarchy, keep residential roads readable, and further quiet service,
+  pedestrian, inactive, and restricted context roads.
+- Normal atlas rendering no longer draws every route-graph node as a base-map
+  dot. That graph-like marker layer is disabled by token, while matched-route
+  nodes and the explicit OSM debug overlay remain available for diagnostics.
+- Junction radii and low-zoom width/alpha multipliers reduce visual mud in
+  dense Central London fixture views.
+- Converted OSM road labels now use the total deterministic length of the
+  named OSM road group for fit checks. The label point remains deterministic,
+  but real street names are no longer hidden just because the OSM graph split a
+  named way into short routing segments.
+- Station, bridge, park, water, public-building, landmark, learner-reference,
+  and area label thresholds are tuned to appear at useful learner zoom while
+  overview zoom still keeps road labels sparse.
+- Rail, bridge, one-way, and restriction overlay tokens are quieter so learner
+  route lines, checkpoints, hints, and review warnings stay visually dominant.
+- Waterloo-specific QA confirms Thames water context, Waterloo Bridge and
+  Blackfriars Bridge bridge features, and the important road labels around the
+  bridge corridor remain available.
+
+The Stage 161 renderer test checks all four curated fixtures at a mobile-sized
+learner viewport for real road hierarchy, background context, linear context,
+landmark markers, visible road labels, visible context labels, and overview
+decluttering. It also checks the Waterloo/Thames bridge corridor labels
+directly.
+
 ## Stage 143 Styling Application
 
 Stage 143 applies the first TOPOPASS street-atlas base map styling pass. The
