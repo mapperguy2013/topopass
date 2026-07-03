@@ -659,9 +659,13 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   const contextLabels = new Set(labels.filter((label) => label.kind !== "road").map((label) => label.text));
   const waterFeatures = backgroundFeatures.filter((feature) => feature.kind === "water");
   const waterwayFeatures = linearFeatures.filter((feature) => feature.kind === "waterway");
+  const thamesRelationWaterFeatures = waterFeatures.filter((feature) =>
+    feature.id.startsWith("osm-context-water-relation-28934-ring-")
+  );
   const thameslinkLabels = labels.filter((label) => label.text === "Thameslink");
 
   assert.ok(waterFeatures.length > 0, "Waterloo fixture should render Thames water polygons");
+  assert.ok(thamesRelationWaterFeatures.length > 0, "Waterloo fixture should render the Thames multipolygon relation");
   assert.ok(
     waterwayFeatures.some((feature) => feature.strokeWidth >= 20),
     "Thames waterway corridor should read at learner zoom"

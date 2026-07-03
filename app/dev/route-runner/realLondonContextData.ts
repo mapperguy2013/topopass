@@ -5,6 +5,7 @@ import type {
   OverpassElementId,
   OverpassJsonResponse,
   OverpassNodeElement,
+  OverpassRelationElement,
   OverpassTags,
   OverpassWayElement
 } from "../../../lib/map-engine/osm/index.ts";
@@ -24,7 +25,7 @@ export type RealLondonContextFeatureBase = {
   id: string;
   kind: RealLondonContextFeatureKind;
   name?: string;
-  sourceElementType: "node" | "way";
+  sourceElementType: "node" | "way" | "relation";
   sourceElementId: OverpassElementId;
   sourceTags?: OverpassTags;
 };
@@ -113,7 +114,9 @@ export type RealLondonContextCoverageAudit = {
 
 type OverpassContext = {
   nodesById: Map<OverpassElementId, OverpassNodeElement>;
+  waysById: Map<OverpassElementId, OverpassWayElement>;
   ways: OverpassWayElement[];
+  relations: OverpassRelationElement[];
 };
 
 const orderedCoverageKeys: Array<keyof RealLondonContextCoverageCounts> = [
@@ -196,6 +199,10 @@ export function buildRealLondonContextFeatures(map: MapDefinition, fixture: unkn
 
   for (const way of context.ways) {
     features.push(...contextFeaturesFromWay(way, context.nodesById, projection));
+  }
+
+  for (const relation of context.relations) {
+    features.push(...contextFeaturesFromRelation(relation, context.waysById, context.nodesById, projection));
   }
 
   return dedupeContextFeatures(features).sort(compareContextFeatures);
@@ -474,6 +481,31 @@ function contextFeaturesFromWay(
   return features;
 }
 
+function contextFeaturesFromRelation(
+  relation: OverpassRelationElement,
+  waysById: ReadonlyMap<OverpassElementId, OverpassWayElement>,
+  nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>,
+  projection: OsmLocalProjection
+): RealLondonContextFeature[] {
+  const tags = relation.tags ?? {};
+  const waterSubtype = waterSubtypeForTags(tags);
+
+  if (!waterSubtype || tagValue(tags, "type") !== "multipolygon") {
+    return [];
+  }
+
+  return buildRelationOuterRings(relation, waysById, nodesById, projection).map((points, index) => ({
+    id: `water-relation-${relation.id}-ring-${index + 1}`,
+    kind: "water" as const,
+    subtype: waterSubtype === "waterway" ? "basin" : waterSubtype,
+    name: namedContextLabel(tags),
+    points,
+    sourceElementType: "relation" as const,
+    sourceElementId: relation.id,
+    sourceTags: { ...tags }
+  }));
+}
+
 function dedupeContextFeatures(features: readonly RealLondonContextFeature[]): RealLondonContextFeature[] {
   const byKey = new Map<string, RealLondonContextFeature>();
 
@@ -646,6 +678,95 @@ function projectedWayPoints(input: {
   });
 }
 
+function buildRelationOuterRings(
+  relation: OverpassRelationElement,
+  waysById: ReadonlyMap<OverpassElementId, OverpassWayElement>,
+  nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>,
+  projection: OsmLocalProjection
+): Vec2[][] {
+  const outerWays = relationMembers(relation)
+    .filter((member) => member.type === "way" && member.role === "outer")
+    .flatMap((member) => {
+      const way = waysById.get(member.ref);
+
+      return way ? [way] : [];
+    });
+  const nodeRefRings = stitchClosedNodeRefRings(outerWays.map((way) => way.nodes));
+
+  return nodeRefRings.flatMap((ring) => {
+    const points = ring.flatMap((nodeId) => {
+      const node = nodesById.get(nodeId);
+
+      return node ? [projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection)] : [];
+    });
+
+    return points.length === ring.length && points.length >= 4 ? [points] : [];
+  });
+}
+
+function stitchClosedNodeRefRings(nodeRefsByWay: readonly OverpassElementId[][]): OverpassElementId[][] {
+  const unused = nodeRefsByWay.filter((nodeRefs) => nodeRefs.length >= 2).map((nodeRefs) => [...nodeRefs]);
+  const rings: OverpassElementId[][] = [];
+
+  while (unused.length > 0) {
+    let ring = unused.shift() ?? [];
+
+    for (let changed = true; changed && !isClosedNodeRefRing(ring); ) {
+      changed = false;
+
+      for (let index = 0; index < unused.length; index += 1) {
+        const candidate = unused[index];
+        const joined = joinNodeRefRingSegment(ring, candidate);
+
+        if (joined) {
+          ring = joined;
+          unused.splice(index, 1);
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    if (isClosedNodeRefRing(ring)) {
+      rings.push(ring);
+    }
+  }
+
+  return rings;
+}
+
+function joinNodeRefRingSegment(
+  ring: readonly OverpassElementId[],
+  candidate: readonly OverpassElementId[]
+): OverpassElementId[] | null {
+  const ringStart = ring[0];
+  const ringEnd = ring[ring.length - 1];
+  const candidateStart = candidate[0];
+  const candidateEnd = candidate[candidate.length - 1];
+
+  if (ringEnd === candidateStart) {
+    return [...ring, ...candidate.slice(1)];
+  }
+
+  if (ringEnd === candidateEnd) {
+    return [...ring, ...[...candidate].reverse().slice(1)];
+  }
+
+  if (ringStart === candidateEnd) {
+    return [...candidate.slice(0, -1), ...ring];
+  }
+
+  if (ringStart === candidateStart) {
+    return [...[...candidate].reverse().slice(0, -1), ...ring];
+  }
+
+  return null;
+}
+
+function isClosedNodeRefRing(nodeRefs: readonly OverpassElementId[]): boolean {
+  return nodeRefs.length >= 4 && nodeRefs[0] === nodeRefs[nodeRefs.length - 1];
+}
+
 function isClosedWay(way: OverpassWayElement): boolean {
   return way.nodes.length >= 4 && way.nodes[0] === way.nodes[way.nodes.length - 1];
 }
@@ -686,17 +807,22 @@ function overpassContextFromFixture(fixture: unknown): OverpassContext | null {
   }
 
   const nodesById = new Map<OverpassElementId, OverpassNodeElement>();
+  const waysById = new Map<OverpassElementId, OverpassWayElement>();
   const ways: OverpassWayElement[] = [];
+  const relations: OverpassRelationElement[] = [];
 
   for (const element of fixture.elements) {
     if (isOverpassNodeElement(element)) {
       nodesById.set(element.id, element);
     } else if (isOverpassWayElement(element)) {
       ways.push(element);
+      waysById.set(element.id, element);
+    } else if (isOverpassRelationElement(element)) {
+      relations.push(element);
     }
   }
 
-  return { nodesById, ways };
+  return { nodesById, waysById, ways, relations };
 }
 
 function tagValue(tags: OverpassTags, key: string): string {
@@ -731,6 +857,34 @@ function isOverpassWayElement(value: unknown): value is OverpassWayElement {
     value.nodes.every((nodeId) => typeof nodeId === "number") &&
     (value.tags === undefined || isTagRecord(value.tags))
   );
+}
+
+function isOverpassRelationElement(value: unknown): value is OverpassRelationElement {
+  return (
+    isRecord(value) &&
+    value.type === "relation" &&
+    typeof value.id === "number" &&
+    (value.members === undefined || Array.isArray(value.members)) &&
+    (value.tags === undefined || isTagRecord(value.tags))
+  );
+}
+
+function relationMembers(
+  relation: OverpassRelationElement
+): Array<{ type: "way"; ref: OverpassElementId; role: string }> {
+  return (relation.members ?? []).flatMap((member) => {
+    if (!isRecord(member) || member.type !== "way" || typeof member.ref !== "number") {
+      return [];
+    }
+
+    return [
+      {
+        type: "way" as const,
+        ref: member.ref,
+        role: typeof member.role === "string" ? member.role : ""
+      }
+    ];
+  });
 }
 
 function isOverpassJsonResponse(value: unknown): value is OverpassJsonResponse {
