@@ -37,7 +37,8 @@ export type CuratedRealLondonOverpassFixtureId =
   | "piccadilly-circus"
   | "waterloo-bridge"
   | "one-way-system-area"
-  | "quiet-residential-roads";
+  | "quiet-residential-roads"
+  | "centralLondon";
 
 export type CuratedRealLondonOverpassFixtureMetadata = {
   id: CuratedRealLondonOverpassFixtureId;
@@ -279,6 +280,20 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     knownLimitations: [
       "Small bounded extract, not full London coverage.",
       "Rail/station context is not expected in this residential fixture."
+    ]
+  },
+  {
+    id: "centralLondon",
+    fixtureName: "centralLondonOverpass.json",
+    label: "Central London",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-03T00:00:00Z",
+    areaPurpose: "Larger Central London map-engine, renderer, and beta UI stress test.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Larger bounded extract, not full London coverage.",
+      "Kept visual QA only because perfect-route matching over generated 6.5 km stress routes is too slow for scored beta practice.",
+      "Turn restriction relation data is present in the source export, but the current route graph converter does not yet turn those relations into scored restrictions."
     ]
   }
 ];

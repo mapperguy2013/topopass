@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import centralLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/centralLondonOverpass.json" with { type: "json" };
 import curatedLondonStage1605Fixture from "../../../lib/map-engine/osm/fixtures/curatedLondonStage1605Overpass.json" with { type: "json" };
 import largeLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/largeLondonOverpass.json" with { type: "json" };
 import mediumLondonOverpassFixture from "../../../lib/map-engine/osm/fixtures/mediumLondonOverpass.json" with { type: "json" };
@@ -137,4 +138,57 @@ test("Stage 160.5 curated fixture converts safely and supplies render context fe
   assert.ok(contextKinds.has("water"));
   assert.ok(contextKinds.has("landmark"));
   assert.ok(contextKinds.has("area"));
+});
+
+test("Stage 161.8 centralLondon fixture audits larger coverage and relation-backed water", () => {
+  const coverage = auditCuratedLondonOsmFixture(centralLondonOverpassFixture);
+  const categories = summariseCuratedLondonRenderCategories(centralLondonOverpassFixture);
+  const waterMultipolygonRelations = (centralLondonOverpassFixture.elements ?? []).filter(
+    (element) =>
+      element.type === "relation" &&
+      element.tags?.type === "multipolygon" &&
+      (element.tags.natural === "water" || Boolean(element.tags.water) || Boolean(element.tags.waterway))
+  );
+
+  assert.ok(coverage.elementCount > 250000);
+  assert.ok(coverage.nodeCount > 200000);
+  assert.ok(coverage.wayCount > 35000);
+  assert.ok(coverage.relationCount > 1000);
+  assert.ok(coverage.namedRoadCount > 16000);
+  assert.ok(coverage.oneWayTaggedWayCount > 8000);
+  assert.ok(coverage.turnRestrictionRelationCount > 1000);
+  assert.ok(coverage.bridgeTaggedWayCount > 150);
+  assert.ok(coverage.tunnelTaggedWayCount > 800);
+  assert.ok(coverage.railFeatureCount > 2400);
+  assert.ok(coverage.stationFeatureCount > 90);
+  assert.ok(coverage.waterFeatureCount > 200);
+  assert.ok(waterMultipolygonRelations.length >= 10);
+  assert.ok(categories.majorRoad > 0);
+  assert.ok(categories.secondaryRoad > 0);
+  assert.ok(categories.localRoad > 0);
+  assert.ok(categories.water > 0);
+  assert.ok(categories.rail > 0);
+  assert.ok(categories.station > 0);
+
+  const result = convertOverpassJsonToRouteMap(centralLondonOverpassFixture, {
+    mapId: "stage-161-8-centralLondon-conversion-test",
+    name: "Stage 161.8 centralLondon conversion test"
+  });
+
+  assert.equal(result.ok, true);
+
+  if (!result.ok) {
+    return;
+  }
+
+  const contextFeatures = buildRealLondonContextFeatures(result.map, centralLondonOverpassFixture);
+  const contextKinds = new Set(contextFeatures.map((feature) => feature.kind));
+
+  assert.ok(result.map.nodes.length > 60000);
+  assert.ok(result.map.roads.length > 70000);
+  assert.ok(contextKinds.has("water"));
+  assert.ok(contextKinds.has("rail"));
+  assert.ok(contextKinds.has("station"));
+  assert.ok(contextKinds.has("bridge"));
+  assert.ok(contextFeatures.some((feature) => feature.id.startsWith("water-relation-")));
 });

@@ -295,6 +295,7 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.ok(mapIds.includes("osm-curated-waterloo-bridge"));
   assert.ok(mapIds.includes("osm-curated-one-way-system-area"));
   assert.ok(mapIds.includes("osm-curated-quiet-residential-roads"));
+  assert.ok(mapIds.includes("osm-curated-centralLondon"));
   assert.ok(model.mapRows.every((row) => row.description.length > 0));
   assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
 });
@@ -491,6 +492,30 @@ test("Stage 161.6 visual QA fixtures are labelled and not treated as scoreable p
   assert.equal(model.exerciseRows.length, 0);
   assert.equal(model.routeFlow.shortestRouteFound, false);
   assert.equal(model.routeFlow.existingRunnerScorePassed, false);
+});
+
+test("Stage 161.8 centralLondon stress fixture is selectable but not scored practice", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: "osm-curated-centralLondon"
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available") {
+    throw new Error("Expected available Central London stress fixture.");
+  }
+
+  assert.equal(model.mapId, "osm-curated-centralLondon");
+  assert.equal(model.selectedMap.label, "Central London curated OSM - Stress test");
+  assert.equal(model.selectedMap.fixtureUse, "visualQaOnly");
+  assert.equal(model.selectedMap.scoreable, false);
+  assert.equal(model.selectedExercise, null);
+  assert.equal(model.exerciseRows.length, 0);
+  assert.equal(model.routeFlow.shortestRouteFound, false);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, false);
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("converted-osm-qa"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("manual-route-input"));
 });
 
 test("Stage 161.6.1 beta desktop map sizing fills width and remains viewport bounded", () => {

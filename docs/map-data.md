@@ -92,6 +92,7 @@ not live runtime API calls, and they do not replace
 | `waterlooBridgeOverpass.json` | Thames, bridge, rail/station, and central context | `2026-07-03T00:11:45Z` |
 | `oneWaySystemAreaOverpass.json` | One-way and restriction cartography | `2026-07-03T00:13:44Z` |
 | `quietResidentialRoadsOverpass.json` | Suburban learner-driver readability | `2026-07-03T00:14:43Z` |
+| `centralLondonOverpass.json` | Larger Central London map-engine, renderer, and beta UI stress test | `2026-07-03T00:00:00Z` |
 
 The four new fixtures are registered as dev-only route-runner map options and
 visual QA scenarios. They are useful for testing road hierarchy, labels,
@@ -107,6 +108,7 @@ Coverage summary:
 | `waterlooBridgeOverpass.json` | 14,286 | 3,037 | 44 | 784 | 455 | 41 | 62 | 14 | 89 | 3 | 36 |
 | `oneWaySystemAreaOverpass.json` | 9,635 | 3,719 | 50 | 1,104 | 632 | 50 | 49 | 2 | 24 | 4 | 46 |
 | `quietResidentialRoadsOverpass.json` | 2,859 | 468 | 12 | 177 | 35 | 12 | 19 | 4 | 0 | 0 | 8 |
+| `centralLondonOverpass.json` | 213,466 | 36,579 | 1,228 | 16,783 | 8,373 | 1,032 | 1,153 | 244 | 2,438 | 97 | 2,458 |
 
 The renderer-facing categories remain derived from OSM tags at conversion or
 visual-model time: `majorRoad`, `secondaryRoad`, `localRoad`, `serviceRoad`,
@@ -132,6 +134,26 @@ so converted OSM submit matching can fill those local gaps only with legal
 connectors from the same committed graph and only when the connector remains
 consistent with the drawn segment. The supplied Cricklewood/Finchley road IDs
 are checked for fixture coverage; no new OSM data is fetched or invented.
+
+Stage 161.8 adds `centralLondonOverpass.json` as fixture id `centralLondon`
+with display label `Central London curated OSM - Stress test`. It is a larger
+bounded Central London fixture for map-engine, renderer, label-density, overlay,
+desktop sizing, mobile layout, and beta selector stress testing. It is not full
+London coverage and is not a runtime Overpass dependency.
+
+The Central London fixture converts successfully to a 67,216-node route graph
+with 70,074 roads and 119,024 directed edges. Connectivity diagnostics report
+277 routable components, a largest drivable component of 62,152 nodes, 21,124
+one-way directed edges, 317 access-restricted roads, and 1,032 raw OSM turn
+restriction relations. Relation-backed water is present, including 15
+`type=multipolygon` water relations.
+
+The fixture is deliberately registered as `visualQaOnly`. A stress probe found
+valid generated route candidates around 6.5 km, but synthetic perfect-route
+matching over the large graph took about 80 seconds, which is too slow for
+scored beta practice. No Central London scored exercises are offered until a
+future route/matching performance pass can validate them within the normal beta
+practice budget.
 
 Attribution requirement: these fixtures are OpenStreetMap-derived data made
 available under ODbL, so OSM attribution must stay visible wherever they are

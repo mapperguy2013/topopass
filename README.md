@@ -1038,6 +1038,17 @@ learner overlays, local streets stay visible at low/medium zoom, rail context is
 quieter, label spacing is more conservative near heavy context, and curated
 fixtures get larger display-only fit padding so start, checkpoint, and finish
 markers stay visually attached inside the desktop beta viewport.
+Stage 161.8 adds `centralLondonOverpass.json` as a larger controlled Central
+London OSM-derived stress fixture. It is registered with id `centralLondon` and
+display label `Central London curated OSM - Stress test`. The fixture contains
+251,273 OSM elements, including 213,466 nodes, 36,579 ways, 1,228 relations,
+16,783 named road ways, 8,373 one-way tagged ways, 1,032 turn-restriction
+relations, relation-backed water polygons, rail/station context, parks,
+landmarks, bridges, and tunnels. It converts to a 67,216-node routable graph
+with 119,024 directed edges, but generated 6.5 km perfect-route matching took
+about 80 seconds in the stress probe, so it is deliberately `visualQaOnly` with
+zero scored beta exercises. This keeps the beta selector useful for large-area
+visual QA without weakening matching, legality, scoring, or route validation.
 
 ## Current Feature Set
 

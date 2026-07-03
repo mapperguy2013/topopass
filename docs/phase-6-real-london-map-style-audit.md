@@ -157,6 +157,31 @@ landmark markers, visible road labels, visible context labels, and overview
 decluttering. It also checks the Waterloo/Thames bridge corridor labels
 directly.
 
+## Stage 161.8 Central London Stress Fixture
+
+Stage 161.8 adds `centralLondonOverpass.json` as a larger controlled
+OSM-derived Central London fixture. The code id is `centralLondon`, and the
+display label is `Central London curated OSM - Stress test`.
+
+The fixture is used to test whether the map-engine, converted OSM graph,
+renderer inputs, labels, overlays, desktop sizing, mobile layout, beta map
+selector, and fixture diagnostics can tolerate a larger real London extract. It
+contains 251,273 OSM elements, including 16,783 named road ways, 8,373 one-way
+tagged ways, 1,032 raw turn-restriction relations, relation-backed water
+multipolygons, rail/station context, parks, landmarks, bridges, and tunnels.
+
+The converted graph succeeds but is not yet appropriate for scored beta
+practice. Diagnostics report 67,216 routable nodes, 119,024 directed edges, 277
+routable components, and a largest component of 62,152 nodes. A generated
+perfect-route matching stress probe over approximately 6.5 km took about 80
+seconds, so the fixture is registered as `visualQaOnly` with zero exercises.
+This keeps larger-area visual QA available without weakening route matching,
+legality checks, scoring, or exercise validation.
+
+Known limitation before larger scripted imports: the engine can convert and
+inspect this bounded extract, but scored route matching needs performance work
+before similarly large fixtures should be offered as learner practice.
+
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 
 Stage 161.5 corrects the Waterloo Bridge / Blackfriars / Thames corridor after

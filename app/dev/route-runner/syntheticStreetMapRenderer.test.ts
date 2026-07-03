@@ -590,7 +590,9 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
     ["osm-curated-quiet-residential-roads", 45]
   ]);
 
-  for (const option of CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS) {
+  for (const option of CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
+    (candidate) => candidate.fixtureUse === "routableExercise"
+  )) {
     const roadVisuals = buildSyntheticRoadVisuals(option.map);
     const backgroundFeatures = buildSyntheticBackgroundFeatures(option.map, {
       sourceOverpassFixture: option.sourceOverpassFixture

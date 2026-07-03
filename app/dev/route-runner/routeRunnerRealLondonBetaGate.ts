@@ -248,9 +248,15 @@ export function buildPhase5RealLondonBetaReadinessReview(input: {
     betaEnabled: false,
     mapOptions
   });
-  const readinessReports = realLondonMapOptions.map((option) => buildLondonPilotReadinessReportForMapId(option.map.id));
-  const attemptVersioningOk = realLondonMapOptions.every((option) => buildAttemptVersioningStatus(option));
-  const studentRouteFlowOk = realLondonMapOptions.every((option) => buildStudentRouteFlowStatus(option));
+  const readinessReportOptions = realLondonMapOptions.filter(
+    (option) => option.map.id === realLondonOsmPilotRouteMap.id || option.map.id === realLondonOsmPilotTwoRouteMap.id
+  );
+  const readinessReports = readinessReportOptions.map((option) => buildLondonPilotReadinessReportForMapId(option.map.id));
+  const scoreableRealLondonMapOptions = realLondonMapOptions.filter(
+    (option) => option.fixtureUse === undefined || option.fixtureUse === "routableExercise"
+  );
+  const attemptVersioningOk = scoreableRealLondonMapOptions.every((option) => buildAttemptVersioningStatus(option));
+  const studentRouteFlowOk = scoreableRealLondonMapOptions.every((option) => buildStudentRouteFlowStatus(option));
   const attributionOk = realLondonMapOptions.every((option) => option.attribution?.includes("OpenStreetMap"));
   const limitationsOk = REAL_LONDON_BETA_KNOWN_LIMITATIONS.length >= 4;
   const sections: Phase5RealLondonBetaReviewSection[] = [

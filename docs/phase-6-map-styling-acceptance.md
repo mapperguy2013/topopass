@@ -342,6 +342,35 @@ legality, exercise generation, beta selection, or touch interaction:
   start, checkpoint, and finish markers have breathing room inside the desktop
   beta viewport. Marker anchors and route geometry are unchanged.
 
+## Stage 161.8 Central London Larger Fixture Stress Test
+
+Stage 161.8 adds the larger committed OSM-derived
+`centralLondonOverpass.json` fixture for Phase 6 stress testing. The fixture id
+is `centralLondon`, and the beta/dev display label is
+`Central London curated OSM - Stress test`.
+
+The fixture is intentionally a bounded Central London extract rather than full
+London coverage. It contains 251,273 OSM elements: 213,466 nodes, 36,579 ways,
+1,228 relations, 16,783 named road ways, 8,373 one-way tagged ways, 1,032 raw
+turn-restriction relations, 244 water features including relation-backed water
+multipolygons, 2,438 rail features, 97 stations, parks/open spaces, landmarks,
+bridges, and tunnels.
+
+The converted route graph is useful for map-engine and beta UI stress testing:
+67,216 routable nodes, 119,024 directed edges, 277 routable components, a
+largest drivable component of 62,152 nodes, 21,124 one-way directed edges, and
+317 access-restricted roads. It is registered as `visualQaOnly` with no scored
+exercises because generated 6.5 km perfect-route matching took about 80 seconds
+in the stress probe. The acceptance rule is therefore:
+
+- Central London may appear in the beta map selector as a labelled stress-test
+  map.
+- Central London must not offer scored route exercises until matching/scoring
+  performance is validated for the larger graph.
+- Visual-only selection must still hide dev QA panels on `/practice/real-london`
+  and must not weaken legality, matching, scoring, or route validation.
+- OSM attribution remains visible and no runtime Overpass calls are introduced.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy
