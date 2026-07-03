@@ -154,9 +154,9 @@ export function buildRealLondonBetaFeedbackMetadataFromModel(input: {
   return buildRealLondonBetaFeedbackMetadata({
     mapId: input.model.mapId,
     mapVersion: input.model.mapVersion,
-    exerciseId: input.model.selectedExercise.id,
-    exerciseVersion: input.model.selectedExercise.exerciseVersion,
-    exerciseTitle: input.model.selectedExercise.title,
+    exerciseId: input.model.selectedExercise?.id ?? "map-visual-qa",
+    exerciseVersion: input.model.selectedExercise?.exerciseVersion ?? "map-only",
+    exerciseTitle: input.model.selectedExercise?.title ?? input.model.selectedMap.label,
     timestamp: input.timestamp,
     betaEnabled: input.betaEnabled,
     env: input.env

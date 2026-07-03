@@ -7,6 +7,7 @@ import {
   type RouteStop
 } from "../../../lib/map-engine/index.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "../../dev/route-runner/topopassCartographyStyle.ts";
+import { ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON } from "../../dev/route-runner/curatedRealLondonRouteRunnerMaps.ts";
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   getRealLondonPilotExerciseMetadata,
@@ -24,6 +25,7 @@ import {
   REAL_LONDON_BETA_FEEDBACK_PLACEHOLDER,
   REAL_LONDON_BETA_KNOWN_LIMITATIONS,
   REAL_LONDON_BETA_LABEL,
+  getRealLondonBetaMapOptions,
   isRealLondonBetaAccessEnabled,
   resolveRealLondonBetaMapAccess,
   type RealLondonBetaAccessEnv,
@@ -32,6 +34,18 @@ import {
 
 export const REAL_LONDON_BETA_PRACTICE_PATH = "/practice/real-london";
 export const REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL = "Real London Practice - Beta";
+export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS = "min(760px, max(360px, calc(100dvh - 260px)))";
+export const REAL_LONDON_BETA_MAP_OPTIONS = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON;
+
+export type RealLondonBetaPracticeMapRow = {
+  id: string;
+  label: string;
+  description: string;
+  fixtureUse: "routableExercise" | "routeReviewFixture" | "visualQaOnly" | "legacyPilot";
+  fixtureUseLabel: string;
+  scoreable: boolean;
+  selected: boolean;
+};
 
 export type RealLondonBetaPracticeExerciseRow = {
   id: string;
@@ -72,16 +86,20 @@ export type RealLondonBetaPracticeScreenModel =
       betaPanelLabel: typeof REAL_LONDON_BETA_LABEL;
       mapId: string;
       mapVersion: string;
+      mapRows: RealLondonBetaPracticeMapRow[];
+      selectedMap: RealLondonBetaPracticeMapRow;
       routeRunnerMode: "student-beta";
       exerciseSelectorTitle: "Practice Exercises";
       exerciseRows: RealLondonBetaPracticeExerciseRow[];
-      selectedExercise: RealLondonBetaPracticeSelectedExercise;
+      selectedExercise: RealLondonBetaPracticeSelectedExercise | null;
       mapInteraction: {
         drawingEnabled: true;
         usesExistingRouteRunnerLogic: true;
         submitActionLabel: "Submit Attempt";
-        clearActionLabel: "Clear";
+        clearActionLabel: "Erase route";
         retryActionLabel: "Try again";
+        mapSwitchClearsAttemptState: true;
+        eraseClearsDrawingAndResult: true;
       };
       feedback: {
         visible: true;
@@ -125,6 +143,11 @@ export type RealLondonBetaPracticeScreenModel =
         oneWayArrowMinSpacingMeters: typeof ONE_WAY_ARROW_MIN_SPACING_METERS;
         horizontalOverflowRisk: false;
       };
+      desktopLayout: {
+        viewportBoundedMap: true;
+        mapMaxHeightCss: typeof REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS;
+        unnecessaryVerticalScrollRisk: false;
+      };
       routeFlow: {
         shortestRouteFound: boolean;
         existingRunnerScorePassed: boolean;
@@ -137,12 +160,15 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
   env?: RealLondonBetaAccessEnv;
   requestedMapId?: string;
   selectedExerciseId?: string;
+  mapOptions?: readonly RouteRunnerMapOption[];
 } = {}): RealLondonBetaPracticeScreenModel {
   const betaEnabled = input.betaEnabled ?? isRealLondonBetaAccessEnabled(input.env);
+  const mapOptions = input.mapOptions ?? REAL_LONDON_BETA_MAP_OPTIONS;
   const requestedMapId = input.requestedMapId ?? realLondonOsmPilotRouteMap.id;
   const access = resolveRealLondonBetaMapAccess({
     requestedMapId,
-    betaEnabled
+    betaEnabled,
+    mapOptions
   });
 
   if (access.state !== "available") {
@@ -164,30 +190,40 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
   }
 
   const mapOption = access.selectedMapOption;
-  const selectedExercise =
-    mapOption.exercises.find((exercise) => exercise.id === input.selectedExerciseId) ??
-    mapOption.exercises.find((exercise) => exercise.id === mapOption.defaultExerciseId) ??
-    mapOption.exercises[0];
-
-  if (!selectedExercise) {
-    throw new Error(`Real London beta practice map ${mapOption.map.id} has no exercises.`);
-  }
+  const betaMapOptions = getRealLondonBetaMapOptions(mapOptions);
+  const mapRows = betaMapOptions.map((option) => buildPracticeMapRow(option, option.map.id === mapOption.map.id));
+  const selectedMap = mapRows.find((row) => row.id === mapOption.map.id) ?? buildPracticeMapRow(mapOption, true);
+  const selectedExercise = selectedMap.scoreable
+    ? mapOption.exercises.find((exercise) => exercise.id === input.selectedExerciseId) ??
+      mapOption.exercises.find((exercise) => exercise.id === mapOption.defaultExerciseId) ??
+      mapOption.exercises[0] ??
+      null
+    : null;
 
   const practicePanel = buildPracticeExercisesPanelModel({
     exercises: mapOption.exercises,
-    selectedExerciseId: selectedExercise.id
+    selectedExerciseId: selectedExercise?.id ?? null
   });
   const exerciseRows = practicePanel.exerciseRows.map((row) =>
     buildPracticeExerciseRow({
+      map: mapOption.map,
       exercise: requireExercise(mapOption, row.id),
       selected: row.selected
     })
   );
-  const selectedExerciseModel = buildSelectedExerciseModel({
-    map: mapOption.map,
-    exercise: selectedExercise
-  });
-  const routeFlow = buildRouteFlowSummary(mapOption, selectedExercise);
+  const selectedExerciseModel = selectedExercise
+    ? buildSelectedExerciseModel({
+        map: mapOption.map,
+        exercise: selectedExercise
+      })
+    : null;
+  const routeFlow = selectedExercise
+    ? buildRouteFlowSummary(mapOption, selectedExercise)
+    : {
+        shortestRouteFound: false,
+        existingRunnerScorePassed: false,
+        selectedEdgeCount: 0
+      };
 
   return {
     state: "available",
@@ -197,6 +233,8 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
     betaPanelLabel: REAL_LONDON_BETA_LABEL,
     mapId: mapOption.map.id,
     mapVersion: mapOption.map.mapVersion ?? "missing",
+    mapRows,
+    selectedMap,
     routeRunnerMode: "student-beta",
     exerciseSelectorTitle: practicePanel.title,
     exerciseRows,
@@ -205,8 +243,10 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       drawingEnabled: true,
       usesExistingRouteRunnerLogic: true,
       submitActionLabel: "Submit Attempt",
-      clearActionLabel: "Clear",
-      retryActionLabel: "Try again"
+      clearActionLabel: "Erase route",
+      retryActionLabel: "Try again",
+      mapSwitchClearsAttemptState: true,
+      eraseClearsDrawingAndResult: true
     },
     feedback: {
       visible: true,
@@ -268,29 +308,70 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       oneWayArrowMinSpacingMeters: ONE_WAY_ARROW_MIN_SPACING_METERS,
       horizontalOverflowRisk: false
     },
+    desktopLayout: {
+      viewportBoundedMap: true,
+      mapMaxHeightCss: REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
+      unnecessaryVerticalScrollRisk: false
+    },
     routeFlow
   };
 }
 
+function fixtureUseForMapOption(option: RouteRunnerMapOption): RealLondonBetaPracticeMapRow["fixtureUse"] {
+  return option.fixtureUse ?? "legacyPilot";
+}
+
+function fixtureUseLabel(fixtureUse: RealLondonBetaPracticeMapRow["fixtureUse"]): string {
+  if (fixtureUse === "routableExercise") {
+    return "Scored practice";
+  }
+
+  if (fixtureUse === "routeReviewFixture") {
+    return "Route review fixture";
+  }
+
+  if (fixtureUse === "visualQaOnly") {
+    return "Visual QA only";
+  }
+
+  return "Scored pilot";
+}
+
+function fixtureUseIsScoreable(fixtureUse: RealLondonBetaPracticeMapRow["fixtureUse"]): boolean {
+  return fixtureUse === "legacyPilot" || fixtureUse === "routableExercise";
+}
+
+function buildPracticeMapRow(option: RouteRunnerMapOption, selected: boolean): RealLondonBetaPracticeMapRow {
+  const fixtureUse = fixtureUseForMapOption(option);
+
+  return {
+    id: option.map.id,
+    label: option.label,
+    description: option.description,
+    fixtureUse,
+    fixtureUseLabel: fixtureUseLabel(fixtureUse),
+    scoreable: fixtureUseIsScoreable(fixtureUse),
+    selected
+  };
+}
+
 function buildPracticeExerciseRow(input: {
+  map: MapDefinition;
   exercise: RouteExercise;
   selected: boolean;
 }): RealLondonBetaPracticeExerciseRow {
   const metadata = getRealLondonPilotExerciseMetadata(input.exercise);
-
-  if (!metadata) {
-    throw new Error(`Real London beta practice exercise ${input.exercise.id} is missing metadata.`);
-  }
+  const estimatedDistanceMeters = metadata?.estimatedDistanceMeters ?? estimateExerciseDistance(input.map, input.exercise);
 
   return {
     id: input.exercise.id,
     title: input.exercise.title,
     description: input.exercise.description?.trim() || null,
     exerciseVersion: input.exercise.exerciseVersion ?? "missing",
-    difficulty: metadata.difficulty,
-    routeType: metadata.routeType,
-    estimatedDistanceMeters: metadata.estimatedDistanceMeters,
-    estimatedDistanceLabel: formatDistance(metadata.estimatedDistanceMeters),
+    difficulty: metadata?.difficulty ?? input.exercise.difficulty ?? "medium",
+    routeType: metadata?.routeType ?? inferredRouteType(input.exercise),
+    estimatedDistanceMeters,
+    estimatedDistanceLabel: formatDistance(estimatedDistanceMeters),
     selected: input.selected
   };
 }
@@ -300,6 +381,7 @@ function buildSelectedExerciseModel(input: {
   exercise: RouteExercise;
 }): RealLondonBetaPracticeSelectedExercise {
   const row = buildPracticeExerciseRow({
+    map: input.map,
     exercise: input.exercise,
     selected: true
   });
@@ -414,6 +496,29 @@ function exerciseStopLabel(stop: RouteStop, map: MapDefinition): string {
 
 function formatDistance(distanceMeters: number): string {
   return distanceMeters >= 1000 ? `${(distanceMeters / 1000).toFixed(1)} km` : `${Math.round(distanceMeters)} m`;
+}
+
+function inferredRouteType(exercise: RouteExercise): string {
+  if (exercise.stops.length > 3) {
+    return "multi-stop";
+  }
+
+  if (exercise.stops.length === 3) {
+    return "checkpoint";
+  }
+
+  return "direct";
+}
+
+function estimateExerciseDistance(map: MapDefinition, exercise: RouteExercise): number {
+  const graph = buildMapGraph(map);
+  const shortestRoute = findShortestLegalRouteThroughStops({
+    graph,
+    stopNodeIds: exercise.stops.map((stop) => resolveExerciseStopNodeId(stop, map)),
+    restrictions: map.restrictions
+  });
+
+  return shortestRoute.found ? shortestRoute.distanceMeters : 0;
 }
 
 export function getRealLondonBetaPracticeDefaultMapOption(): RouteRunnerMapOption {

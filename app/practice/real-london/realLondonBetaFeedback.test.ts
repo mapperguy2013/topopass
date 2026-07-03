@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { marloweDistrictMap } from "../../../lib/map-engine/index.ts";
+import type { RouteRunnerMapOption } from "../../dev/route-runner/routeRunnerMaps.ts";
 import {
+  REAL_LONDON_BETA_MAP_OPTIONS,
   buildRealLondonBetaPracticeScreenModel
 } from "./realLondonBetaPracticeScreen.ts";
 import {
@@ -62,6 +65,41 @@ test("Stage 134 feedback metadata can be built from the beta practice screen mod
   assert.equal(metadata.exerciseId, "osm-real-pilot-checkpoint-route");
   assert.equal(metadata.exerciseVersion, "1.0.0");
   assert.equal(metadata.betaAccessState, "enabled");
+});
+
+test("Stage 161.6 feedback metadata supports visual-only beta map fixtures", () => {
+  const visualOnlyOption: RouteRunnerMapOption = {
+    id: "osm-curated-feedback-visual-only",
+    label: "Feedback visual-only map",
+    description: "Visual-only beta feedback fixture.",
+    source: "converted-osm",
+    map: {
+      ...marloweDistrictMap,
+      id: "osm-curated-feedback-visual-only",
+      name: "Feedback visual-only map"
+    },
+    exercises: [],
+    defaultExerciseId: "",
+    attribution: "OpenStreetMap contributors",
+    devOnly: true,
+    fixtureUse: "visualQaOnly"
+  };
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: visualOnlyOption.map.id,
+    mapOptions: [...REAL_LONDON_BETA_MAP_OPTIONS, visualOnlyOption]
+  });
+  const metadata = buildRealLondonBetaFeedbackMetadataFromModel({
+    model,
+    timestamp: fixedTimestamp,
+    betaEnabled: true
+  });
+
+  assert.ok(metadata);
+  assert.equal(metadata.mapId, "osm-curated-feedback-visual-only");
+  assert.equal(metadata.exerciseId, "map-visual-qa");
+  assert.equal(metadata.exerciseVersion, "map-only");
+  assert.equal(metadata.exerciseTitle, "Feedback visual-only map");
 });
 
 test("Stage 134 unavailable beta practice model does not produce feedback metadata", () => {

@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { marloweDistrictMap } from "../../../lib/map-engine/index.ts";
 import {
+  type RouteRunnerMapOption,
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   getRouteRunnerMapOption,
   realLondonOsmPilotRouteMap
 } from "../../dev/route-runner/routeRunnerMaps.ts";
+import { ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON } from "../../dev/route-runner/curatedRealLondonRouteRunnerMaps.ts";
 import { buildLondonPilotReadinessReportForMapId } from "../../dev/route-runner/routeRunnerOsmRealPilotReadinessReport.ts";
 import { buildRouteRunnerMobileQaReport } from "../../dev/route-runner/routeRunnerMobileQa.ts";
 import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "../../dev/route-runner/restrictionMapVisuals.ts";
@@ -13,10 +15,18 @@ import {
   REAL_LONDON_BETA_ENV_FLAG
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
 import {
+  REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
+  REAL_LONDON_BETA_MAP_OPTIONS,
   REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL,
   REAL_LONDON_BETA_PRACTICE_PATH,
+  type RealLondonBetaPracticeScreenModel,
   buildRealLondonBetaPracticeScreenModel
 } from "./realLondonBetaPracticeScreen.ts";
+
+type AvailablePracticeModel = Extract<RealLondonBetaPracticeScreenModel, { state: "available" }>;
+type ScoreablePracticeModel = AvailablePracticeModel & {
+  selectedExercise: NonNullable<AvailablePracticeModel["selectedExercise"]>;
+};
 
 test("Stage 132 beta users can access the real London practice screen", () => {
   const model = buildRealLondonBetaPracticeScreenModel({ betaEnabled: true });
@@ -129,7 +139,9 @@ test("Stage 132 route attempt flow uses existing runner and remains scoreable", 
   assert.equal(model.routeFlow.existingRunnerScorePassed, true);
   assert.ok(model.routeFlow.selectedEdgeCount > 0);
   assert.equal(model.mapInteraction.submitActionLabel, "Submit Attempt");
-  assert.equal(model.mapInteraction.clearActionLabel, "Clear");
+  assert.equal(model.mapInteraction.clearActionLabel, "Erase route");
+  assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
+  assert.equal(model.mapInteraction.eraseClearsDrawingAndResult, true);
 });
 
 test("Stage 132 real London readiness and dev QA remain available separately", () => {
@@ -201,7 +213,7 @@ test("Stage 139 mobile feedback and map interaction affordances stay usable", ()
   assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, 420);
   assert.equal(model.mobileLayout.routeRunnerMapTouchAction, "none");
   assert.equal(model.mapInteraction.drawingEnabled, true);
-  assert.equal(model.mapInteraction.clearActionLabel, "Clear");
+  assert.equal(model.mapInteraction.clearActionLabel, "Erase route");
   assert.equal(model.mapInteraction.submitActionLabel, "Submit Attempt");
 });
 
@@ -255,7 +267,96 @@ test("Stage 139 mobile route-runner QA remains layout-only and passing", () => {
   assert.equal(report.isPassing, true, report.failures.map((failure) => failure.code).join(", "));
 });
 
-function requireAvailableModel(selectedExerciseId?: string) {
+test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({ betaEnabled: true });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available") {
+    throw new Error("Expected available beta practice screen.");
+  }
+
+  const mapIds = model.mapRows.map((row) => row.id);
+
+  assert.ok(mapIds.includes("osm-real-london-pilot"));
+  assert.ok(mapIds.includes("osm-curated-piccadilly-circus"));
+  assert.ok(mapIds.includes("osm-curated-waterloo-bridge"));
+  assert.ok(mapIds.includes("osm-curated-one-way-system-area"));
+  assert.ok(mapIds.includes("osm-curated-quiet-residential-roads"));
+  assert.ok(model.mapRows.every((row) => row.description.length > 0));
+  assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
+});
+
+test("Stage 161.6 beta screen can select a curated routable fixture", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: "osm-curated-quiet-residential-roads"
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available") {
+    throw new Error("Expected available beta practice screen.");
+  }
+
+  assert.equal(model.mapId, "osm-curated-quiet-residential-roads");
+  assert.equal(model.selectedMap.fixtureUse, "routableExercise");
+  assert.equal(model.selectedMap.scoreable, true);
+  assert.ok(model.selectedExercise);
+  assert.equal(model.routeFlow.shortestRouteFound, true);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+});
+
+test("Stage 161.6 visual QA fixtures are labelled and not treated as scoreable practice", () => {
+  const visualOnlyOption: RouteRunnerMapOption = {
+    id: "osm-curated-visual-only-test",
+    label: "Visual-only curated test",
+    description: "Visual-only map selector regression fixture.",
+    source: "converted-osm",
+    map: {
+      ...marloweDistrictMap,
+      id: "osm-curated-visual-only-test",
+      name: "Visual-only curated test"
+    },
+    exercises: [],
+    defaultExerciseId: "",
+    attribution: "OpenStreetMap contributors",
+    devOnly: true,
+    fixtureUse: "visualQaOnly"
+  };
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: visualOnlyOption.map.id,
+    mapOptions: [...REAL_LONDON_BETA_MAP_OPTIONS, visualOnlyOption]
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available") {
+    throw new Error("Expected available beta practice screen.");
+  }
+
+  assert.equal(model.selectedMap.fixtureUse, "visualQaOnly");
+  assert.equal(model.selectedMap.scoreable, false);
+  assert.equal(model.selectedExercise, null);
+  assert.equal(model.exerciseRows.length, 0);
+  assert.equal(model.routeFlow.shortestRouteFound, false);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, false);
+});
+
+test("Stage 161.6 beta desktop map sizing is viewport bounded", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.desktopLayout.viewportBoundedMap, true);
+  assert.equal(model.desktopLayout.mapMaxHeightCss, REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS);
+  assert.equal(model.desktopLayout.unnecessaryVerticalScrollRisk, false);
+});
+
+test("Stage 161.6 curated map option bundle is the beta practice catalogue", () => {
+  assert.equal(REAL_LONDON_BETA_MAP_OPTIONS, ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON);
+});
+
+function requireAvailableModel(selectedExerciseId?: string): ScoreablePracticeModel {
   const model = buildRealLondonBetaPracticeScreenModel({
     betaEnabled: true,
     selectedExerciseId
@@ -265,5 +366,9 @@ function requireAvailableModel(selectedExerciseId?: string) {
     throw new Error("Expected available beta practice screen.");
   }
 
-  return model;
+  if (!model.selectedExercise) {
+    throw new Error("Expected a selected scoreable beta practice exercise.");
+  }
+
+  return model as ScoreablePracticeModel;
 }

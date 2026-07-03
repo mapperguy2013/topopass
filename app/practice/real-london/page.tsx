@@ -6,6 +6,7 @@ import { RealLondonBetaFeedbackForm } from "./RealLondonBetaFeedbackForm";
 import {
   REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL,
   REAL_LONDON_BETA_PRACTICE_PATH,
+  REAL_LONDON_BETA_MAP_OPTIONS,
   buildRealLondonBetaPracticeScreenModel
 } from "./realLondonBetaPracticeScreen";
 
@@ -63,7 +64,13 @@ export default function RealLondonBetaPracticePage() {
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
                 <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-blue-800">
+                  {model.mapRows.length} maps
+                </span>
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-blue-800">
                   {model.exerciseRows.length} exercises
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
+                  {model.selectedMap.fixtureUseLabel}
                 </span>
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
                   Map version {model.mapVersion}
@@ -78,37 +85,49 @@ export default function RealLondonBetaPracticePage() {
               <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="font-semibold text-slate-950">Current task</p>
-                  <p className="mt-1">{model.selectedExercise.title}</p>
+                  <p className="mt-1">{model.selectedExercise?.title ?? model.selectedMap.label}</p>
                 </div>
                 <span className="w-fit rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">
-                  Mobile compact
+                  {model.selectedMap.scoreable ? "Scored map" : "Map only"}
                 </span>
               </div>
               <p className="mt-2 rounded-md border border-blue-100 bg-white p-2 text-xs font-semibold leading-5 text-blue-950">
-                {model.selectedExercise.mobileInstructionSummary}
+                {model.selectedExercise?.mobileInstructionSummary ??
+                  "This fixture is available for visual QA and map inspection, not scored route practice."}
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-                <span className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-blue-700">
-                  {model.selectedExercise.difficulty}
-                </span>
+                {model.selectedExercise ? (
+                  <span className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-blue-700">
+                    {model.selectedExercise.difficulty}
+                  </span>
+                ) : null}
                 <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                  {model.selectedExercise.routeType.replaceAll("-", " ")}
+                  {model.selectedMap.fixtureUseLabel}
                 </span>
-                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                  {model.selectedExercise.estimatedDistanceLabel}
-                </span>
+                {model.selectedExercise ? (
+                  <>
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                      {model.selectedExercise.routeType.replaceAll("-", " ")}
+                    </span>
+                    <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
+                      {model.selectedExercise.estimatedDistanceLabel}
+                    </span>
+                  </>
+                ) : null}
               </div>
-              <details
-                className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-xs leading-5"
-                open={!model.mobileLayout.instructionsCollapsedByDefault}
-              >
-                <summary className="cursor-pointer font-semibold">Route instructions</summary>
-                <ol className="mt-2 list-decimal space-y-1 pl-4">
-                  {model.selectedExercise.instructionLines.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ol>
-              </details>
+              {model.selectedExercise ? (
+                <details
+                  className="mt-3 rounded-md border border-slate-200 bg-white p-3 text-xs leading-5"
+                  open={!model.mobileLayout.instructionsCollapsedByDefault}
+                >
+                  <summary className="cursor-pointer font-semibold">Route instructions</summary>
+                  <ol className="mt-2 list-decimal space-y-1 pl-4">
+                    {model.selectedExercise.instructionLines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ol>
+                </details>
+              ) : null}
               <details
                 className="mt-2 rounded-md border border-slate-200 bg-white p-3 text-xs leading-5"
                 open={!model.mobileLayout.limitationsCollapsedByDefault}
@@ -126,16 +145,17 @@ export default function RealLondonBetaPracticePage() {
 
         <RouteRunnerClient
           allowDevQaToggle={false}
-          initialExerciseId={model.selectedExercise.id}
+          initialExerciseId={model.selectedExercise?.id}
           initialMapOptionId={model.mapId}
+          mapOptions={REAL_LONDON_BETA_MAP_OPTIONS}
           mode={model.routeRunnerMode}
         />
 
         <RealLondonBetaFeedbackForm
           betaEnabled
-          exerciseId={model.selectedExercise.id}
-          exerciseTitle={model.selectedExercise.title}
-          exerciseVersion={model.selectedExercise.exerciseVersion}
+          exerciseId={model.selectedExercise?.id ?? "map-visual-qa"}
+          exerciseTitle={model.selectedExercise?.title ?? model.selectedMap.label}
+          exerciseVersion={model.selectedExercise?.exerciseVersion ?? "map-only"}
           mapId={model.mapId}
           mapVersion={model.mapVersion}
         />

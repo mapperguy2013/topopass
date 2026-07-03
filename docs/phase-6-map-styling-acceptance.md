@@ -236,6 +236,34 @@ Blackfriars / Thames corridor screenshots:
 - Destination marker radius/halo is tightened so the finish point remains
   visually attached to the destination road and route.
 
+## Stage 161.6 Beta Map Selection And Drawing UX
+
+Stage 161.6 makes the learner-facing Real London beta practice screen easier
+to use while keeping route matching, scoring, legality, exercise generation,
+OSM conversion, feedback tooling, and Phase 7 scope unchanged.
+
+Beta testers can now choose from the Real London pilot and the curated
+Piccadilly Circus, Waterloo Bridge / Thames corridor, one-way system, and quiet
+residential fixtures. Fixture metadata controls use:
+
+- `routableExercise` maps are available for scored practice.
+- `routeReviewFixture` maps are labelled as review fixtures.
+- `visualQaOnly` maps are labelled as map-inspection fixtures and are not
+  offered as scored exercises.
+
+Changing the selected map resets the current drawing, previous result, matching
+messages, viewport state, and debug overlays so stale attempt state does not
+carry into another fixture. The student beta controls now use the learner
+wording `Erase route`; it clears the drawn polyline and current feedback while
+keeping the selected map and exercise.
+
+Desktop map sizing is now viewport bounded. The student beta map uses a
+dynamic height capped by the visible viewport so map controls, legend,
+attribution, submit, erase, and selector controls remain reachable without the
+map forcing unnecessary vertical scrolling. Mobile and tablet touch behaviour,
+including draw, pan, zoom, and pinch zoom, remains covered by the existing
+Stage 156 and Stage 158.5 layout/interaction checks.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

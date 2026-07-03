@@ -101,13 +101,21 @@ export function isRealLondonBetaAccessEnabled(env: RealLondonBetaAccessEnv = pro
 }
 
 export function isRealLondonBetaMapId(mapId: string): boolean {
-  return mapId === realLondonOsmPilotRouteMap.id || mapId === realLondonOsmPilotTwoRouteMap.id;
+  return (
+    mapId === realLondonOsmPilotRouteMap.id ||
+    mapId === realLondonOsmPilotTwoRouteMap.id ||
+    mapId.startsWith("osm-curated-")
+  );
+}
+
+function isRealLondonBetaMapOption(option: RouteRunnerMapOption): boolean {
+  return isRealLondonBetaMapId(option.map.id);
 }
 
 export function getRealLondonBetaMapOptions(
   mapOptions: readonly RouteRunnerMapOption[] = ROUTE_RUNNER_MAP_OPTIONS
 ): RouteRunnerMapOption[] {
-  return mapOptions.filter((option) => isRealLondonBetaMapId(option.map.id));
+  return mapOptions.filter(isRealLondonBetaMapOption);
 }
 
 export function getRouteRunnerVisibleMapOptions(input: {
@@ -118,9 +126,15 @@ export function getRouteRunnerVisibleMapOptions(input: {
   const betaEnabled = input.betaEnabled ?? isRealLondonBetaAccessEnabled(input.env);
   const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
 
-  return mapOptions.filter(
-    (option) => !isDevOnlyRouteRunnerMapOption(option) && (betaEnabled || !isRealLondonBetaMapId(option.map.id))
-  );
+  return mapOptions.filter((option) => {
+    const realLondonBetaMap = isRealLondonBetaMapOption(option);
+
+    if (isDevOnlyRouteRunnerMapOption(option) && !realLondonBetaMap) {
+      return false;
+    }
+
+    return betaEnabled || !realLondonBetaMap;
+  });
 }
 
 export function getRouteRunnerDevQaMapOptions(
@@ -140,7 +154,9 @@ export function resolveRealLondonBetaMapAccess(input: {
   const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
   const defaultMapId = input.defaultMapId ?? DEFAULT_ROUTE_RUNNER_MAP_ID;
   const requestedMapOption = mapOptions.find(
-    (option) => option.map.id === input.requestedMapId && !isDevOnlyRouteRunnerMapOption(option)
+    (option) =>
+      option.map.id === input.requestedMapId &&
+      (!isDevOnlyRouteRunnerMapOption(option) || isRealLondonBetaMapOption(option))
   );
   const defaultMapOption =
     mapOptions.find((option) => option.map.id === defaultMapId) ?? getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);

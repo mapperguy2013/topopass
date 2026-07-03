@@ -317,10 +317,11 @@ function buildRouteRunnerMobileQaMapArea(
 ): RouteRunnerMobileQaMapArea {
   const horizontalPadding = viewportCategory === "mobile" ? 32 : viewportCategory === "tablet" ? 48 : 64;
   const width = Math.min(ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH, Math.max(0, viewportWidth - horizontalPadding));
+  const viewportBoundedDesktopHeight = Math.max(360, viewportHeight - 220);
   const preferredHeight =
     viewportCategory === "mobile"
       ? Math.min(420, Math.max(MOBILE_MIN_MAP_HEIGHT, viewportHeight * 0.45))
-      : Math.min(ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT, Math.max(420, viewportHeight * 0.62));
+      : Math.min(ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT, viewportBoundedDesktopHeight, Math.max(420, viewportHeight * 0.58));
   const height = normalizeDimension(preferredHeight);
   const mapViewport = buildSemanticScreenMapViewport(option, width, height);
   const zoomedViewport = buildZoomedMapViewport(mapViewport, createDefaultMapViewportState());

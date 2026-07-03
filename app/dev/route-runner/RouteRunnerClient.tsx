@@ -241,6 +241,7 @@ import {
 } from "./routeRunnerMaps";
 import {
   buildRealLondonBetaPracticePanelModel,
+  getRealLondonBetaMapOptions,
   getRouteRunnerDevQaMapOptions,
   getRouteRunnerVisibleMapOptions,
   isRealLondonBetaAccessEnabled,
@@ -306,6 +307,26 @@ function requireRouteRunnerMapOption(option: RouteRunnerMapOption | undefined): 
   }
 
   return option;
+}
+
+function routeRunnerMapOptionIsScoreable(option: RouteRunnerMapOption): boolean {
+  return option.fixtureUse === undefined || option.fixtureUse === "routableExercise";
+}
+
+function routeRunnerFixtureUseLabel(option: RouteRunnerMapOption): string {
+  if (option.fixtureUse === "routableExercise") {
+    return "Scored practice";
+  }
+
+  if (option.fixtureUse === "routeReviewFixture") {
+    return "Route review fixture";
+  }
+
+  if (option.fixtureUse === "visualQaOnly") {
+    return "Visual QA only";
+  }
+
+  return "Scored pilot";
 }
 
 type RouteAttemptSaveStatus = {
@@ -3120,11 +3141,18 @@ export function RouteRunnerClient({
   const showDeveloperPanels = practiceModePanelVisibility.showDeveloperPanels;
 
   const visibleMapOptions = useMemo(
-    () =>
-      isDevRouteRunner
-        ? getRouteRunnerDevQaMapOptions(mapOptions)
-        : getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED, mapOptions }),
-    [isDevRouteRunner, mapOptions]
+    () => {
+      if (isDevRouteRunner) {
+        return getRouteRunnerDevQaMapOptions(mapOptions);
+      }
+
+      if (isStudentBetaRouteRunner) {
+        return getRealLondonBetaMapOptions(mapOptions);
+      }
+
+      return getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED, mapOptions });
+    },
+    [isDevRouteRunner, isStudentBetaRouteRunner, mapOptions]
   );
   const betaMapAccess = useMemo(
     () => {
@@ -3154,6 +3182,8 @@ export function RouteRunnerClient({
   const activeMap = selectedMapOption.map;
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
+  const selectedMapIsScoreable = routeRunnerMapOptionIsScoreable(selectedMapOption);
+  const selectedMapFixtureUseLabel = routeRunnerFixtureUseLabel(selectedMapOption);
   const realLondonBetaPanel = useMemo(
     () =>
       buildRealLondonBetaPracticePanelModel({
@@ -4439,7 +4469,7 @@ export function RouteRunnerClient({
           mapOptions
         }).selectedMapOption;
 
-    setMapOptionId(nextMapOptionId);
+    setMapOptionId(nextMapOption.id);
     setExerciseId(nextMapOption.defaultExerciseId);
     setNodeIdsText("");
     setRoadIdsText("");
@@ -4915,12 +4945,12 @@ export function RouteRunnerClient({
                 disabled={drawnTrace.points.length === 0 && !isDrawing}
                 className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Clear
+                {isStudentBetaRouteRunner ? "Erase route" : "Clear"}
               </button>
               <button
                 type="button"
                 onClick={submitDrawnAttempt}
-                disabled={drawnTrace.points.length === 0 || isDrawing}
+                disabled={drawnTrace.points.length === 0 || isDrawing || !selectedExercise || !selectedMapIsScoreable}
                 className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 Submit Attempt
@@ -4938,6 +4968,11 @@ export function RouteRunnerClient({
           {isConvertedOsmMap ? (
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-900">
               Converted OSM fixture
+            </span>
+          ) : null}
+          {isStudentBetaRouteRunner ? (
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-900">
+              {selectedMapFixtureUseLabel}
             </span>
           ) : null}
           {selectedMapOption.attribution ? (
@@ -4972,9 +5007,30 @@ export function RouteRunnerClient({
             </div>
             {isStudentBetaRouteRunner ? (
               <>
-                <p className="mt-4 text-sm font-semibold text-slate-900">Practice map</p>
-                <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
-                  {selectedMapOption.label}
+                <label htmlFor="route-map-option" className="mt-4 block text-sm font-semibold text-slate-900">
+                  Practice map
+                </label>
+                <select
+                  id="route-map-option"
+                  value={selectedMapOption.id}
+                  onChange={(event) => handleMapOptionChange(event.target.value)}
+                  className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  {visibleMapOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label} - {routeRunnerFixtureUseLabel(option)}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                  <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-blue-800">
+                    {selectedMapFixtureUseLabel}
+                  </span>
+                  {!selectedMapIsScoreable ? (
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-900">
+                      Map inspection only
+                    </span>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -5052,21 +5108,33 @@ export function RouteRunnerClient({
               id="route-exercise"
               value={exerciseId}
               onChange={(event) => handleExerciseChange(event.target.value)}
+              disabled={!selectedMapIsScoreable || practiceExercisesPanel.exerciseRows.length === 0}
               className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
             >
-              {practiceExercisesPanel.exerciseRows.map((row) => {
-                const exercise = activeExercises.find((candidate) => candidate.id === row.id);
-                const availability = exercise ? exerciseAvailabilityById[exercise.id] : null;
+              {practiceExercisesPanel.exerciseRows.length === 0 ? (
+                <option value="">No scored exercise for this map</option>
+              ) : (
+                practiceExercisesPanel.exerciseRows.map((row) => {
+                  const exercise = activeExercises.find((candidate) => candidate.id === row.id);
+                  const availability = exercise ? exerciseAvailabilityById[exercise.id] : null;
 
-                return (
-                  <option key={row.id} value={row.id}>
-                    {exercise && availability
-                      ? formatExerciseAvailabilityOptionLabel(exercise, availability)
-                      : `${row.title} (${row.id})`}
-                  </option>
-                );
-              })}
+                  return (
+                    <option key={row.id} value={row.id}>
+                      {exercise && availability
+                        ? formatExerciseAvailabilityOptionLabel(exercise, availability)
+                        : `${row.title} (${row.id})`}
+                    </option>
+                  );
+                })
+              )}
             </select>
+
+            {!selectedMapIsScoreable ? (
+              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-950">
+                This fixture is labelled {selectedMapFixtureUseLabel.toLowerCase()} and is available for map inspection
+                rather than scored route submission.
+              </p>
+            ) : null}
 
             {selectedExerciseAvailability && !selectedExerciseAvailability.isValid ? (
               <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
@@ -5449,10 +5517,18 @@ export function RouteRunnerClient({
             <div
               className={`relative mt-4 overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
                 isStudentBetaRouteRunner
-                  ? "min-h-[420px] sm:min-h-[560px] lg:min-h-[660px] xl:min-h-[760px] 2xl:min-h-[820px]"
+                  ? "min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
                   : "min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               }`}
-              style={{ aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}` }}
+              style={{
+                aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+                ...(isStudentBetaRouteRunner
+                  ? {
+                      height: "min(760px, max(360px, calc(100dvh - 260px)))",
+                      maxHeight: "min(760px, calc(100dvh - 220px))"
+                    }
+                  : {})
+              }}
             >
               <div className="pointer-events-none absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1.5 sm:right-4 sm:top-4 sm:max-w-[calc(100%-2rem)] sm:gap-2">
                 <div className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm">
@@ -5495,7 +5571,7 @@ export function RouteRunnerClient({
                   disabled={drawnTrace.points.length === 0 && !isDrawing}
                   className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
-                  {isStudentBetaRouteRunner ? "Clear" : "Clear drawing"}
+                  {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
                 </button>
                 {!isStudentBetaRouteRunner ? (
                   <button

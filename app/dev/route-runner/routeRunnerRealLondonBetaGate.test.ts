@@ -8,6 +8,7 @@ import {
   realLondonOsmPilotRouteMap,
   realLondonOsmPilotTwoRouteMap
 } from "./routeRunnerMaps.ts";
+import { ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON } from "./curatedRealLondonRouteRunnerMaps.ts";
 import { phase6RealLondonVisualQaRouteMap } from "./realLondonVisualQaScenario.ts";
 import { buildRealLondonPilotReadinessReport } from "./routeRunnerOsmRealPilotReadinessReport.ts";
 import { createRouteAttemptVersionSnapshot } from "./routeAttemptVersionSnapshot.ts";
@@ -64,6 +65,41 @@ test("Stage 130 beta users can access real London practice maps", () => {
   assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
   assert.equal(access.state, "available");
   assert.equal(access.selectedMapOption.map.id, realLondonOsmPilotRouteMap.id);
+  assert.equal(access.unavailableState, null);
+});
+
+test("Stage 161.6 beta users can access curated Real London fixture maps", () => {
+  const visibleOptions = getRouteRunnerVisibleMapOptions({
+    betaEnabled: true,
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+  });
+  const nonBetaVisibleOptions = getRouteRunnerVisibleMapOptions({
+    betaEnabled: false,
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+  });
+  const visibleMapIds = visibleOptions.map((option) => option.map.id);
+  const nonBetaVisibleMapIds = nonBetaVisibleOptions.map((option) => option.map.id);
+  const curatedMapIds = [
+    "osm-curated-piccadilly-circus",
+    "osm-curated-waterloo-bridge",
+    "osm-curated-one-way-system-area",
+    "osm-curated-quiet-residential-roads"
+  ];
+  const access = resolveRealLondonBetaMapAccess({
+    requestedMapId: "osm-curated-waterloo-bridge",
+    betaEnabled: true,
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+  });
+
+  for (const mapId of curatedMapIds) {
+    assert.equal(visibleMapIds.includes(mapId), true, mapId);
+    assert.equal(nonBetaVisibleMapIds.includes(mapId), false, mapId);
+  }
+
+  assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
+  assert.equal(access.state, "available");
+  assert.equal(access.selectedMapOption.map.id, "osm-curated-waterloo-bridge");
+  assert.equal(access.selectedMapOption.fixtureUse, "routableExercise");
   assert.equal(access.unavailableState, null);
 });
 

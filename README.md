@@ -985,6 +985,17 @@ calm river corridor where polygon coverage is thin, major base roads are calmer
 than learner route overlays, local streets remain visible at learner zoom,
 repeated rail labels are deduplicated, and destination marker halos are tighter
 so the finish point reads attached to the route.
+Stage 161.6 improves the beta tester Real London practice UX. The beta practice
+screen now uses the curated map catalogue so testers can switch between the
+Real London pilot, Piccadilly Circus, Waterloo Bridge / Thames corridor,
+one-way system, and quiet residential fixtures. `routableExercise` maps remain
+scoreable, `routeReviewFixture` and `visualQaOnly` maps are labelled clearly,
+and visual-only fixtures do not offer scored route submission. Switching maps
+resets the drawn route, previous score/result, matching messages, viewport, and
+debug overlays; the learner control is labelled `Erase route` and clears the
+current drawing/result without regenerating the selected map or exercise. The
+desktop beta map is also capped to the visible viewport so map controls, legend,
+attribution, submit, erase, and selector controls remain reachable.
 
 ## Current Feature Set
 
