@@ -332,6 +332,18 @@ continued route input. This is interaction stability only; route scoring,
 matching, legality, exercise generation, cartography styling, and dev QA
 visibility are unchanged.
 
+Stage 161.6.7 makes Real London zoom consistent across the full learner
+inspection range. Zoom controls now use multiplicative/exponential scaling:
+buttons apply the central `stepRatio`, wheel/trackpad input applies an
+exponential delta, and pinch zoom continues to use pinch-distance ratio. The
+maximum shared route-runner zoom is 5000% (`50x`), while the minimum remains
+the existing overview value. Wheel and pinch zoom preserve the cursor or
+gesture-centre map point where possible; button zoom uses the viewport centre.
+The viewport uses one isotropic scale at every zoom level so roads, labels,
+markers, overlays, drawn routes, and submit matching stay aligned and do not
+stretch. High zoom is for learner inspection only and should not bypass
+existing label/context decluttering budgets.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

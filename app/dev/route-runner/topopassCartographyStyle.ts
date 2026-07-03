@@ -138,7 +138,8 @@ export type TopopassZoomThresholds = {
   defaultZoom: number;
   minZoom: number;
   maxZoom: number;
-  step: number;
+  stepRatio: number;
+  wheelSensitivity: number;
   panMargin: number;
 };
 
@@ -1901,8 +1902,9 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     thresholds: {
       defaultZoom: 1,
       minZoom: 0.75,
-      maxZoom: 10,
-      step: 0.25,
+      maxZoom: 50,
+      stepRatio: 1.25,
+      wheelSensitivity: 0.002231435513142097,
       panMargin: 80
     },
     decluttering: {

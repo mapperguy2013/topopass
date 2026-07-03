@@ -313,7 +313,8 @@ test("Stage 142 zoom and decluttering tokens are ordered finite and used by help
 
   assert.ok(thresholds.minZoom < thresholds.defaultZoom);
   assert.ok(thresholds.defaultZoom < thresholds.maxZoom);
-  assert.ok(thresholds.step > 0);
+  assert.ok(thresholds.stepRatio > 1);
+  assert.ok(thresholds.wheelSensitivity > 0);
   assert.ok(thresholds.panMargin >= 0);
   assert.deepEqual(ROUTE_RUNNER_MAP_ZOOM_LIMITS, thresholds);
   assert.equal(

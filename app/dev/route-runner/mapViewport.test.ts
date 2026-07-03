@@ -57,7 +57,8 @@ const testLimits: MapZoomLimits = {
   defaultZoom: 1,
   minZoom: 0.75,
   maxZoom: 2,
-  step: 0.25,
+  stepRatio: 1.25,
+  wheelSensitivity: Math.log(1.25) / 100,
   panMargin: 10
 };
 
@@ -129,34 +130,49 @@ test("zoom is clamped at minimum and maximum values", () => {
   assert.equal(canZoomInMapView(maxZoom, testLimits), false);
 });
 
-test("default route-runner zoom limits allow 1000 percent maximum zoom", () => {
-  const zoomed = zoomInMapView({ ...defaultViewportState, zoom: 9.9 }, undefined, baseViewport);
+test("default route-runner zoom limits allow 5000 percent maximum zoom", () => {
+  const zoomed = zoomInMapView({ ...defaultViewportState, zoom: 49 }, undefined, baseViewport);
 
   assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.minZoom, 0.75);
-  assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom, 10);
-  assert.equal(zoomed.zoom, 10);
+  assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom, 50);
+  assert.equal(zoomed.zoom, 50);
   assert.equal(canZoomInMapView(zoomed), false);
 });
 
-test("zoom clamp prevents route-runner viewport going above 1000 percent or below minimum", () => {
-  const tooHigh = zoomInMapView({ ...defaultViewportState, zoom: 10 }, undefined, baseViewport);
+test("zoom clamp prevents route-runner viewport going above 5000 percent or below minimum", () => {
+  const tooHigh = zoomInMapView({ ...defaultViewportState, zoom: 50 }, undefined, baseViewport);
   const tooLow = zoomOutMapView({ ...defaultViewportState, zoom: 0.75 }, undefined, baseViewport);
 
-  assert.equal(tooHigh.zoom, 10);
+  assert.equal(tooHigh.zoom, 50);
   assert.equal(tooLow.zoom, 0.75);
   assert.equal(canZoomOutMapView(tooLow), false);
+});
+
+test("zoom controls use a consistent multiplicative ratio", () => {
+  const lowZoom = zoomInMapView({ ...defaultViewportState, zoom: 1 }, testLimits, baseViewport);
+  const highZoom = zoomInMapView({ ...defaultViewportState, zoom: 1.6 }, testLimits, baseViewport);
+  const zoomedOut = zoomOutMapView(highZoom, testLimits, baseViewport);
+
+  assert.equal(lowZoom.zoom, 1.25);
+  assert.equal(highZoom.zoom, 2);
+  assertClose(highZoom.zoom / 1.6, lowZoom.zoom / 1, "zoom-in ratio should stay constant");
+  assertClose(zoomedOut.zoom / highZoom.zoom, 1 / testLimits.stepRatio, "zoom-out ratio should stay constant");
+  assert.ok(highZoom.zoom - 1.6 > lowZoom.zoom - 1, "high-zoom increment should scale proportionally");
 });
 
 test("wheel zoom changes zoom and clamps within route-runner limits", () => {
   const focusPoint = { x: 150, y: 70 };
   const zoomedIn = applyWheelZoomToMapView(defaultViewportState, -100, focusPoint, baseViewport);
   const zoomedOut = applyWheelZoomToMapView(zoomedIn, 100, focusPoint, baseViewport);
-  const maxZoom = applyWheelZoomToMapView({ ...defaultViewportState, zoom: 10 }, -100, focusPoint, baseViewport);
+  const highZoomedIn = applyWheelZoomToMapView({ ...defaultViewportState, zoom: 10 }, -100, focusPoint, baseViewport);
+  const maxZoom = applyWheelZoomToMapView({ ...defaultViewportState, zoom: 49 }, -100, focusPoint, baseViewport);
   const minZoom = applyWheelZoomToMapView({ ...defaultViewportState, zoom: 0.75 }, 100, focusPoint, baseViewport);
 
   assert.equal(zoomedIn.zoom, 1.25);
   assert.equal(zoomedOut.zoom, 1);
-  assert.equal(maxZoom.zoom, 10);
+  assert.equal(highZoomedIn.zoom, 12.5);
+  assertClose(highZoomedIn.zoom / 10, zoomedIn.zoom, "wheel zoom should use the same ratio at high zoom");
+  assert.equal(maxZoom.zoom, 50);
   assert.equal(minZoom.zoom, 0.75);
 });
 
@@ -454,9 +470,9 @@ test("pan limits are symmetrical at higher zoom levels", () => {
 test("zooming out clamps an existing pan offset back into valid range", () => {
   const zoomedOut = zoomOutMapView({ ...defaultViewportState, zoom: 2, panX: 110, panY: -60 }, testLimits, baseViewport);
 
-  assert.equal(zoomedOut.zoom, 1.75);
-  assert.equal(zoomedOut.panX, 85);
-  assert.equal(zoomedOut.panY, -47.5);
+  assert.equal(zoomedOut.zoom, 1.6);
+  assert.equal(zoomedOut.panX, 70);
+  assert.equal(zoomedOut.panY, -40);
 });
 
 test("pan bounds behave safely when viewport dimensions are zero or invalid", () => {
@@ -565,6 +581,20 @@ test("zoomed viewport keeps drawing coordinates aligned", () => {
     maxY: 75
   });
   assert.deepEqual(screenPoint, { x: 150, y: 50 });
+  assert.deepEqual(screenToMapPoint(screenPoint, zoomedViewport), mapPoint);
+});
+
+test("high zoom preserves isotropic map scale and coordinate alignment", () => {
+  const zoomedViewport = buildZoomedMapViewport(baseViewport, { ...defaultViewportState, zoom: 50 }, undefined);
+  const mapPoint = { x: 100.75, y: 50.25 };
+  const screenPoint = mapToScreenPoint(mapPoint, zoomedViewport);
+  const mapWidth = zoomedViewport.mapBounds.maxX - zoomedViewport.mapBounds.minX;
+  const mapHeight = zoomedViewport.mapBounds.maxY - zoomedViewport.mapBounds.minY;
+
+  assert.equal(mapWidth, 4);
+  assert.equal(mapHeight, 2);
+  assert.equal(mapWidth / mapHeight, baseViewport.width / baseViewport.height);
+  assertPointsRoundTrip([mapPoint], zoomedViewport);
   assert.deepEqual(screenToMapPoint(screenPoint, zoomedViewport), mapPoint);
 });
 

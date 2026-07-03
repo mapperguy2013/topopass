@@ -1036,6 +1036,15 @@ pan, draw, and pinch pointer refs when the user changes controls, maps, route
 exercises, or leaves the map. Draw/Pan switching remains learner-facing only on
 `/practice/real-london`; dev QA panels stay hidden, and scoring, legality,
 matching, and route generation are unchanged.
+Stage 161.6.7 makes Real London map zoom multiplicative instead of additive.
+Zoom-in/out controls now use a consistent ratio, wheel/trackpad zoom uses an
+exponential delta, pinch zoom continues to derive from finger-distance ratio,
+and the shared route-runner viewport cap is raised to 5000% (`50x`). Wheel and
+pinch zoom preserve the cursor or gesture-centre anchor where possible, button
+zoom uses the viewport centre, and the map continues to use one isotropic scale
+so roads, markers, labels, drawing, and submit matching stay aligned at high
+zoom. High zoom is intended for learner inspection, not for increasing base-map
+label density beyond the existing decluttering rules.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

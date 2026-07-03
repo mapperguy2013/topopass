@@ -14,7 +14,8 @@ export type MapZoomLimits = {
   defaultZoom: number;
   minZoom: number;
   maxZoom: number;
-  step: number;
+  stepRatio: number;
+  wheelSensitivity: number;
   panMargin?: number;
 };
 
@@ -104,6 +105,22 @@ function normalizeZero(value: number): number {
 
 function hasUsableWheelDelta(delta: number | undefined): boolean {
   return Number.isFinite(delta) && delta !== 0;
+}
+
+function safeZoomStepRatio(limits: MapZoomLimits): number {
+  return Number.isFinite(limits.stepRatio) && limits.stepRatio > 1 ? limits.stepRatio : 1.25;
+}
+
+function safeWheelSensitivity(limits: MapZoomLimits): number {
+  return Number.isFinite(limits.wheelSensitivity) && limits.wheelSensitivity > 0 ? limits.wheelSensitivity : 0.002;
+}
+
+function multiplyMapZoom(zoom: number, ratio: number, limits: MapZoomLimits): number {
+  if (!Number.isFinite(zoom) || !Number.isFinite(ratio) || ratio <= 0) {
+    return clampMapZoom(zoom, limits);
+  }
+
+  return clampMapZoom(zoom * ratio, limits);
 }
 
 function isMouseLikePointer(input: Pick<MapPointerInput, "pointerType">): boolean {
@@ -207,12 +224,14 @@ export function zoomInMapView(
   limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS,
   bounds?: MapPanBounds
 ): MapViewportState {
-  const nextState = {
-    ...state,
-    zoom: clampMapZoom(state.zoom + limits.step, limits)
-  };
+  const zoom = multiplyMapZoom(state.zoom, safeZoomStepRatio(limits), limits);
 
-  return bounds ? clampMapPan(nextState, bounds, limits) : nextState;
+  return bounds
+    ? zoomMapViewAroundPoint(state, zoom, { x: safeAxisSize(bounds.width) / 2, y: safeAxisSize(bounds.height) / 2 }, bounds, limits)
+    : {
+        ...state,
+        zoom
+      };
 }
 
 export function zoomOutMapView(
@@ -220,12 +239,14 @@ export function zoomOutMapView(
   limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS,
   bounds?: MapPanBounds
 ): MapViewportState {
-  const nextState = {
-    ...state,
-    zoom: clampMapZoom(state.zoom - limits.step, limits)
-  };
+  const zoom = multiplyMapZoom(state.zoom, 1 / safeZoomStepRatio(limits), limits);
 
-  return bounds ? clampMapPan(nextState, bounds, limits) : nextState;
+  return bounds
+    ? zoomMapViewAroundPoint(state, zoom, { x: safeAxisSize(bounds.width) / 2, y: safeAxisSize(bounds.height) / 2 }, bounds, limits)
+    : {
+        ...state,
+        zoom
+      };
 }
 
 export function zoomMapViewAroundPoint(
@@ -276,9 +297,10 @@ export function applyWheelZoomToMapView(
     return clampMapPan(state, bounds, limits);
   }
 
-  const zoomDirection = deltaY < 0 ? 1 : -1;
+  const ratio = Math.exp(-deltaY * safeWheelSensitivity(limits));
+  const zoom = multiplyMapZoom(state.zoom, ratio, limits);
 
-  return zoomMapViewAroundPoint(state, state.zoom + limits.step * zoomDirection, focusPoint, bounds, limits);
+  return zoomMapViewAroundPoint(state, zoom, focusPoint, bounds, limits);
 }
 
 export function createMapPinchGesture(

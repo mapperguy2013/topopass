@@ -220,6 +220,22 @@ station-corridor exercises, not short local hops. Raw OSM turn restriction
 relations remain source context until the converter exposes them as scored
 route-engine restrictions.
 
+## Stage 161.6.7 Consistent Exponential Zoom
+
+Stage 161.6.7 changes the shared Real London route-runner viewport from
+additive zoom steps to multiplicative/exponential zoom. Zoom buttons use the
+central `stepRatio`, wheel and trackpad deltas use an exponential sensitivity,
+and pinch zoom continues to use the two-finger distance ratio. The maximum zoom
+is now 5000% (`50x`) for learner inspection, with the existing minimum overview
+zoom preserved.
+
+The audit rule is that all zoom paths preserve one isotropic map scale. Wheel
+and pinch zoom should keep the cursor or pinch-centre map point stable where
+possible, button zoom should use the viewport centre, and drawing, route
+overlays, start/checkpoint/finish markers, labels, and submit matching must
+remain aligned after high zoom. High zoom does not change fixture budgets or
+force extra labels/features beyond the existing Phase 6 decluttering rules.
+
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 
 Stage 161.5 corrects the Waterloo Bridge / Blackfriars / Thames corridor after
