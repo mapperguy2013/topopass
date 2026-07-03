@@ -1400,7 +1400,7 @@ function buildOsmBackgroundFeatures(map: MapDefinition, fixture: unknown): Synth
         return [backgroundFeatureFromParkContext(feature)];
       }
 
-      if (feature.kind === "water" && feature.subtype === "basin") {
+      if (feature.kind === "water" && feature.subtype !== "waterway" && feature.points.length >= 3) {
         return [backgroundFeatureFromWaterContext(feature)];
       }
 
@@ -1432,7 +1432,11 @@ function backgroundFeatureFromParkContext(feature: RealLondonParkContextFeature)
 }
 
 function backgroundFeatureFromWaterContext(feature: RealLondonWaterContextFeature): SyntheticBackgroundFeature {
-  const style = TOPOPASS_STREET_ATLAS_STYLE.background.water.basin;
+  const water = TOPOPASS_STREET_ATLAS_STYLE.background.water;
+  const tags = feature.sourceTags ?? {};
+  const waterValue = typeof tags.water === "string" ? tags.water : "";
+  const style =
+    feature.name?.toLowerCase().includes("thames") || waterValue === "river" ? water.river : water.basin;
 
   return {
     id: `osm-context-${feature.id}`,

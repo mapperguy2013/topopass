@@ -945,6 +945,38 @@ test("Stage 161.6.2 wide beta viewport preserves equal X and Y map scale", () =>
   assert.ok(boundsWidth(viewportBounds) < boundsWidth(previousCrampedViewportBounds));
 });
 
+test("Stage 161.7 curated Waterloo fit keeps route stops away from viewport edges", () => {
+  const exercise = waterlooBridgeOsmRouteExercises[0];
+
+  assert.ok(exercise);
+
+  const viewport = {
+    width: TEST_BETA_CANVAS_WIDTH,
+    height: TEST_BETA_CANVAS_HEIGHT,
+    mapBounds: getRouteRunnerMapViewportBounds(
+      waterlooBridgeOsmRouteMap,
+      TEST_BETA_CANVAS_WIDTH,
+      TEST_BETA_CANVAS_HEIGHT
+    )
+  };
+  const edgePadding = 54;
+
+  for (const stop of exercise.stops) {
+    assert.ok("nodeId" in stop);
+
+    const node = waterlooBridgeOsmRouteMap.nodes.find((candidate) => candidate.id === stop.nodeId);
+
+    assert.ok(node, stop.nodeId);
+
+    const screenPoint = mapToScreenPoint(node, viewport);
+
+    assert.ok(screenPoint.x >= edgePadding, `${stop.nodeId} x=${screenPoint.x}`);
+    assert.ok(screenPoint.x <= TEST_BETA_CANVAS_WIDTH - edgePadding, `${stop.nodeId} x=${screenPoint.x}`);
+    assert.ok(screenPoint.y >= edgePadding, `${stop.nodeId} y=${screenPoint.y}`);
+    assert.ok(screenPoint.y <= TEST_BETA_CANVAS_HEIGHT - edgePadding, `${stop.nodeId} y=${screenPoint.y}`);
+  }
+});
+
 test("synthetic default map keeps its existing first-load fit bounds", () => {
   const syntheticOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
 

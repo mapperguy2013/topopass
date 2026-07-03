@@ -67,7 +67,7 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#a96532");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#987044");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#a96532");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe8c6");
@@ -205,12 +205,15 @@ test("Stage 160 atlas identity tokens keep hierarchy calm and original", () => {
   assert.ok(style.roads.osm.primary.casingWidth > style.roads.osm.secondary.casingWidth);
   assert.ok(style.roads.osm.secondary.casingWidth > style.roads.osm.residential.casingWidth);
   assert.ok(style.roads.osm.residential.strokeWidth > style.roads.osm.service.strokeWidth);
+  assert.ok(style.roads.osm.primary.strokeWidth < style.routeOverlays.matchedRoute.strokeWidth);
+  assert.ok(style.roads.osm.primary.strokeColor !== style.routeOverlays.rawRoute.strokeColor);
   assert.ok((style.roads.osm.service.alpha ?? 1) < 0.75);
   assert.ok((style.roads.osm.pedestrian.alpha ?? 1) < (style.roads.osm.service.alpha ?? 1));
   assert.ok(style.labels.roadHierarchy.major.haloWidth > style.labels.roadHierarchy.minor.haloWidth);
   assert.ok(style.labels.roadHierarchy.major.repeatDistance > style.labels.roadHierarchy.secondary.repeatDistance);
   assert.ok(style.labels.roadHierarchy.service.minViewportScale > style.labels.roadHierarchy.minor.minViewportScale);
   assert.ok(style.contextFeatures.rail.highZoomAlpha < 0.8);
+  assert.ok(style.background.water.linear.strokeWidth > style.roads.osm.primary.casingWidth);
   assert.notEqual(style.station.strokeColor, style.restrictions.noEntryMarker.strokeColor);
 });
 
@@ -348,10 +351,10 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#f8e4b0",
-    strokeColor: "#a96532",
-    casingWidth: 19.6,
-    strokeWidth: 9.6
+    casingColor: "#f2dfb7",
+    strokeColor: "#987044",
+    casingWidth: 16.8,
+    strokeWidth: 6.8
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -659,14 +662,22 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   const thameslinkLabels = labels.filter((label) => label.text === "Thameslink");
 
   assert.ok(waterFeatures.length > 0, "Waterloo fixture should render Thames water polygons");
-  assert.ok(waterFeatures.every((feature) => feature.fillColor === TOPOPASS_STREET_ATLAS_STYLE.background.water.basin.fillColor));
-  assert.ok(waterwayFeatures.some((feature) => feature.strokeWidth >= 9), "Thames waterway corridor should read at learner zoom");
+  assert.ok(
+    waterwayFeatures.some((feature) => feature.strokeWidth >= 20),
+    "Thames waterway corridor should read at learner zoom"
+  );
+  assert.notEqual(
+    TOPOPASS_STREET_ATLAS_STYLE.background.water.river.fillColor,
+    TOPOPASS_STREET_ATLAS_STYLE.background.water.basin.fillColor
+  );
   assert.ok(contextLabels.has("River Thames"), "Waterloo fixture should label the Thames context");
   assert.ok(bridgeLabels.has("Waterloo Bridge"));
   assert.ok(bridgeLabels.has("Blackfriars Bridge"));
   assert.ok(thameslinkLabels.length <= 1, "Repeated rail labels should be deduplicated");
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth < TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth * 2);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth < TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute.strokeWidth);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 5);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.minorLowZoomAlphaMultiplier >= 0.9);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha <= 0.3);
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding <
       TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.haloRadiusPadding
@@ -1023,7 +1034,7 @@ test("Stage 146 repeated road labels are allowed when sufficiently separated", (
     roadLabel({
       id: "first",
       text: "Grafton Place",
-      point: { x: 20, y: 20 },
+      point: { x: 2, y: 2 },
       roadClass: "local",
       osmHierarchy: "residential",
       roadLengthMeters: 300
@@ -1031,7 +1042,7 @@ test("Stage 146 repeated road labels are allowed when sufficiently separated", (
     roadLabel({
       id: "far-repeat",
       text: "Grafton Place",
-      point: { x: 198, y: 82 },
+      point: { x: 198, y: 98 },
       roadClass: "local",
       osmHierarchy: "residential",
       roadLengthMeters: 300

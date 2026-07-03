@@ -298,6 +298,28 @@ scoring is reached. `visualQaOnly` fixtures remain map-inspection only, and
 `routeReviewFixture` fixtures stay labelled for review workflows rather than
 normal scored practice.
 
+## Stage 161.7 Waterloo / Thames Final Cartography Correction
+
+Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /
+Blackfriars / Thames corridor without changing route matching, scoring,
+legality, exercise generation, beta selection, or touch interaction:
+
+- OSM-derived river area features now have a dedicated calm river water token
+  when they are present as converted way geometry, while the Waterloo fixture's
+  available `waterway=*` Thames lines use a wider blue fallback corridor where
+  relation-only polygon coverage is not yet converted.
+- Major OSM base roads are slightly narrower and less saturated so Victoria
+  Embankment, Strand, Waterloo Bridge, Blackfriars Bridge, Southwark Street,
+  Stamford Street, and Upper Thames Street remain clear atlas hierarchy
+  without reading like learner route overlays.
+- Residential and local roads keep stronger low/medium-zoom visibility so the
+  Waterloo side-street texture does not disappear behind only the main roads.
+- Rail context is quieter at medium and high zoom, and label spacing around
+  heavy roads, bridges, water, route lines, and markers is more conservative.
+- Curated `osm-curated-*` fixtures use larger display-only route-fit padding so
+  start, checkpoint, and finish markers have breathing room inside the desktop
+  beta viewport. Marker anchors and route geometry are unchanged.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

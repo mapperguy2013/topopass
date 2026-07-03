@@ -1014,6 +1014,14 @@ validated at test time for existing map anchors, legal shortest route
 availability, drawn-route matching, and score creation before it can be offered
 to beta testers. `visualQaOnly` and `routeReviewFixture` maps remain clearly
 labelled and are not treated as normal scored practice.
+Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
+OSM-derived river areas use a dedicated river water token when available,
+Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor
+where polygon coverage is relation-only, OSM major base roads are calmer than
+learner overlays, local streets stay visible at low/medium zoom, rail context is
+quieter, label spacing is more conservative near heavy context, and curated
+fixtures get larger display-only fit padding so start, checkpoint, and finish
+markers stay visually attached inside the desktop beta viewport.
 
 ## Current Feature Set
 

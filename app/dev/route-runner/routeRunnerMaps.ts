@@ -95,6 +95,8 @@ const REAL_LONDON_OSM_PILOT_TWO_MAP_ID = "osm-real-london-pilot-2";
 const LARGE_LONDON_OSM_MAP_ID = "osm-large-london";
 const DEFAULT_ROUTE_RUNNER_MAP_PADDING = 45;
 const LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.22;
+const CURATED_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.28;
+const CURATED_OSM_MAP_ID_PREFIX = "osm-curated-";
 
 type MaybeOsmRouteGraphMapDefinition = MapDefinition & {
   metadata?: {
@@ -1045,7 +1047,12 @@ export function getRouteRunnerMapBounds(map: MapDefinition): RouteRunnerMapBound
 }
 
 export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
+  const curatedPaddingRatio = map.id.startsWith(CURATED_OSM_MAP_ID_PREFIX)
+    ? CURATED_OSM_ROUTE_RUNNER_PADDING_RATIO
+    : null;
+
   if (
+    curatedPaddingRatio === null &&
     map.id !== MEDIUM_OSM_FIXTURE_MAP_ID &&
     map.id !== REAL_LONDON_OSM_PILOT_MAP_ID &&
     map.id !== REAL_LONDON_OSM_PILOT_TWO_MAP_ID &&
@@ -1057,8 +1064,9 @@ export function getRouteRunnerMapFitPadding(map: MapDefinition): number {
   const bounds = getRouteRunnerMapBounds(map);
   const width = Math.max(0, bounds.maxX - bounds.minX);
   const height = Math.max(0, bounds.maxY - bounds.minY);
+  const paddingRatio = curatedPaddingRatio ?? LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO;
 
-  return Math.max(DEFAULT_ROUTE_RUNNER_MAP_PADDING, Math.max(width, height) * LARGE_OSM_ROUTE_RUNNER_PADDING_RATIO);
+  return Math.max(DEFAULT_ROUTE_RUNNER_MAP_PADDING, Math.max(width, height) * paddingRatio);
 }
 
 export function getRouteRunnerMapFitBounds(map: MapDefinition): RouteRunnerMapBounds {
