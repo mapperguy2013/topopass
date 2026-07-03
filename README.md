@@ -1022,6 +1022,14 @@ drawing, score/result, matching error, viewport, reveal, and debug state. Stable
 `?map=` and `?exercise=` URLs continue to select valid curated exercises, and
 invalid or non-scoreable choices fall back deterministically instead of keeping
 the first/default route alive behind the UI.
+Stage 161.6.5 hides dev QA/debug controls from the learner-facing
+`/practice/real-london` page. Converted OSM QA, OSM QA, Exercise QA, graph
+overlay controls, node/segment ID toggles, road/node/directed-edge diagnostics,
+blocked way ID lists, manual route input/results, and the dev session learning
+dashboard stay available in `/dev/route-runner` or explicit dev QA mode, but
+beta testers now see the clean practice flow: choose a curated map, choose a
+validated route exercise, draw, undo, erase, reset, submit, and review the
+score/result with OSM attribution visible.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

@@ -7962,15 +7962,17 @@ export function RouteRunnerClient({
             ) : null}
           </section>
 
-          {error ? (
-            <section className="order-4 rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">
-              <h2 className="font-semibold">Runner error</h2>
-              <p className="mt-2 font-mono text-xs">{error}</p>
-            </section>
-          ) : null}
+          {showDeveloperPanels ? (
+            <>
+              {error ? (
+                <section className="order-4 rounded-lg border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">
+                  <h2 className="font-semibold">Runner error</h2>
+                  <p className="mt-2 font-mono text-xs">{error}</p>
+                </section>
+              ) : null}
 
-          {result ? (
-            <section className="order-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              {result ? (
+                <section className="order-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-base font-semibold text-slate-950">Manual run result</h2>
                 <span
@@ -8085,16 +8087,19 @@ export function RouteRunnerClient({
               <pre className="mt-2 max-h-96 overflow-auto rounded-md bg-slate-950 p-4 text-xs leading-5 text-slate-100">
                 {JSON.stringify(result.score, null, 2)}
               </pre>
-            </section>
-          ) : (
-            <section className="order-5 rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
-              Run a manual node/road route to see the normalised attempt and scoring result.
-            </section>
-          )}
+                </section>
+              ) : (
+                <section className="order-5 rounded-lg border border-dashed border-slate-300 bg-white p-5 text-sm text-slate-600">
+                  Run a manual node/road route to see the normalised attempt and scoring result.
+                </section>
+              )}
+            </>
+          ) : null}
         </div>
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      {showDeveloperPanels ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Learning dashboard</p>
@@ -8212,7 +8217,8 @@ export function RouteRunnerClient({
             )}
           </div>
         </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

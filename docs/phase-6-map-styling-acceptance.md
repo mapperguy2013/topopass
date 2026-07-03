@@ -310,6 +310,16 @@ exercise. Stable `?map=` and `?exercise=` URLs continue to work for Piccadilly
 Circus, Waterloo Bridge / Thames corridor, the one-way system area, and quiet
 residential roads.
 
+Stage 161.6.5 cleans up the learner-facing Real London practice page. Normal
+`/practice/real-london` rendering now hides developer QA/debug controls,
+including Converted OSM QA, OSM QA, Exercise QA, graph overlays, node/segment
+ID toggles, road/node/directed-edge diagnostics, blocked way ID lists, manual
+route input, manual run results, and the dev session learning dashboard. Beta
+testers use the curated validated map and route exercise selectors, then draw,
+undo, erase, reset, submit, and review the scored attempt. The same QA/debug
+tools remain available in `/dev/route-runner` and explicit dev QA mode; the
+practice page defaults to the clean beta-student view.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

@@ -7,8 +7,20 @@ export const ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS = [
   "Pipeline debug result",
   "Drawn route score result",
   "OSM debug",
+  "OSM QA",
+  "Exercise QA",
+  "Show graph overlay",
+  "Show node / segment IDs",
   "Converted OSM QA",
   "Real London Pilot QA",
+  "Manual run result",
+  "Road candidate IDs",
+  "Matched road IDs",
+  "Matched node IDs",
+  "Directed edge IDs",
+  "Blocked OSM way IDs",
+  "Learning dashboard",
+  "Adaptive practice queue",
   "raw debug"
 ] as const;
 

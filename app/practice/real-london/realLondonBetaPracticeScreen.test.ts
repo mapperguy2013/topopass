@@ -108,6 +108,14 @@ test("Stage 132 beta screen hides dev QA diagnostics", () => {
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("restriction-overlays"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("pipeline-debug-result"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("manual-route-input"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("manual-run-result"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("osm-qa-button"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("exercise-qa-button"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("graph-overlay-controls"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("node-segment-id-controls"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("road-node-edge-diagnostics"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("blocked-way-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("adaptive-dev-dashboard"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("osm-debug"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-debug-output"));
   assert.equal("fixtureName" in model, false);
