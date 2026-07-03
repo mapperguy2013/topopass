@@ -132,6 +132,15 @@ the defined Thames bridge zone requires a wider future OSM source because the
 current cache is central/north-central London only. OSM access, speed, lane,
 landmark, and public-building tags remain dependent on source data quality.
 
+Stage 160.5 also ingests four manually exported curated Overpass JSON fixtures
+for visual QA: Piccadilly Circus, Waterloo Bridge, a one-way system area, and
+quiet residential roads. They are registered as dev-only selectable maps and
+fixed visual comparison scenarios, with OSM attribution retained. The fixtures
+increase real London coverage for dense streets, Thames/bridge context,
+rail/stations, parks/water, one-way tags, and turn-restriction relation data,
+but they remain small bounded extracts rather than full London coverage.
+Production practice still does not call Overpass at runtime.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy
@@ -316,13 +325,15 @@ geometry is unavailable. Tests cover deterministic counts, malformed input,
 stable adapter ordering, missing projection behaviour, and the rule that no
 context feature is invented when fixture/source data is absent.
 
-Known limitation: the current committed Real London Overpass fixtures
+Known limitation: the earlier committed Real London pilot Overpass fixtures
 (`tinyLondonOverpass.json`, `realLondonPilotOverpass.json`,
 `realLondonPilotTwoOverpass.json`, `mediumLondonOverpass.json`, and
 `largeLondonOverpass.json`) audit to zero for the audited non-road context
 categories. The learner benefit today is a clearer, testable pipeline and
 baseline for fixture-backed context rendering; visible new context still
-depends on future committed fixture data containing those OSM tags.
+depends on selected fixture data containing those OSM tags. The later Stage
+160.5 curated manual exports add richer dev-only context fixtures for visual
+QA.
 
 ## Stage 151 Visual QA And Learner Readability Checklist
 

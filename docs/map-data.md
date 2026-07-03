@@ -78,6 +78,47 @@ A future broader import should use an offline Geofabrik extract or another
 cached OSM-derived source through the same bounded-zone and whitelist approach,
 rather than making the live app call Overpass.
 
+## Manual Curated Overpass Fixtures
+
+Stage 160.5 also ingests four manually exported Overpass JSON files for
+Phase 6 visual QA and street-atlas refinement. These are committed fixtures,
+not live runtime API calls, and they do not replace
+`realLondonPilotOverpass.json`.
+
+| Fixture | Purpose | OSM base timestamp |
+| --- | --- | --- |
+| `realLondonPilotOverpass.json` | Existing Real London pilot fixture for beta route QA | Existing committed pilot export |
+| `piccadillyCircusOverpass.json` | Dense Central London and complex street readability | `2026-07-03T00:09:45Z` |
+| `waterlooBridgeOverpass.json` | Thames, bridge, rail/station, and central context | `2026-07-03T00:11:45Z` |
+| `oneWaySystemAreaOverpass.json` | One-way and restriction cartography | `2026-07-03T00:13:44Z` |
+| `quietResidentialRoadsOverpass.json` | Suburban learner-driver readability | `2026-07-03T00:14:43Z` |
+
+The four new fixtures are registered as dev-only route-runner map options and
+visual QA scenarios. They are useful for testing road hierarchy, labels,
+parks/water/rail/station context, one-way/restriction cartography, learner
+overlays, and mobile readability. They are not full London coverage and are not
+part of a production map-provider dependency.
+
+Coverage summary:
+
+| Fixture | Nodes | Ways | Relations | Named roads | One-way ways | Turn restrictions | Parks/open space | Water | Rail | Stations | Landmark/amenity/place candidates |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `piccadillyCircusOverpass.json` | 3,855 | 1,401 | 13 | 418 | 204 | 12 | 3 | 2 | 9 | 3 | 29 |
+| `waterlooBridgeOverpass.json` | 14,286 | 3,037 | 44 | 784 | 455 | 41 | 62 | 14 | 89 | 3 | 36 |
+| `oneWaySystemAreaOverpass.json` | 9,635 | 3,719 | 50 | 1,104 | 632 | 50 | 49 | 2 | 24 | 4 | 46 |
+| `quietResidentialRoadsOverpass.json` | 2,859 | 468 | 12 | 177 | 35 | 12 | 19 | 4 | 0 | 0 | 8 |
+
+The renderer-facing categories remain derived from OSM tags at conversion or
+visual-model time: `majorRoad`, `secondaryRoad`, `localRoad`, `serviceRoad`,
+`nonDrivingPath`, `bridgeRoad`, `tunnelRoad`, `oneWaySegment`,
+`restrictedTurn`, `park`, `water`, `rail`, `station`, `landmark`, and
+`areaLabel`. Raw fixture data does not contain TOPOPASS styling decisions.
+
+Attribution requirement: these fixtures are OpenStreetMap-derived data made
+available under ODbL, so OSM attribution must stay visible wherever they are
+shown. No A-Z, Google, Apple, Ordnance Survey, proprietary tiles, screenshots,
+icons, palettes, or copied map artwork are used.
+
 ## Actual GeoJSON Coverage
 
 The current raw GeoJSON contains:

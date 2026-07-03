@@ -9,12 +9,13 @@ import {
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
   ROUTE_RUNNER_MAP_OPTIONS,
-  getRouteRunnerMapOption
+  type RouteRunnerMapOption
 } from "./routeRunnerMaps.ts";
 
 export type RouteRunnerInitialSelectionInput = {
   initialMapOptionId?: string;
   initialExerciseId?: string;
+  mapOptions?: readonly RouteRunnerMapOption[];
 };
 
 export type RouteRunnerInitialHydrationState = {
@@ -27,8 +28,11 @@ export type RouteRunnerInitialHydrationState = {
 export function createRouteRunnerInitialHydrationState(
   input: RouteRunnerInitialSelectionInput = {}
 ): RouteRunnerInitialHydrationState {
+  const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
   const initialMapOption =
-    getRouteRunnerMapOption(input.initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID) ?? ROUTE_RUNNER_MAP_OPTIONS[0];
+    mapOptions.find((option) => option.id === (input.initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID)) ??
+    mapOptions[0] ??
+    ROUTE_RUNNER_MAP_OPTIONS[0];
   const initialExerciseId =
     input.initialExerciseId && initialMapOption.exercises.some((exercise) => exercise.id === input.initialExerciseId)
       ? input.initialExerciseId

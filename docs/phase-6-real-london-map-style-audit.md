@@ -95,6 +95,30 @@ depend on source coverage quality. Future broader coverage should use a
 cached/offline OSM source such as a bounded Geofabrik-derived extract through
 the same whitelist and fixture-output path rather than live runtime fetching.
 
+Follow-up Stage 160.5 fixture ingestion adds four manual Overpass JSON exports
+as committed dev-only map fixtures:
+
+- `piccadillyCircusOverpass.json`: dense Central London readability, with
+  3,855 nodes, 1,401 ways, 13 relations, 418 named road ways, 204 one-way ways,
+  and 12 turn-restriction relations.
+- `waterlooBridgeOverpass.json`: Thames/bridge/rail/station context, with
+  14,286 nodes, 3,037 ways, 44 relations, 784 named road ways, 455 one-way
+  ways, 41 turn-restriction relations, 14 water features, 89 rail features,
+  and 3 stations.
+- `oneWaySystemAreaOverpass.json`: one-way and restriction cartography, with
+  9,635 nodes, 3,719 ways, 50 relations, 1,104 named road ways, 632 one-way
+  ways, and 50 turn-restriction relations.
+- `quietResidentialRoadsOverpass.json`: suburban learner-driver readability,
+  with 2,859 nodes, 468 ways, 12 relations, 177 named road ways, 35 one-way
+  ways, 19 park/open-space features, and 4 water features.
+
+These fixtures are selectable in dev/visual QA through converted OSM map
+options and fixed visual comparison scenarios. They preserve OSM attribution
+and raw OSM-derived data boundaries. They do not overwrite
+`realLondonPilotOverpass.json`, import all London, call Overpass at runtime,
+copy proprietary map artwork, change route logic, change legality checks,
+change scoring, or start Phase 7 learning features.
+
 ## Stage 143 Styling Application
 
 Stage 143 applies the first TOPOPASS street-atlas base map styling pass. The
@@ -259,13 +283,16 @@ polygons, and linear context features, preserving the existing visual-only
 behaviour. It returns no features when fixture data is absent, malformed, lacks
 usable geometry, or belongs to a map without an OSM projection.
 
-Current committed fixture coverage is intentionally recorded as a limitation:
+Earlier committed pilot fixture coverage is intentionally recorded as a
+limitation:
 `tinyLondonOverpass.json`, `realLondonPilotOverpass.json`,
 `realLondonPilotTwoOverpass.json`, `mediumLondonOverpass.json`, and
 `largeLondonOverpass.json` all audit to zero for the audited non-road context
 categories. The benefit is a reliable coverage baseline and a single typed
 adapter path for future fixture-backed context data; the renderer still does
 not invent landmarks, stations, bridges, water, area names, or restrictions.
+The later Stage 160.5 manual curated exports provide richer dev-only context
+fixtures where the selected OSM data contains those tags.
 
 ## Stage 151 Visual QA And Objective Overlay Pass
 

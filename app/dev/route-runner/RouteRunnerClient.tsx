@@ -331,6 +331,7 @@ export type RouteRunnerClientMode = "dev" | "student-beta";
 export type RouteRunnerClientProps = {
   initialMapOptionId?: string;
   initialExerciseId?: string;
+  mapOptions?: readonly RouteRunnerMapOption[];
   mode?: RouteRunnerClientMode;
   allowDevQaToggle?: boolean;
 };
@@ -841,9 +842,12 @@ function linkedAdaptiveExercise(item: AdaptivePracticeQueueItem): AdaptivePracti
   return null;
 }
 
-function launchableRouteExerciseId(item: AdaptivePracticeQueueItem): string | null {
+function launchableRouteExerciseId(
+  item: AdaptivePracticeQueueItem,
+  mapOptions: readonly RouteRunnerMapOption[]
+): string | null {
   for (const exerciseId of item.relatedExerciseIds) {
-    if (ROUTE_RUNNER_MAP_OPTIONS.some((option) => option.exercises.some((exercise) => exercise.id === exerciseId))) {
+    if (mapOptions.some((option) => option.exercises.some((exercise) => exercise.id === exerciseId))) {
       return exerciseId;
     }
   }
@@ -3037,12 +3041,14 @@ function readableError(caughtError: unknown): string {
 export function RouteRunnerClient({
   initialMapOptionId,
   initialExerciseId,
+  mapOptions = ROUTE_RUNNER_MAP_OPTIONS,
   mode = "dev",
   allowDevQaToggle = mode === "dev"
 }: RouteRunnerClientProps = {}) {
   const initialHydrationState = createRouteRunnerInitialHydrationState({
     initialMapOptionId,
-    initialExerciseId
+    initialExerciseId,
+    mapOptions
   });
   const isStudentBetaRouteRunner = mode === "student-beta";
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -3115,9 +3121,9 @@ export function RouteRunnerClient({
   const visibleMapOptions = useMemo(
     () =>
       isDevRouteRunner
-        ? getRouteRunnerDevQaMapOptions()
-        : getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED }),
-    [isDevRouteRunner]
+        ? getRouteRunnerDevQaMapOptions(mapOptions)
+        : getRouteRunnerVisibleMapOptions({ betaEnabled: REAL_LONDON_BETA_ENABLED, mapOptions }),
+    [isDevRouteRunner, mapOptions]
   );
   const betaMapAccess = useMemo(
     () => {
@@ -3137,10 +3143,11 @@ export function RouteRunnerClient({
 
       return resolveRealLondonBetaMapAccess({
         requestedMapId: mapOptionId,
-        betaEnabled: REAL_LONDON_BETA_ENABLED
+        betaEnabled: REAL_LONDON_BETA_ENABLED,
+        mapOptions
       });
     },
-    [isDevRouteRunner, mapOptionId, visibleMapOptions]
+    [isDevRouteRunner, mapOptionId, mapOptions, visibleMapOptions]
   );
   const selectedMapOption = betaMapAccess.selectedMapOption;
   const activeMap = selectedMapOption.map;
@@ -4342,9 +4349,9 @@ export function RouteRunnerClient({
 
   function handleStartAdaptivePractice(item: AdaptivePracticeQueueItem) {
     const nowIso = new Date().toISOString();
-    const linkedExerciseId = launchableRouteExerciseId(item);
+    const linkedExerciseId = launchableRouteExerciseId(item, mapOptions);
     const linkedMapOption = linkedExerciseId
-      ? ROUTE_RUNNER_MAP_OPTIONS.find((option) => option.exercises.some((exercise) => exercise.id === linkedExerciseId))
+      ? mapOptions.find((option) => option.exercises.some((exercise) => exercise.id === linkedExerciseId))
       : null;
     const linkedExercise = linkedMapOption?.exercises.find((exercise) => exercise.id === linkedExerciseId) ?? null;
 
@@ -4384,7 +4391,7 @@ export function RouteRunnerClient({
     const completedAt = new Date().toISOString();
     const feedback = buildAdaptivePracticeOutcomeFeedback({
       practiceItem: item,
-      exerciseId: launchableRouteExerciseId(item) ?? exerciseId,
+      exerciseId: launchableRouteExerciseId(item, mapOptions) ?? exerciseId,
       completedAt,
       review: drawnAttemptReview
     });
@@ -4427,7 +4434,8 @@ export function RouteRunnerClient({
         )
       : resolveRealLondonBetaMapAccess({
           requestedMapId: nextMapOptionId,
-          betaEnabled: REAL_LONDON_BETA_ENABLED
+          betaEnabled: REAL_LONDON_BETA_ENABLED,
+          mapOptions
         }).selectedMapOption;
 
     setMapOptionId(nextMapOptionId);
@@ -4758,7 +4766,7 @@ export function RouteRunnerClient({
     const status = getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id);
     const sourceLabels = adaptiveSourceSignalLabels(item.sourceSignals);
     const linkedExercise = linkedAdaptiveExercise(item);
-    const linkedExerciseId = launchableRouteExerciseId(item);
+    const linkedExerciseId = launchableRouteExerciseId(item, mapOptions);
     const difficulty = linkedExercise?.difficulty ?? null;
 
     return (

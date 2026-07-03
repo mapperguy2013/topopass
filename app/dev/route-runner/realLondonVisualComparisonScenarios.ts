@@ -80,7 +80,11 @@ export type RealLondonVisualReadabilityScenarioId =
   | "bridge-river-crossing-review"
   | "awkward-junction-restriction-review"
   | "rail-station-interchange-context"
-  | "landmark-area-high-zoom";
+  | "landmark-area-high-zoom"
+  | "piccadilly-circus-dense-central-map"
+  | "waterloo-bridge-thames-context-map"
+  | "one-way-system-restriction-map"
+  | "quiet-residential-learner-map";
 
 export type RealLondonFinalPhase6Layer =
   | "land-background"
@@ -1011,6 +1015,175 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       learnerOverlayStates: noLearnerOverlayStates,
       restrictionSymbols: noRestrictionSymbols,
       decluttering: ["detail"]
+    }
+  },
+  {
+    id: "piccadilly-circus-dense-central-map",
+    label: "Piccadilly Circus dense central map",
+    description:
+      "Curated real Overpass fixture for dense Central London road hierarchy, labels, one-way texture, amenities, and mobile clutter checks.",
+    contextTags: ["dense-central-streets", "awkward-complex-junctions", "landmark-area-name-context"],
+    mapId: "osm-curated-piccadilly-circus",
+    fixtureName: "piccadillyCircusOverpass.json",
+    exerciseId: "osm-curated-piccadilly-circus-visual-qa-route",
+    comparisonModeIds: ["plain-route-graph", "phase-6-street-atlas", "learner-route-overlay"],
+    viewport: {
+      center: { x: 0, y: 0 },
+      bounds: { minX: -855.56821, minY: -505.644288, maxX: 855.56821, maxY: 505.612913 },
+      zoom: 1.45,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: [
+        "land-background",
+        "parks-open-spaces",
+        "rail",
+        "stations",
+        "landmarks",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "restriction-symbols",
+        "start-destination-markers",
+        "checkpoints"
+      ],
+      roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
+      labelKinds: ["road", "station", "landmark", "public_building", "area", "start", "checkpoint", "finish"],
+      backgroundKinds: ["park", "water", "pedestrian-area"],
+      linearKinds: ["rail"],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "upcoming-checkpoint"],
+      restrictionSymbols: ["one-way", "restricted-turn"],
+      decluttering: ["overview", "learner", "detail"]
+    }
+  },
+  {
+    id: "waterloo-bridge-thames-context-map",
+    label: "Waterloo Bridge and Thames context map",
+    description:
+      "Curated real Overpass fixture for Thames water context, bridges, rail/stations, parks, labels, and learner overlay readability.",
+    contextTags: ["bridges-river-crossings", "parks-open-spaces", "rail-station-context"],
+    mapId: "osm-curated-waterloo-bridge",
+    fixtureName: "waterlooBridgeOverpass.json",
+    exerciseId: "osm-curated-waterloo-bridge-visual-qa-route",
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay", "route-review-readability"],
+    viewport: {
+      center: { x: 0, y: 0 },
+      bounds: { minX: -1638.116401, minY: -869.647632, maxX: 1638.116401, maxY: 869.554833 },
+      zoom: 1.3,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: [
+        "land-background",
+        "water",
+        "parks-open-spaces",
+        "rail",
+        "bridges-crossings",
+        "stations",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "restriction-symbols",
+        "start-destination-markers",
+        "checkpoints"
+      ],
+      roadHierarchies: ["primary", "tertiary", "residential"],
+      labelKinds: ["road", "water", "bridge", "station", "start", "checkpoint", "finish"],
+      backgroundKinds: ["park", "water", "pedestrian-area"],
+      linearKinds: ["rail", "waterway", "bridge"],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "upcoming-checkpoint"],
+      restrictionSymbols: ["one-way", "restricted-turn"],
+      decluttering: ["overview", "learner", "detail"]
+    }
+  },
+  {
+    id: "one-way-system-restriction-map",
+    label: "One-way system and restriction map",
+    description:
+      "Curated real Overpass fixture for one-way-heavy streets, turn-restriction relations, symbol decluttering, and review readability.",
+    contextTags: ["awkward-complex-junctions", "learner-route-review-overlays"],
+    mapId: "osm-curated-one-way-system-area",
+    fixtureName: "oneWaySystemAreaOverpass.json",
+    exerciseId: "osm-curated-one-way-system-area-visual-qa-route",
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay", "route-review-readability"],
+    viewport: {
+      center: { x: 0, y: 0 },
+      bounds: { minX: -1520.429435, minY: -841.327998, maxX: 1520.429435, maxY: 841.241127 },
+      zoom: 1.4,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: [
+        "land-background",
+        "parks-open-spaces",
+        "rail",
+        "stations",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "restriction-symbols",
+        "start-destination-markers",
+        "checkpoints"
+      ],
+      roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
+      labelKinds: ["road", "station", "landmark", "start", "checkpoint", "finish"],
+      backgroundKinds: ["park", "water", "pedestrian-area"],
+      linearKinds: ["rail"],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "upcoming-checkpoint", "restricted-manoeuvre-warning"],
+      restrictionSymbols: ["one-way", "restricted-turn", "review-warning"],
+      decluttering: ["overview", "learner", "detail"]
+    }
+  },
+  {
+    id: "quiet-residential-learner-map",
+    label: "Quiet residential learner map",
+    description:
+      "Curated real Overpass fixture for quieter residential road hierarchy, suburban labels, parks/water, and phone readability.",
+    contextTags: ["estates-residential-blocks", "mobile-tablet-readability"],
+    mapId: "osm-curated-quiet-residential-roads",
+    fixtureName: "quietResidentialRoadsOverpass.json",
+    exerciseId: "osm-curated-quiet-residential-roads-visual-qa-route",
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay"],
+    viewport: {
+      center: { x: 0, y: -0.13505 },
+      bounds: { minX: -1606.919113, minY: -1483.159211, maxX: 1606.919113, maxY: 1482.889111 },
+      zoom: 1.25,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: [
+        "land-background",
+        "water",
+        "parks-open-spaces",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "start-destination-markers",
+        "checkpoints"
+      ],
+      roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
+      labelKinds: ["road", "water", "landmark", "start", "checkpoint", "finish"],
+      backgroundKinds: ["park", "water"],
+      linearKinds: ["waterway"],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "upcoming-checkpoint"],
+      restrictionSymbols: ["one-way", "restricted-turn"],
+      decluttering: ["overview", "learner", "detail"]
     }
   }
 ];

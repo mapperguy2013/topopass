@@ -33,6 +33,23 @@ export type CuratedLondonOsmZone = {
   intendedUse: string;
 };
 
+export type CuratedRealLondonOverpassFixtureId =
+  | "piccadilly-circus"
+  | "waterloo-bridge"
+  | "one-way-system-area"
+  | "quiet-residential-roads";
+
+export type CuratedRealLondonOverpassFixtureMetadata = {
+  id: CuratedRealLondonOverpassFixtureId;
+  fixtureName: string;
+  label: string;
+  source: "OpenStreetMap via Overpass export";
+  importDate: string;
+  areaPurpose: string;
+  attribution: typeof CURATED_LONDON_OSM_ATTRIBUTION;
+  knownLimitations: readonly string[];
+};
+
 export type CuratedLondonRenderCategory =
   | "majorRoad"
   | "secondaryRoad"
@@ -75,6 +92,7 @@ export type CuratedLondonFixtureCoverage = {
 };
 
 export type CuratedLondonRenderCategorySummary = Record<CuratedLondonRenderCategory, number>;
+export type CuratedLondonHighwayClassSummary = Record<string, number>;
 
 export const CURATED_LONDON_OSM_ATTRIBUTION = {
   text: "(c) OpenStreetMap contributors",
@@ -210,6 +228,61 @@ export const CURATED_LONDON_OSM_ZONES: CuratedLondonOsmZone[] = [
   }
 ];
 
+export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFixtureMetadata[] = [
+  {
+    id: "piccadilly-circus",
+    fixtureName: "piccadillyCircusOverpass.json",
+    label: "Piccadilly Circus",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-03T00:09:45Z",
+    areaPurpose: "Dense Central London / complex street readability.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Small bounded extract, not full London coverage.",
+      "OSM access, amenity, and landmark tags depend on local source completeness."
+    ]
+  },
+  {
+    id: "waterloo-bridge",
+    fixtureName: "waterlooBridgeOverpass.json",
+    label: "Waterloo Bridge",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-03T00:11:45Z",
+    areaPurpose: "Thames, bridge, rail/station, and central context.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Small bounded extract, not full London coverage.",
+      "Bridge, rail, station, and water detail is limited to tags present in the export."
+    ]
+  },
+  {
+    id: "one-way-system-area",
+    fixtureName: "oneWaySystemAreaOverpass.json",
+    label: "One-way system area",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-03T00:13:44Z",
+    areaPurpose: "One-way and restriction cartography.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Small bounded extract, not full London coverage.",
+      "Turn restrictions are only those explicitly present in OSM relation data."
+    ]
+  },
+  {
+    id: "quiet-residential-roads",
+    fixtureName: "quietResidentialRoadsOverpass.json",
+    label: "Quiet residential roads",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-03T00:14:43Z",
+    areaPurpose: "Suburban learner-driver readability.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Small bounded extract, not full London coverage.",
+      "Rail/station context is not expected in this residential fixture."
+    ]
+  }
+];
+
 function emptyCoverage(): CuratedLondonFixtureCoverage {
   return {
     elementCount: 0,
@@ -284,6 +357,24 @@ export function summariseCuratedLondonRenderCategories(fixture: unknown): Curate
   }
 
   return summary;
+}
+
+export function summariseCuratedLondonHighwayClasses(fixture: unknown): CuratedLondonHighwayClassSummary {
+  const summary = new Map<string, number>();
+
+  for (const element of overpassElements(fixture)) {
+    if (element.type !== "way") {
+      continue;
+    }
+
+    const highway = tagValue(element.tags ?? {}, "highway");
+
+    if (highway) {
+      summary.set(highway, (summary.get(highway) ?? 0) + 1);
+    }
+  }
+
+  return Object.fromEntries([...summary.entries()].sort(([left], [right]) => left.localeCompare(right)));
 }
 
 export function auditCurrentRealLondonFixtureSet(fixtures: Record<string, unknown>) {

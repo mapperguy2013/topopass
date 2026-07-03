@@ -34,6 +34,28 @@ import {
   tinyLondonOsmRouteExercises,
   tinyLondonOsmRouteMap
 } from "./routeRunnerMaps.ts";
+import {
+  CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
+  ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON,
+  oneWaySystemAreaOsmRouteExercises,
+  oneWaySystemAreaOsmRouteMap,
+  piccadillyCircusOsmRouteExercises,
+  piccadillyCircusOsmRouteMap,
+  quietResidentialRoadsOsmRouteExercises,
+  quietResidentialRoadsOsmRouteMap,
+  waterlooBridgeOsmRouteExercises,
+  waterlooBridgeOsmRouteMap
+} from "./curatedRealLondonRouteRunnerMaps.ts";
+import {
+  CURATED_REAL_LONDON_OVERPASS_FIXTURES,
+  auditCuratedLondonOsmFixture,
+  summariseCuratedLondonHighwayClasses,
+  summariseCuratedLondonRenderCategories
+} from "./curatedLondonOsmEnrichment.ts";
+import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixtures/oneWaySystemAreaOverpass.json" with { type: "json" };
+import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
+import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
+import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/waterlooBridgeOverpass.json" with { type: "json" };
 import { auditRealLondonContextCoverage } from "./realLondonContextData.ts";
 import {
   buildPhase6VisualQaScenarioSummary,
@@ -137,11 +159,20 @@ test("converted OSM fixture loads as a selectable route-runner MapDefinition", (
 test("converted OSM exercises only appear when the converted OSM map is selected", () => {
   const syntheticOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
   const convertedOptions = ROUTE_RUNNER_MAP_OPTIONS.filter((option) => option.source === "converted-osm");
+  const extendedConvertedOptions = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.filter(
+    (option) => option.source === "converted-osm"
+  );
+  const getExtendedMapOption = (mapId: string) =>
+    ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find((option) => option.id === mapId);
   const tinyOption = getRouteRunnerMapOption(tinyLondonOsmRouteMap.id);
   const mediumOption = getRouteRunnerMapOption(mediumLondonOsmRouteMap.id);
   const realPilotOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
   const largeOption = getRouteRunnerMapOption(largeLondonOsmRouteMap.id);
   const realPilotTwoOption = getRouteRunnerMapOption(realLondonOsmPilotTwoRouteMap.id);
+  const piccadillyOption = getExtendedMapOption(piccadillyCircusOsmRouteMap.id);
+  const waterlooOption = getExtendedMapOption(waterlooBridgeOsmRouteMap.id);
+  const oneWayOption = getExtendedMapOption(oneWaySystemAreaOsmRouteMap.id);
+  const quietResidentialOption = getExtendedMapOption(quietResidentialRoadsOsmRouteMap.id);
   const phase6QaOption = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
 
   assert.ok(syntheticOption);
@@ -150,6 +181,10 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.ok(realPilotOption);
   assert.ok(largeOption);
   assert.ok(realPilotTwoOption);
+  assert.ok(piccadillyOption);
+  assert.ok(waterlooOption);
+  assert.ok(oneWayOption);
+  assert.ok(quietResidentialOption);
   assert.ok(phase6QaOption);
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
@@ -157,9 +192,20 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.equal(realPilotOption.source, "converted-osm");
   assert.equal(largeOption.source, "converted-osm");
   assert.equal(realPilotTwoOption.source, "converted-osm");
+  assert.equal(piccadillyOption.source, "converted-osm");
+  assert.equal(waterlooOption.source, "converted-osm");
+  assert.equal(oneWayOption.source, "converted-osm");
+  assert.equal(quietResidentialOption.source, "converted-osm");
   assert.equal(phase6QaOption.source, "converted-osm");
+  assert.equal(isDevOnlyRouteRunnerMapOption(piccadillyOption), true);
+  assert.equal(isDevOnlyRouteRunnerMapOption(waterlooOption), true);
+  assert.equal(isDevOnlyRouteRunnerMapOption(oneWayOption), true);
+  assert.equal(isDevOnlyRouteRunnerMapOption(quietResidentialOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(phase6QaOption), true);
   assert.equal(convertedOptions.length, 6);
+  assert.equal(extendedConvertedOptions.length, 10);
+  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, 4);
+  assert.equal(getRouteRunnerMapOption(piccadillyCircusOsmRouteMap.id), undefined);
   assert.deepEqual(
     [realPilotOption.id, realPilotTwoOption.id, largeOption.id],
     ["osm-real-london-pilot", "osm-real-london-pilot-2", "osm-large-london"]
@@ -168,6 +214,20 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.deepEqual(
     [realPilotOption.fixtureName, realPilotTwoOption.fixtureName, largeOption.fixtureName],
     ["realLondonPilotOverpass.json", "realLondonPilotTwoOverpass.json", "largeLondonOverpass.json"]
+  );
+  assert.deepEqual(
+    [
+      piccadillyOption.fixtureName,
+      waterlooOption.fixtureName,
+      oneWayOption.fixtureName,
+      quietResidentialOption.fixtureName
+    ],
+    [
+      "piccadillyCircusOverpass.json",
+      "waterlooBridgeOverpass.json",
+      "oneWaySystemAreaOverpass.json",
+      "quietResidentialRoadsOverpass.json"
+    ]
   );
   assert.deepEqual(
     [realPilotOption.label, realPilotTwoOption.label, largeOption.label],
@@ -195,6 +255,22 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     largeLondonOsmRouteExercises.map((exercise) => exercise.id)
   );
   assert.deepEqual(
+    piccadillyOption.exercises.map((exercise) => exercise.id),
+    piccadillyCircusOsmRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
+    waterlooOption.exercises.map((exercise) => exercise.id),
+    waterlooBridgeOsmRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
+    oneWayOption.exercises.map((exercise) => exercise.id),
+    oneWaySystemAreaOsmRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
+    quietResidentialOption.exercises.map((exercise) => exercise.id),
+    quietResidentialRoadsOsmRouteExercises.map((exercise) => exercise.id)
+  );
+  assert.deepEqual(
     phase6QaOption.exercises.map((exercise) => exercise.id),
     phase6RealLondonVisualQaRouteExercises.map((exercise) => exercise.id)
   );
@@ -205,7 +281,101 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   );
   assert.ok(realPilotTwoOption.exercises.every((exercise) => exercise.id.startsWith("osm-real-pilot-2-")));
   assert.ok(largeOption.exercises.every((exercise) => exercise.id.startsWith("osm-large-")));
+  assert.ok(
+    piccadillyOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-piccadilly-circus-"))
+  );
+  assert.ok(waterlooOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-waterloo-bridge-")));
+  assert.ok(oneWayOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-one-way-system-area-")));
+  assert.ok(
+    quietResidentialOption.exercises.every((exercise) => exercise.id.startsWith("osm-curated-quiet-residential-roads-"))
+  );
   assert.ok(phase6QaOption.exercises.every((exercise) => exercise.id.startsWith("osm-phase-6-")));
+});
+
+test("Stage 160.5 curated Real London Overpass fixtures are registered with provenance and render coverage", () => {
+  const fixtures = [
+    {
+      metadataId: "piccadilly-circus",
+      fixture: piccadillyCircusOverpassFixture,
+      map: piccadillyCircusOsmRouteMap,
+      minNamedRoads: 400,
+      minOneWayWays: 200,
+      minTurnRestrictions: 10,
+      requiredHighways: ["primary", "secondary", "residential"],
+      requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn"]
+    },
+    {
+      metadataId: "waterloo-bridge",
+      fixture: waterlooBridgeOverpassFixture,
+      map: waterlooBridgeOsmRouteMap,
+      minNamedRoads: 700,
+      minOneWayWays: 400,
+      minTurnRestrictions: 40,
+      requiredHighways: ["primary", "residential", "service"],
+      requiredCategories: ["majorRoad", "localRoad", "serviceRoad", "bridgeRoad", "oneWaySegment", "restrictedTurn", "park", "water", "rail", "station"]
+    },
+    {
+      metadataId: "one-way-system-area",
+      fixture: oneWaySystemAreaOverpassFixture,
+      map: oneWaySystemAreaOsmRouteMap,
+      minNamedRoads: 1000,
+      minOneWayWays: 600,
+      minTurnRestrictions: 50,
+      requiredHighways: ["primary", "secondary", "tertiary", "residential"],
+      requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn", "park", "rail", "station"]
+    },
+    {
+      metadataId: "quiet-residential-roads",
+      fixture: quietResidentialRoadsOverpassFixture,
+      map: quietResidentialRoadsOsmRouteMap,
+      minNamedRoads: 170,
+      minOneWayWays: 30,
+      minTurnRestrictions: 10,
+      requiredHighways: ["primary", "tertiary", "residential"],
+      requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn", "park", "water"]
+    }
+  ] as const;
+
+  assert.deepEqual(
+    CURATED_REAL_LONDON_OVERPASS_FIXTURES.map((fixture) => fixture.fixtureName),
+    [
+      "piccadillyCircusOverpass.json",
+      "waterlooBridgeOverpass.json",
+      "oneWaySystemAreaOverpass.json",
+      "quietResidentialRoadsOverpass.json"
+    ]
+  );
+
+  for (const fixture of fixtures) {
+    const metadata = CURATED_REAL_LONDON_OVERPASS_FIXTURES.find((item) => item.id === fixture.metadataId);
+    const coverage = auditCuratedLondonOsmFixture(fixture.fixture);
+    const highwayClasses = summariseCuratedLondonHighwayClasses(fixture.fixture);
+    const renderCategories = summariseCuratedLondonRenderCategories(fixture.fixture);
+
+    assert.ok(metadata, fixture.metadataId);
+    assert.equal(metadata.source, "OpenStreetMap via Overpass export");
+    assert.equal(metadata.attribution.licence, "ODbL");
+    assert.match(metadata.importDate, /^2026-07-03T00:/);
+    assert.ok(metadata.areaPurpose.length > 0);
+    assert.ok(metadata.knownLimitations.length > 0);
+
+    assert.ok(fixture.map.nodes.length > 0, fixture.metadataId);
+    assert.ok(fixture.map.roads.length > 0, fixture.metadataId);
+    assert.equal(coverage.nodeCount > 0, true, fixture.metadataId);
+    assert.equal(coverage.wayCount > 0, true, fixture.metadataId);
+    assert.ok(coverage.namedRoadCount >= fixture.minNamedRoads, fixture.metadataId);
+    assert.ok(coverage.oneWayTaggedWayCount >= fixture.minOneWayWays, fixture.metadataId);
+    assert.ok(coverage.turnRestrictionRelationCount >= fixture.minTurnRestrictions, fixture.metadataId);
+    assert.ok(coverage.landmarkFeatureCount + coverage.publicBuildingFeatureCount > 0, fixture.metadataId);
+
+    for (const highway of fixture.requiredHighways) {
+      assert.ok((highwayClasses[highway] ?? 0) > 0, `${fixture.metadataId} highway=${highway}`);
+    }
+
+    for (const category of fixture.requiredCategories) {
+      assert.ok(renderCategories[category] > 0, `${fixture.metadataId} category=${category}`);
+    }
+  }
 });
 
 test("Stage 151 visual QA scenario demonstrates combined Phase 6 map styling deterministically", () => {
@@ -305,7 +475,11 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
     "bridge-river-crossing-review",
     "awkward-junction-restriction-review",
     "rail-station-interchange-context",
-    "landmark-area-high-zoom"
+    "landmark-area-high-zoom",
+    "piccadilly-circus-dense-central-map",
+    "waterloo-bridge-thames-context-map",
+    "one-way-system-restriction-map",
+    "quiet-residential-learner-map"
   ]);
   assert.deepEqual(comparisonSummary.finalPhase6LayerStack, FINAL_PHASE_6_REAL_LONDON_LAYER_STACK);
   assert.equal(comparisonSummary.mapId, phase6RealLondonVisualQaRouteMap.id);
@@ -316,8 +490,12 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
   const comparisonModeIds = new Set(REAL_LONDON_VISUAL_COMPARISON_MODES.map((mode) => mode.id));
 
   for (const scenario of REAL_LONDON_VISUAL_READABILITY_SCENARIOS) {
-    assert.equal(scenario.mapId, phase6RealLondonVisualQaRouteMap.id);
-    assert.equal(scenario.fixtureName, "syntheticPhase6VisualQaOverpassFixture");
+    const scenarioOption =
+      ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find((option) => option.id === scenario.mapId) ??
+      getRouteRunnerMapOption(scenario.mapId);
+
+    assert.ok(scenarioOption, scenario.id);
+    assert.equal(scenarioOption.fixtureName, scenario.fixtureName, scenario.id);
     assert.ok(scenario.label.length > 0);
     assert.ok(scenario.description.length > 0);
     assert.ok(getRealLondonVisualReadabilityScenario(scenario.id));
@@ -327,10 +505,17 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
     assert.ok(scenario.viewport.bounds.minX < scenario.viewport.bounds.maxX);
     assert.ok(scenario.viewport.bounds.minY < scenario.viewport.bounds.maxY);
     assert.ok(scenario.expected.decluttering.includes(scenario.viewport.declutterTier));
-    assert.ok(scenario.viewport.bounds.minX >= comparisonSummary.viewportBounds.minX);
-    assert.ok(scenario.viewport.bounds.maxX <= comparisonSummary.viewportBounds.maxX);
-    assert.ok(scenario.viewport.bounds.minY >= comparisonSummary.viewportBounds.minY);
-    assert.ok(scenario.viewport.bounds.maxY <= comparisonSummary.viewportBounds.maxY);
+
+    if (scenario.fixtureName === "syntheticPhase6VisualQaOverpassFixture") {
+      assert.equal(scenario.mapId, phase6RealLondonVisualQaRouteMap.id);
+      assert.ok(scenario.viewport.bounds.minX >= comparisonSummary.viewportBounds.minX);
+      assert.ok(scenario.viewport.bounds.maxX <= comparisonSummary.viewportBounds.maxX);
+      assert.ok(scenario.viewport.bounds.minY >= comparisonSummary.viewportBounds.minY);
+      assert.ok(scenario.viewport.bounds.maxY <= comparisonSummary.viewportBounds.maxY);
+    } else {
+      assert.equal(isDevOnlyRouteRunnerMapOption(scenarioOption), true, scenario.id);
+      assert.match(scenarioOption.attribution ?? "", /OpenStreetMap contributors/);
+    }
   }
 });
 

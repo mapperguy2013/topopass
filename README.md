@@ -833,10 +833,12 @@ scoring, exercises, beta gates, feedback, and route attempts are unchanged.
 Stage 149.5/150.5 adds a pure Real London context coverage audit and a typed
 fixture-data adapter for render-ready rail, station, bridge, crossing,
 landmark, park/open-space, water, pedestrian-area, and area context features.
-The current committed Real London Overpass fixtures audit to zero for those
-non-road context categories, so the renderer still does not invent unavailable
-landmarks or restrictions; routing, legality, scoring, exercises, beta gates,
-feedback, and route attempts are unchanged.
+The earlier committed Real London pilot Overpass fixtures audit to zero for
+those non-road context categories, so the renderer still does not invent
+unavailable landmarks or restrictions; routing, legality, scoring, exercises,
+beta gates, feedback, and route attempts are unchanged. Later Stage 160.5
+curated manual exports provide richer dev-only context fixtures where OSM data
+contains those tags.
 Stage 151 adds a dev-only synthetic Phase 6 visual QA scenario that combines
 dense London-like streets, hierarchy, parks, water, rail, station, landmarks,
 area names, objective stops, one-way arrows, and a turn-restriction warning in
@@ -942,6 +944,14 @@ candidates where the cache contains them. The app still does not fetch live OSM
 data at runtime, does not import all London, does not invent restrictions or
 landmarks, and does not change route logic, legality, scoring, beta gates,
 feedback, OSM conversion behaviour, or Phase 7 scope.
+Stage 160.5 also ingests four manual curated Overpass exports for dev-only
+visual QA: `piccadillyCircusOverpass.json`, `waterlooBridgeOverpass.json`,
+`oneWaySystemAreaOverpass.json`, and `quietResidentialRoadsOverpass.json`.
+They are selectable route-runner map options and fixed visual comparison
+scenarios for dense Central London, Thames/bridge context, one-way/restriction
+cartography, and quieter residential learner readability. They preserve OSM
+attribution, do not overwrite `realLondonPilotOverpass.json`, do not call
+Overpass at runtime, and are not full-London coverage.
 
 ## Current Feature Set
 
