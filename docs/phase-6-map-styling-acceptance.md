@@ -264,6 +264,14 @@ map forcing unnecessary vertical scrolling. Mobile and tablet touch behaviour,
 including draw, pan, zoom, and pinch zoom, remains covered by the existing
 Stage 156 and Stage 158.5 layout/interaction checks.
 
+Stage 161.6.1 corrects the desktop sizing balance from the first pass. The
+Real London practice map should fill the available desktop practice panel
+using a wider beta canvas and width-first responsive sizing, while still
+limiting its effective width from the available viewport height. The intent is
+to remove unused right-side whitespace on desktop without letting the map push
+submit, erase, selector, legend, attribution, or review controls below an
+unusable viewport.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

@@ -290,6 +290,8 @@ import {
 } from "./routeRunnerOsmExerciseDebugOverlay";
 
 const CANVAS_WIDTH = 1120;
+const STUDENT_BETA_CANVAS_WIDTH = 1920;
+const STUDENT_BETA_MAP_MAX_WIDTH_CSS = "min(100%, 1920px, max(640px, calc(253dvh - 556px)))";
 const CANVAS_HEIGHT = 760;
 const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
@@ -3048,11 +3050,11 @@ function drawRouteCanvas(input: {
   }
 }
 
-function createViewport(map: MapDefinition): ScreenMapViewport {
+function createViewport(map: MapDefinition, width: number, height: number): ScreenMapViewport {
   return {
-    width: CANVAS_WIDTH,
-    height: CANVAS_HEIGHT,
-    mapBounds: getRouteRunnerMapViewportBounds(map, CANVAS_WIDTH, CANVAS_HEIGHT)
+    width,
+    height,
+    mapBounds: getRouteRunnerMapViewportBounds(map, width, height)
   };
 }
 
@@ -3073,6 +3075,8 @@ export function RouteRunnerClient({
     mapOptions
   });
   const isStudentBetaRouteRunner = mode === "student-beta";
+  const canvasWidth = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_WIDTH : CANVAS_WIDTH;
+  const canvasHeight = CANVAS_HEIGHT;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
@@ -3226,7 +3230,7 @@ export function RouteRunnerClient({
     setShowTurnRestrictions(!isConvertedOsmMap);
   }, [activeMap.id, isConvertedOsmMap, isStudentBetaRouteRunner]);
 
-  const baseViewport = useMemo(() => createViewport(activeMap), [activeMap]);
+  const baseViewport = useMemo(() => createViewport(activeMap, canvasWidth, canvasHeight), [activeMap, canvasHeight, canvasWidth]);
   const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
   const activeMapGraph = useMemo(() => buildMapGraph(activeMap), [activeMap]);
   const canZoomIn = canZoomInMapView(mapViewportState);
@@ -3987,11 +3991,16 @@ export function RouteRunnerClient({
 
       event.preventDefault();
 
-      const focusPoint = pointerToScreenPoint(canvas, event.clientX, event.clientY);
+      const rect = canvas.getBoundingClientRect();
 
-      if (!focusPoint) {
+      if (rect.width === 0 || rect.height === 0) {
         return;
       }
+
+      const focusPoint = {
+        x: ((event.clientX - rect.left) / rect.width) * canvasWidth,
+        y: ((event.clientY - rect.top) / rect.height) * canvasHeight
+      };
 
       setMapViewportState((currentState) =>
         applyWheelZoomToMapView(currentState, event.deltaY, focusPoint, baseViewport)
@@ -4005,7 +4014,7 @@ export function RouteRunnerClient({
     return () => {
       canvas.removeEventListener("wheel", handleWheel);
     };
-  }, [baseViewport]);
+  }, [baseViewport, canvasHeight, canvasWidth]);
 
   useEffect(() => {
     const handleDocumentPointerDown = (event: globalThis.PointerEvent) => {
@@ -4156,8 +4165,8 @@ export function RouteRunnerClient({
     }
 
     return {
-      x: ((clientX - rect.left) / rect.width) * CANVAS_WIDTH,
-      y: ((clientY - rect.top) / rect.height) * CANVAS_HEIGHT
+      x: ((clientX - rect.left) / rect.width) * canvasWidth,
+      y: ((clientY - rect.top) / rect.height) * canvasHeight
     };
   }
 
@@ -5515,16 +5524,16 @@ export function RouteRunnerClient({
             ) : null}
 
             <div
-              className={`relative mt-4 overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
+              className={`relative mt-4 w-full overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
                 isStudentBetaRouteRunner
-                  ? "min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
+                  ? "mx-auto min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
                   : "min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               }`}
               style={{
-                aspectRatio: `${CANVAS_WIDTH} / ${CANVAS_HEIGHT}`,
+                aspectRatio: `${canvasWidth} / ${canvasHeight}`,
                 ...(isStudentBetaRouteRunner
                   ? {
-                      height: "min(760px, max(360px, calc(100dvh - 260px)))",
+                      maxWidth: STUDENT_BETA_MAP_MAX_WIDTH_CSS,
                       maxHeight: "min(760px, calc(100dvh - 220px))"
                     }
                   : {})
@@ -5686,8 +5695,8 @@ export function RouteRunnerClient({
               </div>
               <canvas
                 ref={canvasRef}
-                width={CANVAS_WIDTH}
-                height={CANVAS_HEIGHT}
+                width={canvasWidth}
+                height={canvasHeight}
                 onPointerDown={handlePointerDown}
                 onPointerEnter={handlePointerEnter}
                 onPointerMove={handlePointerMove}

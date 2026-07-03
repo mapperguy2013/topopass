@@ -16,6 +16,8 @@ import {
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
 import {
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
+  REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
+  REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
   REAL_LONDON_BETA_MAP_OPTIONS,
   REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL,
   REAL_LONDON_BETA_PRACTICE_PATH,
@@ -344,11 +346,15 @@ test("Stage 161.6 visual QA fixtures are labelled and not treated as scoreable p
   assert.equal(model.routeFlow.existingRunnerScorePassed, false);
 });
 
-test("Stage 161.6 beta desktop map sizing is viewport bounded", () => {
+test("Stage 161.6.1 beta desktop map sizing fills width and remains viewport bounded", () => {
   const model = requireAvailableModel();
 
+  assert.equal(model.desktopLayout.fillsAvailablePracticePanelWidth, true);
   assert.equal(model.desktopLayout.viewportBoundedMap, true);
+  assert.equal(model.desktopLayout.mapWidthCss, REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS);
+  assert.equal(model.desktopLayout.mapMaxWidthRule, REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE);
   assert.equal(model.desktopLayout.mapMaxHeightCss, REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS);
+  assert.equal(model.desktopLayout.artificiallyCappedSmallWidth, false);
   assert.equal(model.desktopLayout.unnecessaryVerticalScrollRisk, false);
 });
 

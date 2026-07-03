@@ -996,6 +996,10 @@ debug overlays; the learner control is labelled `Erase route` and clears the
 current drawing/result without regenerating the selected map or exercise. The
 desktop beta map is also capped to the visible viewport so map controls, legend,
 attribution, submit, erase, and selector controls remain reachable.
+Stage 161.6.1 corrects the desktop sizing balance by making the Real London
+practice map fill the available practice panel width with a wider beta canvas,
+while still bounding width from the usable viewport height so smaller laptop
+screens do not get forced vertical overflow.
 
 ## Current Feature Set
 

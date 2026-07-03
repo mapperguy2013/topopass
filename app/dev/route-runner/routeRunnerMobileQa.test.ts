@@ -179,6 +179,7 @@ test("Mobile Route Runner QA keeps desktop assumptions intact", () => {
   assert.equal(report.viewportCategory, "desktop");
   assert.equal(report.mapArea.visible, true);
   assert.equal(report.mapArea.bounded, true);
+  assert.ok(report.mapArea.width > 1120);
   assert.ok(report.mapArea.height <= 680);
   assert.ok(report.mapArea.height < report.viewportHeight);
   assert.deepEqual(report.controlIds, [

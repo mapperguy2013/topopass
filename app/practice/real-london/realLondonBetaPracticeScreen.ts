@@ -34,7 +34,9 @@ import {
 
 export const REAL_LONDON_BETA_PRACTICE_PATH = "/practice/real-london";
 export const REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL = "Real London Practice - Beta";
-export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS = "min(760px, max(360px, calc(100dvh - 260px)))";
+export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS = "min(760px, calc(100dvh - 220px))";
+export const REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS = "100%";
+export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE = "viewport-height-bounded-wide-canvas";
 export const REAL_LONDON_BETA_MAP_OPTIONS = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON;
 
 export type RealLondonBetaPracticeMapRow = {
@@ -144,8 +146,12 @@ export type RealLondonBetaPracticeScreenModel =
         horizontalOverflowRisk: false;
       };
       desktopLayout: {
+        fillsAvailablePracticePanelWidth: true;
         viewportBoundedMap: true;
+        mapWidthCss: typeof REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS;
+        mapMaxWidthRule: typeof REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE;
         mapMaxHeightCss: typeof REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS;
+        artificiallyCappedSmallWidth: false;
         unnecessaryVerticalScrollRisk: false;
       };
       routeFlow: {
@@ -309,8 +315,12 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       horizontalOverflowRisk: false
     },
     desktopLayout: {
+      fillsAvailablePracticePanelWidth: true,
       viewportBoundedMap: true,
+      mapWidthCss: REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
+      mapMaxWidthRule: REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
       mapMaxHeightCss: REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
+      artificiallyCappedSmallWidth: false,
       unnecessaryVerticalScrollRisk: false
     },
     routeFlow
