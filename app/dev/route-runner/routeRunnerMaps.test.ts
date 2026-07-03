@@ -89,6 +89,8 @@ import { buildRestrictionMapVisualItems } from "./restrictionMapVisuals.ts";
 
 const TEST_CANVAS_WIDTH = 1120;
 const TEST_CANVAS_HEIGHT = 760;
+const TEST_BETA_CANVAS_WIDTH = 1920;
+const TEST_BETA_CANVAS_HEIGHT = 912;
 
 function boundsWidth(bounds: { minX: number; maxX: number }): number {
   return bounds.maxX - bounds.minX;
@@ -923,6 +925,24 @@ test("converted OSM viewport fit preserves aspect ratio with a uniform scale", (
   assertClose(scaleX, scaleY);
   assert.equal(boundsHeight(viewportBounds), boundsHeight(getRouteRunnerMapFitBounds(realLondonOsmPilotRouteMap)));
   assert.ok(boundsWidth(viewportBounds) > boundsWidth(getRouteRunnerMapFitBounds(realLondonOsmPilotRouteMap)));
+});
+
+test("Stage 161.6.2 wide beta viewport preserves equal X and Y map scale", () => {
+  const previousCrampedViewportBounds = getRouteRunnerMapViewportBounds(realLondonOsmPilotRouteMap, TEST_BETA_CANVAS_WIDTH, 760);
+  const viewportBounds = getRouteRunnerMapViewportBounds(
+    realLondonOsmPilotRouteMap,
+    TEST_BETA_CANVAS_WIDTH,
+    TEST_BETA_CANVAS_HEIGHT
+  );
+  const viewportAspectRatio = TEST_BETA_CANVAS_WIDTH / TEST_BETA_CANVAS_HEIGHT;
+  const mapAspectRatio = boundsWidth(viewportBounds) / boundsHeight(viewportBounds);
+  const scaleX = TEST_BETA_CANVAS_WIDTH / boundsWidth(viewportBounds);
+  const scaleY = TEST_BETA_CANVAS_HEIGHT / boundsHeight(viewportBounds);
+
+  assertClose(mapAspectRatio, viewportAspectRatio);
+  assertClose(scaleX, scaleY);
+  assert.ok(TEST_BETA_CANVAS_HEIGHT > 760);
+  assert.ok(boundsWidth(viewportBounds) < boundsWidth(previousCrampedViewportBounds));
 });
 
 test("synthetic default map keeps its existing first-load fit bounds", () => {

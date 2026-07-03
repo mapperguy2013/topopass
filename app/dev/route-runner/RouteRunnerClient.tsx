@@ -291,8 +291,10 @@ import {
 
 const CANVAS_WIDTH = 1120;
 const STUDENT_BETA_CANVAS_WIDTH = 1920;
-const STUDENT_BETA_MAP_MAX_WIDTH_CSS = "min(100%, 1920px, max(640px, calc(253dvh - 556px)))";
 const CANVAS_HEIGHT = 760;
+const STUDENT_BETA_CANVAS_HEIGHT = 912;
+const STUDENT_BETA_MAP_MAX_WIDTH_CSS = "min(100%, 1920px, max(640px, calc(210.5dvh - 168px)))";
+const STUDENT_BETA_MAP_MAX_HEIGHT_CSS = "min(912px, calc(100dvh - 80px))";
 const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
@@ -3076,7 +3078,7 @@ export function RouteRunnerClient({
   });
   const isStudentBetaRouteRunner = mode === "student-beta";
   const canvasWidth = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_WIDTH : CANVAS_WIDTH;
-  const canvasHeight = CANVAS_HEIGHT;
+  const canvasHeight = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_HEIGHT : CANVAS_HEIGHT;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
@@ -5534,7 +5536,7 @@ export function RouteRunnerClient({
                 ...(isStudentBetaRouteRunner
                   ? {
                       maxWidth: STUDENT_BETA_MAP_MAX_WIDTH_CSS,
-                      maxHeight: "min(760px, calc(100dvh - 220px))"
+                      maxHeight: STUDENT_BETA_MAP_MAX_HEIGHT_CSS
                     }
                   : {})
               }}

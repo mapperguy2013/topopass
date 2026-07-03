@@ -34,9 +34,11 @@ import {
 
 export const REAL_LONDON_BETA_PRACTICE_PATH = "/practice/real-london";
 export const REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL = "Real London Practice - Beta";
-export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS = "min(760px, calc(100dvh - 220px))";
+export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS = "min(912px, calc(100dvh - 80px))";
 export const REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS = "100%";
 export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE = "viewport-height-bounded-wide-canvas";
+export const REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX = 1920;
+export const REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX = 912;
 export const REAL_LONDON_BETA_MAP_OPTIONS = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON;
 
 export type RealLondonBetaPracticeMapRow = {
@@ -151,6 +153,10 @@ export type RealLondonBetaPracticeScreenModel =
         mapWidthCss: typeof REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS;
         mapMaxWidthRule: typeof REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE;
         mapMaxHeightCss: typeof REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS;
+        canvasWidthPx: typeof REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX;
+        canvasHeightPx: typeof REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX;
+        canvasHeightIncreaseRatio: number;
+        preservesCartographicProportions: true;
         artificiallyCappedSmallWidth: false;
         unnecessaryVerticalScrollRisk: false;
       };
@@ -320,6 +326,10 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       mapWidthCss: REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
       mapMaxWidthRule: REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
       mapMaxHeightCss: REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
+      canvasWidthPx: REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX,
+      canvasHeightPx: REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX,
+      canvasHeightIncreaseRatio: REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX / 760,
+      preservesCartographicProportions: true,
       artificiallyCappedSmallWidth: false,
       unnecessaryVerticalScrollRisk: false
     },

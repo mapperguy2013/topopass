@@ -15,6 +15,8 @@ import {
   REAL_LONDON_BETA_ENV_FLAG
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
 import {
+  REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX,
+  REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX,
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
   REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
@@ -354,6 +356,10 @@ test("Stage 161.6.1 beta desktop map sizing fills width and remains viewport bou
   assert.equal(model.desktopLayout.mapWidthCss, REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS);
   assert.equal(model.desktopLayout.mapMaxWidthRule, REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE);
   assert.equal(model.desktopLayout.mapMaxHeightCss, REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS);
+  assert.equal(model.desktopLayout.canvasWidthPx, REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX);
+  assert.equal(model.desktopLayout.canvasHeightPx, REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX);
+  assert.equal(model.desktopLayout.canvasHeightIncreaseRatio, 1.2);
+  assert.equal(model.desktopLayout.preservesCartographicProportions, true);
   assert.equal(model.desktopLayout.artificiallyCappedSmallWidth, false);
   assert.equal(model.desktopLayout.unnecessaryVerticalScrollRisk, false);
 });

@@ -272,6 +272,15 @@ to remove unused right-side whitespace on desktop without letting the map push
 submit, erase, selector, legend, attribution, or review controls below an
 unusable viewport.
 
+Stage 161.6.2 keeps that wider desktop layout but increases the beta map canvas
+height by 20% to `1920 x 912`. The canvas backing size, route-runner viewport,
+pointer mapping, wheel zoom focus point, and CSS aspect ratio must all use the
+same dimensions so the map refits naturally instead of stretching horizontally
+or vertically. Converted OSM viewport bounds continue to be expanded to match
+the display aspect ratio, preserving equal X/Y map scale and keeping drawing,
+pan, zoom, pinch zoom, marker hit areas, and submit matching aligned after
+resize.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy
