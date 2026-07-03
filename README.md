@@ -1004,6 +1004,16 @@ Stage 161.6.2 keeps that desktop width, increases the beta map canvas height by
 20% to `1920 x 912`, and keeps the canvas backing size, route-runner viewport,
 CSS aspect ratio, pointer mapping, and wheel zoom focus point on the same
 dimensions so the map refits without horizontal or vertical stretching.
+Stage 161.6.3 fixes beta map selector hydration by making the first selected
+map/exercise deterministic on both server and client renders. `/practice/real-london`
+also accepts stable `?map=` and `?exercise=` URLs, and selector changes update
+those params while clearing stale drawing/result/error state. Each of the four
+imported curated Overpass fixtures now exposes three generated scored beta
+routes where the graph supports it; every scoreable curated exercise is
+validated at test time for existing map anchors, legal shortest route
+availability, drawn-route matching, and score creation before it can be offered
+to beta testers. `visualQaOnly` and `routeReviewFixture` maps remain clearly
+labelled and are not treated as normal scored practice.
 
 ## Current Feature Set
 

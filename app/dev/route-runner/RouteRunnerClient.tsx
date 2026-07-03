@@ -333,6 +333,23 @@ function routeRunnerFixtureUseLabel(option: RouteRunnerMapOption): string {
   return "Scored pilot";
 }
 
+function updateStudentBetaRouteRunnerUrl(mapId: string, exerciseId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+
+  url.searchParams.set("map", mapId);
+  if (exerciseId) {
+    url.searchParams.set("exercise", exerciseId);
+  } else {
+    url.searchParams.delete("exercise");
+  }
+
+  window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+}
+
 type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
   message: string | null;
@@ -3176,13 +3193,28 @@ export function RouteRunnerClient({
         };
       }
 
+      if (isStudentBetaRouteRunner) {
+        const selectedRealLondonMapOption =
+          visibleMapOptions.find((option) => option.id === mapOptionId) ??
+          visibleMapOptions[0] ??
+          requireRouteRunnerMapOption(mapOptions[0]);
+
+        return {
+          requestedMapId: mapOptionId,
+          selectedMapOption: selectedRealLondonMapOption,
+          state: "available" as const,
+          betaEnabled: true,
+          unavailableState: null
+        };
+      }
+
       return resolveRealLondonBetaMapAccess({
         requestedMapId: mapOptionId,
         betaEnabled: REAL_LONDON_BETA_ENABLED,
         mapOptions
       });
     },
-    [isDevRouteRunner, mapOptionId, mapOptions, visibleMapOptions]
+    [isDevRouteRunner, isStudentBetaRouteRunner, mapOptionId, mapOptions, visibleMapOptions]
   );
   const selectedMapOption = betaMapAccess.selectedMapOption;
   const activeMap = selectedMapOption.map;
@@ -4456,6 +4488,9 @@ export function RouteRunnerClient({
 
   function handleExerciseChange(nextExerciseId: string) {
     setExerciseId(nextExerciseId);
+    if (isStudentBetaRouteRunner) {
+      updateStudentBetaRouteRunnerUrl(selectedMapOption.id, nextExerciseId);
+    }
     setResult(null);
     setError(null);
     clearMapPointerGestureState();
@@ -4474,6 +4509,12 @@ export function RouteRunnerClient({
             visibleMapOptions[0] ??
             ROUTE_RUNNER_MAP_OPTIONS[0]
         )
+      : isStudentBetaRouteRunner
+        ? requireRouteRunnerMapOption(
+            visibleMapOptions.find((option) => option.id === nextMapOptionId) ??
+              visibleMapOptions[0] ??
+              mapOptions[0]
+          )
       : resolveRealLondonBetaMapAccess({
           requestedMapId: nextMapOptionId,
           betaEnabled: REAL_LONDON_BETA_ENABLED,
@@ -4482,6 +4523,9 @@ export function RouteRunnerClient({
 
     setMapOptionId(nextMapOption.id);
     setExerciseId(nextMapOption.defaultExerciseId);
+    if (isStudentBetaRouteRunner) {
+      updateStudentBetaRouteRunnerUrl(nextMapOption.id, nextMapOption.defaultExerciseId);
+    }
     setNodeIdsText("");
     setRoadIdsText("");
     setResult(null);

@@ -281,6 +281,23 @@ the display aspect ratio, preserving equal X/Y map scale and keeping drawing,
 pan, zoom, pinch zoom, marker hit areas, and submit matching aligned after
 resize.
 
+Stage 161.6.3 fixes the Real London beta selector hydration rule: the server
+render and first client render must choose the same deterministic map,
+exercise, and heading. The beta practice page now accepts stable `?map=` and
+`?exercise=` URLs, while the client selector resolves within the Real London
+beta catalogue rather than falling back through the synthetic Marlowe default.
+Changing the map or exercise updates the visible route immediately and clears
+stale drawing, score, matching, viewport, and debug state.
+
+The four imported curated Overpass fixtures now each expose three generated
+scoreable beta route exercises when their graph supports it. Catalogue tests
+validate every scored curated exercise before it is offered: the fixture map
+exists, required stop nodes exist, a legal route exists through the stops, the
+expected route can be generated, a synthetic perfect drawn attempt matches, and
+scoring is reached. `visualQaOnly` fixtures remain map-inspection only, and
+`routeReviewFixture` fixtures stay labelled for review workflows rather than
+normal scored practice.
+
 ## Acceptance Checklist
 
 ### 1. Road Hierarchy

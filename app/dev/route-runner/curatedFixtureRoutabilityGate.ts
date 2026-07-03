@@ -553,6 +553,8 @@ export function buildCuratedFixtureRoutableExercise(input: {
   difficulty: RouteExerciseDifficulty;
   exerciseVersion?: string;
   minimumStraightLineDistanceMeters?: number;
+  routeOrdinal?: number;
+  includeCheckpoint?: boolean;
 }): CuratedFixtureRoutePreflight {
   const graph = buildMapGraph(input.map);
   const components = graphComponents({ graph, restrictions: input.map.restrictions });
@@ -593,6 +595,8 @@ export function buildCuratedFixtureRoutableExercise(input: {
   }
 
   const minimumDistance = input.minimumStraightLineDistanceMeters ?? 220;
+  const targetRouteOrdinal = input.routeOrdinal ?? 0;
+  let acceptedRouteOrdinal = 0;
 
   for (const pair of candidatePairs(candidates)) {
     if (pair.distanceMeters < minimumDistance) {
@@ -610,7 +614,7 @@ export function buildCuratedFixtureRoutableExercise(input: {
       continue;
     }
 
-    const checkpointNodeId = checkpointNodeFromRoute(route.nodeIds);
+    const checkpointNodeId = input.includeCheckpoint === false ? null : checkpointNodeFromRoute(route.nodeIds);
     const stopNodeIds = checkpointNodeId
       ? [pair.start.nodeId, checkpointNodeId, pair.destination.nodeId]
       : [pair.start.nodeId, pair.destination.nodeId];
@@ -621,6 +625,11 @@ export function buildCuratedFixtureRoutableExercise(input: {
     });
 
     if (!confirmedRoute.found) {
+      continue;
+    }
+
+    if (acceptedRouteOrdinal < targetRouteOrdinal) {
+      acceptedRouteOrdinal += 1;
       continue;
     }
 

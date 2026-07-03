@@ -17,8 +17,22 @@ export const metadata = buildPageMetadata({
   path: REAL_LONDON_BETA_PRACTICE_PATH
 });
 
-export default function RealLondonBetaPracticePage() {
-  const model = buildRealLondonBetaPracticeScreenModel();
+type RealLondonBetaPracticeSearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+function firstSearchParamValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function RealLondonBetaPracticePage({
+  searchParams
+}: {
+  searchParams?: RealLondonBetaPracticeSearchParams;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const model = buildRealLondonBetaPracticeScreenModel({
+    requestedMapId: firstSearchParamValue(resolvedSearchParams.map),
+    selectedExerciseId: firstSearchParamValue(resolvedSearchParams.exercise)
+  });
 
   if (model.state === "unavailable") {
     return (

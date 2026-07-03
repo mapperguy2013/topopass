@@ -15,7 +15,11 @@ import {
   buildCuratedFixtureRoutableExercise,
   type CuratedFixtureRoutePreflight
 } from "./curatedFixtureRoutabilityGate.ts";
-import { ROUTE_RUNNER_MAP_OPTIONS, type RouteRunnerMapOption } from "./routeRunnerMaps.ts";
+import {
+  ROUTE_RUNNER_MAP_OPTIONS,
+  type RealLondonPilotRouteType,
+  type RouteRunnerMapOption
+} from "./routeRunnerMaps.ts";
 
 const PICCADILLY_CIRCUS_OSM_MAP_ID = "osm-curated-piccadilly-circus";
 const WATERLOO_BRIDGE_OSM_MAP_ID = "osm-curated-waterloo-bridge";
@@ -67,16 +71,46 @@ export const quietResidentialRoadsOsmRouteMap = buildCuratedRealLondonOsmMap(qui
 function buildCuratedRealLondonRoutableExercisePreflight(
   map: OsmRouteGraphMapDefinition,
   sourceOverpassFixture: unknown,
-  input: { idPrefix: string; title: string; description: string; difficulty: RouteExerciseDifficulty }
+  input: {
+    idPrefix: string;
+    suffix: string;
+    title: string;
+    description: string;
+    difficulty: RouteExerciseDifficulty;
+    routeType: RealLondonPilotRouteType;
+    routeOrdinal?: number;
+    includeCheckpoint?: boolean;
+    minimumStraightLineDistanceMeters?: number;
+  }
 ): CuratedFixtureRoutePreflight {
-  return buildCuratedFixtureRoutableExercise({
+  const preflight = buildCuratedFixtureRoutableExercise({
     map,
     sourceOverpassFixture,
-    id: `${input.idPrefix}-visual-qa-route`,
+    id: `${input.idPrefix}-${input.suffix}`,
     title: input.title,
     description: input.description,
-    difficulty: input.difficulty
+    difficulty: input.difficulty,
+    routeOrdinal: input.routeOrdinal,
+    includeCheckpoint: input.includeCheckpoint,
+    minimumStraightLineDistanceMeters: input.minimumStraightLineDistanceMeters
   });
+
+  if (!preflight.exercise) {
+    return preflight;
+  }
+
+  return {
+    ...preflight,
+    exercise: {
+      ...preflight.exercise,
+      realLondonPilotMetadata: {
+        difficulty: input.difficulty,
+        routeType: input.routeType,
+        estimatedDistanceMeters: preflight.shortestRouteDistanceMeters ?? 0,
+        expectedComplexity: input.description
+      }
+    } as RouteExercise
+  };
 }
 
 function getCuratedRealLondonFixtureMetadata(id: CuratedRealLondonOverpassFixtureId) {
@@ -89,54 +123,184 @@ function getCuratedRealLondonFixtureMetadata(id: CuratedRealLondonOverpassFixtur
   return metadata;
 }
 
-export const piccadillyCircusOsmRoutePreflight = buildCuratedRealLondonRoutableExercisePreflight(
-  piccadillyCircusOsmRouteMap,
-  piccadillyCircusOverpassFixture,
-  {
-    idPrefix: "osm-curated-piccadilly-circus",
-    title: "Piccadilly Circus: dense central visual QA",
-    description: "Static Phase 6 visual QA route for dense Central London hierarchy, labels, and context.",
-    difficulty: "hard"
+function requireDefaultPreflight(
+  preflights: readonly CuratedFixtureRoutePreflight[],
+  fixtureName: string
+): CuratedFixtureRoutePreflight {
+  const preflight = preflights[0];
+
+  if (!preflight) {
+    throw new Error(`Missing curated Real London default preflight for ${fixtureName}.`);
   }
-);
 
-export const waterlooBridgeOsmRoutePreflight = buildCuratedRealLondonRoutableExercisePreflight(waterlooBridgeOsmRouteMap, waterlooBridgeOverpassFixture, {
-  idPrefix: "osm-curated-waterloo-bridge",
-  title: "Waterloo Bridge: Thames and station visual QA",
-  description: "Static Phase 6 visual QA route for bridge, Thames, rail, station, and central context.",
-  difficulty: "medium"
-});
-
-export const oneWaySystemAreaOsmRoutePreflight = buildCuratedRealLondonRoutableExercisePreflight(
-  oneWaySystemAreaOsmRouteMap,
-  oneWaySystemAreaOverpassFixture,
-  {
-    idPrefix: "osm-curated-one-way-system-area",
-    title: "One-way system: restriction visual QA",
-    description: "Static Phase 6 visual QA route for one-way and turn-restriction cartography.",
-    difficulty: "hard"
-  }
-);
-
-export const quietResidentialRoadsOsmRoutePreflight = buildCuratedRealLondonRoutableExercisePreflight(
-  quietResidentialRoadsOsmRouteMap,
-  quietResidentialRoadsOverpassFixture,
-  {
-    idPrefix: "osm-curated-quiet-residential-roads",
-    title: "Quiet residential roads: learner readability QA",
-    description: "Static Phase 6 visual QA route for suburban road hierarchy and mobile readability.",
-    difficulty: "easy"
-  }
-);
-
-function exercisesFromPreflight(preflight: CuratedFixtureRoutePreflight): RouteExercise[] {
-  return preflight.exercise ? [preflight.exercise] : [];
+  return preflight;
 }
 
-export const piccadillyCircusOsmRouteExercises = exercisesFromPreflight(piccadillyCircusOsmRoutePreflight);
-export const waterlooBridgeOsmRouteExercises = exercisesFromPreflight(waterlooBridgeOsmRoutePreflight);
-export const oneWaySystemAreaOsmRouteExercises = exercisesFromPreflight(oneWaySystemAreaOsmRoutePreflight);
-export const quietResidentialRoadsOsmRouteExercises = exercisesFromPreflight(quietResidentialRoadsOsmRoutePreflight);
+export const piccadillyCircusOsmRoutePreflights = [
+  buildCuratedRealLondonRoutableExercisePreflight(piccadillyCircusOsmRouteMap, piccadillyCircusOverpassFixture, {
+    idPrefix: "osm-curated-piccadilly-circus",
+    suffix: "short-central-route",
+    title: "Piccadilly Circus: short central route",
+    description: "Short beta route for dense Central London road hierarchy and labels.",
+    difficulty: "medium",
+    routeType: "direct",
+    includeCheckpoint: false,
+    routeOrdinal: 0,
+    minimumStraightLineDistanceMeters: 180
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(piccadillyCircusOsmRouteMap, piccadillyCircusOverpassFixture, {
+    idPrefix: "osm-curated-piccadilly-circus",
+    suffix: "checkpoint-route",
+    title: "Piccadilly Circus: checkpoint route",
+    description: "Checkpoint beta route through the dense central fixture.",
+    difficulty: "hard",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 1,
+    minimumStraightLineDistanceMeters: 220
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(piccadillyCircusOsmRouteMap, piccadillyCircusOverpassFixture, {
+    idPrefix: "osm-curated-piccadilly-circus",
+    suffix: "longer-central-route",
+    title: "Piccadilly Circus: longer central route",
+    description: "Longer beta route for checking central London label density and learner overlays.",
+    difficulty: "hard",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 2,
+    minimumStraightLineDistanceMeters: 260
+  })
+];
+export const piccadillyCircusOsmRoutePreflight = requireDefaultPreflight(
+  piccadillyCircusOsmRoutePreflights,
+  "piccadilly-circus"
+);
+
+export const waterlooBridgeOsmRoutePreflights = [
+  buildCuratedRealLondonRoutableExercisePreflight(waterlooBridgeOsmRouteMap, waterlooBridgeOverpassFixture, {
+    idPrefix: "osm-curated-waterloo-bridge",
+    suffix: "thames-crossing-route",
+    title: "Waterloo Bridge: Thames crossing",
+    description: "Bridge and Thames beta route for the Waterloo corridor.",
+    difficulty: "medium",
+    routeType: "direct",
+    includeCheckpoint: false,
+    routeOrdinal: 0,
+    minimumStraightLineDistanceMeters: 200
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(waterlooBridgeOsmRouteMap, waterlooBridgeOverpassFixture, {
+    idPrefix: "osm-curated-waterloo-bridge",
+    suffix: "station-context-checkpoint",
+    title: "Waterloo Bridge: station context checkpoint",
+    description: "Checkpoint beta route for bridge, station, rail, and central context.",
+    difficulty: "medium",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 1,
+    minimumStraightLineDistanceMeters: 240
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(waterlooBridgeOsmRouteMap, waterlooBridgeOverpassFixture, {
+    idPrefix: "osm-curated-waterloo-bridge",
+    suffix: "longer-thames-route",
+    title: "Waterloo Bridge: longer Thames corridor route",
+    description: "Longer beta route for checking Thames, bridge, and major-road readability.",
+    difficulty: "hard",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 2,
+    minimumStraightLineDistanceMeters: 280
+  })
+];
+export const waterlooBridgeOsmRoutePreflight = requireDefaultPreflight(waterlooBridgeOsmRoutePreflights, "waterloo-bridge");
+
+export const oneWaySystemAreaOsmRoutePreflights = [
+  buildCuratedRealLondonRoutableExercisePreflight(oneWaySystemAreaOsmRouteMap, oneWaySystemAreaOverpassFixture, {
+    idPrefix: "osm-curated-one-way-system-area",
+    suffix: "short-one-way-route",
+    title: "One-way system: short legal route",
+    description: "Short beta route for one-way and restriction cartography.",
+    difficulty: "medium",
+    routeType: "one-way-awareness",
+    includeCheckpoint: false,
+    routeOrdinal: 0,
+    minimumStraightLineDistanceMeters: 180
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(oneWaySystemAreaOsmRouteMap, oneWaySystemAreaOverpassFixture, {
+    idPrefix: "osm-curated-one-way-system-area",
+    suffix: "restriction-checkpoint-route",
+    title: "One-way system: restriction checkpoint route",
+    description: "Checkpoint beta route through the one-way and restriction-heavy fixture.",
+    difficulty: "hard",
+    routeType: "one-way-awareness",
+    includeCheckpoint: true,
+    routeOrdinal: 1,
+    minimumStraightLineDistanceMeters: 220
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(oneWaySystemAreaOsmRouteMap, oneWaySystemAreaOverpassFixture, {
+    idPrefix: "osm-curated-one-way-system-area",
+    suffix: "longer-one-way-route",
+    title: "One-way system: longer legal route",
+    description: "Longer beta route for dense one-way decision-point readability.",
+    difficulty: "hard",
+    routeType: "one-way-awareness",
+    includeCheckpoint: true,
+    routeOrdinal: 2,
+    minimumStraightLineDistanceMeters: 260
+  })
+];
+export const oneWaySystemAreaOsmRoutePreflight = requireDefaultPreflight(
+  oneWaySystemAreaOsmRoutePreflights,
+  "one-way-system-area"
+);
+
+export const quietResidentialRoadsOsmRoutePreflights = [
+  buildCuratedRealLondonRoutableExercisePreflight(quietResidentialRoadsOsmRouteMap, quietResidentialRoadsOverpassFixture, {
+    idPrefix: "osm-curated-quiet-residential-roads",
+    suffix: "short-residential-route",
+    title: "Quiet residential roads: short route",
+    description: "Short beta route for suburban learner-driver readability.",
+    difficulty: "easy",
+    routeType: "direct",
+    includeCheckpoint: false,
+    routeOrdinal: 0,
+    minimumStraightLineDistanceMeters: 140
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(quietResidentialRoadsOsmRouteMap, quietResidentialRoadsOverpassFixture, {
+    idPrefix: "osm-curated-quiet-residential-roads",
+    suffix: "checkpoint-residential-route",
+    title: "Quiet residential roads: checkpoint route",
+    description: "Checkpoint beta route for quiet residential and side-street readability.",
+    difficulty: "medium",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 1,
+    minimumStraightLineDistanceMeters: 180
+  }),
+  buildCuratedRealLondonRoutableExercisePreflight(quietResidentialRoadsOsmRouteMap, quietResidentialRoadsOverpassFixture, {
+    idPrefix: "osm-curated-quiet-residential-roads",
+    suffix: "major-to-side-road-route",
+    title: "Quiet residential roads: major to side road",
+    description: "Longer beta route for major-road to side-street transition readability.",
+    difficulty: "medium",
+    routeType: "checkpoint",
+    includeCheckpoint: true,
+    routeOrdinal: 2,
+    minimumStraightLineDistanceMeters: 220
+  })
+];
+export const quietResidentialRoadsOsmRoutePreflight = requireDefaultPreflight(
+  quietResidentialRoadsOsmRoutePreflights,
+  "quiet-residential-roads"
+);
+
+function exercisesFromPreflights(preflights: readonly CuratedFixtureRoutePreflight[]): RouteExercise[] {
+  return preflights.flatMap((preflight) => (preflight.exercise ? [preflight.exercise] : []));
+}
+
+export const piccadillyCircusOsmRouteExercises = exercisesFromPreflights(piccadillyCircusOsmRoutePreflights);
+export const waterlooBridgeOsmRouteExercises = exercisesFromPreflights(waterlooBridgeOsmRoutePreflights);
+export const oneWaySystemAreaOsmRouteExercises = exercisesFromPreflights(oneWaySystemAreaOsmRoutePreflights);
+export const quietResidentialRoadsOsmRouteExercises = exercisesFromPreflights(quietResidentialRoadsOsmRoutePreflights);
 
 export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   {

@@ -20,13 +20,17 @@ import {
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
   oneWaySystemAreaOsmRouteMap,
   oneWaySystemAreaOsmRoutePreflight,
+  oneWaySystemAreaOsmRoutePreflights,
   piccadillyCircusOsmRouteMap,
   piccadillyCircusOsmRoutePreflight,
+  piccadillyCircusOsmRoutePreflights,
   quietResidentialRoadsOsmRouteMap,
   quietResidentialRoadsOsmRoutePreflight,
+  quietResidentialRoadsOsmRoutePreflights,
   waterlooBridgeOsmRouteMap,
   waterlooBridgeOsmRouteExercises,
-  waterlooBridgeOsmRoutePreflight
+  waterlooBridgeOsmRoutePreflight,
+  waterlooBridgeOsmRoutePreflights
 } from "./curatedRealLondonRouteRunnerMaps.ts";
 import {
   buildCuratedFixtureConnectivityDiagnostics,
@@ -49,6 +53,7 @@ const CURATED_PREFLIGHT_CASES = [
     map: piccadillyCircusOsmRouteMap,
     fixture: piccadillyCircusOverpassFixture,
     preflight: piccadillyCircusOsmRoutePreflight,
+    preflights: piccadillyCircusOsmRoutePreflights,
     minTurnRestrictions: 10,
     requiredHighways: ["primary", "secondary", "residential"]
   },
@@ -57,6 +62,7 @@ const CURATED_PREFLIGHT_CASES = [
     map: waterlooBridgeOsmRouteMap,
     fixture: waterlooBridgeOverpassFixture,
     preflight: waterlooBridgeOsmRoutePreflight,
+    preflights: waterlooBridgeOsmRoutePreflights,
     minTurnRestrictions: 40,
     requiredHighways: ["primary", "residential", "service"]
   },
@@ -65,6 +71,7 @@ const CURATED_PREFLIGHT_CASES = [
     map: oneWaySystemAreaOsmRouteMap,
     fixture: oneWaySystemAreaOverpassFixture,
     preflight: oneWaySystemAreaOsmRoutePreflight,
+    preflights: oneWaySystemAreaOsmRoutePreflights,
     minTurnRestrictions: 50,
     requiredHighways: ["primary", "secondary", "tertiary", "residential"]
   },
@@ -73,6 +80,7 @@ const CURATED_PREFLIGHT_CASES = [
     map: quietResidentialRoadsOsmRouteMap,
     fixture: quietResidentialRoadsOverpassFixture,
     preflight: quietResidentialRoadsOsmRoutePreflight,
+    preflights: quietResidentialRoadsOsmRoutePreflights,
     minTurnRestrictions: 10,
     requiredHighways: ["primary", "tertiary", "residential"]
   }
@@ -126,21 +134,25 @@ osm-way-960974643-segment-37 osm-way-960974643-segment-38
 
 test("Stage 160.6 curated fixture preflight builds legal routable exercises for selected London fixtures", () => {
   for (const fixtureCase of CURATED_PREFLIGHT_CASES) {
-    assert.equal(fixtureCase.preflight.ok, true, fixtureCase.id);
-    assert.equal(fixtureCase.preflight.fixtureUse, "routableExercise", fixtureCase.id);
-    assert.equal(fixtureCase.preflight.failureReason, null, fixtureCase.id);
-    assert.ok(fixtureCase.preflight.exercise, fixtureCase.id);
-    assert.ok(fixtureCase.preflight.shortestRouteDistanceMeters && fixtureCase.preflight.shortestRouteDistanceMeters > 0, fixtureCase.id);
-    assert.ok(fixtureCase.preflight.routeNodeIds.length >= 2, fixtureCase.id);
-    assert.ok(fixtureCase.preflight.routeRoadIds.length >= 1, fixtureCase.id);
+    assert.equal(fixtureCase.preflights.length, 3, fixtureCase.id);
 
-    const availability = validateExerciseReachability({
-      map: fixtureCase.map,
-      exercise: fixtureCase.preflight.exercise
-    });
+    for (const preflight of fixtureCase.preflights) {
+      assert.equal(preflight.ok, true, `${fixtureCase.id}: ${preflight.exercise?.id ?? "missing"}`);
+      assert.equal(preflight.fixtureUse, "routableExercise", fixtureCase.id);
+      assert.equal(preflight.failureReason, null, fixtureCase.id);
+      assert.ok(preflight.exercise, fixtureCase.id);
+      assert.ok(preflight.shortestRouteDistanceMeters && preflight.shortestRouteDistanceMeters > 0, fixtureCase.id);
+      assert.ok(preflight.routeNodeIds.length >= 2, fixtureCase.id);
+      assert.ok(preflight.routeRoadIds.length >= 1, fixtureCase.id);
 
-    assert.equal(availability.isValid, true, `${fixtureCase.id}: ${availability.errors.join("; ")}`);
-    assert.equal(availability.missingLegs.length, 0, fixtureCase.id);
+      const availability = validateExerciseReachability({
+        map: fixtureCase.map,
+        exercise: preflight.exercise
+      });
+
+      assert.equal(availability.isValid, true, `${fixtureCase.id}: ${availability.errors.join("; ")}`);
+      assert.equal(availability.missingLegs.length, 0, fixtureCase.id);
+    }
   }
 });
 
@@ -156,13 +168,15 @@ test("Stage 161.4 curated and real pilot generated routes submit through drawn-r
   assert.equal(realPilotRoute.found, true, realPilotExercise.id);
 
   const cases = [
-    ...CURATED_PREFLIGHT_CASES.map((fixtureCase) => ({
-      id: fixtureCase.id,
-      map: fixtureCase.map,
-      exercises: [fixtureCase.preflight.exercise],
-      exercise: fixtureCase.preflight.exercise,
-      routeNodeIds: fixtureCase.preflight.routeNodeIds
-    })),
+    ...CURATED_PREFLIGHT_CASES.flatMap((fixtureCase) =>
+      fixtureCase.preflights.map((preflight) => ({
+        id: `${fixtureCase.id}:${preflight.exercise?.id ?? "missing"}`,
+        map: fixtureCase.map,
+        exercises: fixtureCase.preflights.flatMap((candidate) => (candidate.exercise ? [candidate.exercise] : [])),
+        exercise: preflight.exercise,
+        routeNodeIds: preflight.routeNodeIds
+      }))
+    ),
     {
       id: "real-london-pilot",
       map: realLondonOsmPilotRouteMap,
@@ -349,9 +363,10 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
     assert.equal(option.defaultExerciseId, fixtureCase.preflight.exercise?.id, fixtureCase.id);
     assert.deepEqual(
       option.exercises.map((exercise) => exercise.id),
-      fixtureCase.preflight.exercise ? [fixtureCase.preflight.exercise.id] : [],
+      fixtureCase.preflights.flatMap((preflight) => (preflight.exercise ? [preflight.exercise.id] : [])),
       fixtureCase.id
     );
+    assert.equal(option.exercises.length, 3, fixtureCase.id);
   }
 });
 

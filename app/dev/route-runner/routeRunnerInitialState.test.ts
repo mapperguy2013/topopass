@@ -5,6 +5,7 @@ import {
   getRouteRunnerMapOption,
   realLondonOsmPilotRouteMap
 } from "./routeRunnerMaps.ts";
+import { ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON } from "./curatedRealLondonRouteRunnerMaps.ts";
 import { createRouteRunnerInitialHydrationState } from "./routeRunnerInitialState.ts";
 
 test("route runner initial hydration state uses deterministic default map and exercise", () => {
@@ -61,4 +62,30 @@ test("route runner initial hydration state does not restore browser storage duri
   assert.equal(initialState.adaptiveLauncherState.lastStartedPracticeItemId, null);
   assert.equal(initialState.adaptiveLauncherState.practiceSessionStartedAt, null);
   assert.deepEqual(initialState.adaptiveLauncherState.outcomeFeedbackHistory, []);
+});
+
+test("Stage 161.6.3 route runner initial heading is deterministic for beta map and exercise props", () => {
+  const selectedMapId = "osm-curated-waterloo-bridge";
+  const selectedExerciseId = "osm-curated-waterloo-bridge-station-context-checkpoint";
+  const firstInitialState = createRouteRunnerInitialHydrationState({
+    initialMapOptionId: selectedMapId,
+    initialExerciseId: selectedExerciseId,
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+  });
+  const secondInitialState = createRouteRunnerInitialHydrationState({
+    initialMapOptionId: selectedMapId,
+    initialExerciseId: selectedExerciseId,
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+  });
+  const selectedOption = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find(
+    (option) => option.id === firstInitialState.mapOptionId
+  );
+  const heading =
+    selectedOption?.exercises.find((exercise) => exercise.id === firstInitialState.exerciseId)?.title ??
+    `${selectedOption?.label ?? "Unknown map"} route exercise runner`;
+
+  assert.deepEqual(firstInitialState, secondInitialState);
+  assert.equal(firstInitialState.mapOptionId, selectedMapId);
+  assert.equal(firstInitialState.exerciseId, selectedExerciseId);
+  assert.equal(heading, "Waterloo Bridge: station context checkpoint");
 });
