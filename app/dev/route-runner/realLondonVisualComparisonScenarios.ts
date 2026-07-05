@@ -493,10 +493,10 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     id: "high-zoom-road-scale-1000",
     label: "High zoom road scale 1000%",
     description:
-      "1000% dense central view where roads, labels, and drawing affordances should be visibly larger without stretching.",
+      "1000% dense central view where roads, labels, drawing affordances, and submitted-review warnings should be visibly larger without stretching.",
     contextTags: ["dense-central-streets"],
     ...commonMapMetadata,
-    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay"],
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay", "route-review-readability"],
     viewport: {
       center: { x: 0, y: -30 },
       bounds: { minX: -155, minY: -185, maxX: 155, maxY: 125 },
@@ -504,15 +504,25 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "detail"
     },
     expected: {
-      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows", "hints"],
+      phase6Layers: [
+        "land-background",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "hints",
+        "illegal-warning-overlays",
+        "review-callouts"
+      ],
       roadHierarchies: ["primary", "secondary", "residential"],
       labelKinds: ["road"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
-      routeOverlayKinds: ["raw-route", "snapped-route"],
+      routeOverlayKinds: ["raw-route", "snapped-route", "illegal-movement"],
       objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
-      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed"],
-      restrictionSymbols: ["one-way"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed", "illegal-segment-callout"],
+      restrictionSymbols: ["one-way", "review-warning"],
       decluttering: ["detail"]
     }
   },
@@ -520,10 +530,10 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     id: "high-zoom-road-scale-5000",
     label: "High zoom road scale 5000%",
     description:
-      "5000% dense central view for the Stage 161.6.8.1 acceptance target: around 10x normal-road width, larger labels, easier drawing targets, and no X/Y stretch.",
+      "5000% dense central view for checking large road corridors, capped drawn-route width, stronger mistake highlights, readable review text, and no X/Y stretch.",
     contextTags: ["dense-central-streets"],
     ...commonMapMetadata,
-    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay"],
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay", "route-review-readability"],
     viewport: {
       center: { x: 0, y: -30 },
       bounds: { minX: -155, minY: -185, maxX: 155, maxY: 125 },
@@ -531,15 +541,25 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       declutterTier: "detail"
     },
     expected: {
-      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows", "hints"],
+      phase6Layers: [
+        "land-background",
+        "road-casings",
+        "road-fills",
+        "road-hierarchy",
+        "street-labels",
+        "one-way-arrows",
+        "hints",
+        "illegal-warning-overlays",
+        "review-callouts"
+      ],
       roadHierarchies: ["primary", "secondary", "residential"],
       labelKinds: ["road"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
-      routeOverlayKinds: ["raw-route", "snapped-route"],
+      routeOverlayKinds: ["raw-route", "snapped-route", "illegal-movement"],
       objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
-      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed"],
-      restrictionSymbols: ["one-way"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed", "illegal-segment-callout"],
+      restrictionSymbols: ["one-way", "review-warning"],
       decluttering: ["detail"]
     }
   },

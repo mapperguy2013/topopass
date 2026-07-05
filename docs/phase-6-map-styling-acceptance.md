@@ -405,6 +405,17 @@ drawing. This is presentation-only: map projection remains isotropic, and
 route matching, scoring, legality, OSM conversion, fixture data, beta gates,
 feedback, auth, subscriptions, product flow, and Phase 7 scope are unchanged.
 
+Stage 161.6.8.3 balances that high-zoom visual stack by separating base-road,
+drawn-attempt, correct-route, mistake-overlay, review-text, and learner-marker
+scale caps. Drawn attempt and snap-preview strokes now use a lower cap so the
+learner route line does not hide labels, junctions, or mistake markers at
+5000%. Correct/expected route overlays use a moderate cap, while illegal
+segments, wrong-way/restriction highlights, selected restriction focus, review
+issue markers, and review callout text use stronger review caps so submitted
+mistakes become easier to inspect. Callout font, padding, border, and connector
+width scale together. Matching, scoring, legality, route generation, fixture
+data, Overpass/runtime data access, and Phase 7 scope are unchanged.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

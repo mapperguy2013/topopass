@@ -1153,10 +1153,42 @@ export function cartographicRestrictionSymbolScaleForViewport(viewport: ScreenMa
 }
 
 export function cartographicRouteOverlayScaleForZoom(currentZoom: number): number {
+  return cartographicCorrectRouteScaleForZoom(currentZoom);
+}
+
+export function cartographicDrawnAttemptScaleForZoom(currentZoom: number): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
   const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
 
-  return getZoomStyleScale(scaleInput, scaleTokens.routeOverlayGain, scaleTokens.routeOverlayMaxMultiplier);
+  return getZoomStyleScale(scaleInput, scaleTokens.drawnAttemptGain, scaleTokens.drawnAttemptMaxMultiplier);
+}
+
+export function cartographicCorrectRouteScaleForZoom(currentZoom: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
+
+  return getZoomStyleScale(scaleInput, scaleTokens.correctRouteGain, scaleTokens.correctRouteMaxMultiplier);
+}
+
+export function cartographicMistakeOverlayScaleForZoom(currentZoom: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
+
+  return getZoomStyleScale(scaleInput, scaleTokens.mistakeOverlayGain, scaleTokens.mistakeOverlayMaxMultiplier);
+}
+
+export function cartographicReviewTextScaleForZoom(currentZoom: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
+
+  return getZoomStyleScale(scaleInput, scaleTokens.reviewTextGain, scaleTokens.reviewTextMaxMultiplier);
+}
+
+export function cartographicLearnerMarkerScaleForZoom(currentZoom: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
+
+  return getZoomStyleScale(scaleInput, scaleTokens.learnerMarkerGain, scaleTokens.learnerMarkerMaxMultiplier);
 }
 
 export function cartographicStyleScaleForZoom(currentZoom: number): {
@@ -1166,6 +1198,11 @@ export function cartographicStyleScaleForZoom(currentZoom: number): {
   serviceRoad: number;
   restrictedRoad: number;
   routeOverlay: number;
+  drawnAttempt: number;
+  correctRoute: number;
+  mistakeOverlay: number;
+  reviewText: number;
+  learnerMarker: number;
   majorLabel: number;
   secondaryLabel: number;
   minorLabel: number;
@@ -1198,6 +1235,11 @@ export function cartographicStyleScaleForZoom(currentZoom: number): {
       scaleTokens.roadMinMultiplier
     ),
     routeOverlay: cartographicRouteOverlayScaleForZoom(scaleInput),
+    drawnAttempt: cartographicDrawnAttemptScaleForZoom(scaleInput),
+    correctRoute: cartographicCorrectRouteScaleForZoom(scaleInput),
+    mistakeOverlay: cartographicMistakeOverlayScaleForZoom(scaleInput),
+    reviewText: cartographicReviewTextScaleForZoom(scaleInput),
+    learnerMarker: cartographicLearnerMarkerScaleForZoom(scaleInput),
     majorLabel: getZoomStyleScale(scaleInput, scaleTokens.labelGain.major, scaleTokens.labelMaxMultiplier.major),
     secondaryLabel: getZoomStyleScale(
       scaleInput,

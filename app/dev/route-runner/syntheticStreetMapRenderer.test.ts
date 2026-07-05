@@ -7,6 +7,11 @@ import {
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
   buildSyntheticRouteOverlayVisuals,
+  cartographicCorrectRouteScaleForZoom,
+  cartographicDrawnAttemptScaleForZoom,
+  cartographicLearnerMarkerScaleForZoom,
+  cartographicMistakeOverlayScaleForZoom,
+  cartographicReviewTextScaleForZoom,
   cartographicRouteOverlayScaleForZoom,
   buildSyntheticStreetMapLegendItems,
   buildRoadRenderPasses,
@@ -955,18 +960,37 @@ test("Stage 161.6.8.2 zoom style scale follows stronger capped TOPOPASS cartogra
   assert.equal(max.minorLabel, scaleTokens.labelMaxMultiplier.minor);
   assert.ok(max.majorLabel >= 8);
   assert.ok(max.majorLabel <= scaleTokens.labelMaxMultiplier.major);
-  assert.equal(max.routeOverlay, scaleTokens.routeOverlayMaxMultiplier);
-  assert.equal(cartographicRouteOverlayScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom), scaleTokens.routeOverlayMaxMultiplier);
-  assertClose(
-    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth *
-      cartographicRouteOverlayScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom),
-    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth * 13,
-    0.000001,
-    "drawn route stroke should use the high-zoom route-overlay cap"
-  );
+  assert.ok(max.routeOverlay <= scaleTokens.correctRouteMaxMultiplier);
+  assert.equal(max.routeOverlay, cartographicRouteOverlayScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom));
+  assert.equal(max.drawnAttempt, scaleTokens.drawnAttemptMaxMultiplier);
+  assert.ok(max.correctRoute <= scaleTokens.correctRouteMaxMultiplier);
+  assert.ok(max.mistakeOverlay <= scaleTokens.mistakeOverlayMaxMultiplier);
+  assert.ok(max.reviewText <= scaleTokens.reviewTextMaxMultiplier);
+  assert.ok(max.learnerMarker <= scaleTokens.learnerMarkerMaxMultiplier);
   assert.ok(max.marker <= 2.5);
   assert.ok(max.marker <= scaleTokens.markerMaxMultiplier);
   assert.ok(max.restrictionSymbol <= scaleTokens.restrictionMaxMultiplier);
+});
+
+test("Stage 161.6.8.3 learner overlay scales are separated from high-zoom road scaling", () => {
+  const maxZoom = ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom;
+  const drawnAttempt = cartographicDrawnAttemptScaleForZoom(maxZoom);
+  const correctRoute = cartographicCorrectRouteScaleForZoom(maxZoom);
+  const mistakeOverlay = cartographicMistakeOverlayScaleForZoom(maxZoom);
+  const reviewText = cartographicReviewTextScaleForZoom(maxZoom);
+  const learnerMarker = cartographicLearnerMarkerScaleForZoom(maxZoom);
+  const localRoad = cartographicStyleScaleForZoom(maxZoom).localRoad;
+  const rawRoute = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
+  const illegalRoute = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement;
+
+  assert.ok(drawnAttempt < localRoad);
+  assert.ok(drawnAttempt <= 2);
+  assert.ok(correctRoute > drawnAttempt);
+  assert.ok(correctRoute <= 2.25);
+  assert.ok(mistakeOverlay > correctRoute);
+  assert.ok(reviewText > drawnAttempt);
+  assert.ok(learnerMarker < correctRoute);
+  assert.ok(rawRoute.strokeWidth * drawnAttempt < illegalRoute.strokeWidth * mistakeOverlay);
 });
 
 test("Stage 145.5 inactive and restricted roads stay quieter than active residential streets", () => {

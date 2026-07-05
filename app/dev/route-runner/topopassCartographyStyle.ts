@@ -172,6 +172,16 @@ export type TopopassCartographicZoomScaleStyle = {
   roadMaxMultiplier: Record<"major" | "secondary" | "local" | "service" | "restricted", number>;
   routeOverlayGain: number;
   routeOverlayMaxMultiplier: number;
+  drawnAttemptGain: number;
+  drawnAttemptMaxMultiplier: number;
+  correctRouteGain: number;
+  correctRouteMaxMultiplier: number;
+  mistakeOverlayGain: number;
+  mistakeOverlayMaxMultiplier: number;
+  reviewTextGain: number;
+  reviewTextMaxMultiplier: number;
+  learnerMarkerGain: number;
+  learnerMarkerMaxMultiplier: number;
   labelGain: Record<"major" | "secondary" | "minor" | "service" | "restricted" | "context" | "stop", number>;
   labelMaxMultiplier: Record<"major" | "secondary" | "minor" | "service" | "restricted" | "context" | "stop", number>;
   labelHaloMaxMultiplier: number;
@@ -1967,8 +1977,18 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         service: 9,
         restricted: 9
       },
-      routeOverlayGain: 0.66,
-      routeOverlayMaxMultiplier: 13,
+      routeOverlayGain: 0.2,
+      routeOverlayMaxMultiplier: 2.25,
+      drawnAttemptGain: 0.16,
+      drawnAttemptMaxMultiplier: 1.85,
+      correctRouteGain: 0.2,
+      correctRouteMaxMultiplier: 2.25,
+      mistakeOverlayGain: 0.28,
+      mistakeOverlayMaxMultiplier: 3.25,
+      reviewTextGain: 0.25,
+      reviewTextMaxMultiplier: 3,
+      learnerMarkerGain: 0.14,
+      learnerMarkerMaxMultiplier: 1.75,
       labelGain: {
         major: 0.58,
         secondary: 0.58,

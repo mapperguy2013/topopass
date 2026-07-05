@@ -324,15 +324,39 @@ about 16x, local roads at about 17x, and service/restricted roads at about 9x so
 minor access roads do not overpower the primary road hierarchy.
 
 Labels use their own high-zoom curve and cap around 9x for road names, with
-halo and collision boxes scaled from the same label multiplier. Learner route
-and drawn-attempt strokes use a separate route-overlay cap around 13x, while
-start/checkpoint/finish markers, restriction symbols, and one-way arrows keep
+halo and collision boxes scaled from the same label multiplier. Stage 161.6.8.3
+rebalances the overlay part of this rule: learner freehand/drawn-attempt strokes
+now use a much lower cap, correct/expected route overlays use a moderate cap,
+and mistake/review overlays plus review text use stronger caps for inspection.
+Start/checkpoint/finish markers, restriction symbols, and one-way arrows keep
 smaller caps so they remain readable without dominating junctions.
 
 This is still a Phase 6 visual-readability refinement only. The map projection
 remains isotropic; no CSS/image stretching is introduced; route matching,
 scoring, legality checks, OSM data, runtime Overpass access, beta QA visibility,
 and Phase 7 scope are unchanged.
+
+## Stage 161.6.8.3 High-Zoom Overlay Balance
+
+Stage 161.6.8.3 separates learner overlay scaling from base-road scaling after
+the stronger high-zoom road pass made drawn attempt lines too visually heavy.
+At 5000% zoom, base roads can still use the stronger road corridor caps, but
+raw drawn routes and snap-preview strokes use a lower drawn-attempt cap so they
+stay visible without hiding street labels, junctions, or mistake markers.
+
+Correct/expected route overlays use a slightly stronger but still controlled
+cap. Mistake overlays, matched-movement review lines, illegal-section
+highlights, selected restriction focus, review issue markers, and route-review
+callout text use stronger review-specific caps so learners can inspect exactly
+what went wrong when zoomed in. Callout padding, border, connector width, and
+font size scale together. Marker scaling is capped separately so
+start/destination/checkpoint markers remain usable without covering review
+feedback.
+
+This remains visual-only. Exponential zoom, the 5000% maximum, map projection,
+pinch/wheel anchors, route matching, scoring, legality checks, route
+generation, OSM data, runtime Overpass access, beta QA visibility, and Phase 7
+scope are unchanged.
 
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 

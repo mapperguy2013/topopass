@@ -1073,10 +1073,14 @@ Stage 161.6.8.2 strengthens the high-zoom corridor again for learner drawing at
 2500%-5000%. Major and secondary roads now cap around 16x their 100% visual
 width, local roads can reach about 17x, service roads use a lower 9x cap, and
 street labels scale separately up to about 9x. Learner route/drawn attempt
-strokes use their own capped route-overlay scale of about 13x, while markers,
-restriction icons, and one-way arrows remain on smaller caps. Projection,
-matching, scoring, legality, runtime OSM access, and beta QA visibility remain
-unchanged.
+strokes initially used a much larger route-overlay cap, while markers,
+restriction icons, and one-way arrows remained on smaller caps.
+Stage 161.6.8.3 rebalances that overlay stack: drawn attempt and snap-preview
+strokes now use a lower cap, correct/expected route overlays use a moderate
+cap, and mistake highlights, review issue markers, selected restriction focus,
+matched-movement review lines, and review callout text scale more strongly for
+post-submit inspection. Projection, matching, scoring, legality, route
+generation, runtime OSM access, and beta QA visibility remain unchanged.
 Stage 161.6.9 separates curated map visibility from route scoreability in the
 learner-facing Real London beta selector. All curated beta-visible fixtures now
 appear in `/practice/real-london`, including visual-only and stress-test maps.
