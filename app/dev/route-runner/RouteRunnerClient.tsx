@@ -1205,7 +1205,7 @@ function drawExerciseStopMarker(input: {
   currentZoom?: number;
 }): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
-  const scale = Math.min(cartographicStyleScaleForZoom(input.currentZoom ?? 1).marker, 1.36);
+  const scale = Math.min(cartographicStyleScaleForZoom(input.currentZoom ?? 1).marker, 2.4);
   const legacyMarkerStyle =
     input.role === "start"
       ? style.start
@@ -2355,7 +2355,7 @@ function drawFastestRouteOverlay(
     routePoints,
     viewport,
     TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
-    Math.min(cartographicStyleScaleForZoom(currentZoom ?? 1).marker, 1.24)
+    Math.min(cartographicStyleScaleForZoom(currentZoom ?? 1).marker, 2.2)
   );
 }
 
@@ -3035,7 +3035,7 @@ function drawRouteCanvas(input: {
 
   if (input.snapPreview.snappedPoints.length > 0) {
     const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.revealed;
-    const hintScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 1.3);
+    const hintScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 2.2);
 
     context.save();
     context.strokeStyle = hintStyle.strokeColor;
@@ -3061,7 +3061,7 @@ function drawRouteCanvas(input: {
 
   if (visibleRawStrokes.length > 0) {
     const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
-    const routeScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 1.24);
+    const routeScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 2.4);
 
     visibleRawStrokes.forEach((stroke) => {
       drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle, routeScale);
@@ -3071,7 +3071,7 @@ function drawRouteCanvas(input: {
   input.snapPreview.snappedPoints.forEach((point) => {
     const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
     const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker;
-    const hintScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 1.32);
+    const hintScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 2.2);
 
     context.fillStyle = hintStyle.haloColor;
     context.beginPath();

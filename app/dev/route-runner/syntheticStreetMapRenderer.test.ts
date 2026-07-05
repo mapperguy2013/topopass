@@ -9,7 +9,6 @@ import {
   buildSyntheticRouteOverlayVisuals,
   buildSyntheticStreetMapLegendItems,
   buildRoadRenderPasses,
-  cartographicRoadScaleForVisual,
   cartographicStyleScaleForZoom,
   deriveOsmRoadRenderMetadata,
   deriveOsmRoadVisualHierarchy,
@@ -17,6 +16,7 @@ import {
   deriveSyntheticRoadClass,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
+  getZoomStyleScale,
   getSyntheticLabelMeasurementCacheStats,
   labelStyleForSyntheticMapLabel,
   resetSyntheticLabelMeasurementCache,
@@ -46,6 +46,10 @@ import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../
 import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
 import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondonRouteRunnerMaps.ts";
 import { kingsCrossEustonOsmRouteRunnerMapOption } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
+
+function assertClose(actual: number, expected: number, tolerance: number, message: string): void {
+  assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: expected ${expected}, got ${actual}`);
+}
 
 function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
   if (Array.isArray(value)) {
@@ -321,10 +325,11 @@ test("Stage 142 zoom and decluttering tokens are ordered finite and used by help
   assert.ok(thresholds.wheelSensitivity > 0);
   assert.ok(thresholds.panMargin >= 0);
   assert.ok(cartographicScale.referenceViewportScale > 0);
-  assert.ok(cartographicScale.roadGain.local > cartographicScale.roadGain.major);
-  assert.ok(cartographicScale.roadMaxMultiplier.local > cartographicScale.roadMaxMultiplier.major);
-  assert.ok(cartographicScale.labelGain.minor > cartographicScale.labelGain.major);
-  assert.ok(cartographicScale.labelMaxMultiplier.minor > cartographicScale.labelMaxMultiplier.major);
+  assert.ok(cartographicScale.roadGain.local >= cartographicScale.roadGain.major);
+  assert.ok(cartographicScale.roadMaxMultiplier.local >= 10);
+  assert.ok(cartographicScale.roadMaxMultiplier.service < cartographicScale.roadMaxMultiplier.local);
+  assert.ok(cartographicScale.labelGain.minor >= cartographicScale.labelGain.major);
+  assert.ok(cartographicScale.labelMaxMultiplier.minor >= 6);
   assert.ok(cartographicScale.restrictionMaxMultiplier > 1);
   assert.deepEqual(ROUTE_RUNNER_MAP_ZOOM_LIMITS, thresholds);
   assert.equal(
@@ -852,7 +857,7 @@ test("Stage 147 high zoom restores residential road detail", () => {
   assert.ok(roadStyleForViewport(residential, highZoomRoadViewport).strokeWidth >= residential.style.strokeWidth);
 });
 
-test("Stage 161.6.9 road strokes scale with zoom without making major roads dominate", () => {
+test("Stage 161.6.9 road strokes scale with zoom while preserving base hierarchy", () => {
   const primary = roadVisual({
     roadClass: "major",
     osmHighway: "primary",
@@ -875,17 +880,15 @@ test("Stage 161.6.9 road strokes scale with zoom without making major roads domi
   const serviceHigh = roadStyleForViewport(service, veryHighZoomRoadViewport);
 
   assert.equal(roadStyleForViewport(primary, lowZoomRoadViewport).strokeWidth, primary.style.strokeWidth);
-  assert.ok(residentialHigh.strokeWidth > residential.style.strokeWidth * 1.7);
-  assert.ok(serviceHigh.strokeWidth > service.style.strokeWidth * 1.45);
-  assert.ok(primaryHigh.strokeWidth < primary.style.strokeWidth * 1.35);
-  assert.ok(
-    cartographicRoadScaleForVisual(residential, veryHighZoomRoadViewport) >
-      cartographicRoadScaleForVisual(primary, veryHighZoomRoadViewport)
-  );
+  assert.ok(primaryHigh.strokeWidth > primary.style.strokeWidth * 3.8);
+  assert.ok(residentialHigh.strokeWidth > residential.style.strokeWidth * 3.8);
+  assert.ok(serviceHigh.strokeWidth > service.style.strokeWidth * 2.7);
+  assert.ok(serviceHigh.strokeWidth < residentialHigh.strokeWidth);
+  assert.ok(primaryHigh.strokeWidth > residentialHigh.strokeWidth);
   assert.ok(residentialHigh.casingWidth > residential.style.casingWidth);
 });
 
-test("Stage 161.6.8 explicit semantic zoom scales roads even when viewport bounds are unchanged", () => {
+test("Stage 161.6.8.1 explicit semantic zoom scales rendered roads strongly when viewport bounds are unchanged", () => {
   const primary = roadVisual({
     roadClass: "major",
     osmHighway: "primary",
@@ -903,25 +906,42 @@ test("Stage 161.6.8 explicit semantic zoom scales roads even when viewport bound
   const highResidential = roadStyleForViewport(residential, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
   const maxedResidential = roadStyleForViewport(residential, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom * 10);
 
-  assert.ok(highPrimary.strokeWidth > basePrimary.strokeWidth);
-  assert.ok(highResidential.strokeWidth > baseResidential.strokeWidth * 1.9);
+  assertClose(highPrimary.strokeWidth / basePrimary.strokeWidth, 10, 0.000001, "primary road should render at the 10x cap");
+  assertClose(
+    highResidential.strokeWidth / baseResidential.strokeWidth,
+    10,
+    0.000001,
+    "local road should render at the 10x cap"
+  );
+  assertClose(highResidential.casingWidth / baseResidential.casingWidth, 10, 0.000001, "local casing should follow stroke scale");
   assert.equal(maxedResidential.strokeWidth, highResidential.strokeWidth);
-  assert.ok(highResidential.strokeWidth / baseResidential.strokeWidth > highPrimary.strokeWidth / basePrimary.strokeWidth);
+  assert.ok(highPrimary.strokeWidth > highResidential.strokeWidth);
 });
 
-test("Stage 161.6.8 zoom style scale follows capped TOPOPASS cartography tokens", () => {
+test("Stage 161.6.8.1 zoom style scale follows strong capped TOPOPASS cartography tokens", () => {
   const base = cartographicStyleScaleForZoom(1);
-  const mid = cartographicStyleScaleForZoom(5);
+  const zoom250 = cartographicStyleScaleForZoom(2.5);
+  const zoom500 = cartographicStyleScaleForZoom(5);
+  const zoom1000 = cartographicStyleScaleForZoom(10);
+  const zoom2500 = cartographicStyleScaleForZoom(25);
   const max = cartographicStyleScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
   const beyondMax = cartographicStyleScaleForZoom(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom * 10);
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
   assert.equal(base.localRoad, 1);
-  assert.ok(mid.localRoad > base.localRoad);
-  assert.ok(max.localRoad > mid.localRoad);
+  assertClose(getZoomStyleScale(1, scaleTokens.roadGain.local, scaleTokens.roadMaxMultiplier.local), 1, 0.000001, "1x road scale");
+  assertClose(zoom250.localRoad, 1.72, 0.05, "250 percent road scale");
+  assertClose(zoom500.localRoad, 2.58, 0.05, "500 percent road scale");
+  assertClose(zoom1000.localRoad, 3.89, 0.05, "1000 percent road scale");
+  assertClose(zoom2500.localRoad, 6.68, 0.08, "2500 percent road scale");
   assert.equal(max.localRoad, scaleTokens.roadMaxMultiplier.local);
+  assert.equal(max.majorRoad, scaleTokens.roadMaxMultiplier.major);
   assert.equal(beyondMax.localRoad, max.localRoad);
-  assert.ok(max.majorRoad < max.localRoad);
+  assert.ok(max.serviceRoad > 5.7);
+  assert.ok(max.serviceRoad <= scaleTokens.roadMaxMultiplier.service);
+  assert.ok(max.serviceRoad < max.localRoad);
+  assert.ok(max.majorLabel > base.majorLabel * 5);
+  assert.ok(max.majorLabel <= scaleTokens.labelMaxMultiplier.major);
   assert.ok(max.marker <= scaleTokens.markerMaxMultiplier);
   assert.ok(max.restrictionSymbol <= scaleTokens.restrictionMaxMultiplier);
 });
@@ -1032,7 +1052,7 @@ test("Stage 145 label styles follow road hierarchy", () => {
   );
 });
 
-test("Stage 161.6.9 street labels scale up at high zoom with local labels gaining more readability", () => {
+test("Stage 161.6.9 street labels scale up strongly at high zoom", () => {
   const majorLabel = roadLabel({ roadClass: "major", osmHierarchy: "primary" });
   const minorLabel = roadLabel({ roadClass: "local", osmHierarchy: "residential" });
   const majorBase = labelStyleForSyntheticMapLabel(majorLabel);
@@ -1045,13 +1065,18 @@ test("Stage 161.6.9 street labels scale up at high zoom with local labels gainin
   assert.ok("fontSize" in majorHigh);
   assert.ok("fontSize" in minorHigh);
   assert.ok(majorHigh.fontSize > majorBase.fontSize);
-  assert.ok(minorHigh.fontSize > minorBase.fontSize * 1.45);
-  assert.ok(minorHigh.fontSize / minorBase.fontSize > majorHigh.fontSize / majorBase.fontSize);
+  assert.ok(minorHigh.fontSize > minorBase.fontSize * 2.8);
+  assertClose(
+    minorHigh.fontSize / minorBase.fontSize,
+    majorHigh.fontSize / majorBase.fontSize,
+    0.000001,
+    "major and local labels should share the high-zoom street-label scale"
+  );
   assert.ok(minorHigh.haloWidth > minorBase.haloWidth);
-  assert.ok(minorHigh.haloWidth < minorBase.haloWidth * 1.7);
+  assert.ok(minorHigh.haloWidth <= minorBase.haloWidth * TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale.labelHaloMaxMultiplier);
 });
 
-test("Stage 161.6.8 explicit semantic zoom scales label text and halo at fixed viewport size", () => {
+test("Stage 161.6.8.1 explicit semantic zoom scales label text and halo strongly at fixed viewport size", () => {
   const majorLabel = roadLabel({ roadClass: "major", osmHierarchy: "primary" });
   const minorLabel = roadLabel({ roadClass: "local", osmHierarchy: "residential" });
   const majorBase = labelStyleForSyntheticMapLabel(majorLabel, labelTestViewport, 1);
@@ -1064,9 +1089,11 @@ test("Stage 161.6.8 explicit semantic zoom scales label text and halo at fixed v
   assert.ok("fontSize" in minorBase);
   assert.ok("fontSize" in majorHigh);
   assert.ok("fontSize" in minorHigh);
-  assert.ok(majorHigh.fontSize > majorBase.fontSize);
-  assert.ok(minorHigh.fontSize > minorBase.fontSize * 1.7);
-  assert.ok(minorHigh.fontSize / minorBase.fontSize > majorHigh.fontSize / majorBase.fontSize);
+  assert.ok(majorHigh.fontSize > majorBase.fontSize * 5);
+  assert.ok(minorHigh.fontSize > minorBase.fontSize * 5);
+  assert.ok(majorHigh.fontSize <= majorBase.fontSize * scaleTokens.labelMaxMultiplier.major);
+  assert.ok(minorHigh.fontSize <= minorBase.fontSize * scaleTokens.labelMaxMultiplier.minor);
+  assert.ok(majorHigh.haloWidth > majorBase.haloWidth * 4);
   assert.ok(minorHigh.haloWidth <= minorBase.haloWidth * scaleTokens.labelHaloMaxMultiplier);
 });
 

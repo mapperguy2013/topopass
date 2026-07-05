@@ -1057,21 +1057,21 @@ function cartographicScaleInputForViewport(viewport: ScreenMapViewport, currentZ
   return Math.max(viewportScale, currentZoom);
 }
 
-function dampedCartographicMultiplier(
-  scaleInput: number,
-  gain: number,
+export function getZoomStyleScale(
+  zoomScale: number,
+  exponent: number,
   maxMultiplier: number,
   minMultiplier = 1
 ): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
   const referenceScale = Math.max(0.000001, scaleTokens.referenceViewportScale);
 
-  if (!Number.isFinite(scaleInput) || scaleInput <= 0) {
+  if (!Number.isFinite(zoomScale) || zoomScale <= 0) {
     return 1;
   }
 
-  const zoomSteps = Math.log2(scaleInput / referenceScale);
-  const multiplier = 1 + zoomSteps * gain;
+  const normalizedScale = Math.max(zoomScale / referenceScale, 1);
+  const multiplier = Math.pow(normalizedScale, exponent);
 
   return clampNumber(multiplier, minMultiplier, maxMultiplier);
 }
@@ -1106,7 +1106,7 @@ export function cartographicRoadScaleForVisual(
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
   const tier = roadScaleTierForVisual(visual);
 
-  return dampedCartographicMultiplier(
+  return getZoomStyleScale(
     cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.roadGain[tier],
     scaleTokens.roadMaxMultiplier[tier],
@@ -1125,7 +1125,7 @@ export function cartographicLabelScaleForTier(
 
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
-  return dampedCartographicMultiplier(
+  return getZoomStyleScale(
     cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.labelGain[tier],
     scaleTokens.labelMaxMultiplier[tier]
@@ -1135,7 +1135,7 @@ export function cartographicLabelScaleForTier(
 export function cartographicMarkerScaleForViewport(viewport: ScreenMapViewport, currentZoom?: number): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
-  return dampedCartographicMultiplier(
+  return getZoomStyleScale(
     cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.markerGain,
     scaleTokens.markerMaxMultiplier
@@ -1145,7 +1145,7 @@ export function cartographicMarkerScaleForViewport(viewport: ScreenMapViewport, 
 export function cartographicRestrictionSymbolScaleForViewport(viewport: ScreenMapViewport, currentZoom?: number): number {
   const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
 
-  return dampedCartographicMultiplier(
+  return getZoomStyleScale(
     cartographicScaleInputForViewport(viewport, currentZoom),
     scaleTokens.restrictionGain,
     scaleTokens.restrictionMaxMultiplier
@@ -1169,36 +1169,36 @@ export function cartographicStyleScaleForZoom(currentZoom: number): {
   const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
 
   return {
-    majorRoad: dampedCartographicMultiplier(scaleInput, scaleTokens.roadGain.major, scaleTokens.roadMaxMultiplier.major),
-    secondaryRoad: dampedCartographicMultiplier(scaleInput, scaleTokens.roadGain.secondary, scaleTokens.roadMaxMultiplier.secondary),
-    localRoad: dampedCartographicMultiplier(
+    majorRoad: getZoomStyleScale(scaleInput, scaleTokens.roadGain.major, scaleTokens.roadMaxMultiplier.major),
+    secondaryRoad: getZoomStyleScale(scaleInput, scaleTokens.roadGain.secondary, scaleTokens.roadMaxMultiplier.secondary),
+    localRoad: getZoomStyleScale(
       scaleInput,
       scaleTokens.roadGain.local,
       scaleTokens.roadMaxMultiplier.local,
       scaleTokens.roadMinMultiplier
     ),
-    serviceRoad: dampedCartographicMultiplier(
+    serviceRoad: getZoomStyleScale(
       scaleInput,
       scaleTokens.roadGain.service,
       scaleTokens.roadMaxMultiplier.service,
       scaleTokens.roadMinMultiplier
     ),
-    restrictedRoad: dampedCartographicMultiplier(
+    restrictedRoad: getZoomStyleScale(
       scaleInput,
       scaleTokens.roadGain.restricted,
       scaleTokens.roadMaxMultiplier.restricted,
       scaleTokens.roadMinMultiplier
     ),
-    majorLabel: dampedCartographicMultiplier(scaleInput, scaleTokens.labelGain.major, scaleTokens.labelMaxMultiplier.major),
-    secondaryLabel: dampedCartographicMultiplier(
+    majorLabel: getZoomStyleScale(scaleInput, scaleTokens.labelGain.major, scaleTokens.labelMaxMultiplier.major),
+    secondaryLabel: getZoomStyleScale(
       scaleInput,
       scaleTokens.labelGain.secondary,
       scaleTokens.labelMaxMultiplier.secondary
     ),
-    minorLabel: dampedCartographicMultiplier(scaleInput, scaleTokens.labelGain.minor, scaleTokens.labelMaxMultiplier.minor),
-    contextLabel: dampedCartographicMultiplier(scaleInput, scaleTokens.labelGain.context, scaleTokens.labelMaxMultiplier.context),
-    marker: dampedCartographicMultiplier(scaleInput, scaleTokens.markerGain, scaleTokens.markerMaxMultiplier),
-    restrictionSymbol: dampedCartographicMultiplier(scaleInput, scaleTokens.restrictionGain, scaleTokens.restrictionMaxMultiplier)
+    minorLabel: getZoomStyleScale(scaleInput, scaleTokens.labelGain.minor, scaleTokens.labelMaxMultiplier.minor),
+    contextLabel: getZoomStyleScale(scaleInput, scaleTokens.labelGain.context, scaleTokens.labelMaxMultiplier.context),
+    marker: getZoomStyleScale(scaleInput, scaleTokens.markerGain, scaleTokens.markerMaxMultiplier),
+    restrictionSymbol: getZoomStyleScale(scaleInput, scaleTokens.restrictionGain, scaleTokens.restrictionMaxMultiplier)
   };
 }
 

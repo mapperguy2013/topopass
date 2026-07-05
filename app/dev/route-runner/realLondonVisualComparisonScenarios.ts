@@ -66,6 +66,9 @@ export type RealLondonVisualComparisonLayer =
 
 export type RealLondonVisualReadabilityScenarioId =
   | "dense-central-readability"
+  | "high-zoom-road-scale-100"
+  | "high-zoom-road-scale-1000"
+  | "high-zoom-road-scale-5000"
   | "major-road-side-street-hierarchy"
   | "park-water-rail-station-context"
   | "bridge-crossing-context"
@@ -457,6 +460,87 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
       learnerOverlayStates: noLearnerOverlayStates,
       restrictionSymbols: ["one-way"],
       decluttering: ["overview", "learner"]
+    }
+  },
+  {
+    id: "high-zoom-road-scale-100",
+    label: "High zoom road scale 100%",
+    description:
+      "Baseline 100% dense central view for comparing Stage 161.6.8.1 road, label, and drawing affordance scale.",
+    contextTags: ["dense-central-streets"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay"],
+    viewport: {
+      center: { x: 0, y: -30 },
+      bounds: { minX: -155, minY: -185, maxX: 155, maxY: 125 },
+      zoom: 1,
+      declutterTier: "learner"
+    },
+    expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows", "hints"],
+      roadHierarchies: ["primary", "secondary", "residential"],
+      labelKinds: ["road"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed"],
+      restrictionSymbols: ["one-way"],
+      decluttering: ["learner"]
+    }
+  },
+  {
+    id: "high-zoom-road-scale-1000",
+    label: "High zoom road scale 1000%",
+    description:
+      "1000% dense central view where roads, labels, and drawing affordances should be visibly larger without stretching.",
+    contextTags: ["dense-central-streets"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay"],
+    viewport: {
+      center: { x: 0, y: -30 },
+      bounds: { minX: -155, minY: -185, maxX: 155, maxY: 125 },
+      zoom: 10,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows", "hints"],
+      roadHierarchies: ["primary", "secondary", "residential"],
+      labelKinds: ["road"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed"],
+      restrictionSymbols: ["one-way"],
+      decluttering: ["detail"]
+    }
+  },
+  {
+    id: "high-zoom-road-scale-5000",
+    label: "High zoom road scale 5000%",
+    description:
+      "5000% dense central view for the Stage 161.6.8.1 acceptance target: around 10x normal-road width, larger labels, easier drawing targets, and no X/Y stretch.",
+    contextTags: ["dense-central-streets"],
+    ...commonMapMetadata,
+    comparisonModeIds: ["phase-6-street-atlas", "learner-route-overlay"],
+    viewport: {
+      center: { x: 0, y: -30 },
+      bounds: { minX: -155, minY: -185, maxX: 155, maxY: 125 },
+      zoom: 50,
+      declutterTier: "detail"
+    },
+    expected: {
+      phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "one-way-arrows", "hints"],
+      roadHierarchies: ["primary", "secondary", "residential"],
+      labelKinds: ["road"],
+      backgroundKinds: ["pedestrian-area"],
+      linearKinds: [],
+      routeOverlayKinds: ["raw-route", "snapped-route"],
+      objectiveMarkers: ["start", "required-via", "checkpoint", "destination"],
+      learnerOverlayStates: ["start-marker", "destination-marker", "required-checkpoint", "hint-revealed"],
+      restrictionSymbols: ["one-way"],
+      decluttering: ["detail"]
     }
   },
   {

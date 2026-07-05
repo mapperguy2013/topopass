@@ -1952,47 +1952,47 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       referenceViewportScale: 1,
       roadMinMultiplier: 0.9,
       roadGain: {
-        major: 0.08,
-        secondary: 0.13,
-        local: 0.24,
-        service: 0.2,
-        restricted: 0.14
+        major: 0.59,
+        secondary: 0.59,
+        local: 0.59,
+        service: 0.45,
+        restricted: 0.45
       },
       roadMaxMultiplier: {
-        major: 1.45,
-        secondary: 1.75,
-        local: 2.35,
-        service: 2,
-        restricted: 1.7
+        major: 10,
+        secondary: 10,
+        local: 10,
+        service: 6,
+        restricted: 4
       },
       labelGain: {
-        major: 0.08,
-        secondary: 0.12,
-        minor: 0.18,
-        service: 0.16,
-        restricted: 0.12,
-        context: 0.08,
+        major: 0.45,
+        secondary: 0.45,
+        minor: 0.45,
+        service: 0.42,
+        restricted: 0.38,
+        context: 0.35,
         stop: 0
       },
       labelMaxMultiplier: {
-        major: 1.35,
-        secondary: 1.55,
-        minor: 1.9,
-        service: 1.7,
-        restricted: 1.45,
-        context: 1.32,
+        major: 6,
+        secondary: 6,
+        minor: 6,
+        service: 5,
+        restricted: 4.5,
+        context: 4,
         stop: 1
       },
-      labelHaloMaxMultiplier: 1.65,
-      labelCollisionMaxMultiplier: 1.35,
+      labelHaloMaxMultiplier: 4.5,
+      labelCollisionMaxMultiplier: 3,
       highZoomViewportScale: 5,
       veryHighZoomViewportScale: 10,
       highZoomMinRoadLengthMultiplier: 0.82,
       veryHighZoomMinRoadLengthMultiplier: 0.68,
-      markerGain: 0.09,
-      markerMaxMultiplier: 1.42,
-      restrictionGain: 0.1,
-      restrictionMaxMultiplier: 1.48
+      markerGain: 0.24,
+      markerMaxMultiplier: 2.5,
+      restrictionGain: 0.35,
+      restrictionMaxMultiplier: 3.5
     }
   }
 } as const satisfies TopopassStreetAtlasStyle;

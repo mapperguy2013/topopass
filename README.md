@@ -1061,6 +1061,13 @@ street labels become larger and easier to place at high zoom, and one-way /
 restriction symbols grow modestly without overpowering learner overlays. At
 5000%, symbols are capped rather than scaled linearly, so the map remains
 usable for close learner inspection without turning junctions into visual mud.
+Stage 161.6.8.1 strengthens the high-zoom road scale after learner review found
+the earlier damped multipliers too subtle. Normal road strokes and casings now
+use a capped power curve that targets about 10x visual width at 5000% zoom,
+service/restricted roads use softer caps, labels use a separate capped scale of
+up to about 6x, and raw drawing/snap affordances receive stronger visual-only
+scaling. Geometry, X/Y isotropy, route matching, scoring, legality, fixture
+data, and beta gates are unchanged.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

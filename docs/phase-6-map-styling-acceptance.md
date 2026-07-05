@@ -367,6 +367,17 @@ minor roads and local street names inspectable while learner route overlays,
 start/destination/checkpoint markers, illegal segments, and review warnings
 remain visually above the base map.
 
+Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
+5000% (`50x`) geometry zoom, normal road strokes and casings should render at
+roughly 10x their 100% visual width through a capped semantic power curve,
+while service and restricted roads use softer caps so they do not dominate the
+atlas. Street labels, bridge labels, halos, and collision padding use a
+separate capped label scale of up to about 6x. Raw drawing, snap hints, and
+learner markers also receive stronger visual-only scaling for easier route
+drawing. This is presentation-only: map projection remains isotropic, and
+route matching, scoring, legality, OSM conversion, fixture data, beta gates,
+feedback, auth, subscriptions, product flow, and Phase 7 scope are unchanged.
+
 ## Stage 161.7 Waterloo / Thames Final Cartography Correction
 
 Stage 161.7 applies a final targeted visual correction to the Waterloo Bridge /

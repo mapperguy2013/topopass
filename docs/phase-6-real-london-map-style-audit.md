@@ -275,6 +275,27 @@ renderer must preserve drawing alignment, marker alignment, and submit
 matching after zooming; it must not stretch X/Y differently or scale symbols
 linearly to 5000%.
 
+## Stage 161.6.8.1 Strong High-Zoom Road Scaling
+
+Stage 161.6.8.1 tightens the high-zoom visual contract after the first
+zoom-adaptive pass still felt too close to fixed screen-space styling. The
+renderer continues to pass the explicit route-runner zoom into the shared
+cartographic helpers, but the helpers now use capped power curves rather than
+the earlier subtle logarithmic gain.
+
+At 5000% (`50x`) zoom, normal drivable road strokes and casings target about
+10x their 100% visual width. Service and restricted roads use lower caps, so
+they become easier to draw against without overtaking primary, secondary, and
+local streets. Labels use a separate capped scale of up to about 6x, with
+halos and collision boxes derived from the scaled label size. Restriction
+symbols and learner markers keep their own lower caps, and raw drawing/snap
+affordances scale visually so high zoom gives learners a wider target.
+
+This remains a Phase 6 readability-only change. Geometry zoom stays isotropic;
+CSS/image stretching is not used; scoring, route matching, legality checks,
+OSM conversion, fixture data, beta gates, feedback tooling, auth,
+subscriptions, product flow, and Phase 7 scope are unchanged.
+
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 
 Stage 161.5 corrects the Waterloo Bridge / Blackfriars / Thames corridor after

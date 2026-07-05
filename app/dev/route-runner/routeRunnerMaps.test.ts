@@ -575,6 +575,9 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
   );
   assert.deepEqual(comparisonSummary.scenarioIds, [
     "dense-central-readability",
+    "high-zoom-road-scale-100",
+    "high-zoom-road-scale-1000",
+    "high-zoom-road-scale-5000",
     "major-road-side-street-hierarchy",
     "park-water-rail-station-context",
     "bridge-crossing-context",
@@ -631,6 +634,27 @@ test("Stage 152 visual comparison scenarios register deterministic readability m
       assert.match(scenarioOption.attribution ?? "", /OpenStreetMap contributors/);
     }
   }
+});
+
+test("Stage 161.6.8.1 visual QA scenarios compare high zoom road scaling at fixed fixture context", () => {
+  const zoomScenarios = REAL_LONDON_VISUAL_READABILITY_SCENARIOS.filter((scenario) =>
+    scenario.id.startsWith("high-zoom-road-scale-")
+  );
+
+  assert.deepEqual(
+    zoomScenarios.map((scenario) => [scenario.id, scenario.viewport.zoom, scenario.viewport.declutterTier]),
+    [
+      ["high-zoom-road-scale-100", 1, "learner"],
+      ["high-zoom-road-scale-1000", 10, "detail"],
+      ["high-zoom-road-scale-5000", 50, "detail"]
+    ]
+  );
+  assert.equal(new Set(zoomScenarios.map((scenario) => scenario.mapId)).size, 1);
+  assert.equal(new Set(zoomScenarios.map((scenario) => JSON.stringify(scenario.viewport.bounds))).size, 1);
+  assert.ok(zoomScenarios.every((scenario) => scenario.expected.roadHierarchies.includes("primary")));
+  assert.ok(zoomScenarios.every((scenario) => scenario.expected.labelKinds.includes("road")));
+  assert.ok(zoomScenarios.every((scenario) => scenario.expected.routeOverlayKinds.includes("raw-route")));
+  assert.ok(zoomScenarios.every((scenario) => scenario.expected.routeOverlayKinds.includes("snapped-route")));
 });
 
 test("Stage 158 final visual regression gate covers release-candidate contexts", () => {
