@@ -243,13 +243,17 @@ to use while keeping route matching, scoring, legality, exercise generation,
 OSM conversion, feedback tooling, and Phase 7 scope unchanged.
 
 Beta testers can now choose from the Real London pilot and the curated
-Piccadilly Circus, Waterloo Bridge / Thames corridor, one-way system, and quiet
-residential fixtures. Fixture metadata controls use:
+Piccadilly Circus, Waterloo Bridge / Thames corridor, one-way system, quiet
+residential, King's Cross / Euston, and Central London stress fixtures when
+they are marked beta-visible. Fixture metadata controls use:
 
 - `routableExercise` maps are available for scored practice.
-- `routeReviewFixture` maps are labelled as review fixtures.
-- `visualQaOnly` maps are labelled as map-inspection fixtures and are not
+- `routeReviewFixture` maps are labelled as `Route review`.
+- `visualQaOnly` maps are labelled as `Map preview only` and are not
   offered as scored exercises.
+- `devOnlyStressTest` maps can appear only when `visibleInBeta=true`; they are
+  labelled `Stress test / slow`, lazy-loaded where possible, and never treated
+  as scored practice until validation explicitly allows it.
 
 Changing the selected map resets the current drawing, previous result, matching
 messages, viewport state, and debug overlays so stale attempt state does not
@@ -297,6 +301,16 @@ expected route can be generated, a synthetic perfect drawn attempt matches, and
 scoring is reached. `visualQaOnly` fixtures remain map-inspection only, and
 `routeReviewFixture` fixtures stay labelled for review workflows rather than
 normal scored practice.
+
+Stage 161.6.9 separates beta map visibility from scoreability. A curated map
+with `visibleInBeta=true` appears in `/practice/real-london` even when
+`scoreable=false`. Non-scoreable maps render for pan/zoom, legend, attribution,
+and visual review, but the route exercise selector and Submit flow expose no
+scored target and must not produce matching/scoring errors simply because the
+fixture has no validated exercise. The beta selector badges are `Scored
+practice`, `Route review`, `Map preview only`, and `Stress test / slow`.
+Central London is explicitly visible as a lazy `devOnlyStressTest` preview, not
+as scored practice.
 
 Stage 161.6.4 tightens the route exercise selector wiring for the curated
 fixtures. The selected map id and selected exercise id now resolve through a
@@ -421,16 +435,16 @@ largest drivable component of 62,152 nodes, 21,124 one-way directed edges, and
 exercises because generated 6.5 km perfect-route matching took about 80 seconds
 in the stress probe. The acceptance rule is therefore:
 
-- Central London must not appear in the `/practice/real-london` beta map
-  selector while it is oversized for the current practice-page loading model.
-- Central London remains metadata-only as `devOnlyStressTest` with
-  `betaPracticeAllowed=false`.
+- Central London may appear in the `/practice/real-london` beta map selector
+  only as an explicitly beta-visible `Stress test / slow` preview.
+- Central London remains `devOnlyStressTest` with `betaPracticeAllowed=false`,
+  `visibleInBeta=true`, and `scoreable=false`.
 - It must not offer scored route exercises until loading, matching, and scoring
   performance are validated for the larger graph.
-- Learner practice must load only the stable pilot plus fixtures that pass this
-  same budget, route preflight, synthetic matching, and scoring gate.
-- Oversized or dev-only stress fixtures must not be eagerly imported by
-  learner-facing catalogues.
+- Learner practice must offer scoring only on fixtures that pass this same
+  budget, route preflight, synthetic matching, and scoring gate.
+- Oversized or dev-only stress fixtures must not be eagerly imported by the
+  default learner-facing catalogue and should lazy-load after selection.
 - OSM attribution remains visible and no runtime Overpass calls are introduced.
 
 ## Stage 161.8.1 Fixture Budget Gate
@@ -438,14 +452,15 @@ in the stress probe. The acceptance rule is therefore:
 Stage 161.8.1 isolates the oversized Central London fixture after current
 practice-page testing showed around two-minute partial loads. Fixture metadata
 now records element counts, node/way/relation counts, optional road segment and
-rendered feature counts, `betaPracticeAllowed`, and `devOnlyStressTest`.
+rendered feature counts, `visibleInBeta`, `scoreable`, `visualQaOnly`,
+`routeReviewFixture`, `betaPracticeAllowed`, and `devOnlyStressTest`.
 
-The Phase 6 beta practice rule is: a fixture can be offered on
-`/practice/real-london` only when it is not dev-only stress data, is explicitly
-beta-practice allowed, stays within the fixture budget, and has validated
-scoreable route exercises where scoring is offered. Larger future imports need
-controlled scripted import, simplification, lazy loading, tiling, or a
-Geofabrik-based pipeline before learner exposure.
+The Phase 6 beta practice rule is: visibility and scoring are separate. A
+fixture can be offered on `/practice/real-london` when `visibleInBeta=true`,
+but Submit/scoring can be offered only when `scoreable=true`, the fixture stays
+within the budget, and validated route exercises exist. Larger future imports
+need controlled scripted import, simplification, lazy loading, tiling, or a
+Geofabrik-based pipeline before scored learner exposure.
 
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 
@@ -495,10 +510,10 @@ Budget guardrails now record raw element counts plus road-segment and rendered
 feature ceilings. The smaller curated fixtures remain
 `betaPracticeAllowed`; King's Cross / Euston is
 `betaPracticeAllowedWithLoading`; Central London remains `devOnlyStressTest`
-and is still excluded from the learner catalogue. Larger raw Overpass fixtures
-must pass budget checks and should use lazy loading, preprocessing,
-simplification, tiling, or a later controlled import pipeline before wider
-practice use.
+and is visible only as a lazy `Stress test / slow` map preview. Larger raw
+Overpass fixtures must pass budget checks and should use lazy loading,
+preprocessing, simplification, tiling, or a later controlled import pipeline
+before wider scored practice use.
 
 ## Acceptance Checklist
 

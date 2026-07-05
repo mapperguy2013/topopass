@@ -41,6 +41,8 @@ export type RouteRunnerMapOption = {
   devOnly?: boolean;
   fixtureUse?: RouteRunnerFixtureUse;
   fixturePerformanceGate?: RouteRunnerFixturePerformanceGate;
+  visibleInBeta?: boolean;
+  scoreable?: boolean;
   lazyLoadId?: string;
   lazyLoadingLabel?: string;
 };

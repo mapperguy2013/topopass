@@ -157,24 +157,23 @@ scored beta practice. No Central London scored exercises are offered until a
 future route/matching performance pass can validate them within the normal beta
 practice budget.
 
-Stage 161.8.1 disables Central London from the learner-facing
-`/practice/real-london` catalogue. In the current Phase 6 practice page it can
-take around two minutes and still only partially load, so it is now treated as a
-metadata-only `devOnlyStressTest`: `betaPracticeAllowed=false`,
-`devOnlyStressTest=true`, and it must not be eagerly imported by learner
-practice code. At Stage 161.8.1 the active beta practice set was narrowed to
-the stable pilot fixture plus the four smaller curated Overpass fixtures:
-Piccadilly Circus, Waterloo Bridge, one-way system area, and quiet residential
-roads, with later additions required to pass the same budget and scoring gate.
+Stage 161.6.9 makes Central London visible again in the learner-facing
+`/practice/real-london` catalogue, but only as a clearly labelled
+`Stress test / slow` map preview. It remains `betaPracticeAllowed=false`,
+`devOnlyStressTest=true`, `visibleInBeta=true`, `scoreable=false`, and
+`visualQaOnly=true`. The normal page uses a lightweight placeholder and
+lazy-loads the full fixture only after selection, so the default beta practice
+screen does not eagerly import the large Overpass JSON.
 
 Fixture budgets now record total elements, nodes, ways, relations, optional
 converted road segment counts, approximate rendered feature counts, fixture
-purpose, `betaPracticeAllowed`, and `devOnlyStressTest`. Oversized or
-dev-only-stress fixtures cannot be offered on `/practice/real-london`, cannot
-be scored, and should not be added to learner-facing bundles without passing a
-budget check. Larger future imports should use a controlled scripted import,
-simplification, lazy loading, tiling, or a Geofabrik-based pipeline before they
-are exposed to beta learners.
+purpose, `visibleInBeta`, `scoreable`, `visualQaOnly`, `routeReviewFixture`,
+`betaPracticeAllowed`, and `devOnlyStressTest`. Visibility in the beta selector
+does not imply scoring: oversized or dev-only stress fixtures can be offered
+only when explicitly beta-visible, cannot be scored until validated, and should
+use lazy loading. Larger future imports should use a controlled scripted
+import, simplification, lazy loading, tiling, or a Geofabrik-based pipeline
+before they are exposed as scored beta practice.
 
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as fixture id
 `kingsCrossEuston` with display label `King's Cross / Euston curated OSM`.

@@ -18,6 +18,8 @@ import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fi
 import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/waterlooBridgeOverpass.json" with { type: "json" };
 import { validateExerciseReachability } from "./exerciseValidation.ts";
 import {
+  CENTRAL_LONDON_LAZY_LOAD_ID,
+  CENTRAL_LONDON_OSM_MAP_ID,
   CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS,
   oneWaySystemAreaOsmRouteMap,
   oneWaySystemAreaOsmRoutePreflight,
@@ -371,13 +373,21 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
   const scoreableCuratedOptions = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
     (option) => option.fixtureUse === "routableExercise"
   );
+  const centralLondonOption = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
+    (option) => option.id === CENTRAL_LONDON_OSM_MAP_ID
+  );
 
   assert.equal(scoreableCuratedOptions.length, CURATED_PREFLIGHT_CASES.length);
-  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, CURATED_PREFLIGHT_CASES.length);
-  assert.equal(
-    CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.some((option) => option.id === "osm-curated-centralLondon"),
-    false
-  );
+  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, CURATED_PREFLIGHT_CASES.length + 1);
+  assert.ok(centralLondonOption);
+  assert.equal(centralLondonOption.fixtureUse, "visualQaOnly");
+  assert.equal(centralLondonOption.fixturePerformanceGate, "devOnlyStressTest");
+  assert.equal(centralLondonOption.visibleInBeta, true);
+  assert.equal(centralLondonOption.scoreable, false);
+  assert.equal(centralLondonOption.lazyLoadId, CENTRAL_LONDON_LAZY_LOAD_ID);
+  assert.equal(centralLondonOption.defaultExerciseId, "");
+  assert.equal(centralLondonOption.exercises.length, 0);
+  assert.equal(centralLondonOption.sourceOverpassFixture, undefined);
 
   for (const fixtureCase of CURATED_PREFLIGHT_CASES) {
     const catalogueOption = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(

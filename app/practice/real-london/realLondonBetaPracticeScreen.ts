@@ -28,6 +28,9 @@ import {
   REAL_LONDON_BETA_LABEL,
   getRealLondonBetaMapOptions,
   isRealLondonBetaAccessEnabled,
+  routeRunnerMapOptionBetaStatusLabel,
+  routeRunnerMapOptionIsScoreable,
+  routeRunnerMapOptionIsVisibleInBeta,
   resolveRealLondonBetaMapAccess,
   type RealLondonBetaAccessEnv,
   type RealLondonBetaUnavailableState
@@ -48,7 +51,12 @@ export type RealLondonBetaPracticeMapRow = {
   description: string;
   fixtureUse: "routableExercise" | "routeReviewFixture" | "visualQaOnly" | "legacyPilot";
   fixtureUseLabel: string;
+  visibleInBeta: boolean;
   scoreable: boolean;
+  visualQaOnly: boolean;
+  routeReviewFixture: boolean;
+  devOnlyStressTest: boolean;
+  betaPracticeAllowed: boolean;
   selected: boolean;
   fixturePerformanceGate: RouteRunnerMapOption["fixturePerformanceGate"] | null;
   lazyLoadId: string | null;
@@ -357,19 +365,11 @@ function fixtureUseForMapOption(option: RouteRunnerMapOption): RealLondonBetaPra
 }
 
 function fixtureUseLabel(fixtureUse: RealLondonBetaPracticeMapRow["fixtureUse"]): string {
-  if (fixtureUse === "routableExercise") {
-    return "Scored practice";
-  }
-
-  if (fixtureUse === "routeReviewFixture") {
-    return "Route review fixture";
-  }
-
-  if (fixtureUse === "visualQaOnly") {
-    return "Visual QA only";
-  }
-
-  return "Scored pilot";
+  return fixtureUse === "routeReviewFixture"
+    ? "Route review"
+    : fixtureUse === "visualQaOnly"
+      ? "Map preview only"
+      : "Scored practice";
 }
 
 function fixtureUseIsScoreable(fixtureUse: RealLondonBetaPracticeMapRow["fixtureUse"]): boolean {
@@ -384,8 +384,16 @@ function buildPracticeMapRow(option: RouteRunnerMapOption, selected: boolean): R
     label: option.label,
     description: option.description,
     fixtureUse,
-    fixtureUseLabel: fixtureUseLabel(fixtureUse),
-    scoreable: fixtureUseIsScoreable(fixtureUse),
+    fixtureUseLabel: routeRunnerMapOptionBetaStatusLabel(option) || fixtureUseLabel(fixtureUse),
+    visibleInBeta: routeRunnerMapOptionIsVisibleInBeta(option),
+    scoreable: routeRunnerMapOptionIsScoreable(option) && fixtureUseIsScoreable(fixtureUse),
+    visualQaOnly: fixtureUse === "visualQaOnly",
+    routeReviewFixture: fixtureUse === "routeReviewFixture",
+    devOnlyStressTest: option.fixturePerformanceGate === "devOnlyStressTest",
+    betaPracticeAllowed:
+      option.fixturePerformanceGate === "betaPracticeAllowed" ||
+      option.fixturePerformanceGate === "betaPracticeAllowedWithLoading" ||
+      option.fixturePerformanceGate === undefined,
     fixturePerformanceGate: option.fixturePerformanceGate ?? null,
     lazyLoadId: option.lazyLoadId ?? null,
     lazyLoadingLabel: option.lazyLoadingLabel ?? null,

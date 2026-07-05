@@ -112,10 +112,46 @@ function isRealLondonBetaMapOption(option: RouteRunnerMapOption): boolean {
   return isRealLondonBetaMapId(option.map.id);
 }
 
+export function routeRunnerMapOptionIsVisibleInBeta(option: RouteRunnerMapOption): boolean {
+  if (!isRealLondonBetaMapOption(option)) {
+    return false;
+  }
+
+  if (option.visibleInBeta !== undefined) {
+    return option.visibleInBeta;
+  }
+
+  return option.fixturePerformanceGate !== "devOnlyStressTest";
+}
+
+export function routeRunnerMapOptionIsScoreable(option: RouteRunnerMapOption): boolean {
+  if (option.scoreable !== undefined) {
+    return option.scoreable;
+  }
+
+  return option.fixtureUse === undefined || option.fixtureUse === "routableExercise";
+}
+
+export function routeRunnerMapOptionBetaStatusLabel(option: RouteRunnerMapOption): string {
+  if (option.fixturePerformanceGate === "devOnlyStressTest") {
+    return "Stress test / slow";
+  }
+
+  if (option.fixtureUse === "routeReviewFixture") {
+    return "Route review";
+  }
+
+  if (option.fixtureUse === "visualQaOnly" || !routeRunnerMapOptionIsScoreable(option)) {
+    return "Map preview only";
+  }
+
+  return "Scored practice";
+}
+
 export function getRealLondonBetaMapOptions(
   mapOptions: readonly RouteRunnerMapOption[] = ROUTE_RUNNER_MAP_OPTIONS
 ): RouteRunnerMapOption[] {
-  return mapOptions.filter(isRealLondonBetaMapOption);
+  return mapOptions.filter(routeRunnerMapOptionIsVisibleInBeta);
 }
 
 export function getRouteRunnerVisibleMapOptions(input: {
@@ -127,13 +163,17 @@ export function getRouteRunnerVisibleMapOptions(input: {
   const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
 
   return mapOptions.filter((option) => {
-    const realLondonBetaMap = isRealLondonBetaMapOption(option);
+    const realLondonMap = isRealLondonBetaMapOption(option);
 
-    if (isDevOnlyRouteRunnerMapOption(option) && !realLondonBetaMap) {
+    if (realLondonMap) {
+      return betaEnabled && routeRunnerMapOptionIsVisibleInBeta(option);
+    }
+
+    if (isDevOnlyRouteRunnerMapOption(option)) {
       return false;
     }
 
-    return betaEnabled || !realLondonBetaMap;
+    return true;
   });
 }
 
@@ -156,7 +196,9 @@ export function resolveRealLondonBetaMapAccess(input: {
   const requestedMapOption = mapOptions.find(
     (option) =>
       option.map.id === input.requestedMapId &&
-      (!isDevOnlyRouteRunnerMapOption(option) || isRealLondonBetaMapOption(option))
+      (isRealLondonBetaMapOption(option)
+        ? routeRunnerMapOptionIsVisibleInBeta(option)
+        : !isDevOnlyRouteRunnerMapOption(option))
   );
   const defaultMapOption =
     mapOptions.find((option) => option.map.id === defaultMapId) ?? getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
@@ -253,7 +295,7 @@ export function buildPhase5RealLondonBetaReadinessReview(input: {
   );
   const readinessReports = readinessReportOptions.map((option) => buildLondonPilotReadinessReportForMapId(option.map.id));
   const scoreableRealLondonMapOptions = realLondonMapOptions.filter(
-    (option) => !option.lazyLoadId && (option.fixtureUse === undefined || option.fixtureUse === "routableExercise")
+    (option) => !option.lazyLoadId && routeRunnerMapOptionIsScoreable(option)
   );
   const attemptVersioningOk = scoreableRealLondonMapOptions.every((option) => buildAttemptVersioningStatus(option));
   const studentRouteFlowOk = scoreableRealLondonMapOptions.every((option) => buildStudentRouteFlowStatus(option));

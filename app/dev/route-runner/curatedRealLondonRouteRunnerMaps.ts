@@ -28,6 +28,8 @@ const ONE_WAY_SYSTEM_AREA_OSM_MAP_ID = "osm-curated-one-way-system-area";
 const QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID = "osm-curated-quiet-residential-roads";
 export const KINGS_CROSS_EUSTON_OSM_MAP_ID = "osm-curated-kings-cross-euston";
 export const KINGS_CROSS_EUSTON_LAZY_LOAD_ID = "kingsCrossEuston";
+export const CENTRAL_LONDON_OSM_MAP_ID = "osm-curated-centralLondon";
+export const CENTRAL_LONDON_LAZY_LOAD_ID = "centralLondonStressTest";
 
 export function buildCuratedRealLondonOsmMap(
   fixture: unknown,
@@ -88,6 +90,29 @@ export const kingsCrossEustonLazyPlaceholderRouteMap: MapDefinition = {
       distanceMeters: 100,
       isOneWay: false,
       name: "Loading King's Cross / Euston"
+    }
+  ],
+  restrictions: [],
+  landmarks: []
+};
+
+export const centralLondonLazyPlaceholderRouteMap: MapDefinition = {
+  id: CENTRAL_LONDON_OSM_MAP_ID,
+  name: "Central London curated OSM - Stress test",
+  mapVersion: "lazy-placeholder-1.0.0",
+  description: "Central London curated OSM stress-test fixture placeholder. Full map loads only after selection.",
+  nodes: [
+    { id: "osm-curated-central-london-loading-west", x: 0, y: 0, label: "Central London" },
+    { id: "osm-curated-central-london-loading-east", x: 120, y: 0, label: "Stress map loading" }
+  ],
+  roads: [
+    {
+      id: "osm-curated-central-london-loading-road",
+      fromNodeId: "osm-curated-central-london-loading-west",
+      toNodeId: "osm-curated-central-london-loading-east",
+      distanceMeters: 120,
+      isOneWay: false,
+      name: "Loading Central London stress map"
     }
   ],
   restrictions: [],
@@ -341,7 +366,10 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     fixtureName: "piccadillyCircusOverpass.json",
     sourceOverpassFixture: piccadillyCircusOverpassFixture,
     devOnly: true,
-    fixtureUse: piccadillyCircusOsmRoutePreflight.fixtureUse
+    fixtureUse: piccadillyCircusOsmRoutePreflight.fixtureUse,
+    fixturePerformanceGate: "betaPracticeAllowed",
+    visibleInBeta: true,
+    scoreable: true
   },
   {
     id: waterlooBridgeOsmRouteMap.id,
@@ -355,7 +383,10 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     fixtureName: "waterlooBridgeOverpass.json",
     sourceOverpassFixture: waterlooBridgeOverpassFixture,
     devOnly: true,
-    fixtureUse: waterlooBridgeOsmRoutePreflight.fixtureUse
+    fixtureUse: waterlooBridgeOsmRoutePreflight.fixtureUse,
+    fixturePerformanceGate: "betaPracticeAllowed",
+    visibleInBeta: true,
+    scoreable: true
   },
   {
     id: oneWaySystemAreaOsmRouteMap.id,
@@ -369,7 +400,10 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     fixtureName: "oneWaySystemAreaOverpass.json",
     sourceOverpassFixture: oneWaySystemAreaOverpassFixture,
     devOnly: true,
-    fixtureUse: oneWaySystemAreaOsmRoutePreflight.fixtureUse
+    fixtureUse: oneWaySystemAreaOsmRoutePreflight.fixtureUse,
+    fixturePerformanceGate: "betaPracticeAllowed",
+    visibleInBeta: true,
+    scoreable: true
   },
   {
     id: quietResidentialRoadsOsmRouteMap.id,
@@ -383,7 +417,10 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     fixtureName: "quietResidentialRoadsOverpass.json",
     sourceOverpassFixture: quietResidentialRoadsOverpassFixture,
     devOnly: true,
-    fixtureUse: quietResidentialRoadsOsmRoutePreflight.fixtureUse
+    fixtureUse: quietResidentialRoadsOsmRoutePreflight.fixtureUse,
+    fixturePerformanceGate: "betaPracticeAllowed",
+    visibleInBeta: true,
+    scoreable: true
   },
   {
     id: kingsCrossEustonLazyPlaceholderRouteMap.id,
@@ -398,8 +435,28 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     devOnly: true,
     fixtureUse: "routableExercise",
     fixturePerformanceGate: "betaPracticeAllowedWithLoading",
+    visibleInBeta: true,
+    scoreable: true,
     lazyLoadId: KINGS_CROSS_EUSTON_LAZY_LOAD_ID,
     lazyLoadingLabel: "Loading King's Cross / Euston map..."
+  },
+  {
+    id: centralLondonLazyPlaceholderRouteMap.id,
+    label: "Central London curated OSM - Stress test",
+    description: getCuratedRealLondonFixtureMetadata("centralLondon").areaPurpose,
+    source: "converted-osm",
+    map: centralLondonLazyPlaceholderRouteMap,
+    exercises: [],
+    defaultExerciseId: "",
+    attribution: getCuratedRealLondonFixtureMetadata("centralLondon").attribution.text,
+    fixtureName: "centralLondonOverpass.json",
+    devOnly: true,
+    fixtureUse: "visualQaOnly",
+    fixturePerformanceGate: "devOnlyStressTest",
+    visibleInBeta: true,
+    scoreable: false,
+    lazyLoadId: CENTRAL_LONDON_LAZY_LOAD_ID,
+    lazyLoadingLabel: "Loading Central London stress-test map..."
   }
 ];
 

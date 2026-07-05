@@ -178,15 +178,16 @@ seconds, so the fixture is registered as `visualQaOnly` with zero exercises.
 This keeps larger-area visual QA available without weakening route matching,
 legality checks, scoring, or exercise validation.
 
-Stage 161.8.1 disables Central London from `/practice/real-london` after the
-current Phase 6 practice page took around two minutes and still only partially
-loaded it. It remains metadata-only as a `devOnlyStressTest` with
-`betaPracticeAllowed=false`; learner beta selection is limited to fixtures that
-pass the same budget, route preflight, synthetic matching, and scoring gate.
-Known limitation before larger scripted imports: the engine can convert and
-inspect this bounded extract, but learner-facing loading and scored route
-matching need performance work before similarly large fixtures should be
-offered as practice.
+Stage 161.6.9 makes Central London visible in `/practice/real-london` again,
+but only as an explicitly marked `Stress test / slow` preview. It remains
+`devOnlyStressTest`, `visualQaOnly`, `betaPracticeAllowed=false`, and
+`scoreable=false`; no scored exercises or Submit target are offered. The beta
+catalogue uses a lightweight placeholder and lazy-loads the full fixture only
+after selection, so the default learner page does not eagerly import the large
+Overpass JSON. Known limitation before larger scripted imports: the engine can
+convert and inspect this bounded extract, but learner-facing loading and scored
+route matching need performance work before similarly large fixtures should be
+offered as scored practice.
 
 Future large imports should use controlled scripted import, simplification,
 lazy loading, tiling, or a Geofabrik-based pipeline, and must pass fixture

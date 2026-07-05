@@ -296,14 +296,24 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.ok(mapIds.includes("osm-curated-one-way-system-area"));
   assert.ok(mapIds.includes("osm-curated-quiet-residential-roads"));
   assert.ok(mapIds.includes("osm-curated-kings-cross-euston"));
-  assert.equal(mapIds.includes("osm-curated-centralLondon"), false);
+  assert.ok(mapIds.includes("osm-curated-centralLondon"));
   assert.ok(model.mapRows.every((row) => row.description.length > 0));
   assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
+  assert.ok(model.mapRows.every((row) => row.visibleInBeta));
   const kingsCrossRow = model.mapRows.find((row) => row.id === "osm-curated-kings-cross-euston");
+  const centralLondonRow = model.mapRows.find((row) => row.id === "osm-curated-centralLondon");
 
   assert.ok(kingsCrossRow);
+  assert.ok(centralLondonRow);
   assert.equal(kingsCrossRow.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
   assert.equal(kingsCrossRow.lazyLoadId, "kingsCrossEuston");
+  assert.equal(centralLondonRow.fixtureUseLabel, "Stress test / slow");
+  assert.equal(centralLondonRow.fixturePerformanceGate, "devOnlyStressTest");
+  assert.equal(centralLondonRow.lazyLoadId, "centralLondonStressTest");
+  assert.equal(centralLondonRow.scoreable, false);
+  assert.equal(centralLondonRow.visualQaOnly, true);
+  assert.equal(centralLondonRow.devOnlyStressTest, true);
+  assert.equal(centralLondonRow.betaPracticeAllowed, false);
 });
 
 test("Stage 161.6 beta screen can select a curated routable fixture", () => {
@@ -524,25 +534,30 @@ test("Stage 161.6 visual QA fixtures are labelled and not treated as scoreable p
   assert.equal(model.routeFlow.existingRunnerScorePassed, false);
 });
 
-test("Stage 161.8.1 centralLondon stress fixture is not exposed on beta practice", () => {
+test("Stage 161.6.9 centralLondon stress fixture is visible on beta practice without scoring", () => {
   const model = buildRealLondonBetaPracticeScreenModel({
     betaEnabled: true,
     requestedMapId: "osm-curated-centralLondon"
   });
 
-  assert.equal(model.state, "unavailable");
+  assert.equal(model.state, "available");
 
-  if (model.state !== "unavailable") {
-    throw new Error("Expected unavailable Central London stress fixture.");
+  if (model.state !== "available") {
+    throw new Error("Expected available Central London stress fixture.");
   }
 
-  assert.equal(model.unavailableState.mapId, "osm-curated-centralLondon");
-  assert.equal(model.unavailableState.reasonCode, "unknown-map");
-  assert.equal(model.defaultMapId, DEFAULT_ROUTE_RUNNER_MAP_ID);
-  assert.equal(
-    REAL_LONDON_BETA_MAP_OPTIONS.some((option) => option.id === "osm-curated-centralLondon"),
-    false
-  );
+  assert.equal(model.mapId, "osm-curated-centralLondon");
+  assert.equal(model.selectedMap.fixtureUseLabel, "Stress test / slow");
+  assert.equal(model.selectedMap.scoreable, false);
+  assert.equal(model.selectedMap.visualQaOnly, true);
+  assert.equal(model.selectedMap.devOnlyStressTest, true);
+  assert.equal(model.selectedMap.lazyLoadId, "centralLondonStressTest");
+  assert.equal(model.selectedMap.lazyLoadingLabel, "Loading Central London stress-test map...");
+  assert.equal(model.exerciseRows.length, 0);
+  assert.equal(model.selectedExercise, null);
+  assert.equal(model.routeFlow.shortestRouteFound, false);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, false);
+  assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
   assert.equal(
     REAL_LONDON_BETA_MAP_OPTIONS.flatMap((option) => option.exercises).some((exercise) =>
       exercise.id.includes("centralLondon")

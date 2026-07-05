@@ -988,8 +988,9 @@ so the finish point reads attached to the route.
 Stage 161.6 improves the beta tester Real London practice UX. The beta practice
 screen now uses the curated map catalogue so testers can switch between the
 Real London pilot, Piccadilly Circus, Waterloo Bridge / Thames corridor,
-one-way system, and quiet residential fixtures. `routableExercise` maps remain
-scoreable, `routeReviewFixture` and `visualQaOnly` maps are labelled clearly,
+one-way system, quiet residential, King's Cross / Euston, and Central London
+stress fixtures. `routableExercise` maps remain scoreable,
+`routeReviewFixture`, `visualQaOnly`, and `devOnlyStressTest` maps are labelled clearly,
 and visual-only fixtures do not offer scored route submission. Switching maps
 resets the drawn route, previous score/result, matching messages, viewport, and
 debug overlays; the learner control is labelled `Erase route` and clears the
@@ -1068,6 +1069,16 @@ service/restricted roads use softer caps, labels use a separate capped scale of
 up to about 6x, and raw drawing/snap affordances receive stronger visual-only
 scaling. Geometry, X/Y isotropy, route matching, scoring, legality, fixture
 data, and beta gates are unchanged.
+Stage 161.6.9 separates curated map visibility from route scoreability in the
+learner-facing Real London beta selector. All curated beta-visible fixtures now
+appear in `/practice/real-london`, including visual-only and stress-test maps.
+Selector badges distinguish `Scored practice`, `Route review`, `Map preview
+only`, and `Stress test / slow`; non-scoreable maps render for pan/zoom, legend,
+attribution, and visual review but expose no scored exercise or submit target.
+The Central London stress fixture is explicit `visibleInBeta=true`,
+`scoreable=false`, `visualQaOnly=true`, `devOnlyStressTest=true`, and lazy-loads
+only after selection, so the default beta page does not eagerly import the
+large fixture.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor
@@ -1087,16 +1098,14 @@ with 119,024 directed edges, but generated 6.5 km perfect-route matching took
 about 80 seconds in the stress probe, so it is deliberately `visualQaOnly` with
 zero scored beta exercises. It remains useful for explicit large-area stress
 inspection without weakening matching, legality, scoring, or route validation.
-Stage 161.8.1 disables that oversized fixture from `/practice/real-london`
-after real page loading proved too slow, with about two-minute partial loads in
-the current Phase 6 practice UI. At that point the beta practice catalogue was
-narrowed to the stable Real London pilot plus Piccadilly Circus, Waterloo
-Bridge, one-way system, and quiet residential curated fixtures. Central London remains
-metadata-only as a `devOnlyStressTest`; it is not offered as scored practice,
-does not appear in the practice selector, and is not imported by the normal
-learner catalogue. Future larger imports must pass fixture budget checks and
-should use controlled scripted import, simplification, lazy loading, tiling, or
-a Geofabrik-based pipeline before they can be exposed to beta learners.
+Stage 161.8.1 originally disabled that oversized fixture from
+`/practice/real-london` after real page loading proved too slow, with about
+two-minute partial loads in the current Phase 6 practice UI. Stage 161.6.9 keeps
+the safety outcome but changes the UX: Central London is visible in the selector
+as `Stress test / slow`, stays `scoreable=false`, offers no route exercises, and
+lazy-loads only after selection. Future larger imports must pass fixture budget
+checks and should use controlled scripted import, simplification, lazy loading,
+tiling, or a Geofabrik-based pipeline before they can become scored practice.
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled beta
 candidate with fixture id `kingsCrossEuston`, display label
 `King's Cross / Euston curated OSM`, and route id prefix
@@ -1115,7 +1124,8 @@ JSON, conversion output, route preflights, and scored exercises only after a
 tester selects it. The page shows "Loading King's Cross / Euston map..." and
 disables Submit while the map is being prepared. Smaller curated beta fixtures
 remain immediately available; oversized/dev-only stress fixtures remain blocked
-from scored practice by fixture budget metadata.
+from scored practice by fixture budget metadata and appear only when explicitly
+marked beta-visible.
 
 ## Current Feature Set
 

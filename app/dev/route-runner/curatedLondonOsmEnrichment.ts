@@ -72,6 +72,10 @@ export type CuratedRealLondonOverpassFixtureMetadata = {
   attribution: typeof CURATED_LONDON_OSM_ATTRIBUTION;
   knownLimitations: readonly string[];
   fixtureBudget: CuratedRealLondonFixtureBudget;
+  visibleInBeta: boolean;
+  scoreable: boolean;
+  visualQaOnly: boolean;
+  routeReviewFixture: boolean;
   betaPracticeAllowed: boolean;
   devOnlyStressTest: boolean;
   fixturePerformanceGate: CuratedRealLondonFixturePerformanceGate;
@@ -277,6 +281,10 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       relations: 13,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
+    visibleInBeta: true,
+    scoreable: true,
+    visualQaOnly: false,
+    routeReviewFixture: false,
     betaPracticeAllowed: true,
     devOnlyStressTest: false,
     fixturePerformanceGate: "betaPracticeAllowed"
@@ -300,6 +308,10 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       relations: 44,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
+    visibleInBeta: true,
+    scoreable: true,
+    visualQaOnly: false,
+    routeReviewFixture: false,
     betaPracticeAllowed: true,
     devOnlyStressTest: false,
     fixturePerformanceGate: "betaPracticeAllowed"
@@ -323,6 +335,10 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       relations: 50,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
+    visibleInBeta: true,
+    scoreable: true,
+    visualQaOnly: false,
+    routeReviewFixture: false,
     betaPracticeAllowed: true,
     devOnlyStressTest: false,
     fixturePerformanceGate: "betaPracticeAllowed"
@@ -346,6 +362,10 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       relations: 12,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
+    visibleInBeta: true,
+    scoreable: true,
+    visualQaOnly: false,
+    routeReviewFixture: false,
     betaPracticeAllowed: true,
     devOnlyStressTest: false,
     fixturePerformanceGate: "betaPracticeAllowed"
@@ -375,6 +395,10 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       maxApproximateRenderedFeatureCount: 12000,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
+    visibleInBeta: true,
+    scoreable: true,
+    visualQaOnly: false,
+    routeReviewFixture: false,
     betaPracticeAllowed: true,
     devOnlyStressTest: false,
     fixturePerformanceGate: "betaPracticeAllowedWithLoading"
@@ -404,6 +428,10 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
       maxApproximateRenderedFeatureCount: 12000,
       maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
     },
+    visibleInBeta: true,
+    scoreable: false,
+    visualQaOnly: true,
+    routeReviewFixture: false,
     betaPracticeAllowed: false,
     devOnlyStressTest: true,
     fixturePerformanceGate: "devOnlyStressTest"

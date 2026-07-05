@@ -249,6 +249,8 @@ import {
   getRouteRunnerDevQaMapOptions,
   getRouteRunnerVisibleMapOptions,
   isRealLondonBetaAccessEnabled,
+  routeRunnerMapOptionBetaStatusLabel,
+  routeRunnerMapOptionIsScoreable,
   resolveRealLondonBetaMapAccess
 } from "./routeRunnerRealLondonBetaGate";
 import {
@@ -324,24 +326,8 @@ function requireRouteRunnerMapOption(option: RouteRunnerMapOption | undefined): 
   return option;
 }
 
-function routeRunnerMapOptionIsScoreable(option: RouteRunnerMapOption): boolean {
-  return option.fixtureUse === undefined || option.fixtureUse === "routableExercise";
-}
-
 function routeRunnerFixtureUseLabel(option: RouteRunnerMapOption): string {
-  if (option.fixtureUse === "routableExercise") {
-    return "Scored practice";
-  }
-
-  if (option.fixtureUse === "routeReviewFixture") {
-    return "Route review fixture";
-  }
-
-  if (option.fixtureUse === "visualQaOnly") {
-    return "Visual QA only";
-  }
-
-  return "Scored pilot";
+  return routeRunnerMapOptionBetaStatusLabel(option);
 }
 
 function updateStudentBetaRouteRunnerUrl(mapId: string, exerciseId: string): void {
@@ -5162,7 +5148,9 @@ export function RouteRunnerClient({
             </h1>
             <p className="mt-1 text-sm leading-6 text-slate-600">
               {isStudentBetaRouteRunner
-                ? "Choose an exercise, draw your route on the map, then submit it for feedback."
+                ? selectedMapIsScoreable
+                  ? "Choose an exercise, draw your route on the map, then submit it for feedback."
+                  : "Review this map with pan, zoom, legend, and attribution. Scored exercises are not available yet."
                 : exercisePositionLabel}
               {!isStudentBetaRouteRunner && selectedExerciseMetadata
                 ? ` - ${selectedExerciseMetadata.difficulty} - ${selectedExerciseMetadata.estimatedMinutes} min`
@@ -5399,8 +5387,7 @@ export function RouteRunnerClient({
 
             {!selectedMapIsScoreable ? (
               <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-950">
-                This fixture is labelled {selectedMapFixtureUseLabel.toLowerCase()} and is available for map inspection
-                rather than scored route submission.
+                This map is available for visual testing only. Scored route exercises are not available yet.
               </p>
             ) : null}
 
