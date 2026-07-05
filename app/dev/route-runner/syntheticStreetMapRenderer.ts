@@ -1152,12 +1152,20 @@ export function cartographicRestrictionSymbolScaleForViewport(viewport: ScreenMa
   );
 }
 
+export function cartographicRouteOverlayScaleForZoom(currentZoom: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale;
+  const scaleInput = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.referenceViewportScale;
+
+  return getZoomStyleScale(scaleInput, scaleTokens.routeOverlayGain, scaleTokens.routeOverlayMaxMultiplier);
+}
+
 export function cartographicStyleScaleForZoom(currentZoom: number): {
   majorRoad: number;
   secondaryRoad: number;
   localRoad: number;
   serviceRoad: number;
   restrictedRoad: number;
+  routeOverlay: number;
   majorLabel: number;
   secondaryLabel: number;
   minorLabel: number;
@@ -1189,6 +1197,7 @@ export function cartographicStyleScaleForZoom(currentZoom: number): {
       scaleTokens.roadMaxMultiplier.restricted,
       scaleTokens.roadMinMultiplier
     ),
+    routeOverlay: cartographicRouteOverlayScaleForZoom(scaleInput),
     majorLabel: getZoomStyleScale(scaleInput, scaleTokens.labelGain.major, scaleTokens.labelMaxMultiplier.major),
     secondaryLabel: getZoomStyleScale(
       scaleInput,

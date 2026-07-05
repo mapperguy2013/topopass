@@ -170,6 +170,8 @@ export type TopopassCartographicZoomScaleStyle = {
   roadMinMultiplier: number;
   roadGain: Record<"major" | "secondary" | "local" | "service" | "restricted", number>;
   roadMaxMultiplier: Record<"major" | "secondary" | "local" | "service" | "restricted", number>;
+  routeOverlayGain: number;
+  routeOverlayMaxMultiplier: number;
   labelGain: Record<"major" | "secondary" | "minor" | "service" | "restricted" | "context" | "stop", number>;
   labelMaxMultiplier: Record<"major" | "secondary" | "minor" | "service" | "restricted" | "context" | "stop", number>;
   labelHaloMaxMultiplier: number;
@@ -1950,49 +1952,51 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     cartographicScale: {
       referenceViewportScale: 1,
-      roadMinMultiplier: 0.9,
+      roadMinMultiplier: 1,
       roadGain: {
-        major: 0.59,
-        secondary: 0.59,
-        local: 0.59,
-        service: 0.45,
-        restricted: 0.45
+        major: 0.75,
+        secondary: 0.75,
+        local: 0.75,
+        service: 0.58,
+        restricted: 0.58
       },
       roadMaxMultiplier: {
-        major: 10,
-        secondary: 10,
-        local: 10,
-        service: 6,
-        restricted: 4
+        major: 16,
+        secondary: 16,
+        local: 17,
+        service: 9,
+        restricted: 9
       },
+      routeOverlayGain: 0.66,
+      routeOverlayMaxMultiplier: 13,
       labelGain: {
-        major: 0.45,
-        secondary: 0.45,
-        minor: 0.45,
-        service: 0.42,
-        restricted: 0.38,
-        context: 0.35,
+        major: 0.58,
+        secondary: 0.58,
+        minor: 0.58,
+        service: 0.54,
+        restricted: 0.5,
+        context: 0.44,
         stop: 0
       },
       labelMaxMultiplier: {
-        major: 6,
-        secondary: 6,
-        minor: 6,
-        service: 5,
-        restricted: 4.5,
-        context: 4,
+        major: 9,
+        secondary: 9,
+        minor: 9,
+        service: 8,
+        restricted: 7,
+        context: 5.5,
         stop: 1
       },
-      labelHaloMaxMultiplier: 4.5,
-      labelCollisionMaxMultiplier: 3,
+      labelHaloMaxMultiplier: 6,
+      labelCollisionMaxMultiplier: 5,
       highZoomViewportScale: 5,
       veryHighZoomViewportScale: 10,
       highZoomMinRoadLengthMultiplier: 0.82,
       veryHighZoomMinRoadLengthMultiplier: 0.68,
       markerGain: 0.24,
       markerMaxMultiplier: 2.5,
-      restrictionGain: 0.35,
-      restrictionMaxMultiplier: 3.5
+      restrictionGain: 0.42,
+      restrictionMaxMultiplier: 4
     }
   }
 } as const satisfies TopopassStreetAtlasStyle;

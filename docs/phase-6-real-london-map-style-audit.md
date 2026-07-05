@@ -315,6 +315,25 @@ CSS/image stretching is not used; scoring, route matching, legality checks,
 OSM conversion, fixture data, beta gates, feedback tooling, auth,
 subscriptions, product flow, and Phase 7 scope are unchanged.
 
+## Stage 161.6.8.2 Stronger High-Zoom Road Corridor Scaling
+
+Stage 161.6.8.2 raises the high-zoom visual target after learner review still
+found 2500%-5000% roads too narrow for comfortable drawing. The road scale curve
+now uses a stronger capped semantic multiplier: major and secondary roads cap at
+about 16x, local roads at about 17x, and service/restricted roads at about 9x so
+minor access roads do not overpower the primary road hierarchy.
+
+Labels use their own high-zoom curve and cap around 9x for road names, with
+halo and collision boxes scaled from the same label multiplier. Learner route
+and drawn-attempt strokes use a separate route-overlay cap around 13x, while
+start/checkpoint/finish markers, restriction symbols, and one-way arrows keep
+smaller caps so they remain readable without dominating junctions.
+
+This is still a Phase 6 visual-readability refinement only. The map projection
+remains isotropic; no CSS/image stretching is introduced; route matching,
+scoring, legality checks, OSM data, runtime Overpass access, beta QA visibility,
+and Phase 7 scope are unchanged.
+
 ## Stage 161.5 Waterloo / Thames Atlas Readability Correction
 
 Stage 161.5 corrects the Waterloo Bridge / Blackfriars / Thames corridor after

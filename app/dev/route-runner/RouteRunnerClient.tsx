@@ -136,6 +136,7 @@ import {
   buildSyntheticRoadVisuals,
   buildRoadRenderPasses,
   cartographicMarkerScaleForViewport,
+  cartographicRouteOverlayScaleForZoom,
   cartographicStyleScaleForZoom,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
@@ -1802,7 +1803,7 @@ function drawRoadRestrictionOverlay(
 
   const colour = restrictionOverlayColour(overlay.kind);
   const overlayStyle = restrictionOverlayStyle(overlay.kind);
-  const scale = Math.min(cartographicStyleScaleForZoom(currentZoom ?? 1).restrictionSymbol, 1.3);
+  const scale = cartographicStyleScaleForZoom(currentZoom ?? 1).restrictionSymbol;
   const screenPoints = overlay.points.map((point) => mapToScreenPoint(point, viewport));
 
   context.save();
@@ -2349,7 +2350,7 @@ function drawFastestRouteOverlay(
     routePoints,
     viewport,
     TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
-    Math.min(cartographicStyleScaleForZoom(currentZoom ?? 1).marker, 2.2)
+    cartographicRouteOverlayScaleForZoom(currentZoom ?? 1)
   );
 }
 
@@ -3055,7 +3056,7 @@ function drawRouteCanvas(input: {
 
   if (visibleRawStrokes.length > 0) {
     const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
-    const routeScale = Math.min(cartographicStyleScaleForZoom(input.currentZoom).marker, 2.4);
+    const routeScale = cartographicRouteOverlayScaleForZoom(input.currentZoom);
 
     visibleRawStrokes.forEach((stroke) => {
       drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle, routeScale);
