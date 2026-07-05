@@ -110,6 +110,13 @@ export function buildRouteRunnerPanelVisibility(input: {
         "raw-osm-node-ids",
         "raw-road-ids",
         "raw-route-graph-ids",
+        "raw-graph-ids",
+        "local-route-attempt-ids",
+        "technical-per-leg-labels",
+        "drawn-route-score-summary",
+        "duplicate-route-controls",
+        "duplicate-submit-status",
+        "route-replay-panel",
         "pipeline-debug-result",
         "adaptive-dev-dashboard"
       ];

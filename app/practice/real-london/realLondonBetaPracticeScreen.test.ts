@@ -118,6 +118,13 @@ test("Stage 132 beta screen hides dev QA diagnostics", () => {
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-osm-node-ids"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-road-ids"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-route-graph-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-graph-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("local-route-attempt-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("technical-per-leg-labels"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("drawn-route-score-summary"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("duplicate-route-controls"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("duplicate-submit-status"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("route-replay-panel"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("real-london-pilot-qa"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("real-london-pilot-playthrough"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("adaptive-dev-dashboard"));
@@ -157,8 +164,46 @@ test("Stage 132 route attempt flow uses existing runner and remains scoreable", 
   assert.ok(model.routeFlow.selectedEdgeCount > 0);
   assert.equal(model.mapInteraction.submitActionLabel, "Submit");
   assert.equal(model.mapInteraction.clearActionLabel, "Erase route");
+  assert.equal(model.mapInteraction.resetActionLabel, "Reset view");
   assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
   assert.equal(model.mapInteraction.eraseClearsDrawingAndResult, true);
+  assert.equal(model.mapInteraction.eraseKeepsSelectedMapAndExercise, true);
+  assert.equal(model.mapInteraction.eraseKeepsCurrentMapView, true);
+  assert.equal(model.mapInteraction.resetClearsDrawingAndResult, true);
+  assert.equal(model.mapInteraction.resetResetsMapView, true);
+  assert.equal(model.mapInteraction.resetKeepsSelectedMapAndExercise, true);
+  assert.equal(model.mapInteraction.resetReturnsToDrawMode, true);
+});
+
+test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.learnerUi.routeHeaderCount, 1);
+  assert.equal(model.learnerUi.visibleMapWorkspaceHeading, false);
+  assert.equal(model.learnerUi.routeControls.undoCount, 1);
+  assert.equal(model.learnerUi.routeControls.eraseRouteCount, 1);
+  assert.equal(model.learnerUi.routeControls.resetViewCount, 1);
+  assert.equal(model.learnerUi.routeControls.submitCount, 1);
+  assert.equal(model.learnerUi.routeControls.submitPlacement, "route-header");
+  assert.equal(model.learnerUi.routeControls.mapToolbarSubmitVisible, false);
+});
+
+test("Stage 161.6.11 beta practice has one learner-facing result panel without internal IDs", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.learnerUi.resultPanels.learnerPanelTitle, "Route feedback");
+  assert.equal(model.learnerUi.resultPanels.submittedResultPanelCount, 1);
+  assert.equal(model.learnerUi.resultPanels.drawnRouteScoreSummaryVisible, false);
+  assert.equal(model.learnerUi.resultPanels.routeAttemptReviewAndDrawnScoreSummaryTogether, false);
+  assert.equal(model.learnerUi.resultPanels.routeReplayVisibleByDefault, false);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.rawOsmNodeIds, true);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.rawGraphIds, true);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.rawRoadIds, true);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.localRouteAttemptIds, true);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.fixtureIds, true);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.technicalPerLegLabels, true);
+  assert.equal(model.learnerUi.hiddenTechnicalDetails.debugDiagnostics, true);
+  assert.equal(model.learnerUi.feedbackEntryPoints, 1);
 });
 
 test("Stage 132 real London readiness and dev QA remain available separately", () => {

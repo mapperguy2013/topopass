@@ -179,6 +179,12 @@ test("Stage 131.5 beta-student mode hides real London QA and internal diagnostic
   assert.equal(visibility.hiddenInternalPanelIds.includes("exercise-qa-button"), true);
   assert.equal(visibility.hiddenInternalPanelIds.includes("graph-overlay-controls"), true);
   assert.equal(visibility.hiddenInternalPanelIds.includes("node-segment-id-controls"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("local-route-attempt-ids"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("technical-per-leg-labels"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("drawn-route-score-summary"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("duplicate-route-controls"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("duplicate-submit-status"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("route-replay-panel"), true);
   assert.equal(visibility.hiddenInternalPanelIds.includes("fixture-filename"), true);
   assert.equal(visibility.visiblePanelIds.includes("real-london-practice-beta"), true);
   assert.equal(visibility.visiblePanelIds.includes("real-london-readiness-qa"), false);

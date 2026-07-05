@@ -452,6 +452,18 @@ function stopLabel(stop: RouteStop, map: MapDefinition): string {
   return `${landmark?.name ?? stop.landmarkId} (${stop.landmarkId}${nearestNode})`;
 }
 
+function learnerStopLabel(stop: RouteStop, map: MapDefinition, fallback: string): string {
+  if (stop.type === "node") {
+    const node = map.nodes.find((candidate) => candidate.id === stop.nodeId);
+
+    return node?.label?.trim() || fallback;
+  }
+
+  const landmark = map.landmarks.find((candidate) => candidate.id === stop.landmarkId);
+
+  return landmark?.name?.trim() || fallback;
+}
+
 function resolveStopNode(stop: RouteStop, map: MapDefinition): MapNode | undefined {
   const nodeId =
     stop.type === "node"
@@ -1089,6 +1101,12 @@ function nodeLabel(nodeId: string, map: MapDefinition): string {
   const node = nodeById(nodeId, map);
 
   return node?.label ? `${node.label} (${nodeId})` : nodeId;
+}
+
+function learnerNodeLabel(nodeId: string, map: MapDefinition, fallback: string): string {
+  const node = nodeById(nodeId, map);
+
+  return node?.label?.trim() || fallback;
 }
 
 function drawArrowHead(context: CanvasRenderingContext2D, fromPoint: Vec2, toPoint: Vec2, scale = 1): void {
@@ -4707,7 +4725,14 @@ export function RouteRunnerClient({
     setIsDrawing(false);
     drawingPointerIdRef.current = null;
     setDrawnRouteDraft(clearRouteDraft());
+    setResult(null);
+    setError(null);
     setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+    setAttemptSaveStatus({
+      state: "idle",
+      message: null
+    });
+    lastSaveAttemptKeyRef.current = null;
     setSelectedRestrictionReviewItemId(null);
     resetRouteReplay();
   }
@@ -4727,6 +4752,9 @@ export function RouteRunnerClient({
   function resetRouteMapView() {
     clearMapPointerGestureState();
     setIsPanningMap(false);
+    if (isStudentBetaRouteRunner) {
+      clearDrawnAttempt();
+    }
     setMapViewportState(resetMapViewport());
   }
 
@@ -5388,26 +5416,32 @@ export function RouteRunnerClient({
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
-              Elapsed --:--
-            </div>
+            {!isStudentBetaRouteRunner ? (
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                Elapsed --:--
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={undoLastDrawnStroke}
-                disabled={!hasUndoableDrawnStroke}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Undo
-              </button>
-              <button
-                type="button"
-                onClick={clearDrawnAttempt}
-                disabled={drawnTrace.points.length === 0 && !isDrawing}
-                className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isStudentBetaRouteRunner ? "Erase route" : "Clear"}
-              </button>
+              {!isStudentBetaRouteRunner ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={undoLastDrawnStroke}
+                    disabled={!hasUndoableDrawnStroke}
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearDrawnAttempt}
+                    disabled={drawnTrace.points.length === 0 && !isDrawing}
+                    className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Clear
+                  </button>
+                </>
+              ) : null}
               <button
                 type="button"
                 onClick={submitDrawnAttempt}
@@ -5542,7 +5576,7 @@ export function RouteRunnerClient({
                 <p className="mt-1">{selectedMapLoadError}</p>
               </div>
             ) : null}
-            {realLondonBetaPanel ? (
+            {realLondonBetaPanel && !isStudentBetaRouteRunner ? (
               <div className="mt-2 rounded-md border border-violet-200 bg-violet-50 p-3 text-xs leading-5 text-violet-950">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-violet-300 bg-white px-2 py-0.5 font-semibold uppercase tracking-wide">
@@ -5747,7 +5781,13 @@ export function RouteRunnerClient({
                   ) : null}
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Start</dt>
-                    <dd className="mt-1">{selectedStartStop ? stopLabel(selectedStartStop, activeMap) : "Not set"}</dd>
+                    <dd className="mt-1">
+                      {selectedStartStop
+                        ? isStudentBetaRouteRunner
+                          ? learnerStopLabel(selectedStartStop, activeMap, "Start")
+                          : stopLabel(selectedStartStop, activeMap)
+                        : "Not set"}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Checkpoints</dt>
@@ -5755,7 +5795,11 @@ export function RouteRunnerClient({
                       {selectedCheckpointStops.length > 0 ? (
                         <ol className="list-decimal space-y-1 pl-5">
                           {selectedCheckpointStops.map((stop, index) => (
-                            <li key={`${selectedExercise.id}-checkpoint-${index}`}>{stopLabel(stop, activeMap)}</li>
+                            <li key={`${selectedExercise.id}-checkpoint-${index}`}>
+                              {isStudentBetaRouteRunner
+                                ? learnerStopLabel(stop, activeMap, `Checkpoint ${index + 1}`)
+                                : stopLabel(stop, activeMap)}
+                            </li>
                           ))}
                         </ol>
                       ) : (
@@ -5765,7 +5809,13 @@ export function RouteRunnerClient({
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Finish</dt>
-                    <dd className="mt-1">{selectedFinishStop ? stopLabel(selectedFinishStop, activeMap) : "Not set"}</dd>
+                    <dd className="mt-1">
+                      {selectedFinishStop
+                        ? isStudentBetaRouteRunner
+                          ? learnerStopLabel(selectedFinishStop, activeMap, "Destination")
+                          : stopLabel(selectedFinishStop, activeMap)
+                        : "Not set"}
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rules</dt>
@@ -5888,14 +5938,12 @@ export function RouteRunnerClient({
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-base font-semibold text-slate-950">Route instructions</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                Draw a route from the start marker to the finish marker, visiting any checkpoints in order. Follow the
-                blue one-way arrows and avoid illegal or wrong-way movements.
+                Draw from the start marker to the destination marker. Visit checkpoints in order.
               </p>
               <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-3 text-xs leading-5 text-blue-950">
                 <p className="font-semibold">Practice beta</p>
                 <p className="mt-1">
-                  Use the feedback box to note confusing route choices, missing labels, awkward touch behavior, or any
-                  exercise that feels unclear.
+                  Use the feedback box below the map if a route choice, label, or touch interaction feels unclear.
                 </p>
               </div>
             </div>
@@ -5910,10 +5958,12 @@ export function RouteRunnerClient({
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-950">Route map workspace</h2>
+                <h2 className={isStudentBetaRouteRunner ? "sr-only" : "text-base font-semibold text-slate-950"}>
+                  {isStudentBetaRouteRunner ? "Practice map" : "Route map workspace"}
+                </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
                   {isStudentBetaRouteRunner
-                    ? "Draw with mouse, touch, or stylus. The map will check your route after you submit the attempt."
+                    ? "Draw your route, then submit it for feedback."
                     : "Draw with mouse, touch, or stylus on the synthetic street-map renderer. The orange trace is raw input; green preview points are snapped candidates. The panel below shows the dev-only pipeline result."}
                 </p>
               </div>
@@ -5969,13 +6019,13 @@ export function RouteRunnerClient({
               ) : drawnDisplayStatus === "no drawing" ? (
                 <p>
                   {isStudentBetaRouteRunner
-                    ? "Draw from marker 1 through the ordered stop markers. Submit when your route is ready."
+                    ? "Draw your route, then submit it for feedback."
                     : "Draw from marker 1 through the ordered stop markers. The route runner will simplify, snap, match, and score the captured route."}
                 </p>
               ) : (
                 <p>
                   {isStudentBetaRouteRunner
-                    ? `Route drawn for ${selectedExerciseDisplay?.title ?? "the selected exercise"}. Submit it, keep drawing to extend it, use Undo, or erase it to start again.`
+                    ? "Route drawn. Submit it, keep drawing to extend it, use Undo, or erase it to start again."
                     : `Trace captured for ${selectedExerciseDisplay?.title ?? "the selected exercise"}. Press and drag again to continue the same route, use Undo to remove the latest stroke, or clear it to reset everything.`}
                 </p>
               )}
@@ -6120,7 +6170,7 @@ export function RouteRunnerClient({
                   onClick={resetRouteMapView}
                   className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
-                  {isStudentBetaRouteRunner ? "Reset" : "Reset view"}
+                  Reset view
                 </button>
               </div>
               <div className="pointer-events-auto absolute right-2 top-28 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md sm:right-4 sm:top-24">
@@ -6823,7 +6873,9 @@ export function RouteRunnerClient({
           <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-base font-semibold text-slate-950">Attempt review</h2>
+                <h2 className="text-base font-semibold text-slate-950">
+                  {isStudentBetaRouteRunner ? "Route feedback" : "Attempt review"}
+                </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-600">
                   {isStudentBetaRouteRunner
                     ? "Submit your drawn route to see score, distance, and route feedback."
@@ -6852,31 +6904,25 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            <div className={`mt-4 rounded-md border p-4 text-sm ${scoreStateClass(drawnScoreDisplay.state)}`}>
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-semibold">{drawnScoreDisplay.label}</p>
-                <p className="text-xs font-semibold uppercase tracking-wide">
-                  {visibleDrawnExerciseResult
-                    ? resultSummary(visibleDrawnExerciseResult)
-                    : isStudentBetaRouteRunner
-                      ? learnerDrawnDisplayText
-                      : drawnDisplayStatus}
-                </p>
+            {(!isStudentBetaRouteRunner || !hasSubmittedCurrentDrawnAttempt) ? (
+              <div className={`mt-4 rounded-md border p-4 text-sm ${scoreStateClass(drawnScoreDisplay.state)}`}>
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="font-semibold">{drawnScoreDisplay.label}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide">
+                    {visibleDrawnExerciseResult
+                      ? resultSummary(visibleDrawnExerciseResult)
+                      : isStudentBetaRouteRunner
+                        ? learnerDrawnDisplayText
+                        : drawnDisplayStatus}
+                  </p>
+                </div>
+                <p className="mt-2">{drawnScoreDisplay.summary}</p>
               </div>
-              <p className="mt-2">{drawnScoreDisplay.summary}</p>
-            </div>
+            ) : null}
 
-            {isStudentBetaRouteRunner && drawnSubmitMatchesCurrentAttempt && drawnSubmitState.message ? (
-              <div
-                className={`mt-3 rounded-md border p-3 text-sm ${
-                  drawnSubmitState.state === "submitted"
-                    ? "border-green-200 bg-green-50 text-green-950"
-                    : "border-amber-200 bg-amber-50 text-amber-950"
-                }`}
-              >
-                <p className="font-semibold">
-                  {drawnSubmitState.state === "submitted" ? "Attempt submitted" : "Route not submitted"}
-                </p>
+            {isStudentBetaRouteRunner && hasBlockedCurrentDrawnSubmit && drawnSubmitState.message ? (
+              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                <p className="font-semibold">Route not submitted</p>
                 <p className="mt-1">{drawnSubmitState.message}</p>
               </div>
             ) : null}
@@ -6904,7 +6950,7 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            {hasSubmittedReplayAttempt ? (
+            {hasSubmittedReplayAttempt && !isStudentBetaRouteRunner ? (
               <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 p-4 text-sm text-sky-950">
                 <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                   <div>
@@ -7015,9 +7061,15 @@ export function RouteRunnerClient({
             <div className={`mt-4 rounded-lg border p-4 text-sm ${reviewStateClass(drawnAttemptReview.status)}`}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide">Route attempt review</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide">
+                    {isStudentBetaRouteRunner ? "Route feedback" : "Route attempt review"}
+                  </p>
                   <h3 className="mt-1 text-base font-semibold">
-                    {showLearnerAttemptReviewDetails ? drawnAttemptReview.title : "Submit your route to see a review"}
+                    {showLearnerAttemptReviewDetails
+                      ? isStudentBetaRouteRunner
+                        ? "Attempt result"
+                        : drawnAttemptReview.title
+                      : "Submit your route to see feedback"}
                   </h3>
                   {routeRunnerPanelVisibility.showInternalQaPanels ? (
                     <p className="mt-1 font-mono text-[11px] leading-5 opacity-75">
@@ -7030,7 +7082,7 @@ export function RouteRunnerClient({
                 </span>
               </div>
 
-              {attemptSaveStatus.state !== "idle" ? (
+              {attemptSaveStatus.state !== "idle" && !isStudentBetaRouteRunner ? (
                 <div className={`mt-3 rounded-md border p-3 text-xs leading-5 ${saveStatusClass(attemptSaveStatus.state)}`}>
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <p className="font-semibold">
@@ -7083,7 +7135,7 @@ export function RouteRunnerClient({
                 </div>
               ) : null}
 
-              {visibleDrawnExerciseResult?.score.legBreakdown.length ? (
+              {visibleDrawnExerciseResult?.score.legBreakdown.length && !isStudentBetaRouteRunner ? (
                 <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Per-leg breakdown</p>
                   <ol className="mt-2 grid gap-2 text-xs leading-5 md:grid-cols-2 xl:grid-cols-3">
@@ -8203,7 +8255,7 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            {visibleDrawnExerciseResult ? (
+            {!isStudentBetaRouteRunner && visibleDrawnExerciseResult ? (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <h3 className="text-sm font-semibold text-slate-950">Drawn route score summary</h3>
                 <div className="mt-3 grid gap-3 text-sm sm:grid-cols-5">
@@ -8310,7 +8362,11 @@ export function RouteRunnerClient({
                       <p className="text-xs font-semibold uppercase tracking-wide">
                         {stop.role} {stop.order}
                       </p>
-                      <p className="mt-1 font-semibold">{nodeLabel(stop.nodeId, activeMap)}</p>
+                      <p className="mt-1 font-semibold">
+                        {isStudentBetaRouteRunner
+                          ? learnerNodeLabel(stop.nodeId, activeMap, stop.role)
+                          : nodeLabel(stop.nodeId, activeMap)}
+                      </p>
                       <p className="mt-1 text-xs">
                         {stop.visited
                           ? `Visited${typeof stop.visitedIndex === "number" ? ` at position ${stop.visitedIndex + 1}` : ""}`

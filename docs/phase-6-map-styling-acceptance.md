@@ -394,6 +394,23 @@ shows a result when matching/scoring succeeds; and it shows learner-friendly
 failure text when matching cannot produce a score. Visual-only maps stay
 preview-only and must not surface scored matching errors.
 
+Stage 161.6.11 simplifies the learner-facing practice layout after beta review.
+The selected route title and workflow now live in one compact route header, and
+the map section no longer renders a separate visible "Route map workspace"
+heading. The beta route controls appear once: Submit is the single primary
+header action, while Draw/Pan, Undo, Erase route, and Reset view live in the
+map toolbar. Erase route clears the current drawing, submitted result, and
+matching/error messages while preserving the selected map, selected exercise,
+current view, and interaction mode. Reset view clears the attempt, resets
+pan/zoom to the selected route view, and returns to Draw mode without changing
+the selected map or exercise.
+
+The submitted beta result is consolidated under one Route feedback panel.
+Duplicate drawn-score summary cards, route replay controls, local attempt IDs,
+raw OSM/graph/road IDs, fixture IDs, and technical per-leg labels are hidden
+from `/practice/real-london`. Dev/debug detail remains available in
+`/dev/route-runner` or explicit dev QA mode.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

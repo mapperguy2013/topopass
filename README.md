@@ -1103,6 +1103,16 @@ map, valid exercise, and drawn route are ready; pressing it records the current
 drawn attempt, shows the score when matching/scoring succeeds, and shows a
 learner-friendly matching failure when it does not. Preview-only maps remain
 pan/zoom/legend views with no scored Submit target.
+Stage 161.6.11 simplifies the beta practice header, route controls, and
+feedback. The page now relies on one route header, one Submit action, and one
+map toolbar for Draw/Pan, Undo, Erase route, and Reset view. Erase route clears
+the drawing and submitted result while keeping the selected map, exercise, and
+current view; Reset view clears the attempt and returns the map to the selected
+route view in Draw mode. The learner result is consolidated under Route
+feedback, with the duplicate drawn-score panel, route replay block, local
+attempt IDs, raw OSM/graph IDs, and technical per-leg labels hidden from
+`/practice/real-london`. Dev/debug detail remains available in
+`/dev/route-runner`.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

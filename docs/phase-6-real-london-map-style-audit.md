@@ -211,6 +211,25 @@ score/review after successful matching and scoring, and shows a friendly
 matching failure when the drawn route cannot be matched. Visual-only maps stay
 preview-only and do not expose scored Submit or matching errors.
 
+## Stage 161.6.11 Beta Header, Controls, and Feedback Simplification
+
+Stage 161.6.11 removes the remaining dev-runner feel from
+`/practice/real-london`. The beta page now relies on one route header for the
+selected exercise and status badges; the separate page current-task card and
+visible "Route map workspace" heading are removed from the learner-facing flow.
+Submit appears once as the primary route-attempt action. Draw/Pan, Undo, Erase
+route, and Reset view appear once in the map toolbar.
+
+Erase route clears the drawing, submitted result, and matching/error messages
+while preserving the selected map, selected exercise, current zoom/pan, and
+current Draw/Pan mode. Reset view clears the attempt, resets the route view,
+and returns to Draw mode without changing the selected map or exercise.
+
+Post-submit feedback is consolidated into one Route feedback panel. The beta
+UI hides duplicate drawn-score summaries, route replay controls, local attempt
+IDs, raw OSM/graph/road IDs, fixture IDs, and technical per-leg labels. Those
+details remain dev-only in `/dev/route-runner` or explicit dev QA mode.
+
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled

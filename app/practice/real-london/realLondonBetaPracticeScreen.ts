@@ -113,9 +113,45 @@ export type RealLondonBetaPracticeScreenModel =
         usesExistingRouteRunnerLogic: true;
         submitActionLabel: "Submit";
         clearActionLabel: "Erase route";
+        resetActionLabel: "Reset view";
         retryActionLabel: "Try again";
         mapSwitchClearsAttemptState: true;
         eraseClearsDrawingAndResult: true;
+        eraseKeepsSelectedMapAndExercise: true;
+        eraseKeepsCurrentMapView: true;
+        resetClearsDrawingAndResult: true;
+        resetResetsMapView: true;
+        resetKeepsSelectedMapAndExercise: true;
+        resetReturnsToDrawMode: true;
+      };
+      learnerUi: {
+        routeHeaderCount: 1;
+        visibleMapWorkspaceHeading: false;
+        routeControls: {
+          undoCount: 1;
+          eraseRouteCount: 1;
+          resetViewCount: 1;
+          submitCount: 1;
+          submitPlacement: "route-header";
+          mapToolbarSubmitVisible: false;
+        };
+        resultPanels: {
+          learnerPanelTitle: "Route feedback";
+          submittedResultPanelCount: 1;
+          drawnRouteScoreSummaryVisible: false;
+          routeAttemptReviewAndDrawnScoreSummaryTogether: false;
+          routeReplayVisibleByDefault: false;
+        };
+        hiddenTechnicalDetails: {
+          rawOsmNodeIds: true;
+          rawGraphIds: true;
+          rawRoadIds: true;
+          localRouteAttemptIds: true;
+          fixtureIds: true;
+          technicalPerLegLabels: true;
+          debugDiagnostics: true;
+        };
+        feedbackEntryPoints: 1;
       };
       feedback: {
         visible: true;
@@ -271,9 +307,45 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       usesExistingRouteRunnerLogic: true,
       submitActionLabel: "Submit",
       clearActionLabel: "Erase route",
+      resetActionLabel: "Reset view",
       retryActionLabel: "Try again",
       mapSwitchClearsAttemptState: true,
-      eraseClearsDrawingAndResult: true
+      eraseClearsDrawingAndResult: true,
+      eraseKeepsSelectedMapAndExercise: true,
+      eraseKeepsCurrentMapView: true,
+      resetClearsDrawingAndResult: true,
+      resetResetsMapView: true,
+      resetKeepsSelectedMapAndExercise: true,
+      resetReturnsToDrawMode: true
+    },
+    learnerUi: {
+      routeHeaderCount: 1,
+      visibleMapWorkspaceHeading: false,
+      routeControls: {
+        undoCount: 1,
+        eraseRouteCount: 1,
+        resetViewCount: 1,
+        submitCount: 1,
+        submitPlacement: "route-header",
+        mapToolbarSubmitVisible: false
+      },
+      resultPanels: {
+        learnerPanelTitle: "Route feedback",
+        submittedResultPanelCount: 1,
+        drawnRouteScoreSummaryVisible: false,
+        routeAttemptReviewAndDrawnScoreSummaryTogether: false,
+        routeReplayVisibleByDefault: false
+      },
+      hiddenTechnicalDetails: {
+        rawOsmNodeIds: true,
+        rawGraphIds: true,
+        rawRoadIds: true,
+        localRouteAttemptIds: true,
+        fixtureIds: true,
+        technicalPerLegLabels: true,
+        debugDiagnostics: true
+      },
+      feedbackEntryPoints: 1
     },
     feedback: {
       visible: true,
@@ -308,6 +380,13 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         "raw-osm-node-ids",
         "raw-road-ids",
         "raw-route-graph-ids",
+        "raw-graph-ids",
+        "local-route-attempt-ids",
+        "technical-per-leg-labels",
+        "drawn-route-score-summary",
+        "duplicate-route-controls",
+        "duplicate-submit-status",
+        "route-replay-panel",
         "real-london-pilot-qa",
         "real-london-pilot-playthrough",
         "adaptive-dev-dashboard",
