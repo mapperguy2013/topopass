@@ -193,6 +193,24 @@ Future large imports should use controlled scripted import, simplification,
 lazy loading, tiling, or a Geofabrik-based pipeline, and must pass fixture
 budget checks before beta exposure.
 
+## Stage 161.6.10 Beta Practice Cleanup and Submit
+
+Stage 161.6.10 keeps the Real London beta page learner-facing while preserving
+the dev route-runner toolchain. `/practice/real-london` now hides Converted
+OSM QA, Real London Pilot QA, manual route input, graph and exercise QA
+overlays, raw node/road/route graph IDs, blocked-way diagnostics, internal
+fixture labels, and pipeline warning groups. Those diagnostics remain
+available in `/dev/route-runner`.
+
+Learner status text now uses plain route-attempt language such as "No route
+drawn", "Ready to submit", and "Submitted"; OSM attribution stays visible in
+the small map attribution area rather than the main status block. Submit is a
+real attempt action: it is enabled only when a scoreable map, valid exercise,
+and drawn route are ready, records the current drawn attempt, reveals the
+score/review after successful matching and scoring, and shows a friendly
+matching failure when the drawn route cannot be matched. Visual-only maps stay
+preview-only and do not expose scored Submit or matching errors.
+
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled

@@ -77,14 +77,19 @@ import {
 import {
   buildRoadRestrictionOverlays,
   buildRouteIssueOverlays,
+  getDrawnRouteSubmitOutcome,
+  getDrawnRouteSubmitReadiness,
   getDrawnPipelineDisplayStatus,
   getDrawnRouteScoreDisplay,
+  getLearnerDrawnPipelineStatusText,
   getPipelineIssueGroups,
   getPipelineStageBadges,
   getRouteIssueLineStyle,
   getRequiredStopVisitStatuses,
   type DrawnPipelineDisplayStatus,
+  type DrawnRouteScoreDisplay,
   type DrawnRouteScoreDisplayState,
+  type DrawnRouteSubmitBlockCode,
   type PipelineStageState,
   type RoadRestrictionOverlay,
   type RequiredStopVisitStatus,
@@ -249,7 +254,6 @@ import {
   getRouteRunnerDevQaMapOptions,
   getRouteRunnerVisibleMapOptions,
   isRealLondonBetaAccessEnabled,
-  routeRunnerMapOptionBetaStatusLabel,
   routeRunnerMapOptionIsScoreable,
   resolveRealLondonBetaMapAccess
 } from "./routeRunnerRealLondonBetaGate";
@@ -326,10 +330,6 @@ function requireRouteRunnerMapOption(option: RouteRunnerMapOption | undefined): 
   return option;
 }
 
-function routeRunnerFixtureUseLabel(option: RouteRunnerMapOption): string {
-  return routeRunnerMapOptionBetaStatusLabel(option);
-}
-
 function updateStudentBetaRouteRunnerUrl(mapId: string, exerciseId: string): void {
   if (typeof window === "undefined") {
     return;
@@ -351,6 +351,14 @@ type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
   message: string | null;
   id?: string;
+};
+
+type DrawnRouteSubmitState = {
+  state: "idle" | "submitted" | "blocked";
+  attemptKey: string | null;
+  code: DrawnRouteSubmitBlockCode | null;
+  message: string | null;
+  devMessage: string | null;
 };
 
 type ActiveMapPointer = MapPinchPointer & {
@@ -3131,6 +3139,85 @@ function readableError(caughtError: unknown): string {
   return caughtError instanceof Error ? caughtError.message : "Route runner failed with an unknown error.";
 }
 
+function createIdleDrawnRouteSubmitState(): DrawnRouteSubmitState {
+  return {
+    state: "idle",
+    attemptKey: null,
+    code: null,
+    message: null,
+    devMessage: null
+  };
+}
+
+function drawnSubmitAttemptKey(input: {
+  mapId: string;
+  exerciseId: string | null;
+  drawnTrace: DrawnRouteTrace;
+  pipelineResult: DrawnRoutePipelineResult;
+}): string | null {
+  if (input.drawnTrace.points.length === 0) {
+    return null;
+  }
+
+  const firstPoint = input.drawnTrace.points[0];
+  const lastPoint = input.drawnTrace.points[input.drawnTrace.points.length - 1];
+
+  return [
+    input.mapId,
+    input.exerciseId ?? "no-exercise",
+    input.pipelineResult.status,
+    input.drawnTrace.points.length,
+    `${firstPoint.x.toFixed(1)},${firstPoint.y.toFixed(1)}`,
+    `${lastPoint.x.toFixed(1)},${lastPoint.y.toFixed(1)}`,
+    input.pipelineResult.warnings.map((warning) => warning.code).join("|"),
+    input.pipelineResult.exerciseResult?.score.status ?? "not-scored",
+    input.pipelineResult.exerciseResult?.score.scorePercent.toFixed(1) ?? "no-score"
+  ].join("::");
+}
+
+function learnerDrawnRouteScoreDisplay(input: {
+  liveDisplay: DrawnRouteScoreDisplay;
+  submitted: boolean;
+  blocked: boolean;
+  submitMessage: string | null;
+  selectedMapIsScoreable: boolean;
+  drawnPointCount: number;
+}): DrawnRouteScoreDisplay {
+  if (!input.selectedMapIsScoreable) {
+    return {
+      state: "pending",
+      label: "Preview only",
+      summary: "This map is available for preview only. Scored exercises are not available yet."
+    };
+  }
+
+  if (input.submitted) {
+    return input.liveDisplay;
+  }
+
+  if (input.blocked) {
+    return {
+      state: "blocked",
+      label: "Route not submitted",
+      summary: input.submitMessage ?? "We could not submit that route. Try erasing it and drawing again."
+    };
+  }
+
+  if (input.drawnPointCount > 0) {
+    return {
+      state: "pending",
+      label: "Ready to submit",
+      summary: "Press Submit to check your drawn route."
+    };
+  }
+
+  return {
+    state: "pending",
+    label: "No route drawn",
+    summary: "Draw a route for the selected exercise, then submit it for feedback."
+  };
+}
+
 export function RouteRunnerClient({
   initialMapOptionId,
   initialExerciseId,
@@ -3163,6 +3250,9 @@ export function RouteRunnerClient({
   const [roadIdsText, setRoadIdsText] = useState("");
   const [result, setResult] = useState<RunRouteExerciseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [drawnSubmitState, setDrawnSubmitState] = useState<DrawnRouteSubmitState>(() =>
+    createIdleDrawnRouteSubmitState()
+  );
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
   const [isDrawing, setIsDrawing] = useState(false);
   const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
@@ -3284,7 +3374,6 @@ export function RouteRunnerClient({
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
   const selectedMapIsScoreable = routeRunnerMapOptionIsScoreable(selectedMapOption);
-  const selectedMapFixtureUseLabel = routeRunnerFixtureUseLabel(selectedMapOption);
   const selectedExerciseId = useMemo(
     () =>
       resolveRouteRunnerExerciseSelection({
@@ -3308,9 +3397,10 @@ export function RouteRunnerClient({
       buildRouteRunnerPanelVisibility({
         mapId: activeMap.id,
         betaEnabled: REAL_LONDON_BETA_ENABLED,
-        devQaVisible: allowDevQaToggle && showDevQaPanels
+        devQaVisible: allowDevQaToggle && showDevQaPanels,
+        mode
       }),
-    [activeMap.id, allowDevQaToggle, showDevQaPanels]
+    [activeMap.id, allowDevQaToggle, mode, showDevQaPanels]
   );
   const osmDebugOverlayAvailable = canOfferOsmDebugOverlay(selectedMapOption.source);
   const osmExerciseDebugOverlayAvailable = canOfferOsmExerciseDebugOverlay(selectedMapOption.source);
@@ -3660,9 +3750,32 @@ export function RouteRunnerClient({
   }, [activeExercises, activeMap, drawnTrace, isDrawing, selectedExerciseAvailability, selectedExerciseId]);
   const snapPreview = drawnPipelineResult.snappedRoute ?? emptySnapPreview();
   const drawnDisplayStatus = getDrawnPipelineDisplayStatus(drawnPipelineResult, isDrawing);
+  const currentDrawnSubmitAttemptKey = useMemo(
+    () =>
+      drawnSubmitAttemptKey({
+        mapId: activeMap.id,
+        exerciseId: selectedExerciseId ?? null,
+        drawnTrace,
+        pipelineResult: drawnPipelineResult
+      }),
+    [activeMap.id, drawnPipelineResult, drawnTrace, selectedExerciseId]
+  );
+  const drawnSubmitMatchesCurrentAttempt =
+    drawnSubmitState.attemptKey !== null && drawnSubmitState.attemptKey === currentDrawnSubmitAttemptKey;
+  const hasSubmittedCurrentDrawnAttempt = drawnSubmitState.state === "submitted" && drawnSubmitMatchesCurrentAttempt;
+  const hasBlockedCurrentDrawnSubmit = drawnSubmitState.state === "blocked" && drawnSubmitMatchesCurrentAttempt;
+  const showLearnerAttemptReviewDetails = !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt;
+  const learnerDrawnDisplayText = getLearnerDrawnPipelineStatusText({
+    status: drawnDisplayStatus,
+    submitted: hasSubmittedCurrentDrawnAttempt,
+    blocked: hasBlockedCurrentDrawnSubmit
+  });
   const pipelineStageBadges = getPipelineStageBadges(drawnPipelineResult, isDrawing);
   const pipelineIssueGroups = getPipelineIssueGroups(drawnPipelineResult, isDrawing);
-  const visibleDrawnExerciseResult = isDrawing ? null : drawnPipelineResult.exerciseResult;
+  const visibleDrawnExerciseResult =
+    isDrawing || (isStudentBetaRouteRunner && !hasSubmittedCurrentDrawnAttempt)
+      ? null
+      : drawnPipelineResult.exerciseResult;
   const visibleDrawnPipelineResult = isDrawing
     ? {
         ...drawnPipelineResult,
@@ -3758,7 +3871,9 @@ export function RouteRunnerClient({
   );
   const canReplayUserRoute = canReplayRouteGeometry(userRouteReplayPoints);
   const canReplayShortestRoute = canReplayRouteGeometry(shortestRouteReplayPoints);
-  const hasSubmittedReplayAttempt = drawnAttemptReview.status !== "pending";
+  const hasSubmittedReplayAttempt = isStudentBetaRouteRunner
+    ? hasSubmittedCurrentDrawnAttempt
+    : drawnAttemptReview.status !== "pending";
   const canPlayRouteReplay =
     hasSubmittedReplayAttempt &&
     routeReplayDurationMs > 0 &&
@@ -3829,6 +3944,10 @@ export function RouteRunnerClient({
     [selectedRestrictionFocusTarget]
   );
   const weakAreaAttemptKey = useMemo(() => {
+    if (isStudentBetaRouteRunner && !hasSubmittedCurrentDrawnAttempt) {
+      return null;
+    }
+
     if (isDrawing || drawnTrace.points.length === 0 || drawnAttemptReview.status === "pending") {
       return null;
     }
@@ -3852,7 +3971,9 @@ export function RouteRunnerClient({
     drawnPipelineResult.status,
     drawnPipelineResult.warnings,
     drawnTrace.points,
+    hasSubmittedCurrentDrawnAttempt,
     isDrawing,
+    isStudentBetaRouteRunner,
     selectedExerciseId
   ]);
   const strongestWeakAreas = useMemo(() => getStrongestWeakAreas(weakAreaProfile, 4), [weakAreaProfile]);
@@ -3958,7 +4079,27 @@ export function RouteRunnerClient({
   const hasUsableDrawnMatch =
     drawnPipelineResult.matchResult?.status === "matched" &&
     drawnPipelineResult.matchResult.isReadyForRunRouteExercise;
-  const drawnScoreDisplay = getDrawnRouteScoreDisplay(drawnPipelineResult, isDrawing);
+  const drawnSubmitReadiness = getDrawnRouteSubmitReadiness({
+    mapIsLoading: selectedMapOptionIsLoading,
+    mapLoadError: selectedMapLoadError,
+    selectedMapIsScoreable: selectedMapIsScoreable,
+    hasSelectedExercise: Boolean(selectedExercise),
+    selectedExerciseIsValid: !selectedExerciseIsInvalid,
+    isDrawing,
+    drawnPointCount: drawnTrace.points.length
+  });
+  const drawnSubmitDisabled = !drawnSubmitReadiness.canSubmit;
+  const liveDrawnScoreDisplay = getDrawnRouteScoreDisplay(drawnPipelineResult, isDrawing);
+  const drawnScoreDisplay = isStudentBetaRouteRunner
+    ? learnerDrawnRouteScoreDisplay({
+        liveDisplay: liveDrawnScoreDisplay,
+        submitted: hasSubmittedCurrentDrawnAttempt,
+        blocked: hasBlockedCurrentDrawnSubmit,
+        submitMessage: drawnSubmitState.message,
+        selectedMapIsScoreable,
+        drawnPointCount: drawnTrace.points.length
+      })
+    : liveDrawnScoreDisplay;
   const requiredStopStatuses = getRequiredStopVisitStatuses(visibleDrawnExerciseResult);
   const extraDistanceMeters = result
     ? result.score.userRouteDistanceMeters - result.score.shortestLegalRouteDistanceMeters
@@ -3967,6 +4108,18 @@ export function RouteRunnerClient({
   const snapPreviewRoadIds = uniqueOrdered(
     snapPreview.snappedPoints.map((point) => point.roadId).filter((roadId): roadId is string => Boolean(roadId))
   );
+
+  useEffect(() => {
+    if (drawnSubmitState.state === "idle") {
+      return;
+    }
+
+    if (drawnSubmitState.attemptKey === currentDrawnSubmitAttemptKey) {
+      return;
+    }
+
+    setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+  }, [currentDrawnSubmitAttemptKey, drawnSubmitState.attemptKey, drawnSubmitState.state]);
 
   useEffect(() => {
     if (selectedRestrictionReviewItemId && !selectedRestrictionReviewItem) {
@@ -4510,6 +4663,7 @@ export function RouteRunnerClient({
     setIsDrawing(false);
     drawingPointerIdRef.current = null;
     setDrawnRouteDraft(clearRouteDraft());
+    setDrawnSubmitState(createIdleDrawnRouteSubmitState());
     setSelectedRestrictionReviewItemId(null);
     resetRouteReplay();
   }
@@ -4551,6 +4705,37 @@ export function RouteRunnerClient({
 
   function submitDrawnAttempt() {
     setIsDrawing(false);
+
+    const attemptKey =
+      currentDrawnSubmitAttemptKey ??
+      drawnSubmitAttemptKey({
+        mapId: activeMap.id,
+        exerciseId: selectedExerciseId ?? null,
+        drawnTrace,
+        pipelineResult: drawnPipelineResult
+      });
+    const outcome = getDrawnRouteSubmitOutcome({
+      readiness: drawnSubmitReadiness,
+      result: drawnPipelineResult
+    });
+
+    setDrawnSubmitState({
+      state: outcome.submitted ? "submitted" : "blocked",
+      attemptKey,
+      code: outcome.code,
+      message: outcome.learnerMessage,
+      devMessage: outcome.devMessage
+    });
+
+    if (outcome.submitted && drawnPipelineResult.exerciseResult) {
+      setError(null);
+      setResult(drawnPipelineResult.exerciseResult);
+      return;
+    }
+
+    if (!isStudentBetaRouteRunner) {
+      setError(outcome.devMessage);
+    }
   }
 
   function resetWeakAreaProfile() {
@@ -4578,6 +4763,7 @@ export function RouteRunnerClient({
     setRoadIdsText("");
     setResult(null);
     setError(null);
+    setDrawnSubmitState(createIdleDrawnRouteSubmitState());
     setAttemptSaveStatus({
       state: "idle",
       message: null
@@ -5181,38 +5367,37 @@ export function RouteRunnerClient({
               <button
                 type="button"
                 onClick={submitDrawnAttempt}
-                disabled={
-                  selectedMapOptionIsLoading ||
-                  drawnTrace.points.length === 0 ||
-                  isDrawing ||
-                  !selectedExercise ||
-                  !selectedMapIsScoreable
-                }
+                disabled={drawnSubmitDisabled}
                 className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Submit Attempt
+                {isStudentBetaRouteRunner ? "Submit" : "Submit Attempt"}
               </button>
             </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 px-5 py-3 text-xs text-slate-600">
           <span className={`rounded-full px-3 py-1 font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
-            {displayStatusText(drawnDisplayStatus)}
+            {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
           </span>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
-            Map: {activeMap.name}
+            {isStudentBetaRouteRunner ? selectedMapOption.label : `Map: ${activeMap.name}`}
           </span>
-          {isConvertedOsmMap ? (
+          {isConvertedOsmMap && !isStudentBetaRouteRunner ? (
             <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 font-semibold text-sky-900">
               Converted OSM fixture
             </span>
           ) : null}
-          {isStudentBetaRouteRunner ? (
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 font-semibold text-emerald-900">
-              {selectedMapFixtureUseLabel}
+          {isStudentBetaRouteRunner && selectedExerciseDisplay?.difficultyLabel ? (
+            <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 font-semibold text-blue-800">
+              {selectedExerciseDisplay.difficultyLabel}
             </span>
           ) : null}
-          {selectedMapOption.attribution ? (
+          {isStudentBetaRouteRunner && selectedRealLondonExerciseMetadata ? (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+              {selectedRealLondonExerciseMetadata.routeType.replaceAll("-", " ")}
+            </span>
+          ) : null}
+          {selectedMapOption.attribution && !isStudentBetaRouteRunner ? (
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
               Data: {selectedMapOption.attribution}
             </span>
@@ -5255,13 +5440,13 @@ export function RouteRunnerClient({
                 >
                   {visibleMapOptions.map((option) => (
                     <option key={option.id} value={option.id}>
-                      {option.label} - {routeRunnerFixtureUseLabel(option)}
+                      {routeRunnerMapOptionIsScoreable(option) ? option.label : `${option.label} - preview only`}
                     </option>
                   ))}
                 </select>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-blue-800">
-                    {selectedMapFixtureUseLabel}
+                    {selectedMapIsScoreable ? "Ready for practice" : "Preview only"}
                   </span>
                   {selectedMapOptionIsLoading ? (
                     <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-900">
@@ -5387,7 +5572,7 @@ export function RouteRunnerClient({
 
             {!selectedMapIsScoreable ? (
               <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-950">
-                This map is available for visual testing only. Scored route exercises are not available yet.
+                This map is available for preview only. Scored exercises are not available yet.
               </p>
             ) : null}
 
@@ -5556,13 +5741,13 @@ export function RouteRunnerClient({
                 <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Drawn attempt</span>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
-                    {displayStatusText(drawnDisplayStatus)}
+                    {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
                   </span>
                 </div>
               </div>
             ) : null}
 
-            {realLondonPilotPlaythroughPanel.shouldShowPanel ? (
+            {!isStudentBetaRouteRunner && realLondonPilotPlaythroughPanel.shouldShowPanel ? (
               <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -5694,7 +5879,7 @@ export function RouteRunnerClient({
                     drawnDisplayStatus
                   )}`}
                 >
-                  {displayStatusText(drawnDisplayStatus)}
+                  {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
                 </span>
                 <p className="text-xs leading-5 text-slate-500">
                   Draw in multiple strokes. Release and click again to continue. Switch to Pan when you want to move
@@ -5732,16 +5917,22 @@ export function RouteRunnerClient({
               }`}
             >
               {isDrawing ? (
-                <p className="font-medium">Drawing active. Release the pointer to score the captured route.</p>
+                <p className="font-medium">
+                  {isStudentBetaRouteRunner
+                    ? "Drawing active. Release the pointer when your route is complete."
+                    : "Drawing active. Release the pointer to score the captured route."}
+                </p>
               ) : drawnDisplayStatus === "no drawing" ? (
                 <p>
-                  Draw from marker 1 through the ordered stop markers. The route runner will simplify, snap, match,
-                  and score the captured route.
+                  {isStudentBetaRouteRunner
+                    ? "Draw from marker 1 through the ordered stop markers. Submit when your route is ready."
+                    : "Draw from marker 1 through the ordered stop markers. The route runner will simplify, snap, match, and score the captured route."}
                 </p>
               ) : (
                 <p>
-                  Trace captured for {selectedExerciseDisplay?.title ?? "the selected exercise"}. Press and drag again to
-                  continue the same route, use Undo to remove the latest stroke, or clear it to reset everything.
+                  {isStudentBetaRouteRunner
+                    ? `Route drawn for ${selectedExerciseDisplay?.title ?? "the selected exercise"}. Submit it, keep drawing to extend it, use Undo, or erase it to start again.`
+                    : `Trace captured for ${selectedExerciseDisplay?.title ?? "the selected exercise"}. Press and drag again to continue the same route, use Undo to remove the latest stroke, or clear it to reset everything.`}
                 </p>
               )}
             </div>
@@ -6600,7 +6791,7 @@ export function RouteRunnerClient({
                   drawnDisplayStatus
                 )}`}
               >
-                {displayStatusText(drawnDisplayStatus)}
+                {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
               </span>
             </div>
 
@@ -6621,11 +6812,53 @@ export function RouteRunnerClient({
               <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <p className="font-semibold">{drawnScoreDisplay.label}</p>
                 <p className="text-xs font-semibold uppercase tracking-wide">
-                  {visibleDrawnExerciseResult ? resultSummary(visibleDrawnExerciseResult) : drawnDisplayStatus}
+                  {visibleDrawnExerciseResult
+                    ? resultSummary(visibleDrawnExerciseResult)
+                    : isStudentBetaRouteRunner
+                      ? learnerDrawnDisplayText
+                      : drawnDisplayStatus}
                 </p>
               </div>
               <p className="mt-2">{drawnScoreDisplay.summary}</p>
             </div>
+
+            {isStudentBetaRouteRunner && drawnSubmitMatchesCurrentAttempt && drawnSubmitState.message ? (
+              <div
+                className={`mt-3 rounded-md border p-3 text-sm ${
+                  drawnSubmitState.state === "submitted"
+                    ? "border-green-200 bg-green-50 text-green-950"
+                    : "border-amber-200 bg-amber-50 text-amber-950"
+                }`}
+              >
+                <p className="font-semibold">
+                  {drawnSubmitState.state === "submitted" ? "Attempt submitted" : "Route not submitted"}
+                </p>
+                <p className="mt-1">{drawnSubmitState.message}</p>
+              </div>
+            ) : null}
+
+            {routeRunnerPanelVisibility.showInternalQaPanels && drawnSubmitState.state !== "idle" ? (
+              <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                <p className="font-semibold uppercase tracking-wide">Submit diagnostics</p>
+                <dl className="mt-2 grid gap-2 sm:grid-cols-3">
+                  <div>
+                    <dt className="font-semibold text-slate-500">State</dt>
+                    <dd className="mt-1 font-mono">{drawnSubmitState.state}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-500">Code</dt>
+                    <dd className="mt-1 font-mono">{drawnSubmitState.code ?? "none"}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-slate-500">Current attempt</dt>
+                    <dd className="mt-1 font-mono">
+                      {drawnSubmitMatchesCurrentAttempt ? "current" : "stale or missing"}
+                    </dd>
+                  </div>
+                </dl>
+                {drawnSubmitState.devMessage ? <p className="mt-2">{drawnSubmitState.devMessage}</p> : null}
+              </div>
+            ) : null}
 
             {hasSubmittedReplayAttempt ? (
               <div className="mt-4 rounded-lg border border-sky-100 bg-sky-50 p-4 text-sm text-sky-950">
@@ -6739,7 +6972,9 @@ export function RouteRunnerClient({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide">Route attempt review</p>
-                  <h3 className="mt-1 text-base font-semibold">{drawnAttemptReview.title}</h3>
+                  <h3 className="mt-1 text-base font-semibold">
+                    {showLearnerAttemptReviewDetails ? drawnAttemptReview.title : "Submit your route to see a review"}
+                  </h3>
                   {routeRunnerPanelVisibility.showInternalQaPanels ? (
                     <p className="mt-1 font-mono text-[11px] leading-5 opacity-75">
                       {formatRouteAttemptVersionSnapshot(drawnAttemptReview.versionSnapshot).compactLabel}
@@ -6747,7 +6982,7 @@ export function RouteRunnerClient({
                   ) : null}
                 </div>
                 <span className="rounded-full border border-current/20 bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
-                  {drawnAttemptReview.status}
+                  {showLearnerAttemptReviewDetails ? drawnAttemptReview.status : learnerDrawnDisplayText}
                 </span>
               </div>
 
@@ -6770,9 +7005,11 @@ export function RouteRunnerClient({
               <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Score</p>
-                  <p className="mt-1 font-semibold">{drawnAttemptReview.scoreLabel}</p>
+                  <p className="mt-1 font-semibold">
+                    {showLearnerAttemptReviewDetails ? drawnAttemptReview.scoreLabel : "Submit to score"}
+                  </p>
                 </div>
-                {drawnAttemptReview.distanceMetrics.length > 0 ? (
+                {showLearnerAttemptReviewDetails && drawnAttemptReview.distanceMetrics.length > 0 ? (
                   drawnAttemptReview.distanceMetrics.map((metric) => (
                     <div key={metric.id} className="rounded-md border border-current/10 bg-white/70 p-3">
                       <p className="text-xs font-semibold uppercase tracking-wide opacity-75">{metric.label}</p>
@@ -6782,7 +7019,9 @@ export function RouteRunnerClient({
                 ) : (
                   <div className="rounded-md border border-current/10 bg-white/70 p-3 sm:col-span-2 lg:col-span-3">
                     <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Distance</p>
-                    <p className="mt-1 leading-5">{drawnAttemptReview.distanceLabel}</p>
+                    <p className="mt-1 leading-5">
+                      {showLearnerAttemptReviewDetails ? drawnAttemptReview.distanceLabel : "Submit to calculate distance."}
+                    </p>
                   </div>
                 )}
               </div>
@@ -6843,14 +7082,14 @@ export function RouteRunnerClient({
                 </div>
               ) : null}
 
-              {drawnAttemptReview.suggestedFailureReason ? (
+              {showLearnerAttemptReviewDetails && drawnAttemptReview.suggestedFailureReason ? (
                 <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Suggested reason</p>
                   <p className="mt-1 leading-5">{drawnAttemptReview.suggestedFailureReason}</p>
                 </div>
               ) : null}
 
-              {drawnAttemptReview.correctionHints.length > 0 ? (
+              {showLearnerAttemptReviewDetails && drawnAttemptReview.correctionHints.length > 0 ? (
                 <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
                   <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Try next</p>
                   <ul className="mt-2 space-y-2 text-xs leading-5">
@@ -8084,7 +8323,7 @@ export function RouteRunnerClient({
               </dl>
             ) : null}
 
-            {pipelineIssueGroups.length > 0 ? (
+            {!isStudentBetaRouteRunner && pipelineIssueGroups.length > 0 ? (
               <div className="mt-5 space-y-3">
                 <h3 className="text-sm font-semibold text-slate-950">Warnings and scoring notes</h3>
                 {pipelineIssueGroups.map((group) => (
@@ -8103,13 +8342,11 @@ export function RouteRunnerClient({
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : !isStudentBetaRouteRunner ? (
               <div className="mt-5 rounded-md border border-green-100 bg-green-50 p-3 text-sm text-green-900">
-                {isStudentBetaRouteRunner
-                  ? "No route warnings for the current attempt."
-                  : "No pipeline warnings for the current drawn attempt."}
+                No pipeline warnings for the current drawn attempt.
               </div>
-            )}
+            ) : null}
 
             {showDeveloperPanels ? (
               <>

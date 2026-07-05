@@ -159,7 +159,8 @@ test("Stage 131.5 beta-student mode hides real London QA and internal diagnostic
   const visibility = buildRouteRunnerPanelVisibility({
     mapId: realLondonOsmPilotRouteMap.id,
     betaEnabled: true,
-    devQaVisible: false
+    devQaVisible: false,
+    mode: "student-beta"
   });
 
   assert.equal(visibility.audience, "beta-student");
@@ -171,16 +172,39 @@ test("Stage 131.5 beta-student mode hides real London QA and internal diagnostic
   assert.equal(visibility.showMetadataCoverageCounts, false);
   assert.equal(visibility.showFullRestrictionDebugDetails, false);
   assert.equal(visibility.hiddenInternalPanelIds.includes("real-london-readiness-qa"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("converted-osm-qa"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("real-london-pilot-qa"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("manual-route-input"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("osm-qa-button"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("exercise-qa-button"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("graph-overlay-controls"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("node-segment-id-controls"), true);
   assert.equal(visibility.hiddenInternalPanelIds.includes("fixture-filename"), true);
   assert.equal(visibility.visiblePanelIds.includes("real-london-practice-beta"), true);
   assert.equal(visibility.visiblePanelIds.includes("real-london-readiness-qa"), false);
+});
+
+test("Stage 161.6.10 student beta mode hides diagnostics even when the beta flag is false", () => {
+  const visibility = buildRouteRunnerPanelVisibility({
+    mapId: realLondonOsmPilotRouteMap.id,
+    betaEnabled: false,
+    devQaVisible: false,
+    mode: "student-beta"
+  });
+
+  assert.equal(visibility.audience, "beta-student");
+  assert.equal(visibility.isRealLondonBetaPractice, true);
+  assert.equal(visibility.showInternalQaPanels, false);
+  assert.equal(visibility.visiblePanelIds.includes("converted-osm-qa"), false);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("raw-osm-node-ids"), true);
 });
 
 test("Stage 131.5 dev QA users can reveal real London readiness diagnostics", () => {
   const visibility = buildRouteRunnerPanelVisibility({
     mapId: realLondonOsmPilotRouteMap.id,
     betaEnabled: true,
-    devQaVisible: true
+    devQaVisible: true,
+    mode: "dev"
   });
 
   assert.equal(visibility.audience, "dev-qa");
@@ -188,6 +212,20 @@ test("Stage 131.5 dev QA users can reveal real London readiness diagnostics", ()
   assert.equal(visibility.showRealLondonQaReadinessPanel, true);
   assert.equal(visibility.showFixtureFilename, true);
   assert.equal(visibility.visiblePanelIds.includes("real-london-readiness-qa"), true);
+  assert.deepEqual(visibility.hiddenInternalPanelIds, []);
+});
+
+test("Stage 161.6.10 dev route runner mode keeps QA diagnostics visible by default", () => {
+  const visibility = buildRouteRunnerPanelVisibility({
+    mapId: realLondonOsmPilotRouteMap.id,
+    betaEnabled: true,
+    devQaVisible: false,
+    mode: "dev"
+  });
+
+  assert.equal(visibility.audience, "dev-qa");
+  assert.equal(visibility.showInternalQaPanels, true);
+  assert.equal(visibility.visiblePanelIds.includes("converted-osm-qa"), true);
   assert.deepEqual(visibility.hiddenInternalPanelIds, []);
 });
 

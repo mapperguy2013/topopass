@@ -41,6 +41,29 @@ export type DrawnRouteScoreDisplay = {
   summary: string;
 };
 
+export type DrawnRouteSubmitBlockCode =
+  | "map-loading"
+  | "map-load-error"
+  | "visual-only-map"
+  | "missing-exercise"
+  | "invalid-exercise"
+  | "drawing-active"
+  | "no-drawn-route"
+  | "insufficient-drawing"
+  | "matching-failed"
+  | "scoring-unavailable";
+
+export type DrawnRouteSubmitReadiness = {
+  canSubmit: boolean;
+  code: DrawnRouteSubmitBlockCode | null;
+  learnerMessage: string;
+  devMessage: string;
+};
+
+export type DrawnRouteSubmitOutcome = DrawnRouteSubmitReadiness & {
+  submitted: boolean;
+};
+
 export type RequiredStopVisitStatus = {
   nodeId: string;
   order: number;
@@ -575,6 +598,170 @@ export function getDrawnPipelineDisplayStatus(
   }
 
   return "scored";
+}
+
+export function getLearnerDrawnPipelineStatusText(input: {
+  status: DrawnPipelineDisplayStatus;
+  submitted: boolean;
+  blocked: boolean;
+}): string {
+  if (input.submitted) {
+    return "Submitted";
+  }
+
+  if (input.blocked) {
+    return "Needs attention";
+  }
+
+  if (input.status === "drawing") {
+    return "Drawing route";
+  }
+
+  if (input.status === "no drawing") {
+    return "No route drawn";
+  }
+
+  if (input.status === "insufficient drawing") {
+    return "Draw a longer route";
+  }
+
+  if (input.status === "scored") {
+    return "Ready to submit";
+  }
+
+  return "Route drawn";
+}
+
+export function getDrawnRouteSubmitReadiness(input: {
+  mapIsLoading: boolean;
+  mapLoadError: string | null;
+  selectedMapIsScoreable: boolean;
+  hasSelectedExercise: boolean;
+  selectedExerciseIsValid: boolean;
+  isDrawing: boolean;
+  drawnPointCount: number;
+}): DrawnRouteSubmitReadiness {
+  if (input.mapIsLoading) {
+    return {
+      canSubmit: false,
+      code: "map-loading",
+      learnerMessage: "The selected map is still loading. Submit will be available when it is ready.",
+      devMessage: "Submit blocked: fixture still loading."
+    };
+  }
+
+  if (input.mapLoadError) {
+    return {
+      canSubmit: false,
+      code: "map-load-error",
+      learnerMessage: "The selected map could not finish loading. Try another map or reload the page.",
+      devMessage: `Submit blocked: selected map load error: ${input.mapLoadError}`
+    };
+  }
+
+  if (!input.selectedMapIsScoreable) {
+    return {
+      canSubmit: false,
+      code: "visual-only-map",
+      learnerMessage: "This map is available for preview only. Scored exercises are not available yet.",
+      devMessage: "Submit blocked: selected route-runner map option is visual-only."
+    };
+  }
+
+  if (!input.hasSelectedExercise) {
+    return {
+      canSubmit: false,
+      code: "missing-exercise",
+      learnerMessage: "Choose a route exercise before submitting.",
+      devMessage: "Submit blocked: selected exercise is missing or stale."
+    };
+  }
+
+  if (!input.selectedExerciseIsValid) {
+    return {
+      canSubmit: false,
+      code: "invalid-exercise",
+      learnerMessage: "This route exercise is not ready for scoring. Choose another exercise.",
+      devMessage: "Submit blocked: selected exercise failed route availability validation."
+    };
+  }
+
+  if (input.isDrawing) {
+    return {
+      canSubmit: false,
+      code: "drawing-active",
+      learnerMessage: "Finish drawing the current stroke before submitting.",
+      devMessage: "Submit blocked: drawing pointer is active."
+    };
+  }
+
+  if (input.drawnPointCount === 0) {
+    return {
+      canSubmit: false,
+      code: "no-drawn-route",
+      learnerMessage: "Draw a route before submitting.",
+      devMessage: "Submit blocked: no drawn route points are present."
+    };
+  }
+
+  return {
+    canSubmit: true,
+    code: null,
+    learnerMessage: "Ready to submit.",
+    devMessage: "Submit can run for the current drawn route."
+  };
+}
+
+export function getDrawnRouteSubmitOutcome(input: {
+  readiness: DrawnRouteSubmitReadiness;
+  result: DrawnRoutePipelineResult;
+}): DrawnRouteSubmitOutcome {
+  if (!input.readiness.canSubmit) {
+    return {
+      ...input.readiness,
+      submitted: false
+    };
+  }
+
+  if (input.result.status === "insufficient_points") {
+    return {
+      submitted: false,
+      canSubmit: false,
+      code: "insufficient-drawing",
+      learnerMessage: "Draw a longer route before submitting.",
+      devMessage: "Submit blocked: pipeline status is insufficient_points."
+    };
+  }
+
+  if (input.result.status === "matching_failed") {
+    return {
+      submitted: false,
+      canSubmit: false,
+      code: "matching-failed",
+      learnerMessage: "We could not match your drawn route to the road network. Try drawing closer to the roads.",
+      devMessage: "Submit blocked: matcher did not produce a route ready for scoring."
+    };
+  }
+
+  if (!input.result.exerciseResult) {
+    return {
+      submitted: false,
+      canSubmit: false,
+      code: "scoring-unavailable",
+      learnerMessage: "We could not score that route. Try erasing it and drawing again.",
+      devMessage: `Submit blocked: pipeline status ${input.result.status} did not produce an exercise result.`
+    };
+  }
+
+  return {
+    submitted: true,
+    canSubmit: true,
+    code: null,
+    learnerMessage: input.result.exerciseResult.score.passed
+      ? "Submitted. Your route passed."
+      : "Submitted. Review the route feedback below.",
+    devMessage: "Submit succeeded: matching and scoring returned an exercise result."
+  };
 }
 
 export function getPipelineStageBadges(

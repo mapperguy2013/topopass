@@ -381,6 +381,19 @@ minor roads and local street names inspectable while learner route overlays,
 start/destination/checkpoint markers, illegal segments, and review warnings
 remain visually above the base map.
 
+Stage 161.6.10 confirms the learner/dev boundary for Real London beta
+practice. `/practice/real-london` is the learner-facing surface: it shows the
+curated map selector, route exercise selector, route instructions, Draw/Pan,
+Undo, Erase route, Reset, Submit, map legend, small OSM attribution, and
+post-submit score/review. Developer surfaces such as Converted OSM QA, Real
+London Pilot QA, graph overlays, raw node/road/route IDs, manual route input,
+blocked-way diagnostics, and pipeline warning groups remain available in
+`/dev/route-runner` only. Submit now records the current drawn route as an
+attempt: it is disabled until the map, exercise, and drawing are ready; it
+shows a result when matching/scoring succeeds; and it shows learner-friendly
+failure text when matching cannot produce a score. Visual-only maps stay
+preview-only and must not surface scored matching errors.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

@@ -13,7 +13,7 @@ import {
 export const metadata = buildPageMetadata({
   title: "Real London Practice Beta",
   description:
-    "Beta-gated real London route practice for selected TopoPass testers, using committed local OSM fixture data.",
+    "Beta-gated real London route practice for selected TopoPass testers, using local map data.",
   path: REAL_LONDON_BETA_PRACTICE_PATH
 });
 
@@ -73,8 +73,7 @@ export default async function RealLondonBetaPracticePage({
               </p>
               <p className="mt-3 hidden max-w-4xl text-sm leading-6 text-slate-700 sm:block">
                 Choose a beta exercise, read the start and destination instructions, draw your route on the map, and
-                submit it for the existing TopoPass route feedback. This beta screen uses committed local OSM fixture
-                data only.
+                submit it for TopoPass route feedback. This beta screen uses local map data only.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
                 <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-blue-800">
@@ -84,13 +83,7 @@ export default async function RealLondonBetaPracticePage({
                   {model.exerciseRows.length} exercises
                 </span>
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                  {model.selectedMap.fixtureUseLabel}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                  Map version {model.mapVersion}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                  Data: {model.attribution}
+                  {model.selectedMap.scoreable ? "Ready for practice" : "Preview only"}
                 </span>
               </div>
             </div>
@@ -102,7 +95,7 @@ export default async function RealLondonBetaPracticePage({
                   <p className="mt-1">{model.selectedExercise?.title ?? model.selectedMap.label}</p>
                 </div>
                 <span className="w-fit rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">
-                  {model.selectedMap.scoreable ? "Scored map" : "Map only"}
+                  {model.selectedMap.scoreable ? "Practice" : "Preview"}
                 </span>
               </div>
               <p className="mt-2 rounded-md border border-blue-100 bg-white p-2 text-xs font-semibold leading-5 text-blue-950">
@@ -115,9 +108,6 @@ export default async function RealLondonBetaPracticePage({
                     {model.selectedExercise.difficulty}
                   </span>
                 ) : null}
-                <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">
-                  {model.selectedMap.fixtureUseLabel}
-                </span>
                 {model.selectedExercise ? (
                   <>
                     <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5">

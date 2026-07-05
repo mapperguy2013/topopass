@@ -14,6 +14,9 @@ import {
   getDefaultCanvasOverlayDisplayOptions,
   getDrawnPipelineDisplayStatus,
   getDrawnRouteScoreDisplay,
+  getDrawnRouteSubmitOutcome,
+  getDrawnRouteSubmitReadiness,
+  getLearnerDrawnPipelineStatusText,
   getPipelineIssueGroups,
   getPipelineStageBadges,
   getRoadRestrictionDirectionAngleRadians,
@@ -932,6 +935,141 @@ test("drawn route score display distinguishes blocked, pass, fail, and drawing s
     ).state,
     "pending"
   );
+});
+
+test("Stage 161.6.10 learner drawn status hides internal pipeline labels", () => {
+  assert.equal(
+    getLearnerDrawnPipelineStatusText({
+      status: "snapped",
+      submitted: false,
+      blocked: false
+    }),
+    "Route drawn"
+  );
+  assert.equal(
+    getLearnerDrawnPipelineStatusText({
+      status: "scored",
+      submitted: false,
+      blocked: false
+    }),
+    "Ready to submit"
+  );
+  assert.equal(
+    getLearnerDrawnPipelineStatusText({
+      status: "scored",
+      submitted: true,
+      blocked: false
+    }),
+    "Submitted"
+  );
+  assert.equal(
+    getLearnerDrawnPipelineStatusText({
+      status: "matching failed",
+      submitted: false,
+      blocked: true
+    }),
+    "Needs attention"
+  );
+});
+
+test("Stage 161.6.10 submit readiness blocks missing drawing and visual-only maps clearly", () => {
+  assert.deepEqual(
+    getDrawnRouteSubmitReadiness({
+      mapIsLoading: false,
+      mapLoadError: null,
+      selectedMapIsScoreable: true,
+      hasSelectedExercise: true,
+      selectedExerciseIsValid: true,
+      isDrawing: false,
+      drawnPointCount: 0
+    }),
+    {
+      canSubmit: false,
+      code: "no-drawn-route",
+      learnerMessage: "Draw a route before submitting.",
+      devMessage: "Submit blocked: no drawn route points are present."
+    }
+  );
+
+  assert.deepEqual(
+    getDrawnRouteSubmitReadiness({
+      mapIsLoading: false,
+      mapLoadError: null,
+      selectedMapIsScoreable: false,
+      hasSelectedExercise: false,
+      selectedExerciseIsValid: false,
+      isDrawing: false,
+      drawnPointCount: 12
+    }),
+    {
+      canSubmit: false,
+      code: "visual-only-map",
+      learnerMessage: "This map is available for preview only. Scored exercises are not available yet.",
+      devMessage: "Submit blocked: selected route-runner map option is visual-only."
+    }
+  );
+});
+
+test("Stage 161.6.10 submit outcome reports matching failure without exposing road IDs", () => {
+  const readiness = getDrawnRouteSubmitReadiness({
+    mapIsLoading: false,
+    mapLoadError: null,
+    selectedMapIsScoreable: true,
+    hasSelectedExercise: true,
+    selectedExerciseIsValid: true,
+    isDrawing: false,
+    drawnPointCount: 12
+  });
+
+  const outcome = getDrawnRouteSubmitOutcome({
+    readiness,
+    result: pipelineResult({
+      status: "matching_failed",
+      warnings: [
+        {
+          source: "matching",
+          code: "disconnected_roads",
+          severity: "warning",
+          message: "Disconnected between r1 and r2",
+          fromRoadId: "r1",
+          toRoadId: "r2"
+        }
+      ]
+    })
+  });
+
+  assert.equal(outcome.submitted, false);
+  assert.equal(outcome.code, "matching-failed");
+  assert.equal(
+    outcome.learnerMessage,
+    "We could not match your drawn route to the road network. Try drawing closer to the roads."
+  );
+  assert.equal(outcome.learnerMessage.includes("r1"), false);
+});
+
+test("Stage 161.6.10 submit outcome succeeds when matching and scoring produce a result", () => {
+  const readiness = getDrawnRouteSubmitReadiness({
+    mapIsLoading: false,
+    mapLoadError: null,
+    selectedMapIsScoreable: true,
+    hasSelectedExercise: true,
+    selectedExerciseIsValid: true,
+    isDrawing: false,
+    drawnPointCount: 12
+  });
+
+  const outcome = getDrawnRouteSubmitOutcome({
+    readiness,
+    result: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult()
+    })
+  });
+
+  assert.equal(outcome.submitted, true);
+  assert.equal(outcome.canSubmit, true);
+  assert.equal(outcome.code, null);
+  assert.equal(outcome.learnerMessage, "Submitted. Your route passed.");
 });
 
 test("required stop visit statuses follow required order and mark missing stops", () => {

@@ -111,7 +111,7 @@ export type RealLondonBetaPracticeScreenModel =
       mapInteraction: {
         drawingEnabled: true;
         usesExistingRouteRunnerLogic: true;
-        submitActionLabel: "Submit Attempt";
+        submitActionLabel: "Submit";
         clearActionLabel: "Erase route";
         retryActionLabel: "Try again";
         mapSwitchClearsAttemptState: true;
@@ -269,7 +269,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
     mapInteraction: {
       drawingEnabled: true,
       usesExistingRouteRunnerLogic: true,
-      submitActionLabel: "Submit Attempt",
+      submitActionLabel: "Submit",
       clearActionLabel: "Erase route",
       retryActionLabel: "Try again",
       mapSwitchClearsAttemptState: true,
@@ -305,6 +305,11 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         "node-segment-id-controls",
         "road-node-edge-diagnostics",
         "blocked-way-ids",
+        "raw-osm-node-ids",
+        "raw-road-ids",
+        "raw-route-graph-ids",
+        "real-london-pilot-qa",
+        "real-london-pilot-playthrough",
         "adaptive-dev-dashboard",
         "osm-debug",
         "raw-debug-output",

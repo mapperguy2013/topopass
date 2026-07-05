@@ -1079,6 +1079,18 @@ The Central London stress fixture is explicit `visibleInBeta=true`,
 `scoreable=false`, `visualQaOnly=true`, `devOnlyStressTest=true`, and lazy-loads
 only after selection, so the default beta page does not eagerly import the
 large fixture.
+Stage 161.6.10 cleans the learner-facing beta practice page and fixes Submit
+as an explicit route-attempt action. `/practice/real-london` now treats
+student beta mode as authoritative, so Converted OSM QA, Real London Pilot QA,
+manual route input, graph overlays, raw IDs, blocked-way diagnostics, internal
+fixture labels, and pipeline warning groups stay out of the beta UI. The same
+tools remain available in `/dev/route-runner`. Learners see map and route
+selectors, Draw/Pan, Undo, Erase route, Reset, Submit, legend, unobtrusive OSM
+attribution, and post-submit score/review. Submit is disabled until a scoreable
+map, valid exercise, and drawn route are ready; pressing it records the current
+drawn attempt, shows the score when matching/scoring succeeds, and shows a
+learner-friendly matching failure when it does not. Preview-only maps remain
+pan/zoom/legend views with no scored Submit target.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

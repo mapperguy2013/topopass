@@ -115,6 +115,11 @@ test("Stage 132 beta screen hides dev QA diagnostics", () => {
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("node-segment-id-controls"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("road-node-edge-diagnostics"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("blocked-way-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-osm-node-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-road-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-route-graph-ids"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("real-london-pilot-qa"));
+  assert.ok(model.devDiagnostics.hiddenPanelIds.includes("real-london-pilot-playthrough"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("adaptive-dev-dashboard"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("osm-debug"));
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("raw-debug-output"));
@@ -150,7 +155,7 @@ test("Stage 132 route attempt flow uses existing runner and remains scoreable", 
   assert.equal(model.routeFlow.shortestRouteFound, true);
   assert.equal(model.routeFlow.existingRunnerScorePassed, true);
   assert.ok(model.routeFlow.selectedEdgeCount > 0);
-  assert.equal(model.mapInteraction.submitActionLabel, "Submit Attempt");
+  assert.equal(model.mapInteraction.submitActionLabel, "Submit");
   assert.equal(model.mapInteraction.clearActionLabel, "Erase route");
   assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
   assert.equal(model.mapInteraction.eraseClearsDrawingAndResult, true);
@@ -226,7 +231,7 @@ test("Stage 139 mobile feedback and map interaction affordances stay usable", ()
   assert.equal(model.mobileLayout.routeRunnerMapTouchAction, "none");
   assert.equal(model.mapInteraction.drawingEnabled, true);
   assert.equal(model.mapInteraction.clearActionLabel, "Erase route");
-  assert.equal(model.mapInteraction.submitActionLabel, "Submit Attempt");
+  assert.equal(model.mapInteraction.submitActionLabel, "Submit");
 });
 
 test("Stage 156 mobile and tablet map readability contract uses central touch-safe values", () => {

@@ -5,6 +5,7 @@ import { isRealLondonBetaMapId } from "./routeRunnerRealLondonBetaGate.ts";
 import type { RestrictionMapVisualItem } from "./restrictionMapVisuals.ts";
 
 export type RouteRunnerPanelAudience = "dev-qa" | "beta-student";
+export type RouteRunnerPanelMode = "dev" | "student-beta";
 
 export type RouteRunnerPanelVisibility = {
   audience: RouteRunnerPanelAudience;
@@ -65,10 +66,16 @@ export function buildRouteRunnerPanelVisibility(input: {
   mapId: string;
   betaEnabled: boolean;
   devQaVisible: boolean;
+  mode?: RouteRunnerPanelMode;
 }): RouteRunnerPanelVisibility {
-  const isRealLondonBetaPractice = input.betaEnabled && isRealLondonBetaMapId(input.mapId);
-  const audience: RouteRunnerPanelAudience =
-    isRealLondonBetaPractice && !input.devQaVisible ? "beta-student" : "dev-qa";
+  const isStudentBetaMode = input.mode === "student-beta";
+  const isDevMode = input.mode === "dev";
+  const isRealLondonBetaPractice = isStudentBetaMode || (input.betaEnabled && isRealLondonBetaMapId(input.mapId));
+  const audience: RouteRunnerPanelAudience = isDevMode
+    ? "dev-qa"
+    : isStudentBetaMode || (isRealLondonBetaPractice && !input.devQaVisible)
+      ? "beta-student"
+      : "dev-qa";
   const showInternalQaPanels = audience === "dev-qa";
   const visiblePanelIds = [
     "practice-exercises",
@@ -87,7 +94,24 @@ export function buildRouteRunnerPanelVisibility(input: {
         "metadata-coverage-counts",
         "internal-readiness-diagnostics",
         "full-restriction-debug-details",
-        "raw-map-id"
+        "raw-map-id",
+        "converted-osm-qa",
+        "manual-route-input",
+        "manual-run-result",
+        "real-london-pilot-qa",
+        "real-london-pilot-playthrough",
+        "osm-qa-button",
+        "exercise-qa-button",
+        "graph-overlay-controls",
+        "exercise-qa-overlay-controls",
+        "node-segment-id-controls",
+        "road-node-edge-diagnostics",
+        "blocked-way-ids",
+        "raw-osm-node-ids",
+        "raw-road-ids",
+        "raw-route-graph-ids",
+        "pipeline-debug-result",
+        "adaptive-dev-dashboard"
       ];
 
   return {
