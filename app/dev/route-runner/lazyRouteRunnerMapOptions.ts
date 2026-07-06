@@ -1,8 +1,8 @@
 import {
   CENTRAL_LONDON_LAZY_LOAD_ID,
   KINGS_CROSS_EUSTON_LAZY_LOAD_ID
-} from "./curatedRealLondonRouteRunnerMaps.ts";
-import type { RouteRunnerMapOption } from "./routeRunnerMaps.ts";
+} from "./curatedRealLondonLazyIds.ts";
+import type { RouteRunnerMapOption } from "./routeRunnerMapOptionUtils.ts";
 
 export function routeRunnerMapOptionNeedsLazyLoad(option: RouteRunnerMapOption): boolean {
   return Boolean(option.lazyLoadId);

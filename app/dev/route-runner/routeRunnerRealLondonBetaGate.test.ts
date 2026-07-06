@@ -20,9 +20,6 @@ import {
   getRouteRunnerDevQaMapOptions,
   getRouteRunnerVisibleMapOptions,
   isRealLondonBetaAccessEnabled,
-  routeRunnerMapOptionBetaStatusLabel,
-  routeRunnerMapOptionIsScoreable,
-  routeRunnerMapOptionIsVisibleInBeta,
   resolveRealLondonBetaMapAccess
 } from "./routeRunnerRealLondonBetaGate.ts";
 
@@ -87,8 +84,7 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     "osm-curated-waterloo-bridge",
     "osm-curated-one-way-system-area",
     "osm-curated-quiet-residential-roads",
-    "osm-curated-kings-cross-euston",
-    "osm-curated-centralLondon"
+    "osm-curated-kings-cross-euston"
   ];
   const access = resolveRealLondonBetaMapAccess({
     requestedMapId: "osm-curated-waterloo-bridge",
@@ -101,6 +97,7 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     assert.equal(nonBetaVisibleMapIds.includes(mapId), false, mapId);
   }
 
+  assert.equal(visibleMapIds.includes("osm-curated-centralLondon"), false);
   assert.equal(nonBetaVisibleMapIds.includes("osm-curated-centralLondon"), false);
   assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
   assert.equal(access.state, "available");
@@ -114,13 +111,9 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
     mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
   });
 
-  assert.equal(centralLondonAccess.state, "available");
-  assert.equal(centralLondonAccess.selectedMapOption.map.id, "osm-curated-centralLondon");
-  assert.equal(centralLondonAccess.selectedMapOption.fixturePerformanceGate, "devOnlyStressTest");
-  assert.equal(routeRunnerMapOptionIsVisibleInBeta(centralLondonAccess.selectedMapOption), true);
-  assert.equal(routeRunnerMapOptionIsScoreable(centralLondonAccess.selectedMapOption), false);
-  assert.equal(routeRunnerMapOptionBetaStatusLabel(centralLondonAccess.selectedMapOption), "Stress test / slow");
-  assert.equal(centralLondonAccess.unavailableState, null);
+  assert.equal(centralLondonAccess.state, "unknown-map");
+  assert.equal(centralLondonAccess.selectedMapOption.map.id, DEFAULT_ROUTE_RUNNER_MAP_ID);
+  assert.equal(centralLondonAccess.unavailableState?.reasonCode, "unknown-map");
 });
 
 test("dev QA route-runner map options expose every registered map regardless of beta flag", () => {

@@ -8,9 +8,8 @@ import {
 } from "./routeAttemptReview.ts";
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
-  ROUTE_RUNNER_MAP_OPTIONS,
   type RouteRunnerMapOption
-} from "./routeRunnerMaps.ts";
+} from "./routeRunnerMapOptionUtils.ts";
 
 export type RouteRunnerInitialSelectionInput = {
   initialMapOptionId?: string;
@@ -51,19 +50,18 @@ export function resolveRouteRunnerExerciseSelection(input: {
 export function createRouteRunnerInitialHydrationState(
   input: RouteRunnerInitialSelectionInput = {}
 ): RouteRunnerInitialHydrationState {
-  const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
+  const mapOptions = input.mapOptions ?? [];
   const initialMapOption =
     mapOptions.find((option) => option.id === (input.initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID)) ??
-    mapOptions[0] ??
-    ROUTE_RUNNER_MAP_OPTIONS[0];
+    mapOptions[0];
   const initialExerciseId = resolveRouteRunnerExerciseSelection({
-    exercises: initialMapOption.exercises,
+    exercises: initialMapOption?.exercises ?? [],
     requestedExerciseId: input.initialExerciseId,
-    defaultExerciseId: initialMapOption.defaultExerciseId
+    defaultExerciseId: initialMapOption?.defaultExerciseId
   });
 
   return {
-    mapOptionId: initialMapOption.id,
+    mapOptionId: initialMapOption?.id ?? input.initialMapOptionId ?? DEFAULT_ROUTE_RUNNER_MAP_ID,
     exerciseId: initialExerciseId,
     weakAreaProfile: createEmptyLearnerWeakAreaProfile(),
     adaptiveLauncherState: createEmptyAdaptivePracticeLauncherState()

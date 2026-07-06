@@ -1082,15 +1082,14 @@ matched-movement review lines, and review callout text scale more strongly for
 post-submit inspection. Projection, matching, scoring, legality, route
 generation, runtime OSM access, and beta QA visibility remain unchanged.
 Stage 161.6.9 separates curated map visibility from route scoreability in the
-learner-facing Real London beta selector. All curated beta-visible fixtures now
-appear in `/practice/real-london`, including visual-only and stress-test maps.
-Selector badges distinguish `Scored practice`, `Route review`, `Map preview
-only`, and `Stress test / slow`; non-scoreable maps render for pan/zoom, legend,
-attribution, and visual review but expose no scored exercise or submit target.
-The Central London stress fixture is explicit `visibleInBeta=true`,
-`scoreable=false`, `visualQaOnly=true`, `devOnlyStressTest=true`, and lazy-loads
-only after selection, so the default beta page does not eagerly import the
-large fixture.
+learner-facing Real London beta selector. Stage 161.8.6 later tightens that
+rule so `devOnlyStressTest` fixtures stay out of `/practice/real-london`
+startup. Selector badges distinguish learner-visible `Scored practice`, `Route
+review`, and `Map preview only` maps; non-scoreable beta-allowed maps render
+for pan/zoom, legend, attribution, and visual review but expose no scored
+exercise or submit target. The Central London stress fixture remains dev-only
+and must not be imported, parsed, converted, or serialized by the default beta
+page.
 Stage 161.6.10 cleans the learner-facing beta practice page and fixes Submit
 as an explicit route-attempt action. `/practice/real-london` now treats
 student beta mode as authoritative, so Converted OSM QA, Real London Pilot QA,
@@ -1259,12 +1258,14 @@ zero scored beta exercises. It remains useful for explicit large-area stress
 inspection without weakening matching, legality, scoring, or route validation.
 Stage 161.8.1 originally disabled that oversized fixture from
 `/practice/real-london` after real page loading proved too slow, with about
-two-minute partial loads in the current Phase 6 practice UI. Stage 161.6.9 keeps
-the safety outcome but changes the UX: Central London is visible in the selector
-as `Stress test / slow`, stays `scoreable=false`, offers no route exercises, and
-lazy-loads only after selection. Future larger imports must pass fixture budget
-checks and should use controlled scripted import, simplification, lazy loading,
-tiling, or a Geofabrik-based pipeline before they can become scored practice.
+two-minute partial loads in the current Phase 6 practice UI. Stage 161.8.6 keeps
+Central London registered for dev stress testing but removes it from the beta
+practice startup catalogue. The learner page now serializes only beta-allowed
+practice maps, lazy-loads larger accepted maps only after selection, and avoids
+hidden dev QA imports/computation unless internal QA is explicitly visible.
+Future larger imports must pass fixture budget checks and should use controlled
+scripted import, simplification, lazy loading, tiling, or a Geofabrik-based
+pipeline before they can become scored practice.
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled beta
 candidate with fixture id `kingsCrossEuston`, display label
 `King's Cross / Euston curated OSM`, and route id prefix
@@ -1283,8 +1284,8 @@ JSON, conversion output, route preflights, and scored exercises only after a
 tester selects it. The page shows "Loading King's Cross / Euston map..." and
 disables Submit while the map is being prepared. Smaller curated beta fixtures
 remain immediately available; oversized/dev-only stress fixtures remain blocked
-from scored practice by fixture budget metadata and appear only when explicitly
-marked beta-visible.
+from scored practice by fixture budget metadata and are not included in the
+normal beta practice startup catalogue.
 
 ## Current Feature Set
 

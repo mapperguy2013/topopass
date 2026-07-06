@@ -1,7 +1,7 @@
 import type { RouteExercise } from "../../../lib/map-engine/index.ts";
 import { buildRouteExerciseDisplayModel } from "./routeRunnerExerciseDisplay.ts";
-import { DEFAULT_ROUTE_RUNNER_MAP_ID } from "./routeRunnerMaps.ts";
-import { isRealLondonBetaMapId } from "./routeRunnerRealLondonBetaGate.ts";
+import { DEFAULT_ROUTE_RUNNER_MAP_ID } from "./routeRunnerMapOptionUtils.ts";
+import { isRealLondonBetaMapId } from "./routeRunnerBetaPracticeAccess.ts";
 import type { RestrictionMapVisualItem } from "./restrictionMapVisuals.ts";
 
 export type RouteRunnerPanelAudience = "dev-qa" | "beta-student";

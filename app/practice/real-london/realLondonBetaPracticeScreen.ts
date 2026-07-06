@@ -10,11 +10,10 @@ import { TOPOPASS_STREET_ATLAS_STYLE } from "../../dev/route-runner/topopassCart
 import { ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON } from "../../dev/route-runner/curatedRealLondonRouteRunnerMaps.ts";
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
+  REAL_LONDON_OSM_PILOT_MAP_ID,
   getRealLondonPilotExerciseMetadata,
-  getRouteRunnerMapOption,
-  realLondonOsmPilotRouteMap,
   type RouteRunnerMapOption
-} from "../../dev/route-runner/routeRunnerMaps.ts";
+} from "../../dev/route-runner/routeRunnerMapOptionUtils.ts";
 import { buildPracticeExercisesPanelModel } from "../../dev/route-runner/routeRunnerCompactPracticePanels.ts";
 import { resolveRouteRunnerExerciseSelection } from "../../dev/route-runner/routeRunnerInitialState.ts";
 import {
@@ -34,7 +33,7 @@ import {
   resolveRealLondonBetaMapAccess,
   type RealLondonBetaAccessEnv,
   type RealLondonBetaUnavailableState
-} from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
+} from "../../dev/route-runner/routeRunnerBetaPracticeAccess.ts";
 
 export const REAL_LONDON_BETA_PRACTICE_PATH = "/practice/real-london";
 export const REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL = "Real London Practice - Beta";
@@ -44,7 +43,9 @@ export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE = "viewport-height-boun
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX = 1920;
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX = 912;
 export const REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
-export const REAL_LONDON_BETA_MAP_OPTIONS = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON;
+export const REAL_LONDON_BETA_MAP_OPTIONS = getRealLondonBetaMapOptions(
+  ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+);
 
 export type RealLondonBetaPracticeMapRow = {
   id: string;
@@ -319,7 +320,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
 } = {}): RealLondonBetaPracticeScreenModel {
   const betaEnabled = input.betaEnabled ?? isRealLondonBetaAccessEnabled(input.env);
   const mapOptions = input.mapOptions ?? REAL_LONDON_BETA_MAP_OPTIONS;
-  const requestedMapId = input.requestedMapId ?? realLondonOsmPilotRouteMap.id;
+  const requestedMapId = input.requestedMapId ?? REAL_LONDON_OSM_PILOT_MAP_ID;
   const access = resolveRealLondonBetaMapAccess({
     requestedMapId,
     betaEnabled,
@@ -880,7 +881,7 @@ function estimateExerciseDistance(map: MapDefinition, exercise: RouteExercise): 
 }
 
 export function getRealLondonBetaPracticeDefaultMapOption(): RouteRunnerMapOption {
-  const option = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+  const option = REAL_LONDON_BETA_MAP_OPTIONS.find((candidate) => candidate.map.id === REAL_LONDON_OSM_PILOT_MAP_ID);
 
   if (!option) {
     throw new Error("Real London beta practice default map option is not registered.");

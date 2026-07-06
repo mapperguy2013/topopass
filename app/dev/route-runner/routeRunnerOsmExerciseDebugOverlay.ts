@@ -16,7 +16,7 @@ import {
   type OverpassNodeElement,
   type OverpassWayElement
 } from "../../../lib/map-engine/osm/index.ts";
-import { getRouteRunnerMapFitBounds, type RouteRunnerMapBounds } from "./routeRunnerMaps.ts";
+import { getRouteRunnerMapFitBounds, type RouteRunnerMapBounds } from "./routeRunnerMapOptionUtils.ts";
 import {
   formatOsmExerciseQaFailure,
   validateOsmRouteExerciseQa,

@@ -244,16 +244,16 @@ OSM conversion, feedback tooling, and Phase 7 scope unchanged.
 
 Beta testers can now choose from the Real London pilot and the curated
 Piccadilly Circus, Waterloo Bridge / Thames corridor, one-way system, quiet
-residential, King's Cross / Euston, and Central London stress fixtures when
-they are marked beta-visible. Fixture metadata controls use:
+residential, and King's Cross / Euston fixtures when they are marked
+beta-visible. Central London remains a dev-only stress fixture and is not part
+of the normal learner startup catalogue. Fixture metadata controls use:
 
 - `routableExercise` maps are available for scored practice.
 - `routeReviewFixture` maps are labelled as `Route review`.
 - `visualQaOnly` maps are labelled as `Map preview only` and are not
   offered as scored exercises.
-- `devOnlyStressTest` maps can appear only when `visibleInBeta=true`; they are
-  labelled `Stress test / slow`, lazy-loaded where possible, and never treated
-  as scored practice until validation explicitly allows it.
+- `devOnlyStressTest` maps stay out of the learner beta startup catalogue; they
+  may remain available in dev-only route-runner or explicit stress-test paths.
 
 Changing the selected map resets the current drawing, previous result, matching
 messages, viewport state, and debug overlays so stale attempt state does not
@@ -302,15 +302,15 @@ scoring is reached. `visualQaOnly` fixtures remain map-inspection only, and
 `routeReviewFixture` fixtures stay labelled for review workflows rather than
 normal scored practice.
 
-Stage 161.6.9 separates beta map visibility from scoreability. A curated map
-with `visibleInBeta=true` appears in `/practice/real-london` even when
-`scoreable=false`. Non-scoreable maps render for pan/zoom, legend, attribution,
-and visual review, but the route exercise selector and Submit flow expose no
-scored target and must not produce matching/scoring errors simply because the
-fixture has no validated exercise. The beta selector badges are `Scored
-practice`, `Route review`, `Map preview only`, and `Stress test / slow`.
-Central London is explicitly visible as a lazy `devOnlyStressTest` preview, not
-as scored practice.
+Stage 161.6.9 separated beta map visibility from scoreability for smaller
+fixtures. Stage 161.8.6 supersedes the Central London part of that rule:
+`devOnlyStressTest` fixtures no longer appear in `/practice/real-london` beta
+startup. Non-scoreable beta-allowed maps can still render for pan/zoom, legend,
+attribution, and visual review, but the route exercise selector and Submit flow
+expose no scored target and must not produce matching/scoring errors simply
+because a fixture has no validated exercise. The beta selector badges remain
+`Scored practice`, `Route review`, and `Map preview only` for learner-visible
+maps.
 
 Stage 161.6.4 tightens the route exercise selector wiring for the curated
 fixtures. The selected map id and selected exercise id now resolve through a
@@ -700,10 +700,10 @@ largest drivable component of 62,152 nodes, 21,124 one-way directed edges, and
 exercises because generated 6.5 km perfect-route matching took about 80 seconds
 in the stress probe. The acceptance rule is therefore:
 
-- Central London may appear in the `/practice/real-london` beta map selector
-  only as an explicitly beta-visible `Stress test / slow` preview.
-- Central London remains `devOnlyStressTest` with `betaPracticeAllowed=false`,
-  `visibleInBeta=true`, and `scoreable=false`.
+- Central London must not appear in the `/practice/real-london` beta startup
+  catalogue.
+- Central London remains `devOnlyStressTest` with `betaPracticeAllowed=false`
+  and `scoreable=false`.
 - It must not offer scored route exercises until loading, matching, and scoring
   performance are validated for the larger graph.
 - Learner practice must offer scoring only on fixtures that pass this same
@@ -775,10 +775,38 @@ Budget guardrails now record raw element counts plus road-segment and rendered
 feature ceilings. The smaller curated fixtures remain
 `betaPracticeAllowed`; King's Cross / Euston is
 `betaPracticeAllowedWithLoading`; Central London remains `devOnlyStressTest`
-and is visible only as a lazy `Stress test / slow` map preview. Larger raw
+and is excluded from the normal beta practice startup catalogue. Larger raw
 Overpass fixtures must pass budget checks and should use lazy loading,
 preprocessing, simplification, tiling, or a later controlled import pipeline
 before wider scored practice use.
+
+## Stage 161.8.6 Real London Practice Performance Regression Fix
+
+Stage 161.8.6 fixes the beta-blocking `/practice/real-london` startup
+regression by separating learner startup data from dev QA/stress data. The beta
+page now passes only beta-visible, non-`devOnlyStressTest` map options to the
+client. Central London remains a dev stress fixture, but it is not serialized,
+parsed, or converted during learner practice startup and is not offered as a
+scored beta exercise.
+
+The route-runner client now uses lightweight map-option and beta-access helpers
+instead of importing the full dev map catalogue. Lazy map IDs live in a tiny
+constants module so the lazy loader no longer evaluates curated fixture modules
+just to compare IDs. Hidden Converted OSM QA, Exercise QA, and pilot-readiness
+panels are also skipped unless internal QA is visible; hiding a panel is no
+longer allowed to leave its expensive diagnostics running in beta.
+
+Performance rules for the remainder of Phase 6:
+
+- `/practice/real-london` loads only the selected/default beta map on startup.
+- Larger accepted maps such as King's Cross / Euston must stay lazy and show a
+  loading state before Submit is enabled.
+- `devOnlyStressTest`, visual-only, and dev QA fixtures must not appear in the
+  learner beta startup catalogue.
+- Hidden dev QA diagnostics must not build graphs, QA tables, readiness reports,
+  blocked-way diagnostics, or overlay models by default.
+- Future larger London coverage needs preprocessing, simplification, tiling, or
+  a controlled import pipeline before being exposed to beta testers.
 
 ## Acceptance Checklist
 

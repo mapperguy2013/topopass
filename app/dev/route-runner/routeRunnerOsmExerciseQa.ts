@@ -11,7 +11,7 @@ import {
   type RouteExercise,
   type RouteStop
 } from "../../../lib/map-engine/index.ts";
-import { getRouteRunnerMapFitBounds, type RouteRunnerMapBounds } from "./routeRunnerMaps.ts";
+import { getRouteRunnerMapFitBounds, type RouteRunnerMapBounds } from "./routeRunnerMapOptionUtils.ts";
 
 export type OsmExerciseQaFailureReason =
   | "missing-start-node"

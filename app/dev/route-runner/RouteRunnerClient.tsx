@@ -249,12 +249,11 @@ import {
 } from "./routeReplay";
 import {
   DEFAULT_ROUTE_RUNNER_MAP_ID,
-  ROUTE_RUNNER_MAP_OPTIONS,
   getRealLondonPilotExerciseMetadata,
   getRouteRunnerMapViewportBounds,
   isConvertedOsmRouteRunnerMap,
   type RouteRunnerMapOption
-} from "./routeRunnerMaps";
+} from "./routeRunnerMapOptionUtils";
 import {
   buildRealLondonBetaPracticePanelModel,
   getRealLondonBetaMapOptions,
@@ -263,7 +262,7 @@ import {
   isRealLondonBetaAccessEnabled,
   routeRunnerMapOptionIsScoreable,
   resolveRealLondonBetaMapAccess
-} from "./routeRunnerRealLondonBetaGate";
+} from "./routeRunnerBetaPracticeAccess";
 import {
   loadLazyRouteRunnerMapOption,
   routeRunnerMapOptionNeedsLazyLoad
@@ -294,10 +293,10 @@ import {
   type OsmQaStatusPanelModel,
   type OsmQaStatusState
 } from "./routeRunnerOsmQaStatus";
-import { buildLondonPilotReadinessReportForMapId } from "./routeRunnerOsmRealPilotReadinessReport";
 import {
   buildRealLondonPilotQaPanelModel,
-  shouldShowRealLondonPilotQaPanel
+  shouldShowRealLondonPilotQaPanel,
+  type RealLondonPilotQaPanelModel
 } from "./routeRunnerRealLondonPilotQaPanel";
 import {
   buildRealLondonPilotPlaythroughPanelModel,
@@ -3533,7 +3532,7 @@ function learnerDrawnRouteScoreDisplay(input: {
 export function RouteRunnerClient({
   initialMapOptionId,
   initialExerciseId,
-  mapOptions = ROUTE_RUNNER_MAP_OPTIONS,
+  mapOptions = [],
   mode = "dev",
   allowDevQaToggle = mode === "dev"
 }: RouteRunnerClientProps = {}) {
@@ -3608,6 +3607,7 @@ export function RouteRunnerClient({
   const [selectedAdaptiveRecommendationId, setSelectedAdaptiveRecommendationId] = useState<string | null>(null);
   const [showDismissedAdaptiveItems, setShowDismissedAdaptiveItems] = useState(false);
   const [showDevQaPanels, setShowDevQaPanels] = useState(false);
+  const [realLondonPilotQaPanel, setRealLondonPilotQaPanel] = useState<RealLondonPilotQaPanelModel | null>(null);
   const [lazyMapOptionsById, setLazyMapOptionsById] = useState<Record<string, RouteRunnerMapOption>>({});
   const [lazyMapLoadingById, setLazyMapLoadingById] = useState<Record<string, boolean>>({});
   const [lazyMapLoadErrorById, setLazyMapLoadErrorById] = useState<Record<string, string | null>>({});
@@ -3644,7 +3644,7 @@ export function RouteRunnerClient({
           selectedMapOption: requireRouteRunnerMapOption(
             visibleMapOptions.find((option) => option.id === mapOptionId) ??
               visibleMapOptions[0] ??
-              ROUTE_RUNNER_MAP_OPTIONS[0]
+              effectiveMapOptions[0]
           ),
           state: "available" as const,
           betaEnabled: REAL_LONDON_BETA_ENABLED,
@@ -3719,6 +3719,36 @@ export function RouteRunnerClient({
   const visibleOsmDebugOverlayAvailable = osmDebugOverlayAvailable && routeRunnerPanelVisibility.showInternalQaPanels;
   const visibleOsmExerciseDebugOverlayAvailable =
     osmExerciseDebugOverlayAvailable && routeRunnerPanelVisibility.showInternalQaPanels;
+
+  useEffect(() => {
+    if (!routeRunnerPanelVisibility.showInternalQaPanels || !shouldShowRealLondonPilotQaPanel(activeMap.id)) {
+      setRealLondonPilotQaPanel(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    import("./routeRunnerOsmRealPilotReadinessReport")
+      .then(({ buildLondonPilotReadinessReportForMapId }) => {
+        if (cancelled) {
+          return;
+        }
+
+        setRealLondonPilotQaPanel(
+          buildRealLondonPilotQaPanelModel(buildLondonPilotReadinessReportForMapId(activeMap.id))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRealLondonPilotQaPanel(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMap.id, routeRunnerPanelVisibility.showInternalQaPanels]);
+
   const practiceExercisesPanel = useMemo(
     () =>
       buildPracticeExercisesPanelModel({
@@ -3903,17 +3933,22 @@ export function RouteRunnerClient({
     [selectedExercise]
   );
   const osmDebugOverlay = useMemo(
-    () =>
-      buildOsmDebugOverlayModel({
+    () => {
+      if (!visibleOsmDebugOverlayAvailable) {
+        return null;
+      }
+
+      return buildOsmDebugOverlayModel({
         map: activeMap,
         graph: activeMapGraph,
         exercise: selectedExercise,
         sourceFixtureName: selectedMapOption.fixtureName,
         state: {
-          visible: visibleOsmDebugOverlayAvailable && osmDebugOverlayState.visible,
-          showIds: visibleOsmDebugOverlayAvailable && osmDebugOverlayState.showIds
+          visible: osmDebugOverlayState.visible,
+          showIds: osmDebugOverlayState.showIds
         }
-      }),
+      });
+    },
     [
       activeMap,
       activeMapGraph,
@@ -3925,16 +3960,21 @@ export function RouteRunnerClient({
     ]
   );
   const osmExerciseDebugOverlay = useMemo(
-    () =>
-      buildOsmExerciseDebugOverlayModel({
+    () => {
+      if (!visibleOsmExerciseDebugOverlayAvailable || !osmExerciseDebugOverlayState.visible) {
+        return null;
+      }
+
+      return buildOsmExerciseDebugOverlayModel({
         map: activeMap,
         graph: activeMapGraph,
         exercise: selectedExercise,
-        enabled: visibleOsmExerciseDebugOverlayAvailable && osmExerciseDebugOverlayState.visible,
+        enabled: true,
         isConvertedOsmMap,
         renderBounds: baseViewport.mapBounds,
         sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
-      }),
+      });
+    },
     [
       activeMap,
       activeMapGraph,
@@ -3947,16 +3987,23 @@ export function RouteRunnerClient({
     ]
   );
   const osmQaStatusPanel = useMemo(
-    () =>
-      buildOsmQaStatusPanelModel({
+    () => {
+      if (
+        !visibleOsmDebugOverlayAvailable ||
+        (!osmDebugOverlayState.visible && !osmExerciseDebugOverlayState.visible)
+      ) {
+        return null;
+      }
+
+      return buildOsmQaStatusPanelModel({
         map: activeMap,
         graph: activeMapGraph,
         exercises: activeExercises,
         selectedExercise,
-        enabled:
-          visibleOsmDebugOverlayAvailable && (osmDebugOverlayState.visible || osmExerciseDebugOverlayState.visible),
+        enabled: true,
         isConvertedOsmMap
-      }),
+      });
+    },
     [
       activeExercises,
       activeMap,
@@ -3967,13 +4014,6 @@ export function RouteRunnerClient({
       selectedExercise,
       visibleOsmDebugOverlayAvailable
     ]
-  );
-  const realLondonPilotQaPanel = useMemo(
-    () =>
-      shouldShowRealLondonPilotQaPanel(activeMap.id)
-        ? buildRealLondonPilotQaPanelModel(buildLondonPilotReadinessReportForMapId(activeMap.id))
-        : null,
-    [activeMap.id]
   );
   const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
   const selectedExerciseIsInvalid = selectedExerciseAvailability ? !selectedExerciseAvailability.isValid : false;
@@ -5196,7 +5236,7 @@ export function RouteRunnerClient({
       ? requireRouteRunnerMapOption(
           visibleMapOptions.find((option) => option.id === nextMapOptionId) ??
             visibleMapOptions[0] ??
-            ROUTE_RUNNER_MAP_OPTIONS[0]
+            effectiveMapOptions[0]
         )
       : isStudentBetaRouteRunner
         ? requireRouteRunnerMapOption(
@@ -6590,7 +6630,7 @@ export function RouteRunnerClient({
               />
             </div>
 
-            {visibleOsmDebugOverlayAvailable ? (
+            {visibleOsmDebugOverlayAvailable && osmDebugOverlay ? (
               <div className="mt-4 rounded-lg border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-950">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>

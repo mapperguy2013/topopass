@@ -129,11 +129,15 @@ export function routeRunnerMapOptionIsVisibleInBeta(option: RouteRunnerMapOption
     return false;
   }
 
+  if (option.fixturePerformanceGate === "devOnlyStressTest") {
+    return false;
+  }
+
   if (option.visibleInBeta !== undefined) {
     return option.visibleInBeta;
   }
 
-  return option.fixturePerformanceGate !== "devOnlyStressTest";
+  return true;
 }
 
 export function routeRunnerMapOptionIsScoreable(option: RouteRunnerMapOption): boolean {

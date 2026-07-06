@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { marloweDistrictMap, marloweDistrictRouteExercises, runRouteExercise } from "../../../lib/map-engine/index.ts";
 import {
@@ -481,17 +482,18 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.ok(mapIds.includes("osm-curated-one-way-system-area"));
   assert.ok(mapIds.includes("osm-curated-quiet-residential-roads"));
   assert.ok(mapIds.includes("osm-curated-kings-cross-euston"));
-  assert.ok(mapIds.includes("osm-curated-centralLondon"));
+  assert.equal(mapIds.includes("osm-curated-centralLondon"), false);
+  assert.equal(mapIds.includes("osm-tiny-london-prototype"), false);
+  assert.equal(mapIds.includes("osm-medium-london-prototype"), false);
+  assert.equal(mapIds.includes("osm-large-london"), false);
   assert.ok(model.mapRows.every((row) => row.description.length > 0));
   assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
   assert.ok(model.mapRows.every((row) => row.visibleInBeta));
   const marloweRow = model.mapRows.find((row) => row.id === "marlowe-district-dev-map");
   const kingsCrossRow = model.mapRows.find((row) => row.id === "osm-curated-kings-cross-euston");
-  const centralLondonRow = model.mapRows.find((row) => row.id === "osm-curated-centralLondon");
 
   assert.ok(marloweRow);
   assert.ok(kingsCrossRow);
-  assert.ok(centralLondonRow);
   assert.equal(marloweRow.label, "Marlowe District - Fictional London-style practice");
   assert.match(marloweRow.description, /Fictional London-style practice/);
   assert.doesNotMatch(marloweRow.label, /Real London|OSM/i);
@@ -500,13 +502,6 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.equal(marloweRow.betaPracticeAllowed, true);
   assert.equal(kingsCrossRow.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
   assert.equal(kingsCrossRow.lazyLoadId, "kingsCrossEuston");
-  assert.equal(centralLondonRow.fixtureUseLabel, "Stress test / slow");
-  assert.equal(centralLondonRow.fixturePerformanceGate, "devOnlyStressTest");
-  assert.equal(centralLondonRow.lazyLoadId, "centralLondonStressTest");
-  assert.equal(centralLondonRow.scoreable, false);
-  assert.equal(centralLondonRow.visualQaOnly, true);
-  assert.equal(centralLondonRow.devOnlyStressTest, true);
-  assert.equal(centralLondonRow.betaPracticeAllowed, false);
 });
 
 test("Stage 161.6.19 beta screen can select Marlowe District fictional scored practice", () => {
@@ -793,30 +788,19 @@ test("Stage 161.6 visual QA fixtures are labelled and not treated as scoreable p
   assert.equal(model.routeFlow.existingRunnerScorePassed, false);
 });
 
-test("Stage 161.6.9 centralLondon stress fixture is visible on beta practice without scoring", () => {
+test("Stage 161.8.6 centralLondon stress fixture is excluded from beta practice startup", () => {
   const model = buildRealLondonBetaPracticeScreenModel({
     betaEnabled: true,
     requestedMapId: "osm-curated-centralLondon"
   });
 
-  assert.equal(model.state, "available");
-
-  if (model.state !== "available") {
-    throw new Error("Expected available Central London stress fixture.");
-  }
-
-  assert.equal(model.mapId, "osm-curated-centralLondon");
-  assert.equal(model.selectedMap.fixtureUseLabel, "Stress test / slow");
-  assert.equal(model.selectedMap.scoreable, false);
-  assert.equal(model.selectedMap.visualQaOnly, true);
-  assert.equal(model.selectedMap.devOnlyStressTest, true);
-  assert.equal(model.selectedMap.lazyLoadId, "centralLondonStressTest");
-  assert.equal(model.selectedMap.lazyLoadingLabel, "Loading Central London stress-test map...");
-  assert.equal(model.exerciseRows.length, 0);
-  assert.equal(model.selectedExercise, null);
-  assert.equal(model.routeFlow.shortestRouteFound, false);
-  assert.equal(model.routeFlow.existingRunnerScorePassed, false);
-  assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
+  assert.equal(model.state, "unavailable");
+  assert.equal(model.unavailableState.reasonCode, "unknown-map");
+  assert.equal(model.unavailableState.mapId, "osm-curated-centralLondon");
+  assert.equal(
+    REAL_LONDON_BETA_MAP_OPTIONS.some((option) => option.id === "osm-curated-centralLondon"),
+    false
+  );
   assert.equal(
     REAL_LONDON_BETA_MAP_OPTIONS.flatMap((option) => option.exercises).some((exercise) =>
       exercise.id.includes("centralLondon")
@@ -841,8 +825,30 @@ test("Stage 161.6.1 beta desktop map sizing fills width and remains viewport bou
   assert.equal(model.desktopLayout.unnecessaryVerticalScrollRisk, false);
 });
 
-test("Stage 161.6 curated map option bundle is the beta practice catalogue", () => {
-  assert.equal(REAL_LONDON_BETA_MAP_OPTIONS, ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON);
+test("Stage 161.8.6 beta practice catalogue excludes dev and stress maps from startup", () => {
+  const betaMapIds = REAL_LONDON_BETA_MAP_OPTIONS.map((option) => option.id);
+  const fullCatalogueMapIds = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.map((option) => option.id);
+
+  assert.notEqual(REAL_LONDON_BETA_MAP_OPTIONS, ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON);
+  assert.ok(fullCatalogueMapIds.includes("osm-curated-centralLondon"));
+  assert.equal(betaMapIds.includes("osm-curated-centralLondon"), false);
+  assert.equal(betaMapIds.includes("osm-tiny-london-prototype"), false);
+  assert.equal(betaMapIds.includes("osm-medium-london-prototype"), false);
+  assert.equal(betaMapIds.includes("osm-large-london"), false);
+  assert.equal(betaMapIds.includes("osm-phase-6-real-london-visual-qa"), false);
+  assert.ok(betaMapIds.includes("osm-real-london-pilot"));
+  assert.ok(betaMapIds.includes("osm-curated-kings-cross-euston"));
+  assert.ok(REAL_LONDON_BETA_MAP_OPTIONS.every((option) => option.fixturePerformanceGate !== "devOnlyStressTest"));
+});
+
+test("Stage 161.8.6 learner client avoids eager full-catalogue imports", () => {
+  const routeRunnerClientSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+  const lazyLoaderSource = readFileSync("app/dev/route-runner/lazyRouteRunnerMapOptions.ts", "utf8");
+
+  assert.equal(routeRunnerClientSource.includes("./routeRunnerMaps"), false);
+  assert.equal(routeRunnerClientSource.includes("./curatedRealLondonRouteRunnerMaps"), false);
+  assert.equal(routeRunnerClientSource.includes("./routeRunnerRealLondonBetaGate"), false);
+  assert.equal(lazyLoaderSource.includes("./curatedRealLondonRouteRunnerMaps"), false);
 });
 
 function requireAvailableModel(selectedExerciseId?: string): ScoreablePracticeModel {

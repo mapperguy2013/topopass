@@ -22,15 +22,21 @@ import {
   type RealLondonPilotRouteType,
   type RouteRunnerMapOption
 } from "./routeRunnerMaps.ts";
+import {
+  CENTRAL_LONDON_LAZY_LOAD_ID,
+  KINGS_CROSS_EUSTON_LAZY_LOAD_ID
+} from "./curatedRealLondonLazyIds.ts";
 
 const PICCADILLY_CIRCUS_OSM_MAP_ID = "osm-curated-piccadilly-circus";
 const WATERLOO_BRIDGE_OSM_MAP_ID = "osm-curated-waterloo-bridge";
 const ONE_WAY_SYSTEM_AREA_OSM_MAP_ID = "osm-curated-one-way-system-area";
 const QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID = "osm-curated-quiet-residential-roads";
 export const KINGS_CROSS_EUSTON_OSM_MAP_ID = "osm-curated-kings-cross-euston";
-export const KINGS_CROSS_EUSTON_LAZY_LOAD_ID = "kingsCrossEuston";
 export const CENTRAL_LONDON_OSM_MAP_ID = "osm-curated-centralLondon";
-export const CENTRAL_LONDON_LAZY_LOAD_ID = "centralLondonStressTest";
+export {
+  CENTRAL_LONDON_LAZY_LOAD_ID,
+  KINGS_CROSS_EUSTON_LAZY_LOAD_ID
+} from "./curatedRealLondonLazyIds.ts";
 
 export function buildCuratedRealLondonOsmMap(
   fixture: unknown,

@@ -13,7 +13,9 @@ import {
 
 test("route runner initial hydration state uses deterministic default map and exercise", () => {
   const defaultOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
-  const initialState = createRouteRunnerInitialHydrationState();
+  const initialState = createRouteRunnerInitialHydrationState({
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
+  });
 
   assert.ok(defaultOption);
   assert.equal(initialState.mapOptionId, defaultOption.id);
@@ -31,7 +33,8 @@ test("route runner initial hydration state accepts valid explicit map and exerci
 
   const initialState = createRouteRunnerInitialHydrationState({
     initialMapOptionId: realLondonOsmPilotRouteMap.id,
-    initialExerciseId: explicitExerciseId
+    initialExerciseId: explicitExerciseId,
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
   });
 
   assert.equal(initialState.mapOptionId, realLondonOsmPilotRouteMap.id);
@@ -42,7 +45,8 @@ test("route runner initial hydration state falls back from invalid explicit valu
   const defaultOption = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
   const initialState = createRouteRunnerInitialHydrationState({
     initialMapOptionId: "unknown-map",
-    initialExerciseId: "unknown-exercise"
+    initialExerciseId: "unknown-exercise",
+    mapOptions: ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
   });
 
   assert.ok(defaultOption);
