@@ -1475,13 +1475,19 @@ function drawExerciseStopMarker(input: {
   const fillStyle = learnerMarkerStyle.fillColor;
   const markerText =
     input.role === "start"
-      ? style.start.text
+      ? style.start.compactText
       : input.role === "finish"
-        ? style.destination.text
+        ? style.destination.compactText
         : input.index === 1
           ? style.requiredVia.textPrefix
           : `${style.checkpoint.textPrefix}${input.index}`;
   const radius = learnerMarkerStyle.radius * scale;
+  const isPinMarker = learnerMarkerStyle.shape === "pin";
+  const pinTipLength = (isPinMarker ? learnerMarkerStyle.pinTipLength : 0) * scale;
+  const markerCenter = {
+    x: input.point.x,
+    y: isPinMarker ? input.point.y - pinTipLength * 0.72 : input.point.y
+  };
 
   input.context.save();
   input.context.shadowColor = style.shadowColor;
@@ -1491,7 +1497,12 @@ function drawExerciseStopMarker(input: {
   input.context.strokeStyle = learnerMarkerStyle.haloStrokeColor;
   input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
   input.context.beginPath();
-  input.context.arc(input.point.x, input.point.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
+  input.context.arc(markerCenter.x, markerCenter.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
+  if (isPinMarker) {
+    input.context.moveTo(markerCenter.x - radius * 0.58, markerCenter.y + radius * 0.58);
+    input.context.lineTo(input.point.x, input.point.y + 1.5 * scale);
+    input.context.lineTo(markerCenter.x + radius * 0.58, markerCenter.y + radius * 0.58);
+  }
   input.context.fill();
   input.context.stroke();
   input.context.shadowColor = "transparent";
@@ -1500,7 +1511,12 @@ function drawExerciseStopMarker(input: {
   input.context.strokeStyle = learnerMarkerStyle.strokeColor;
   input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
   input.context.beginPath();
-  input.context.arc(input.point.x, input.point.y, radius, 0, Math.PI * 2);
+  input.context.arc(markerCenter.x, markerCenter.y, radius, 0, Math.PI * 2);
+  if (isPinMarker) {
+    input.context.moveTo(markerCenter.x - radius * 0.5, markerCenter.y + radius * 0.52);
+    input.context.lineTo(input.point.x, input.point.y);
+    input.context.lineTo(markerCenter.x + radius * 0.5, markerCenter.y + radius * 0.52);
+  }
   input.context.fill();
   input.context.stroke();
 
@@ -1508,7 +1524,7 @@ function drawExerciseStopMarker(input: {
   input.context.font = learnerMarkerStyle.font || legacyMarkerStyle.font;
   input.context.textAlign = "center";
   input.context.textBaseline = "middle";
-  input.context.fillText(markerText, input.point.x, input.point.y + 0.5);
+  input.context.fillText(markerText, markerCenter.x, markerCenter.y + 0.5);
 
   if (input.role === "checkpoint" && input.reviewStatus) {
     const checkpointStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates[input.reviewStatus];
@@ -2373,7 +2389,8 @@ function reviewCalloutStyleForRestrictionItem(item: RestrictionMapVisualItem): T
 }
 
 function shouldDrawLearnerReviewCallout(item: RestrictionMapVisualItem): boolean {
-  return item.kind === "illegal-movement" || item.kind === "missed-restriction";
+  void item;
+  return !TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.iconOnlyDefault;
 }
 
 function shouldPreventNativeMapGesture(pointerType: string): boolean {
@@ -6235,7 +6252,13 @@ export function RouteRunnerClient({
             ) : null}
         </div>
 
-        <div className="contents">
+        <div
+          className={
+            isStudentBetaRouteRunner
+              ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)] lg:items-start"
+              : "contents"
+          }
+        >
           <section
             className={`overflow-hidden border border-slate-200 bg-white shadow-sm ${
               isStudentBetaRouteRunner ? "rounded-xl p-2 sm:p-3" : "rounded-lg p-4 sm:p-5"
@@ -7188,7 +7211,13 @@ export function RouteRunnerClient({
           </section>
 
           {showAttemptFeedbackPanel ? (
-            <section className="order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <section
+              className={
+                isStudentBetaRouteRunner
+                  ? "order-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-3 lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-auto"
+                  : "order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+              }
+            >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-slate-950">

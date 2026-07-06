@@ -1227,6 +1227,17 @@ available to tests/dev tooling but are not exposed as learner practice entries.
 Route variety is treated separately from difficulty: a map should offer
 different sectors, corridors, checkpoints, or restriction teaching purposes,
 not merely three labels for the same path.
+Stage 161.6.21 brings the beta practice UI closer to the concept direction.
+Start and destination markers now use polished learner-facing green/red pin
+tokens with compact `S`/`D` symbols and `START`/`DESTINATION` map labels, while
+checkpoints remain numbered circular markers. Submitted route feedback sits in
+a right-side panel on desktop and stacks as a compact panel on mobile, keeping
+PASS/FAIL/NEEDS REVIEW, score metrics, grouped issues, coaching, and shortest
+legal route comparison together. Wrong-route map feedback is icon-first:
+grouped no-entry, wrong-way, turn-restriction, restricted movement,
+disconnected-gap, and missed-checkpoint issues keep one map marker per grouped
+issue, with explanatory text staying in the feedback panel or accessibility
+surfaces rather than repeated map callouts.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

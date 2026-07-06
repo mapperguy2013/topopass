@@ -614,6 +614,27 @@ exercise rows to those with a legal expected route; invalid dev exercises stay
 available to development tests and diagnostics but are not shown as beta
 practice tasks.
 
+Stage 161.6.21 matches the beta practice UI more closely to the concept
+layout. Start and destination markers use central TOPOPASS pin tokens: green
+`START` for the start, red `DESTINATION` for the finish, compact `S`/`D`
+symbols inside the pins, halos, and shadows so they stay visible without hiding
+too much road geometry. Checkpoints stay learner-friendly as numbered circular
+markers.
+
+Submitted route feedback is a desktop right-side panel aligned with the map and
+adapts to a stacked/bottom-sheet style panel on mobile. The panel keeps the
+result badge, summary, score metrics, grouped issues, coaching note, and
+shortest legal route comparison together. Reset view remains view-only, and
+Erase route remains the action that clears the attempt.
+
+Wrong-route map feedback is icon-first. Grouped no-entry, wrong-way one-way,
+turn-restriction, restricted movement, disconnected-gap, and missed-checkpoint
+issues render as one issue icon per grouped problem; repeated text callouts are
+not shown on the map by default. Issue text remains available in the feedback
+panel, `Show on map` continues to focus the grouped issue marker, beta
+restriction symbols remain visible, and dev QA panels stay hidden from
+`/practice/real-london`.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

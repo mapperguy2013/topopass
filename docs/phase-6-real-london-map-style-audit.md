@@ -438,6 +438,28 @@ legal expected route. Known invalid dev exercises, including the Marlowe
 no-entry focus route, remain in the development fixture for legality testing
 but are filtered out of the learner-facing beta exercise selector.
 
+## Stage 161.6.21 Concept-Matched Beta Practice UI
+
+Stage 161.6.21 refines the learner-facing beta practice shell without changing
+matching, scoring, legality, route generation, OSM data, or dev QA exposure.
+Start and destination markers now use central TOPOPASS pin styling: green
+`START` and red `DESTINATION` labels with compact `S`/`D` symbols, halo, and
+shadow. Checkpoints remain numbered circular markers so ordered stops stay
+clear without overpowering road geometry.
+
+Route feedback now lives as a right-side panel beside the map on desktop and
+adapts to a compact stacked/bottom-sheet style panel on mobile. The panel keeps
+the learner result badge, summary sentence, score/distance metrics, grouped
+issues, coaching note, and shortest legal route comparison in one place. Reset
+view is still view-only, while Erase route clears the drawing and attempt
+state.
+
+Map review issues are icon-first. Grouped no-entry, wrong-way one-way,
+turn-restriction, restricted movement, disconnected route gap, and missed
+checkpoint issues render as one icon marker per grouped problem. Repeated text
+callouts are hidden on the map by default; explanatory text stays in the side
+feedback panel, and `Show on map` focuses the grouped issue icon.
+
 ## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
 
 Stage 161.6.15 refines the post-submit learner feedback path without changing
@@ -831,9 +853,9 @@ easier to judge without relying on live APIs or inventing data inside the real
 pilot fixtures.
 
 Objective overlays now use stronger central tokens: start markers read
-`START`, destination markers read `END`, the first intermediate objective uses
-a `VIA` treatment, later checkpoints retain compact `CP` labels, optional snap
-hints use quieter teal dashed styling with small haloed points, and
+`START`, destination markers read `DESTINATION`, the first intermediate
+objective uses a `VIA` treatment, later checkpoints retain compact `CP` labels,
+optional snap hints use quieter teal dashed styling with small haloed points, and
 selected/matched route nodes now use tokenised halo and stroke styling. Canvas
 draw order keeps optional hints and raw route strokes below objective markers
 and stop labels, so learner-critical stops remain visible above context,
@@ -1292,7 +1314,7 @@ Current canvas layer order in `RouteRunnerClient.tsx` is:
 - Route issue overlays use red or rose styling, with dashed treatment for
   disconnected gaps.
 - Start markers are green and labelled `START`; destinations are rose and
-  labelled `END`; the first required intermediate objective uses a `VIA`
+  labelled `DESTINATION`; the first required intermediate objective uses a `VIA`
   marker; later checkpoints are orange `CP` markers. They draw above the base
   map, optional hints, raw route strokes, one-way arrows, restriction symbols,
   and context labels.

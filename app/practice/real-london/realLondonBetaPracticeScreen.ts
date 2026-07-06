@@ -137,7 +137,7 @@ export type RealLondonBetaPracticeScreenModel =
           routeSetupPanelCollapsible: true;
           routeSetupPanelDefaultOpen: false;
           visualOrder: ["route-header", "route-setup", "map", "route-feedback"];
-          feedbackPanelPlacement: "post-submit-side-or-bottom-panel";
+          feedbackPanelPlacement: "desktop-right-side-panel-mobile-bottom-sheet";
         };
         routeHeaderCount: 1;
         visibleMapWorkspaceHeading: false;
@@ -166,6 +166,9 @@ export type RealLondonBetaPracticeScreenModel =
           routeReplayVisibleByDefault: false;
           summaryHeaderFirst: true;
           metricLabels: ["Score", "Your route", "Shortest legal route", "Extra distance"];
+          desktopPlacement: "right-side-panel";
+          mobilePlacement: "bottom-sheet-or-stacked-panel";
+          resultBadgeLabels: ["PASS", "FAIL", "NEEDS REVIEW"];
           whatHappenedSectionVisible: true;
           issueCategories: ["Route efficiency", "Illegal movements", "Required stops", "Matching"];
           routeTooLongCategory: "Route efficiency";
@@ -204,6 +207,44 @@ export type RealLondonBetaPracticeScreenModel =
           fixtureIds: true;
           technicalPerLegLabels: true;
           debugDiagnostics: true;
+        };
+        markerDesign: {
+          start: {
+            shape: "pin";
+            colourRole: "green";
+            label: "START";
+            compactText: "S";
+            haloAndShadow: true;
+          };
+          destination: {
+            shape: "pin";
+            colourRole: "red";
+            label: "DESTINATION";
+            compactText: "D";
+            haloAndShadow: true;
+          };
+          checkpoint: {
+            shape: "numbered-circle";
+            colourRole: "orange";
+            learnerFriendly: true;
+          };
+        };
+        issueMarkerDesign: {
+          mapPresentation: "icon-first";
+          groupedMarkerPerIssue: true;
+          repeatedTextLabelsVisible: false;
+          textDetailsPlacement: "route-feedback-panel";
+          showOnMapFocusesGroupedIcon: true;
+          supportedIssueIcons: [
+            "no-entry",
+            "wrong-way-one-way",
+            "no-left-turn",
+            "no-right-turn",
+            "no-u-turn",
+            "restricted-movement",
+            "disconnected-gap",
+            "missed-checkpoint"
+          ];
         };
         feedbackEntryPoints: 1;
       };
@@ -385,7 +426,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         routeSetupPanelCollapsible: true,
         routeSetupPanelDefaultOpen: false,
         visualOrder: ["route-header", "route-setup", "map", "route-feedback"],
-        feedbackPanelPlacement: "post-submit-side-or-bottom-panel"
+        feedbackPanelPlacement: "desktop-right-side-panel-mobile-bottom-sheet"
       },
       routeHeaderCount: 1,
       visibleMapWorkspaceHeading: false,
@@ -414,6 +455,9 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         routeReplayVisibleByDefault: false,
         summaryHeaderFirst: true,
         metricLabels: ["Score", "Your route", "Shortest legal route", "Extra distance"],
+        desktopPlacement: "right-side-panel",
+        mobilePlacement: "bottom-sheet-or-stacked-panel",
+        resultBadgeLabels: ["PASS", "FAIL", "NEEDS REVIEW"],
         whatHappenedSectionVisible: true,
         issueCategories: ["Route efficiency", "Illegal movements", "Required stops", "Matching"],
         routeTooLongCategory: "Route efficiency",
@@ -453,6 +497,44 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         fixtureIds: true,
         technicalPerLegLabels: true,
         debugDiagnostics: true
+      },
+      markerDesign: {
+        start: {
+          shape: "pin",
+          colourRole: "green",
+          label: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.text,
+          compactText: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.compactText,
+          haloAndShadow: true
+        },
+        destination: {
+          shape: "pin",
+          colourRole: "red",
+          label: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text,
+          compactText: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.compactText,
+          haloAndShadow: true
+        },
+        checkpoint: {
+          shape: "numbered-circle",
+          colourRole: "orange",
+          learnerFriendly: true
+        }
+      },
+      issueMarkerDesign: {
+        mapPresentation: "icon-first",
+        groupedMarkerPerIssue: true,
+        repeatedTextLabelsVisible: false,
+        textDetailsPlacement: "route-feedback-panel",
+        showOnMapFocusesGroupedIcon: true,
+        supportedIssueIcons: [
+          "no-entry",
+          "wrong-way-one-way",
+          "no-left-turn",
+          "no-right-turn",
+          "no-u-turn",
+          "restricted-movement",
+          "disconnected-gap",
+          "missed-checkpoint"
+        ]
       },
       feedbackEntryPoints: 1
     },

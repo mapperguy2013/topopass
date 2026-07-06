@@ -659,7 +659,7 @@ test("Stage 151 visual QA scenario provides context features for visual inspecti
   );
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.text, "START");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.textPrefix, "VIA");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text, "END");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text, "DESTINATION");
 });
 
 test("Stage 152 visual comparison scenarios register deterministic readability modes and viewports", () => {

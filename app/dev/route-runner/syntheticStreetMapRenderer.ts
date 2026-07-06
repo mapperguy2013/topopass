@@ -773,7 +773,11 @@ export function buildSyntheticMapLabels(
       labels.push({
         id: `exercise-stop-label-${exercise.id}-${index}`,
         kind: isStart ? "start" : isFinish ? "finish" : "checkpoint",
-        text: isStart ? "START" : isFinish ? "FINISH" : `CHECKPOINT ${index}`,
+        text: isStart
+          ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.text
+          : isFinish
+            ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text
+            : `CHECKPOINT ${index}`,
         point,
         priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.exerciseStop
       });

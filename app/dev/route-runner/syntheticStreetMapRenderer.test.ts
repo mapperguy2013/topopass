@@ -88,6 +88,8 @@ test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () 
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#26384c");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#047857");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#be123c");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.shape, "pin");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.shape, "pin");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#f97316");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.fillColor, "#d97706");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#0d9488");
@@ -359,7 +361,13 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
   const selectedRoad = roadInteractionStyleForState("selected");
 
   assert.equal(markers.start.text, "START");
-  assert.equal(markers.destination.text, "END");
+  assert.equal(markers.start.compactText, "S");
+  assert.equal(markers.destination.text, "DESTINATION");
+  assert.equal(markers.destination.compactText, "D");
+  assert.equal(markers.start.shape, "pin");
+  assert.equal(markers.destination.shape, "pin");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.shape, "pin");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.shape, "pin");
   assert.equal(markers.requiredVia.textPrefix, "VIA");
   assert.ok(markers.start.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.tipDistance);
   assert.ok(markers.destination.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius);
@@ -369,6 +377,12 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
   assert.ok(hints.snappedPointRadius < markers.checkpoint.radius);
   assert.ok(selectedRoad.haloWidth > TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.nodes.matchedNodeHaloRadiusPadding > hints.snappedPointRadius);
+});
+
+test("Stage 161.6.21 route review issue symbols default to icon-only learner map feedback", () => {
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.iconOnlyDefault, true);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius >= 16);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding > 0);
 });
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
@@ -510,7 +524,7 @@ test("buildSyntheticMapLabels includes road area start checkpoint and finish lab
   assert.ok(labels.some((label) => label.kind === "station" && label.text === "Fox Lane Station"));
   assert.ok(labels.some((label) => label.kind === "start" && label.text === "START"));
   assert.ok(labels.some((label) => label.kind === "checkpoint" && label.text === "CHECKPOINT 1"));
-  assert.ok(labels.some((label) => label.kind === "finish" && label.text === "FINISH"));
+  assert.ok(labels.some((label) => label.kind === "finish" && label.text === "DESTINATION"));
 });
 
 test("synthetic background features are visual only and do not overlap routable ids", () => {

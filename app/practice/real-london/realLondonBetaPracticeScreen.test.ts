@@ -213,7 +213,7 @@ test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   assert.equal(model.learnerUi.shell.routeSetupPanelCollapsible, true);
   assert.equal(model.learnerUi.shell.routeSetupPanelDefaultOpen, false);
   assert.deepEqual(model.learnerUi.shell.visualOrder, ["route-header", "route-setup", "map", "route-feedback"]);
-  assert.equal(model.learnerUi.shell.feedbackPanelPlacement, "post-submit-side-or-bottom-panel");
+  assert.equal(model.learnerUi.shell.feedbackPanelPlacement, "desktop-right-side-panel-mobile-bottom-sheet");
   assert.equal(model.learnerUi.routeHeaderCount, 1);
   assert.equal(model.learnerUi.visibleMapWorkspaceHeading, false);
   assert.equal(model.learnerUi.routeControls.toolbarCount, 1);
@@ -254,6 +254,9 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
     "Shortest legal route",
     "Extra distance"
   ]);
+  assert.equal(model.learnerUi.resultPanels.desktopPlacement, "right-side-panel");
+  assert.equal(model.learnerUi.resultPanels.mobilePlacement, "bottom-sheet-or-stacked-panel");
+  assert.deepEqual(model.learnerUi.resultPanels.resultBadgeLabels, ["PASS", "FAIL", "NEEDS REVIEW"]);
   assert.equal(model.learnerUi.resultPanels.whatHappenedSectionVisible, true);
   assert.deepEqual(model.learnerUi.resultPanels.issueCategories, [
     "Route efficiency",
@@ -296,6 +299,45 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   assert.equal(model.learnerUi.hiddenTechnicalDetails.technicalPerLegLabels, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.debugDiagnostics, true);
   assert.equal(model.learnerUi.feedbackEntryPoints, 1);
+});
+
+test("Stage 161.6.21 beta practice marker and issue feedback contract matches concept direction", () => {
+  const model = requireAvailableModel();
+
+  assert.deepEqual(model.learnerUi.markerDesign.start, {
+    shape: "pin",
+    colourRole: "green",
+    label: "START",
+    compactText: "S",
+    haloAndShadow: true
+  });
+  assert.deepEqual(model.learnerUi.markerDesign.destination, {
+    shape: "pin",
+    colourRole: "red",
+    label: "DESTINATION",
+    compactText: "D",
+    haloAndShadow: true
+  });
+  assert.deepEqual(model.learnerUi.markerDesign.checkpoint, {
+    shape: "numbered-circle",
+    colourRole: "orange",
+    learnerFriendly: true
+  });
+  assert.equal(model.learnerUi.issueMarkerDesign.mapPresentation, "icon-first");
+  assert.equal(model.learnerUi.issueMarkerDesign.groupedMarkerPerIssue, true);
+  assert.equal(model.learnerUi.issueMarkerDesign.repeatedTextLabelsVisible, false);
+  assert.equal(model.learnerUi.issueMarkerDesign.textDetailsPlacement, "route-feedback-panel");
+  assert.equal(model.learnerUi.issueMarkerDesign.showOnMapFocusesGroupedIcon, true);
+  assert.deepEqual(model.learnerUi.issueMarkerDesign.supportedIssueIcons, [
+    "no-entry",
+    "wrong-way-one-way",
+    "no-left-turn",
+    "no-right-turn",
+    "no-u-turn",
+    "restricted-movement",
+    "disconnected-gap",
+    "missed-checkpoint"
+  ]);
 });
 
 test("Stage 132 real London readiness and dev QA remain available separately", () => {
