@@ -61,6 +61,10 @@ import {
 } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
 import { routeRunnerMapOptionNeedsLazyLoad } from "./lazyRouteRunnerMapOptions.ts";
 import {
+  ROUTE_EXERCISE_DIVERSITY_MAX_OVERLAP_RATIO,
+  buildRouteExerciseDiversityReport
+} from "./routeExerciseDiversity.ts";
+import {
   CURATED_REAL_LONDON_OVERPASS_FIXTURES,
   auditCuratedLondonOsmFixture,
   curatedRealLondonFixtureAllowedForBetaPractice,
@@ -522,6 +526,66 @@ test("Stage 161.8.4 King's Cross fixture is beta-gated behind lazy loading", () 
   assert.equal(kingsCrossEustonOsmRouteRunnerMapOption.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
   assert.equal(KINGS_CROSS_EUSTON_FIXTURE_LOAD_TIMING.fixtureName, "kingsCrossEustonOverpass.json");
   assert.ok(KINGS_CROSS_EUSTON_FIXTURE_LOAD_TIMING.osmConversionMs >= 0);
+});
+
+test("Stage 161.6.20 scoreable beta route catalogues expose distinct valid exercises", () => {
+  const betaScoreableOptions = [
+    requireRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID),
+    requireRouteRunnerMapOption(realLondonOsmPilotRouteMap.id),
+    requireRouteRunnerMapOption(realLondonOsmPilotTwoRouteMap.id),
+    ...CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
+      (option) => option.scoreable === true && option.lazyLoadId !== KINGS_CROSS_EUSTON_LAZY_LOAD_ID
+    ),
+    kingsCrossEustonOsmRouteRunnerMapOption
+  ];
+
+  for (const option of betaScoreableOptions) {
+    const report = buildRouteExerciseDiversityReport(option);
+
+    assert.equal(report.invalidExerciseIds.includes("ex-no-entry-eastgate-market"), option.id === DEFAULT_ROUTE_RUNNER_MAP_ID);
+    assert.ok(report.validExerciseCount >= 3, `${option.id} valid=${report.validExerciseCount}`);
+    assert.ok(report.uniqueStartCount >= 3, `${option.id} starts=${report.uniqueStartCount}`);
+    assert.ok(report.uniqueDestinationCount >= 3, `${option.id} destinations=${report.uniqueDestinationCount}`);
+    assert.deepEqual(
+      report.tooSimilarPairs.map((pair) => `${pair.leftExerciseId}/${pair.rightExerciseId}`),
+      [],
+      option.id
+    );
+    assert.ok(
+      report.pairs.every(
+        (pair) =>
+          pair.sharedRoadOverlapRatio <= ROUTE_EXERCISE_DIVERSITY_MAX_OVERLAP_RATIO ||
+          pair.teachingPurposeDiffers ||
+          !pair.repeatedStartDestinationPair
+      ),
+      option.id
+    );
+  }
+});
+
+test("Stage 161.6.20 curated OSM exercises use visibly different starts destinations and route geometry", () => {
+  const curatedOptions = [
+    ...CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
+      (option) => option.scoreable === true && option.lazyLoadId !== KINGS_CROSS_EUSTON_LAZY_LOAD_ID
+    ),
+    kingsCrossEustonOsmRouteRunnerMapOption
+  ];
+
+  for (const option of curatedOptions) {
+    const report = buildRouteExerciseDiversityReport(option);
+
+    assert.equal(report.invalidExerciseIds.length, 0, option.id);
+    assert.equal(report.validExerciseCount, 3, option.id);
+    assert.equal(report.uniqueStartCount, 3, option.id);
+    assert.equal(report.uniqueDestinationCount, 3, option.id);
+    assert.ok(report.exercises.some((exercise) => exercise.checkpointNodeIds.length > 0), option.id);
+    assert.ok(report.exercises.every((exercise) => exercise.roadNames.length > 0), option.id);
+    assert.deepEqual(
+      report.tooSimilarPairs.map((pair) => `${pair.leftExerciseId}/${pair.rightExerciseId}`),
+      [],
+      option.id
+    );
+  }
 });
 
 test("Stage 151 visual QA scenario demonstrates combined Phase 6 map styling deterministically", () => {
@@ -1913,3 +1977,11 @@ test("invalid converted OSM exercise fixtures fail solvability validation", () =
   assert.ok(availability.errors.some((error) => error.includes("No legal route")));
   assert.equal(overlay.status, "unavailable");
 });
+
+function requireRouteRunnerMapOption(mapId: string) {
+  const option = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find((candidate) => candidate.id === mapId);
+
+  assert.ok(option, `Expected route-runner map option ${mapId}.`);
+
+  return option;
+}

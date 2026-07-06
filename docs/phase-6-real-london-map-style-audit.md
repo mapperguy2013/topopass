@@ -409,6 +409,35 @@ The beta page cleanliness rule is unchanged. Marlowe does not expose dev QA
 panels, graph overlays, manual route input, raw graph/node/segment IDs, or
 route-runner diagnostic wording on `/practice/real-london`.
 
+## Stage 161.6.20 Curated Route Exercise Diversity Pass
+
+Stage 161.6.20 adds deterministic route catalogue diversity checks for
+scoreable beta maps. The audit records each exercise title, stop nodes,
+checkpoint nodes, legal route distance, road names, route type, difficulty,
+synthetic-perfect scoring status, pairwise shared-road overlap, start
+separation, and destination separation.
+
+The catalogue rule is that exercises should differ by route sector, start,
+destination, checkpoint, road corridor, road class mix, or restriction teaching
+purpose. Pairwise overlap should normally stay at or below 70% of the smaller
+route's road set. If overlap is higher, the pair must still have a clear
+different teaching purpose, such as a checkpoint, one-way, restricted movement,
+or multi-stop review task. Tests fail repeated start/destination pairs unless
+the teaching purpose differs.
+
+Curated OSM exercise generation now selects each later official exercise
+against the already accepted routes for that fixture, instead of relying only
+on ordinal farthest-pair candidates. Piccadilly Circus, Waterloo Bridge, the
+one-way system, quiet residential roads, and the full King's Cross / Euston
+lazy-loaded fixture keep stable exercise IDs but receive clearer labels and
+more distinct route geometry. The Real London pilot maps and Marlowe District
+are also included in the diversity audit.
+
+`/practice/real-london` now exposes only beta scoreable exercises that have a
+legal expected route. Known invalid dev exercises, including the Marlowe
+no-entry focus route, remain in the development fixture for legality testing
+but are filtered out of the learner-facing beta exercise selector.
+
 ## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
 
 Stage 161.6.15 refines the post-submit learner feedback path without changing

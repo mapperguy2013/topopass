@@ -90,7 +90,7 @@ test("Stage 161.6.3 route runner initial heading is deterministic for beta map a
   assert.deepEqual(firstInitialState, secondInitialState);
   assert.equal(firstInitialState.mapOptionId, selectedMapId);
   assert.equal(firstInitialState.exerciseId, selectedExerciseId);
-  assert.equal(heading, "Waterloo Bridge: station context checkpoint");
+  assert.equal(heading, "Waterloo Bridge: riverside checkpoint route");
 });
 
 test("Stage 161.6.4 route runner exercise selection accepts non-default curated exercises", () => {

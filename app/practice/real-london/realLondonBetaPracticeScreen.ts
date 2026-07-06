@@ -307,24 +307,25 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
   const betaMapOptions = getRealLondonBetaMapOptions(mapOptions);
   const mapRows = betaMapOptions.map((option) => buildPracticeMapRow(option, option.map.id === mapOption.map.id));
   const selectedMap = mapRows.find((row) => row.id === mapOption.map.id) ?? buildPracticeMapRow(mapOption, true);
+  const practiceExercises = betaPracticeExercisesForMapOption(mapOption, selectedMap.scoreable);
   const selectedExerciseId = resolveRouteRunnerExerciseSelection({
-    exercises: mapOption.exercises,
+    exercises: practiceExercises,
     requestedExerciseId: input.selectedExerciseId,
     defaultExerciseId: mapOption.defaultExerciseId,
     scoreable: selectedMap.scoreable
   });
   const selectedExercise = selectedExerciseId
-    ? mapOption.exercises.find((exercise) => exercise.id === selectedExerciseId) ?? null
+    ? practiceExercises.find((exercise) => exercise.id === selectedExerciseId) ?? null
     : null;
 
   const practicePanel = buildPracticeExercisesPanelModel({
-    exercises: mapOption.exercises,
+    exercises: practiceExercises,
     selectedExerciseId: selectedExercise?.id ?? null
   });
   const exerciseRows = practicePanel.exerciseRows.map((row) =>
     buildPracticeExerciseRow({
       map: mapOption.map,
-      exercise: requireExercise(mapOption, row.id),
+      exercise: requirePracticeExercise(practiceExercises, row.id, mapOption.map.id),
       selected: row.selected
     })
   );
@@ -698,14 +699,43 @@ function buildRouteFlowSummary(mapOption: RouteRunnerMapOption, exercise: RouteE
   };
 }
 
-function requireExercise(mapOption: RouteRunnerMapOption, exerciseId: string): RouteExercise {
-  const exercise = mapOption.exercises.find((candidate) => candidate.id === exerciseId);
+function requirePracticeExercise(exercises: readonly RouteExercise[], exerciseId: string, mapId: string): RouteExercise {
+  const exercise = exercises.find((candidate) => candidate.id === exerciseId);
 
   if (!exercise) {
-    throw new Error(`Unknown exercise ${exerciseId} for ${mapOption.map.id}.`);
+    throw new Error(`Unknown practice exercise ${exerciseId} for ${mapId}.`);
   }
 
   return exercise;
+}
+
+function betaPracticeExercisesForMapOption(option: RouteRunnerMapOption, scoreable: boolean): RouteExercise[] {
+  if (!scoreable) {
+    return [];
+  }
+
+  return option.exercises.filter((exercise) => exerciseHasLegalExpectedRoute(option.map, exercise));
+}
+
+function exerciseHasLegalExpectedRoute(map: MapDefinition, exercise: RouteExercise): boolean {
+  const graph = buildMapGraph(map);
+  let stopNodeIds: string[];
+
+  try {
+    stopNodeIds = exercise.stops.map((stop) => resolveExerciseStopNodeId(stop, map));
+  } catch {
+    return false;
+  }
+
+  if (stopNodeIds.length < 2) {
+    return false;
+  }
+
+  return findShortestLegalRouteThroughStops({
+    graph,
+    stopNodeIds,
+    restrictions: map.restrictions
+  }).found;
 }
 
 function resolveExerciseStopNodeId(stop: RouteStop, map: MapDefinition): string {

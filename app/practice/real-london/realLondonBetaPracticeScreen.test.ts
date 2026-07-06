@@ -492,6 +492,7 @@ test("Stage 161.6.19 beta screen can select Marlowe District fictional scored pr
   assert.ok(model.selectedExercise);
   assert.ok(model.exerciseRows.every((row) => row.title.length > 0));
   assert.ok(model.exerciseRows.some((row) => row.id === "ex-station-to-hospital"));
+  assert.equal(model.exerciseRows.some((row) => row.id === "ex-no-entry-eastgate-market"), false);
   assert.equal(model.routeFlow.shortestRouteFound, true);
   assert.equal(model.routeFlow.existingRunnerScorePassed, true);
   assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
@@ -567,7 +568,7 @@ test("Stage 161.6.3 beta screen deterministically selects requested curated map 
 
   assert.equal(model.mapId, "osm-curated-waterloo-bridge");
   assert.equal(model.selectedExercise?.id, "osm-curated-waterloo-bridge-station-context-checkpoint");
-  assert.equal(model.selectedExercise?.title, "Waterloo Bridge: station context checkpoint");
+  assert.equal(model.selectedExercise?.title, "Waterloo Bridge: riverside checkpoint route");
   assert.equal(model.exerciseRows.filter((row) => row.selected).length, 1);
   assert.equal(model.routeFlow.shortestRouteFound, true);
   assert.equal(model.routeFlow.existingRunnerScorePassed, true);

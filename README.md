@@ -1215,6 +1215,18 @@ fictional Marlowe practice map without exposing dev QA panels, manual route
 input, raw graph IDs, or debug wording. Attribution remains source-aware:
 OSM-derived maps continue to show OpenStreetMap attribution, while Marlowe
 shows `Fictional practice map`.
+Stage 161.6.20 improves beta route exercise diversity. Curated OSM exercises
+are now selected sequentially against already-chosen route geometry, avoiding
+near-duplicate starts, destinations, and road corridors. The route diversity
+audit uses a 70% shared-road overlap threshold, requires at least three valid
+scoreable exercises where feasible, checks distinct starts and destinations,
+and confirms synthetic perfect attempts reach scoring. `/practice/real-london`
+also filters scoreable beta exercises to those with a legal expected route, so
+known dev-only invalid exercises such as Marlowe's no-entry focus route remain
+available to tests/dev tooling but are not exposed as learner practice entries.
+Route variety is treated separately from difficulty: a map should offer
+different sectors, corridors, checkpoints, or restriction teaching purposes,
+not merely three labels for the same path.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

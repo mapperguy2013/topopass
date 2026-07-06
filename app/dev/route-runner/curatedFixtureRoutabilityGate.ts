@@ -62,6 +62,15 @@ export type CuratedFixtureRoutePreflight = {
   diagnostics: CuratedFixtureConnectivityDiagnostics;
 };
 
+export type CuratedFixtureRouteDiversityInput = {
+  avoidRouteRoadIds?: readonly (readonly string[])[];
+  avoidStartNodeIds?: readonly string[];
+  avoidDestinationNodeIds?: readonly string[];
+  maxRouteOverlapRatio?: number;
+  minStartDistanceMeters?: number;
+  minDestinationDistanceMeters?: number;
+};
+
 type RoadWithOsmMetadata = MapRoad & {
   metadata?: {
     source?: string;
@@ -544,6 +553,77 @@ function checkpointNodeFromRoute(routeNodeIds: readonly string[]): string | null
   return routeNodeIds[Math.floor(routeNodeIds.length / 2)] ?? null;
 }
 
+function routeOverlapRatio(leftRoadIds: readonly string[], rightRoadIds: readonly string[]): number {
+  const left = new Set(leftRoadIds);
+  const right = new Set(rightRoadIds);
+  const smallerSize = Math.min(left.size, right.size);
+
+  if (smallerSize === 0) {
+    return 0;
+  }
+
+  let sharedCount = 0;
+
+  for (const roadId of left) {
+    if (right.has(roadId)) {
+      sharedCount += 1;
+    }
+  }
+
+  return sharedCount / smallerSize;
+}
+
+function nodeDistance(graph: MapGraph, leftNodeId: string, rightNodeId: string): number {
+  const left = graph.nodesById[leftNodeId];
+  const right = graph.nodesById[rightNodeId];
+
+  if (!left || !right) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return pointDistance(left, right);
+}
+
+function passesRouteDiversity(input: {
+  graph: MapGraph;
+  startNodeId: string;
+  destinationNodeId: string;
+  routeRoadIds: readonly string[];
+  diversity?: CuratedFixtureRouteDiversityInput;
+}): boolean {
+  const diversity = input.diversity;
+
+  if (!diversity) {
+    return true;
+  }
+
+  const maxRouteOverlapRatio = diversity.maxRouteOverlapRatio ?? 0.68;
+
+  for (const avoidedRoadIds of diversity.avoidRouteRoadIds ?? []) {
+    if (routeOverlapRatio(input.routeRoadIds, avoidedRoadIds) > maxRouteOverlapRatio) {
+      return false;
+    }
+  }
+
+  const minStartDistanceMeters = diversity.minStartDistanceMeters ?? 70;
+
+  for (const avoidedStartNodeId of diversity.avoidStartNodeIds ?? []) {
+    if (nodeDistance(input.graph, input.startNodeId, avoidedStartNodeId) < minStartDistanceMeters) {
+      return false;
+    }
+  }
+
+  const minDestinationDistanceMeters = diversity.minDestinationDistanceMeters ?? 70;
+
+  for (const avoidedDestinationNodeId of diversity.avoidDestinationNodeIds ?? []) {
+    if (nodeDistance(input.graph, input.destinationNodeId, avoidedDestinationNodeId) < minDestinationDistanceMeters) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export function buildCuratedFixtureRoutableExercise(input: {
   map: MapDefinition;
   sourceOverpassFixture?: unknown;
@@ -555,6 +635,7 @@ export function buildCuratedFixtureRoutableExercise(input: {
   minimumStraightLineDistanceMeters?: number;
   routeOrdinal?: number;
   includeCheckpoint?: boolean;
+  diversity?: CuratedFixtureRouteDiversityInput;
 }): CuratedFixtureRoutePreflight {
   const graph = buildMapGraph(input.map);
   const components = graphComponents({ graph, restrictions: input.map.restrictions });
@@ -625,6 +706,18 @@ export function buildCuratedFixtureRoutableExercise(input: {
     });
 
     if (!confirmedRoute.found) {
+      continue;
+    }
+
+    if (
+      !passesRouteDiversity({
+        graph,
+        startNodeId: pair.start.nodeId,
+        destinationNodeId: pair.destination.nodeId,
+        routeRoadIds: confirmedRoute.roadIds,
+        diversity: input.diversity
+      })
+    ) {
       continue;
     }
 

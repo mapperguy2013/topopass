@@ -21,8 +21,10 @@ export const kingsCrossEustonOsmRouteMap = buildCuratedRealLondonOsmMap(kingsCro
 
 const conversionFinishedAt = performanceNow();
 
-export const kingsCrossEustonOsmRoutePreflights = [
-  buildCuratedRealLondonRoutableExercisePreflight(kingsCrossEustonOsmRouteMap, kingsCrossEustonOverpassFixture, {
+function buildKingsCrossEustonDiversePreflights(): CuratedFixtureRoutePreflight[] {
+  const selectedPreflights: CuratedFixtureRoutePreflight[] = [];
+  const specs = [
+    {
     idPrefix: "osm-curated-kings-cross-euston",
     suffix: "station-corridor-route",
     title: "King's Cross / Euston: station corridor route",
@@ -32,30 +34,57 @@ export const kingsCrossEustonOsmRoutePreflights = [
     includeCheckpoint: false,
     routeOrdinal: 0,
     minimumStraightLineDistanceMeters: 180
-  }),
-  buildCuratedRealLondonRoutableExercisePreflight(kingsCrossEustonOsmRouteMap, kingsCrossEustonOverpassFixture, {
+    },
+    {
     idPrefix: "osm-curated-kings-cross-euston",
     suffix: "main-road-side-road-route",
-    title: "King's Cross / Euston: main road to side road",
-    description: "Beta route for main-road to side-street transitions around King's Cross and Euston.",
+    title: "King's Cross / Euston: side-street route",
+    description: "Beta route for a different station-area side-street corridor.",
     difficulty: "hard",
     routeType: "direct",
     includeCheckpoint: false,
-    routeOrdinal: 1,
+    routeOrdinal: 0,
     minimumStraightLineDistanceMeters: 220
-  }),
-  buildCuratedRealLondonRoutableExercisePreflight(kingsCrossEustonOsmRouteMap, kingsCrossEustonOverpassFixture, {
+    },
+    {
     idPrefix: "osm-curated-kings-cross-euston",
     suffix: "checkpoint-route",
-    title: "King's Cross / Euston: checkpoint route",
-    description: "Checkpoint beta route for station-area orientation and route review overlays.",
+    title: "King's Cross / Euston: checkpoint sector route",
+    description: "Checkpoint beta route using a separate map sector for station-area orientation.",
     difficulty: "hard",
     routeType: "checkpoint",
     includeCheckpoint: true,
-    routeOrdinal: 2,
+    routeOrdinal: 0,
     minimumStraightLineDistanceMeters: 260
-  })
-] satisfies CuratedFixtureRoutePreflight[];
+    }
+  ] as const;
+
+  return specs.map((spec) => {
+    const preflight = buildCuratedRealLondonRoutableExercisePreflight(
+      kingsCrossEustonOsmRouteMap,
+      kingsCrossEustonOverpassFixture,
+      {
+        ...spec,
+        diversity: {
+          avoidRouteRoadIds: selectedPreflights.map((selected) => selected.routeRoadIds),
+          avoidStartNodeIds: selectedPreflights.flatMap((selected) => selected.routeNodeIds[0] ?? []),
+          avoidDestinationNodeIds: selectedPreflights.flatMap((selected) => selected.routeNodeIds.at(-1) ?? []),
+          maxRouteOverlapRatio: 0.68,
+          minStartDistanceMeters: 70,
+          minDestinationDistanceMeters: 70
+        }
+      }
+    );
+
+    if (preflight.exercise) {
+      selectedPreflights.push(preflight);
+    }
+
+    return preflight;
+  });
+}
+
+export const kingsCrossEustonOsmRoutePreflights = buildKingsCrossEustonDiversePreflights();
 
 export const kingsCrossEustonOsmRoutePreflight = requireDefaultPreflight(
   kingsCrossEustonOsmRoutePreflights,

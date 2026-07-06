@@ -591,6 +591,29 @@ claim OSM data. Dev QA panels, graph overlays, manual route input, raw node or
 segment IDs, and internal route-runner diagnostics remain hidden from
 `/practice/real-london`.
 
+Stage 161.6.20 adds a route exercise diversity pass for the beta catalogue.
+Imported curated OSM exercises are no longer selected as three adjacent
+farthest-pair variants on the same corridor. Each later generated exercise is
+chosen against the routes already accepted for that fixture, avoiding starts,
+destinations, and road sets that are too close to previous choices.
+
+The diversity rule is: two exercises on the same scoreable beta map should
+normally share no more than 70% of the smaller route's road set. Higher overlap
+is only acceptable when the start/finish separation or teaching purpose is
+meaningfully different, such as a checkpoint, one-way, restricted movement, or
+multi-stop review route. Tests also require at least three valid scoreable
+exercises where feasible, three distinct starts and destinations for the
+scoreable beta map set, legal expected routes, and synthetic perfect attempts
+that reach scoring.
+
+Route variety is intentionally separate from route difficulty. A good beta map
+catalogue should vary map sector, route corridor, checkpoint placement, road
+class mix, or restriction focus rather than presenting the same route shape as
+easy, medium, and hard. `/practice/real-london` filters scoreable learner
+exercise rows to those with a legal expected route; invalid dev exercises stay
+available to development tests and diagnostics but are not shown as beta
+practice tasks.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,
