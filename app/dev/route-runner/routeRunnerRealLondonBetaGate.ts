@@ -112,8 +112,20 @@ function isRealLondonBetaMapOption(option: RouteRunnerMapOption): boolean {
   return isRealLondonBetaMapId(option.map.id);
 }
 
+export function isFictionalBetaPracticeMapId(mapId: string): boolean {
+  return mapId === DEFAULT_ROUTE_RUNNER_MAP_ID;
+}
+
+function isFictionalBetaPracticeMapOption(option: RouteRunnerMapOption): boolean {
+  return isFictionalBetaPracticeMapId(option.map.id);
+}
+
+function isBetaPracticeMapOption(option: RouteRunnerMapOption): boolean {
+  return isRealLondonBetaMapOption(option) || isFictionalBetaPracticeMapOption(option);
+}
+
 export function routeRunnerMapOptionIsVisibleInBeta(option: RouteRunnerMapOption): boolean {
-  if (!isRealLondonBetaMapOption(option)) {
+  if (!isBetaPracticeMapOption(option)) {
     return false;
   }
 
@@ -167,6 +179,10 @@ export function getRouteRunnerVisibleMapOptions(input: {
 
     if (realLondonMap) {
       return betaEnabled && routeRunnerMapOptionIsVisibleInBeta(option);
+    }
+
+    if (isFictionalBetaPracticeMapOption(option)) {
+      return true;
     }
 
     if (isDevOnlyRouteRunnerMapOption(option)) {
@@ -273,7 +289,8 @@ export function buildPhase5RealLondonBetaReadinessReview(input: {
   mapOptions?: readonly RouteRunnerMapOption[];
 } = {}): Phase5RealLondonBetaReadinessReview {
   const mapOptions = input.mapOptions ?? ROUTE_RUNNER_MAP_OPTIONS;
-  const realLondonMapOptions = getRealLondonBetaMapOptions(mapOptions);
+  const betaPracticeMapOptions = getRealLondonBetaMapOptions(mapOptions);
+  const realLondonMapOptions = betaPracticeMapOptions.filter(isRealLondonBetaMapOption);
   const betaEnabledVisibleMapIds = getRouteRunnerVisibleMapOptions({ betaEnabled: true, mapOptions }).map(
     (option) => option.map.id
   );

@@ -931,12 +931,17 @@ export const DEFAULT_ROUTE_RUNNER_MAP_ID = marloweDistrictMap.id;
 export const ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[] = [
   {
     id: marloweDistrictMap.id,
-    label: "Marlowe District synthetic map",
-    description: "Default fictional TOPOPASS practice map.",
+    label: "Marlowe District - Fictional London-style practice",
+    description: "Fictional London-style practice area for learner route drawing and restriction awareness.",
     source: "synthetic-dev",
     map: marloweDistrictMap,
     exercises: marloweDistrictRouteExercises,
-    defaultExerciseId: marloweDistrictRouteExercises[0]?.id ?? ""
+    defaultExerciseId: marloweDistrictRouteExercises[0]?.id ?? "",
+    attribution: "Fictional practice map",
+    fixtureUse: "routableExercise",
+    fixturePerformanceGate: "betaPracticeAllowed",
+    visibleInBeta: true,
+    scoreable: true
   },
   {
     id: tinyLondonOsmRouteMap.id,

@@ -15,7 +15,8 @@ import {
   REAL_LONDON_BETA_ENV_FLAG,
   REAL_LONDON_BETA_KNOWN_LIMITATIONS,
   buildPhase5RealLondonBetaReadinessReview,
-  getRealLondonBetaMapOptions
+  getRealLondonBetaMapOptions,
+  isRealLondonBetaMapId
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
 import { buildRouteRunnerMobileQaReport } from "../../dev/route-runner/routeRunnerMobileQa.ts";
 import { validateRegisteredRouteRunnerVersionMetadata } from "../../dev/route-runner/routeRunnerVersionMetadata.ts";
@@ -145,7 +146,7 @@ const MANUAL_QA_CHECKLIST = [
 ] as const;
 
 export function buildPhase5BetaReadinessSignoffReport(): Phase5BetaReadinessSignoffReport {
-  const betaMapOptions = getRealLondonBetaMapOptions();
+  const betaMapOptions = getRealLondonBetaMapOptions().filter((option) => isRealLondonBetaMapId(option.map.id));
   const readinessReview = buildPhase5RealLondonBetaReadinessReview();
   const versionValidation = validateRegisteredRouteRunnerVersionMetadata(ROUTE_RUNNER_MAP_OPTIONS);
   const enabledPracticeModel = buildRealLondonBetaPracticeScreenModel({ betaEnabled: true });

@@ -575,6 +575,22 @@ comparison action appears when a legal comparison route exists. The comparison
 draws the existing validated shortest legal route while keeping the learner's
 attempt and issue markers visible.
 
+Stage 161.6.19 adds the existing Marlowe District synthetic map to the
+`/practice/real-london` beta map selector as `Marlowe District - Fictional
+London-style practice`. It is intentionally presented as fictional
+London-style learner practice, not as Real London, OSM, or a curated Overpass
+fixture. The existing Marlowe exercises remain scoreable only because they
+already validate through the route runner; legal route generation, matching,
+scoring, and no-entry failure behavior are unchanged.
+
+The beta selector now contains both source types: Real London OSM-derived maps
+for real geography and Marlowe District for fictional practice. Source
+attribution follows the active map. OSM maps continue to show OpenStreetMap
+attribution, while the Marlowe map shows `Fictional practice map` and does not
+claim OSM data. Dev QA panels, graph overlays, manual route input, raw node or
+segment IDs, and internal route-runner diagnostics remain hidden from
+`/practice/real-london`.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

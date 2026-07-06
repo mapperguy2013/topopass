@@ -389,6 +389,26 @@ action that clears the drawing and attempt state. After Submit, learners can
 show or hide the shortest legal route for comparison when one exists; the
 comparison overlay keeps the learner's route and issue markers visible.
 
+## Stage 161.6.19 Marlowe District Fictional Beta Practice Map
+
+Stage 161.6.19 makes the existing Marlowe District synthetic map available in
+the `/practice/real-london` beta map selector as a clearly labelled fictional
+practice option: `Marlowe District - Fictional London-style practice`. This
+does not reclassify Marlowe as Real London or OSM data. It remains fictional
+London-style learner practice, while the curated Real London maps remain
+OSM-derived fixtures with their own attribution.
+
+Marlowe uses the existing validated route exercises and is marked as scored
+practice only because those exercises still pass route-runner validation. The
+stage adds coverage that Marlowe can be selected from the beta screen, exposes
+learner route exercises, reaches scoring for legal attempts, and still fails a
+known illegal no-entry attempt. Attribution is source-aware: OSM maps show
+OpenStreetMap attribution, while Marlowe shows `Fictional practice map`.
+
+The beta page cleanliness rule is unchanged. Marlowe does not expose dev QA
+panels, graph overlays, manual route input, raw graph/node/segment IDs, or
+route-runner diagnostic wording on `/practice/real-london`.
+
 ## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
 
 Stage 161.6.15 refines the post-submit learner feedback path without changing

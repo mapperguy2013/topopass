@@ -1206,6 +1206,15 @@ returns to Draw mode without clearing the drawing, submitted result, or
 feedback. Erase route remains the action that deletes the drawing and attempt
 state. After Submit, beta learners can reveal or hide the shortest legal route
 for comparison while keeping their own route and mistake markers visible.
+Stage 161.6.19 adds Marlowe District to the `/practice/real-london` beta map
+selector as `Marlowe District - Fictional London-style practice`. It is clearly
+labelled as fictional learner practice, separate from the Real London
+OSM-derived maps, and uses the existing validated Marlowe route exercises as
+scored practice. The beta selector now supports both real OSM maps and the
+fictional Marlowe practice map without exposing dev QA panels, manual route
+input, raw graph IDs, or debug wording. Attribution remains source-aware:
+OSM-derived maps continue to show OpenStreetMap attribution, while Marlowe
+shows `Fictional practice map`.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

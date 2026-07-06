@@ -460,7 +460,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       placeholder: REAL_LONDON_BETA_FEEDBACK_PLACEHOLDER
     },
     knownLimitations: [...REAL_LONDON_BETA_KNOWN_LIMITATIONS],
-    attribution: mapOption.attribution ?? "OpenStreetMap contributors",
+    attribution: practiceMapAttributionLabel(mapOption),
     legendItems: buildLearnerRestrictionLegendItems().map((item) => ({
       id: item.id,
       label: item.label,
@@ -591,6 +591,14 @@ function buildPracticeMapRow(option: RouteRunnerMapOption, selected: boolean): R
     lazyLoadingLabel: option.lazyLoadingLabel ?? null,
     selected
   };
+}
+
+function practiceMapAttributionLabel(option: RouteRunnerMapOption): string {
+  if (option.attribution) {
+    return option.attribution;
+  }
+
+  return option.source === "converted-osm" ? "OpenStreetMap contributors" : "Fictional practice map";
 }
 
 function buildPracticeExerciseRow(input: {

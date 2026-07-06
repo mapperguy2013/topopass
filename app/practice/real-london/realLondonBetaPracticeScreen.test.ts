@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { marloweDistrictMap } from "../../../lib/map-engine/index.ts";
+import { marloweDistrictMap, marloweDistrictRouteExercises, runRouteExercise } from "../../../lib/map-engine/index.ts";
 import {
   type RouteRunnerMapOption,
   DEFAULT_ROUTE_RUNNER_MAP_ID,
@@ -432,6 +432,7 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
 
   const mapIds = model.mapRows.map((row) => row.id);
 
+  assert.ok(mapIds.includes("marlowe-district-dev-map"));
   assert.ok(mapIds.includes("osm-real-london-pilot"));
   assert.ok(mapIds.includes("osm-curated-piccadilly-circus"));
   assert.ok(mapIds.includes("osm-curated-waterloo-bridge"));
@@ -442,11 +443,19 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.ok(model.mapRows.every((row) => row.description.length > 0));
   assert.ok(model.mapRows.every((row) => row.fixtureUseLabel.length > 0));
   assert.ok(model.mapRows.every((row) => row.visibleInBeta));
+  const marloweRow = model.mapRows.find((row) => row.id === "marlowe-district-dev-map");
   const kingsCrossRow = model.mapRows.find((row) => row.id === "osm-curated-kings-cross-euston");
   const centralLondonRow = model.mapRows.find((row) => row.id === "osm-curated-centralLondon");
 
+  assert.ok(marloweRow);
   assert.ok(kingsCrossRow);
   assert.ok(centralLondonRow);
+  assert.equal(marloweRow.label, "Marlowe District - Fictional London-style practice");
+  assert.match(marloweRow.description, /Fictional London-style practice/);
+  assert.doesNotMatch(marloweRow.label, /Real London|OSM/i);
+  assert.equal(marloweRow.fixtureUseLabel, "Scored practice");
+  assert.equal(marloweRow.scoreable, true);
+  assert.equal(marloweRow.betaPracticeAllowed, true);
   assert.equal(kingsCrossRow.fixturePerformanceGate, "betaPracticeAllowedWithLoading");
   assert.equal(kingsCrossRow.lazyLoadId, "kingsCrossEuston");
   assert.equal(centralLondonRow.fixtureUseLabel, "Stress test / slow");
@@ -456,6 +465,69 @@ test("Stage 161.6 beta screen exposes curated Real London map choices", () => {
   assert.equal(centralLondonRow.visualQaOnly, true);
   assert.equal(centralLondonRow.devOnlyStressTest, true);
   assert.equal(centralLondonRow.betaPracticeAllowed, false);
+});
+
+test("Stage 161.6.19 beta screen can select Marlowe District fictional scored practice", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: "marlowe-district-dev-map"
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available") {
+    throw new Error("Expected available Marlowe beta practice screen.");
+  }
+
+  assert.equal(model.mapId, "marlowe-district-dev-map");
+  assert.equal(model.selectedMap.label, "Marlowe District - Fictional London-style practice");
+  assert.match(model.selectedMap.description, /Fictional London-style practice/);
+  assert.equal(model.selectedMap.fixtureUse, "routableExercise");
+  assert.equal(model.selectedMap.fixtureUseLabel, "Scored practice");
+  assert.equal(model.selectedMap.scoreable, true);
+  assert.equal(model.selectedMap.fixturePerformanceGate, "betaPracticeAllowed");
+  assert.equal(model.attribution, "Fictional practice map");
+  assert.doesNotMatch(model.attribution, /OpenStreetMap/i);
+  assert.ok(model.exerciseRows.length >= 3);
+  assert.ok(model.selectedExercise);
+  assert.ok(model.exerciseRows.every((row) => row.title.length > 0));
+  assert.ok(model.exerciseRows.some((row) => row.id === "ex-station-to-hospital"));
+  assert.equal(model.routeFlow.shortestRouteFound, true);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+  assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
+});
+
+test("Stage 161.6.19 Marlowe beta exercises are validated and restrictions still fail illegal routes", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: "marlowe-district-dev-map",
+    selectedExerciseId: "ex-station-to-hospital"
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available" || !model.selectedExercise) {
+    throw new Error("Expected selected Marlowe beta exercise.");
+  }
+
+  assert.equal(model.selectedExercise.id, "ex-station-to-hospital");
+  assert.equal(model.routeFlow.shortestRouteFound, true);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+
+  const illegalResult = runRouteExercise({
+    map: marloweDistrictMap,
+    exercises: marloweDistrictRouteExercises,
+    exerciseId: "ex-station-to-hospital",
+    userRoute: {
+      nodeIds: ["n14", "n13", "n14", "n18", "n17", "n12", "n04", "n05", "n09"],
+      roadIds: ["r14", "r14", "r26", "r22", "r24", "r16", "r04", "r15"]
+    }
+  });
+
+  assert.equal(illegalResult.score.passed, false);
+  assert.equal(illegalResult.score.automaticFail, true);
+  assert.ok(illegalResult.score.failureReasons.includes("illegal_route"));
+  assert.ok(illegalResult.score.legality.illegalMovements.some((movement) => movement.type === "no_entry"));
 });
 
 test("Stage 161.6 beta screen can select a curated routable fixture", () => {
@@ -473,9 +545,11 @@ test("Stage 161.6 beta screen can select a curated routable fixture", () => {
   assert.equal(model.mapId, "osm-curated-quiet-residential-roads");
   assert.equal(model.selectedMap.fixtureUse, "routableExercise");
   assert.equal(model.selectedMap.scoreable, true);
+  assert.match(model.attribution, /OpenStreetMap/i);
   assert.ok(model.selectedExercise);
   assert.equal(model.routeFlow.shortestRouteFound, true);
   assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+  assert.equal(model.mapInteraction.mapSwitchClearsAttemptState, true);
 });
 
 test("Stage 161.6.3 beta screen deterministically selects requested curated map and exercise", () => {
