@@ -258,6 +258,12 @@ export type RealLondonBetaPracticeScreenModel =
             labelBubble: true;
             learnerFriendly: true;
           };
+          zoomAdaptiveSizing: {
+            normalZoomScale: number;
+            targetZoomScale: number;
+            highZoomMaxScale: number;
+            anchorPreserved: true;
+          };
         };
         issueMarkerDesign: {
           mapPresentation: "icon-first";
@@ -576,6 +582,12 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
           anchor: "bottom-centre",
           labelBubble: true,
           learnerFriendly: true
+        },
+        zoomAdaptiveSizing: {
+          normalZoomScale: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.assetZoomScale.lowScale,
+          targetZoomScale: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.assetZoomScale.baseScale,
+          highZoomMaxScale: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.assetZoomScale.maxScale,
+          anchorPreserved: true
         }
       },
       issueMarkerDesign: {

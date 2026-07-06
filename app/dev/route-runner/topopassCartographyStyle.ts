@@ -58,6 +58,21 @@ export type TopopassMarkerAssetStyle = {
   anchorY: number;
 };
 
+export type TopopassMarkerAssetZoomScaleStyle = {
+  lowZoom: number;
+  midZoom: number;
+  baseZoom: number;
+  highZoom: number;
+  veryHighZoom: number;
+  maxZoom: number;
+  lowScale: number;
+  midScale: number;
+  baseScale: number;
+  highScale: number;
+  veryHighScale: number;
+  maxScale: number;
+};
+
 export type TopopassMarkerLabelBubbleStyle = {
   fillColor: string;
   strokeWidth: number;
@@ -378,6 +393,7 @@ export type TopopassStreetAtlasStyle = {
     shadowBlur: number;
     shadowOffsetY: number;
     labelBubble: TopopassMarkerLabelBubbleStyle;
+    assetZoomScale: TopopassMarkerAssetZoomScaleStyle;
     start: { fillColor: string; radius: number; text: string; compactText: string; font: string; shape: "pin"; pinTipLength: number };
     checkpoint: { fillColor: string; radius: number; textPrefix: string; font: string; shape: "circle" };
     requiredVia: { fillColor: string; radius: number; textPrefix: string; font: string; shape: "circle" };
@@ -1330,6 +1346,20 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       shadowColor: "rgba(15,23,42,0.24)",
       shadowBlur: 7,
       shadowOffsetY: 1.5
+    },
+    assetZoomScale: {
+      lowZoom: 1,
+      midZoom: 2.5,
+      baseZoom: 5,
+      highZoom: 10,
+      veryHighZoom: 25,
+      maxZoom: 50,
+      lowScale: 0.5,
+      midScale: 0.75,
+      baseScale: 1,
+      highScale: 1.1,
+      veryHighScale: 1.2,
+      maxScale: 1.3
     },
     start: {
       fillColor: "#059669",

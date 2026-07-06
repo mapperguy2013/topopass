@@ -356,6 +356,12 @@ test("Stage 161.6.21 beta practice marker and issue feedback contract matches co
     labelBubble: true,
     learnerFriendly: true
   });
+  assert.deepEqual(model.learnerUi.markerDesign.zoomAdaptiveSizing, {
+    normalZoomScale: 0.5,
+    targetZoomScale: 1,
+    highZoomMaxScale: 1.3,
+    anchorPreserved: true
+  });
   assert.equal(model.learnerUi.issueMarkerDesign.mapPresentation, "icon-first");
   assert.equal(model.learnerUi.issueMarkerDesign.groupedMarkerPerIssue, true);
   assert.equal(model.learnerUi.issueMarkerDesign.repeatedTextLabelsVisible, false);

@@ -9,6 +9,7 @@ import {
   buildSyntheticRoadVisuals,
   buildSyntheticRouteOverlayVisuals,
   cartographicCorrectRouteScaleForZoom,
+  cartographicCustomMarkerAssetScaleForZoom,
   cartographicDrawnAttemptScaleForZoom,
   cartographicLearnerMarkerScaleForZoom,
   cartographicMistakeOverlayScaleForZoom,
@@ -243,6 +244,33 @@ test("Stage 161.6.23.2 learner marker SVG assets are present and bottom-centre a
     assert.ok(
       Math.abs(asset.displayWidth / asset.displayHeight - asset.sourceWidth / asset.sourceHeight) < 0.0001
     );
+  }
+});
+
+test("Stage 161.6.23.3 custom marker SVG sizing adapts by zoom without anchor drift", () => {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.assetZoomScale;
+  const startMarkerAsset = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset;
+  const checkpointMarkerAsset = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset;
+
+  assert.ok(startMarkerAsset);
+  assert.ok(checkpointMarkerAsset);
+  assert.equal(cartographicCustomMarkerAssetScaleForZoom(1), 0.5);
+  assert.equal(cartographicCustomMarkerAssetScaleForZoom(2.5), 0.75);
+  assert.equal(cartographicCustomMarkerAssetScaleForZoom(5), 1);
+  assert.equal(cartographicCustomMarkerAssetScaleForZoom(10), 1.1);
+  assert.ok(Math.abs(cartographicCustomMarkerAssetScaleForZoom(25) - 1.2) < 0.0001);
+  assert.equal(cartographicCustomMarkerAssetScaleForZoom(50), 1.3);
+  assert.equal(cartographicCustomMarkerAssetScaleForZoom(100), scaleTokens.maxScale);
+
+  for (const zoom of [1, 2.5, 5, 10, 25, 50]) {
+    const markerScale = cartographicCustomMarkerAssetScaleForZoom(zoom);
+    const width = startMarkerAsset.displayWidth * markerScale;
+    const height = startMarkerAsset.displayHeight * markerScale;
+    const anchorX = (startMarkerAsset.anchorX / startMarkerAsset.sourceWidth) * width;
+    const anchorY = (startMarkerAsset.anchorY / startMarkerAsset.sourceHeight) * height;
+
+    assert.equal(anchorX, width / 2);
+    assert.ok(anchorY > height * 0.95);
   }
 });
 

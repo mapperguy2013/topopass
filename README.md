@@ -1260,6 +1260,11 @@ Stage 161.6.23.2 switches the learner stop markers to the custom SVG assets in
 and draws them without stretching, using the SVG bottom-centre anchor as the
 exact route graph point. The older vector marker drawing remains only as a safe
 fallback while assets load or if an asset fails.
+Stage 161.6.23.3 tunes custom marker sizing by zoom. SVG markers draw at 50% of
+their base asset size at 100% zoom, about 75% at 250%, their full base size at
+500%, then grow gently to 1.3x by 5000% so route lines, labels, and junction
+detail remain visible. The bottom-centre SVG anchor remains fixed to the route
+graph point at every scale.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

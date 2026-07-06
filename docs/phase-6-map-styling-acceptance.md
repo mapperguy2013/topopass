@@ -671,6 +671,15 @@ submit, route review, and fastest-route comparison keep the same marker
 alignment. The previous vector marker path remains a fallback only while assets
 load or if an asset cannot be decoded.
 
+Stage 161.6.23.3 adds zoom-adaptive sizing for those custom marker assets. At
+100% zoom the SVG markers render at half of their base asset size, at 250% they
+render around 75%, and at 500% they render at the full base size used by the
+initial custom marker import. Above 500%, marker growth is intentionally gentle:
+about 1.1x at 1000%, 1.2x at 2500%, and capped at 1.3x by 5000%. The
+bottom-centre anchor calculation scales with the rendered asset dimensions so
+the marker tip stays fixed to the exact graph point during pan, wheel zoom,
+pinch zoom, reset view, route review, and fastest-route comparison.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

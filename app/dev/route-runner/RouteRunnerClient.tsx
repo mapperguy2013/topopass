@@ -136,6 +136,7 @@ import {
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
   buildRoadRenderPasses,
+  cartographicCustomMarkerAssetScaleForZoom,
   cartographicDrawnAttemptScaleForZoom,
   cartographicCorrectRouteScaleForZoom,
   cartographicLearnerMarkerScaleForZoom,
@@ -1508,7 +1509,7 @@ function drawExerciseStopMarker(input: {
       image: markerAsset,
       point: input.point,
       asset: learnerMarkerStyle.asset,
-      scale
+      scale: cartographicCustomMarkerAssetScaleForZoom(input.currentZoom ?? 1)
     });
   } else {
     input.context.shadowColor = style.shadowColor;

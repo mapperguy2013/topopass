@@ -1219,6 +1219,85 @@ export function cartographicLearnerMarkerScaleForZoom(currentZoom: number): numb
   return getZoomStyleScale(scaleInput, scaleTokens.learnerMarkerGain, scaleTokens.learnerMarkerMaxMultiplier);
 }
 
+export function cartographicCustomMarkerAssetScaleForZoom(currentZoom: number): number {
+  const scaleTokens = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.assetZoomScale;
+  const zoom = Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : scaleTokens.lowZoom;
+
+  if (zoom <= scaleTokens.lowZoom) {
+    return scaleTokens.lowScale;
+  }
+
+  if (zoom <= scaleTokens.midZoom) {
+    return interpolateScale(
+      zoom,
+      scaleTokens.lowZoom,
+      scaleTokens.midZoom,
+      scaleTokens.lowScale,
+      scaleTokens.midScale
+    );
+  }
+
+  if (zoom <= scaleTokens.baseZoom) {
+    return interpolateScale(
+      zoom,
+      scaleTokens.midZoom,
+      scaleTokens.baseZoom,
+      scaleTokens.midScale,
+      scaleTokens.baseScale
+    );
+  }
+
+  if (zoom <= scaleTokens.highZoom) {
+    return interpolateScale(
+      zoom,
+      scaleTokens.baseZoom,
+      scaleTokens.highZoom,
+      scaleTokens.baseScale,
+      scaleTokens.highScale
+    );
+  }
+
+  if (zoom <= scaleTokens.veryHighZoom) {
+    return interpolateScale(
+      zoom,
+      scaleTokens.highZoom,
+      scaleTokens.veryHighZoom,
+      scaleTokens.highScale,
+      scaleTokens.veryHighScale
+    );
+  }
+
+  if (zoom <= scaleTokens.maxZoom) {
+    return interpolateScale(
+      zoom,
+      scaleTokens.veryHighZoom,
+      scaleTokens.maxZoom,
+      scaleTokens.veryHighScale,
+      scaleTokens.maxScale
+    );
+  }
+
+  return scaleTokens.maxScale;
+}
+
+function interpolateScale(
+  input: number,
+  inputMin: number,
+  inputMax: number,
+  outputMin: number,
+  outputMax: number
+): number {
+  const range = inputMax - inputMin;
+
+  if (range <= 0) {
+    return outputMax;
+  }
+
+  const progress = clampNumber((input - inputMin) / range, 0, 1);
+
+  return outputMin + (outputMax - outputMin) * progress;
+}
+
 export function cartographicStyleScaleForZoom(currentZoom: number): {
   majorRoad: number;
   secondaryRoad: number;
