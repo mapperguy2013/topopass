@@ -1184,6 +1184,17 @@ polished panel with pass/fail state, score, route distances, grouped issues,
 Show on map actions, and a single coaching note for beta learners. Dev QA,
 manual route input, raw IDs, duplicate feedback panels, and proprietary map UI
 or cartographic assets remain excluded.
+Stage 161.6.17 polishes the submitted Route feedback panel so it reads as
+learner coaching rather than route-runner diagnostics. The beta panel now starts
+with a result summary and compact metrics for Score, Your route, Shortest legal
+route, and Extra distance, then explains What happened, shows only issue
+categories that actually apply, and ends with one Try next coaching note.
+Route-too-long feedback is grouped under Route efficiency instead of Missed
+restrictions, empty "no issue" boxes are hidden, and Show on map appears only
+for actionable map issues such as illegal movements, required stops, or
+matching locations. Required stop progress uses Start, Destination, and
+Checkpoint labels instead of raw node IDs, while dev-only diagnostics remain
+outside `/practice/real-london`.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

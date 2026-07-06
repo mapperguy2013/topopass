@@ -534,6 +534,22 @@ input, duplicate feedback boxes, and route replay stay outside
 scoring, route generation, OSM data, cartography tokens, zoom behaviour, lazy
 fixture loading, or Phase 7 scope.
 
+Stage 161.6.17 polishes the learner route feedback panel without changing
+matching, legality, scoring, route generation, OSM data, cartography, beta
+gates, or Phase 7 scope. After Submit, beta learners see one result summary
+with status, score, route distance, shortest legal route distance, and extra
+distance, followed by a What happened explanation, only the issue categories
+that actually apply, and one Try next coaching note.
+
+The learner issue categories are Route efficiency, Illegal movements, Required
+stops, and Matching. Route-too-long feedback belongs to Route efficiency, not
+Missed restrictions, and it does not show a Show on map action because there is
+no single map point to highlight. Show on map remains available for actionable
+map issues where a focus target exists. Empty "No illegal movement..." and "No
+missed checkpoint..." cards are hidden from beta feedback. Required stop
+progress uses Start, Destination, and Checkpoint labels rather than OSM node
+ids or internal graph labels.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

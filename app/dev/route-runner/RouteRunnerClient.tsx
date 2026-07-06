@@ -109,6 +109,7 @@ import {
   type LearnerWeakAreaProfileEntry,
   type RouteAttemptHistoryState,
   type RouteAttemptReview,
+  type RouteAttemptReviewItem,
   type RouteAttemptReviewItemSeverity
 } from "./routeAttemptReview";
 import {
@@ -608,6 +609,231 @@ function reviewStateClass(status: RouteAttemptReview["status"]): string {
   }
 
   return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+type LearnerFeedbackIssueSection = {
+  id: "route-efficiency" | "illegal-movements" | "required-stops" | "matching";
+  title: string;
+  items: RouteAttemptReviewItem[];
+  mapActionTone: "red" | "amber" | "blue";
+};
+
+function learnerFeedbackStatusLabel(status: RouteAttemptReview["status"]): string {
+  if (status === "pass") {
+    return "Pass";
+  }
+
+  if (status === "fail") {
+    return "Failed";
+  }
+
+  if (status === "blocked") {
+    return "Needs review";
+  }
+
+  return "Not submitted";
+}
+
+function learnerFeedbackToneClass(status: RouteAttemptReview["status"]): string {
+  if (status === "pass") {
+    return "border-green-200 bg-white text-green-950 before:bg-green-500";
+  }
+
+  if (status === "fail") {
+    return "border-red-200 bg-white text-red-950 before:bg-red-500";
+  }
+
+  if (status === "blocked") {
+    return "border-amber-200 bg-white text-amber-950 before:bg-amber-500";
+  }
+
+  return "border-slate-200 bg-white text-slate-800 before:bg-slate-400";
+}
+
+function learnerFeedbackBadgeClass(status: RouteAttemptReview["status"]): string {
+  if (status === "pass") {
+    return "border-green-200 bg-green-50 text-green-800";
+  }
+
+  if (status === "fail") {
+    return "border-red-200 bg-red-50 text-red-800";
+  }
+
+  if (status === "blocked") {
+    return "border-amber-200 bg-amber-50 text-amber-900";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function reviewItemMatches(item: RouteAttemptReviewItem, text: string): boolean {
+  return `${item.label} ${item.detail ?? ""}`.toLowerCase().includes(text.toLowerCase());
+}
+
+function isRouteEfficiencyReviewItem(item: RouteAttemptReviewItem): boolean {
+  return reviewItemMatches(item, "Route too long");
+}
+
+function isRequiredStopReviewItem(item: RouteAttemptReviewItem): boolean {
+  return (
+    reviewItemMatches(item, "Wrong start") ||
+    reviewItemMatches(item, "Wrong destination") ||
+    reviewItemMatches(item, "Missed required stop")
+  );
+}
+
+function isMatchingReviewItem(item: RouteAttemptReviewItem): boolean {
+  return (
+    reviewItemMatches(item, "Disconnected matched roads") ||
+    reviewItemMatches(item, "Could not snap to roads") ||
+    reviewItemMatches(item, "Unresolved road direction") ||
+    reviewItemMatches(item, "Insufficient drawing") ||
+    reviewItemMatches(item, "No route drawn")
+  );
+}
+
+function learnerReviewMetricValue(review: RouteAttemptReview, metricId: RouteAttemptReview["distanceMetrics"][number]["id"]): string {
+  return review.distanceMetrics.find((metric) => metric.id === metricId)?.value ?? "n/a";
+}
+
+function learnerFeedbackSummarySentence(review: RouteAttemptReview): string {
+  if (review.status === "pass") {
+    return "Great route - you passed.";
+  }
+
+  if (review.illegalMovements.length > 0) {
+    return "Your route used a restricted movement.";
+  }
+
+  if (review.missedRestrictions.some(isRouteEfficiencyReviewItem)) {
+    return "Your route was legal, but too long.";
+  }
+
+  if (review.status === "blocked") {
+    if (review.missedRestrictions.some((item) => reviewItemMatches(item, "Disconnected matched roads"))) {
+      return "Your drawn route has a gap.";
+    }
+
+    return "We could not match your route to the roads.";
+  }
+
+  return review.suggestedFailureReason ?? "Your route needs review.";
+}
+
+function learnerFeedbackWhatHappened(review: RouteAttemptReview): string {
+  if (review.status === "pass") {
+    return "Your route was legal and within the pass threshold.";
+  }
+
+  if (review.illegalMovements[0]) {
+    return review.illegalMovements[0].label;
+  }
+
+  if (review.missedRestrictions.some(isRouteEfficiencyReviewItem)) {
+    const extraDistance = learnerReviewMetricValue(review, "extra-distance");
+
+    return extraDistance === "n/a"
+      ? "Your route was longer than the shortest legal route."
+      : `Your route was ${extraDistance} longer than the shortest legal route.`;
+  }
+
+  if (review.missedRestrictions[0]) {
+    return review.missedRestrictions[0].detail ?? review.missedRestrictions[0].label;
+  }
+
+  return review.suggestedFailureReason ?? learnerFeedbackSummarySentence(review);
+}
+
+function buildLearnerFeedbackIssueSections(review: RouteAttemptReview): LearnerFeedbackIssueSection[] {
+  const routeEfficiencyItems = review.missedRestrictions.filter(isRouteEfficiencyReviewItem);
+  const requiredStopItems = review.missedRestrictions.filter(isRequiredStopReviewItem);
+  const matchingItems = review.missedRestrictions.filter(isMatchingReviewItem);
+  const otherMissedItems = review.missedRestrictions.filter(
+    (item) => !isRouteEfficiencyReviewItem(item) && !isRequiredStopReviewItem(item) && !isMatchingReviewItem(item)
+  );
+  const sections: LearnerFeedbackIssueSection[] = [];
+
+  if (routeEfficiencyItems.length > 0) {
+    sections.push({
+      id: "route-efficiency",
+      title: "Route efficiency",
+      items: routeEfficiencyItems,
+      mapActionTone: "amber"
+    });
+  }
+
+  if (review.illegalMovements.length > 0) {
+    sections.push({
+      id: "illegal-movements",
+      title: "Illegal movements",
+      items: review.illegalMovements,
+      mapActionTone: "red"
+    });
+  }
+
+  if (requiredStopItems.length + otherMissedItems.length > 0) {
+    sections.push({
+      id: "required-stops",
+      title: "Required stops",
+      items: [...requiredStopItems, ...otherMissedItems],
+      mapActionTone: "amber"
+    });
+  }
+
+  if (matchingItems.length > 0) {
+    sections.push({
+      id: "matching",
+      title: "Matching",
+      items: matchingItems,
+      mapActionTone: "blue"
+    });
+  }
+
+  return sections;
+}
+
+function learnerFeedbackMapButtonClass(tone: LearnerFeedbackIssueSection["mapActionTone"], active: boolean): string {
+  if (active) {
+    return "border-sky-300 bg-sky-50 text-sky-950";
+  }
+
+  if (tone === "red") {
+    return "border-red-200 bg-white text-red-900 hover:bg-red-50";
+  }
+
+  if (tone === "amber") {
+    return "border-amber-200 bg-white text-amber-900 hover:bg-amber-50";
+  }
+
+  return "border-blue-200 bg-white text-blue-900 hover:bg-blue-50";
+}
+
+function learnerRequiredStopLabel(status: RequiredStopVisitStatus): string {
+  if (status.role === "start") {
+    return "Start";
+  }
+
+  if (status.role === "destination") {
+    return "Destination";
+  }
+
+  return `Checkpoint ${Math.max(1, status.order - 1)}`;
+}
+
+function learnerRequiredStopState(status: RequiredStopVisitStatus): string {
+  if (!status.visited) {
+    return status.role === "destination" ? "Not reached" : "Missed";
+  }
+
+  if (status.role === "destination") {
+    return "Reached";
+  }
+
+  if (status.role === "start") {
+    return "Visited first";
+  }
+
+  return "Visited";
 }
 
 function realLondonPlaythroughToneClass(tone: RealLondonPilotPlaythroughTone): string {
@@ -3986,6 +4212,12 @@ export function RouteRunnerClient({
       }),
     [restrictionMapVisualItems, selectedRestrictionReviewItem]
   );
+  const learnerFeedbackIssueSections = useMemo(
+    () => buildLearnerFeedbackIssueSections(drawnAttemptReview),
+    [drawnAttemptReview]
+  );
+  const learnerFeedbackSummary = learnerFeedbackSummarySentence(drawnAttemptReview);
+  const learnerFeedbackWhatHappenedText = learnerFeedbackWhatHappened(drawnAttemptReview);
   const compactRestrictionOverlayPanel = useMemo(
     () =>
       buildCompactRestrictionOverlayModel({
@@ -6987,7 +7219,7 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            {(!isStudentBetaRouteRunner || !hasSubmittedCurrentDrawnAttempt) ? (
+            {!isStudentBetaRouteRunner ? (
               <div className={`mt-4 rounded-md border p-4 text-sm ${scoreStateClass(drawnScoreDisplay.state)}`}>
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <p className="font-semibold">{drawnScoreDisplay.label}</p>
@@ -7003,10 +7235,127 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            {isStudentBetaRouteRunner && hasBlockedCurrentDrawnSubmit && drawnSubmitState.message ? (
-              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-                <p className="font-semibold">Route not submitted</p>
-                <p className="mt-1">{drawnSubmitState.message}</p>
+            {isStudentBetaRouteRunner ? (
+              <div
+                className={`relative mt-4 overflow-hidden rounded-xl border p-4 pl-5 text-sm shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 ${learnerFeedbackToneClass(
+                  drawnAttemptReview.status
+                )}`}
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${learnerFeedbackBadgeClass(
+                          drawnAttemptReview.status
+                        )}`}
+                      >
+                        {learnerFeedbackStatusLabel(drawnAttemptReview.status)}
+                      </span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Submitted route
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-lg font-semibold text-slate-950">{learnerFeedbackSummary}</h3>
+                  </div>
+                </div>
+
+                <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</dt>
+                    <dd className="mt-1 font-semibold text-slate-950">{drawnAttemptReview.scoreLabel}</dd>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your route</dt>
+                    <dd className="mt-1 font-semibold text-slate-950">
+                      {learnerReviewMetricValue(drawnAttemptReview, "student-route-distance")}
+                    </dd>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shortest legal route</dt>
+                    <dd className="mt-1 font-semibold text-slate-950">
+                      {learnerReviewMetricValue(drawnAttemptReview, "shortest-legal-distance")}
+                    </dd>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Extra distance</dt>
+                    <dd className="mt-1 font-semibold text-slate-950">
+                      {learnerReviewMetricValue(drawnAttemptReview, "extra-distance")}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="mt-4 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What happened</p>
+                  <p className="mt-1 leading-6 text-slate-800">{learnerFeedbackWhatHappenedText}</p>
+                  {hasBlockedCurrentDrawnSubmit && drawnSubmitState.message ? (
+                    <p className="mt-1 text-xs leading-5 text-slate-600">{drawnSubmitState.message}</p>
+                  ) : null}
+                </div>
+
+                {learnerFeedbackIssueSections.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Issues to fix</p>
+                    {learnerFeedbackIssueSections.map((section) => (
+                      <div key={section.id} className="rounded-lg bg-white p-3 ring-1 ring-slate-100">
+                        <h4 className="text-sm font-semibold text-slate-950">{section.title}</h4>
+                        <ul className="mt-2 space-y-2">
+                          {section.items.map((item) => {
+                            const isFocused = selectedRestrictionReviewItemId === item.id;
+                            const hasMapTarget =
+                              section.id !== "route-efficiency" &&
+                              Boolean(
+                                resolveRestrictionFocusTarget({
+                                  reviewItem: item,
+                                  visualItems: restrictionMapVisualItems
+                                })
+                              );
+
+                            return (
+                              <li key={item.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span className="font-medium text-slate-800">{item.label}</span>
+                                {hasMapTarget ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleRestrictionReviewFocus(item)}
+                                    className={`min-h-10 rounded-md border px-3 py-2 text-xs font-semibold ${learnerFeedbackMapButtonClass(
+                                      section.mapActionTone,
+                                      isFocused
+                                    )}`}
+                                  >
+                                    {isFocused ? "Hide map focus" : "Show on map"}
+                                  </button>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                {requiredStopStatuses.length > 0 ? (
+                  <details className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-700" open={requiredStopStatuses.some((status) => !status.visited)}>
+                    <summary className="cursor-pointer font-semibold text-slate-900">Required stop progress</summary>
+                    <ol className="mt-3 grid gap-2 sm:grid-cols-3">
+                      {requiredStopStatuses.map((stop) => (
+                        <li key={`${stop.role}-${stop.order}`} className="rounded-md bg-white px-3 py-2 ring-1 ring-slate-100">
+                          <p className="font-semibold text-slate-950">{learnerRequiredStopLabel(stop)}</p>
+                          <p className={stop.visited ? "mt-1 text-green-700" : "mt-1 text-amber-800"}>
+                            {learnerRequiredStopState(stop)}
+                          </p>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                ) : null}
+
+                {showLearnerAttemptReviewDetails && drawnAttemptReview.correctionHints.length > 0 ? (
+                  <div className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Try next</p>
+                    <p className="mt-1 leading-6">{drawnAttemptReview.correctionHints[0]}</p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -7141,6 +7490,7 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
+            {!isStudentBetaRouteRunner ? (
             <div className={`mt-4 rounded-lg border p-4 text-sm ${reviewStateClass(drawnAttemptReview.status)}`}>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -8290,6 +8640,7 @@ export function RouteRunnerClient({
                 </div>
               </div>
             </div>
+            ) : null}
 
             {!isStudentBetaRouteRunner && routeIssueOverlays.length > 0 ? (
               <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-950">
@@ -8442,7 +8793,7 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
-            {requiredStopStatuses.length > 0 ? (
+            {!isStudentBetaRouteRunner && requiredStopStatuses.length > 0 ? (
               <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
                 <h3 className="text-sm font-semibold text-slate-950">Required stop progress</h3>
                 <ol className="mt-3 grid gap-2 text-sm sm:grid-cols-3">

@@ -162,6 +162,16 @@ export type RealLondonBetaPracticeScreenModel =
           drawnRouteScoreSummaryVisible: false;
           routeAttemptReviewAndDrawnScoreSummaryTogether: false;
           routeReplayVisibleByDefault: false;
+          summaryHeaderFirst: true;
+          metricLabels: ["Score", "Your route", "Shortest legal route", "Extra distance"];
+          whatHappenedSectionVisible: true;
+          issueCategories: ["Route efficiency", "Illegal movements", "Required stops", "Matching"];
+          routeTooLongCategory: "Route efficiency";
+          routeTooLongShowOnMapVisible: false;
+          emptyIssueCategoriesHidden: true;
+          requiredStopProgressUsesLearnerLabels: true;
+          duplicateRequiredStopProgressPanelVisible: false;
+          rawInternalIdsVisible: false;
         };
         instructionArea: {
           visibleInstructionAreaCount: 1;
@@ -393,7 +403,17 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         betaCoachingNoteCount: 1,
         drawnRouteScoreSummaryVisible: false,
         routeAttemptReviewAndDrawnScoreSummaryTogether: false,
-        routeReplayVisibleByDefault: false
+        routeReplayVisibleByDefault: false,
+        summaryHeaderFirst: true,
+        metricLabels: ["Score", "Your route", "Shortest legal route", "Extra distance"],
+        whatHappenedSectionVisible: true,
+        issueCategories: ["Route efficiency", "Illegal movements", "Required stops", "Matching"],
+        routeTooLongCategory: "Route efficiency",
+        routeTooLongShowOnMapVisible: false,
+        emptyIssueCategoriesHidden: true,
+        requiredStopProgressUsesLearnerLabels: true,
+        duplicateRequiredStopProgressPanelVisible: false,
+        rawInternalIdsVisible: false
       },
       instructionArea: {
         visibleInstructionAreaCount: 1,

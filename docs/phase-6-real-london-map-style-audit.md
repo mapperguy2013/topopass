@@ -343,6 +343,25 @@ learners. Dev QA panels, manual route input, duplicate status boxes, route
 replay, raw OSM/graph/node/road ids, local attempt ids, and proprietary map UI
 or cartographic assets remain excluded from the beta practice page.
 
+## Stage 161.6.17 Polish Learner Route Feedback UI
+
+Stage 161.6.17 redesigns the submitted `/practice/real-london` feedback panel
+as learner coaching rather than diagnostics. The beta panel now starts with a
+clear pass/fail/needs-review summary, then shows compact metrics for Score,
+Your route, Shortest legal route, and Extra distance. A What happened section
+explains the main result in plain language, and the Try next area remains a
+single coaching note.
+
+Issue grouping is learner-facing: Route efficiency, Illegal movements,
+Required stops, and Matching. Route-too-long feedback is classified as Route
+efficiency rather than Missed restrictions, and it has no Show on map action
+because it does not map to a single location. Show on map remains available
+only for issues with an actionable map target. Empty "no illegal movement" and
+"no missed checkpoint" boxes are removed from beta feedback, and required stop
+progress uses Start, Destination, and Checkpoint labels instead of raw OSM node
+or graph IDs. The stage does not change matching, legality, scoring, route
+generation, OSM data, cartography tokens, beta gating, or Phase 7 scope.
+
 ## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
 
 Stage 161.6.15 refines the post-submit learner feedback path without changing

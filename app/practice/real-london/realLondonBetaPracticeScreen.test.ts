@@ -238,6 +238,26 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   assert.equal(model.learnerUi.resultPanels.drawnRouteScoreSummaryVisible, false);
   assert.equal(model.learnerUi.resultPanels.routeAttemptReviewAndDrawnScoreSummaryTogether, false);
   assert.equal(model.learnerUi.resultPanels.routeReplayVisibleByDefault, false);
+  assert.equal(model.learnerUi.resultPanels.summaryHeaderFirst, true);
+  assert.deepEqual(model.learnerUi.resultPanels.metricLabels, [
+    "Score",
+    "Your route",
+    "Shortest legal route",
+    "Extra distance"
+  ]);
+  assert.equal(model.learnerUi.resultPanels.whatHappenedSectionVisible, true);
+  assert.deepEqual(model.learnerUi.resultPanels.issueCategories, [
+    "Route efficiency",
+    "Illegal movements",
+    "Required stops",
+    "Matching"
+  ]);
+  assert.equal(model.learnerUi.resultPanels.routeTooLongCategory, "Route efficiency");
+  assert.equal(model.learnerUi.resultPanels.routeTooLongShowOnMapVisible, false);
+  assert.equal(model.learnerUi.resultPanels.emptyIssueCategoriesHidden, true);
+  assert.equal(model.learnerUi.resultPanels.requiredStopProgressUsesLearnerLabels, true);
+  assert.equal(model.learnerUi.resultPanels.duplicateRequiredStopProgressPanelVisible, false);
+  assert.equal(model.learnerUi.resultPanels.rawInternalIdsVisible, false);
   assert.equal(model.learnerUi.instructionArea.visibleInstructionAreaCount, 1);
   assert.equal(model.learnerUi.instructionArea.mapWorkspaceInstructionVisible, false);
   assert.equal(
