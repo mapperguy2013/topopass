@@ -635,6 +635,14 @@ panel, `Show on map` continues to focus the grouped issue marker, beta
 restriction symbols remain visible, and dev QA panels stay hidden from
 `/practice/real-london`.
 
+Stage 161.6.22 keeps the learner map full-size after an attempt is submitted.
+The route feedback panel is now a closeable overlay drawer: on desktop it sits
+over the right side of the map at a bounded width, and on mobile it behaves as
+a compact bottom sheet. Closing the drawer does not clear the submitted result,
+`View feedback` reopens it, and no duplicate full feedback panel is rendered
+below the map. `Reset view` remains a viewport-only action; `Erase route`
+continues to clear the drawing, result, and route-review state.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

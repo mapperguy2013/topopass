@@ -213,8 +213,8 @@ test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   assert.equal(model.learnerUi.shell.routeHeaderIsCompact, true);
   assert.equal(model.learnerUi.shell.routeSetupPanelCollapsible, true);
   assert.equal(model.learnerUi.shell.routeSetupPanelDefaultOpen, false);
-  assert.deepEqual(model.learnerUi.shell.visualOrder, ["route-header", "route-setup", "map", "route-feedback"]);
-  assert.equal(model.learnerUi.shell.feedbackPanelPlacement, "desktop-right-side-panel-mobile-bottom-sheet");
+  assert.deepEqual(model.learnerUi.shell.visualOrder, ["route-header", "route-setup", "map", "feedback-drawer"]);
+  assert.equal(model.learnerUi.shell.feedbackPanelPlacement, "desktop-overlay-drawer-mobile-bottom-sheet");
   assert.equal(model.learnerUi.routeHeaderCount, 1);
   assert.equal(model.learnerUi.visibleMapWorkspaceHeading, false);
   assert.equal(model.learnerUi.routeControls.toolbarCount, 1);
@@ -255,8 +255,8 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
     "Shortest legal route",
     "Extra distance"
   ]);
-  assert.equal(model.learnerUi.resultPanels.desktopPlacement, "right-side-panel");
-  assert.equal(model.learnerUi.resultPanels.mobilePlacement, "bottom-sheet-or-stacked-panel");
+  assert.equal(model.learnerUi.resultPanels.desktopPlacement, "right-overlay-drawer");
+  assert.equal(model.learnerUi.resultPanels.mobilePlacement, "bottom-sheet");
   assert.deepEqual(model.learnerUi.resultPanels.resultBadgeLabels, ["PASS", "FAIL", "NEEDS REVIEW"]);
   assert.equal(model.learnerUi.resultPanels.whatHappenedSectionVisible, true);
   assert.deepEqual(model.learnerUi.resultPanels.issueCategories, [
@@ -300,6 +300,24 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   assert.equal(model.learnerUi.hiddenTechnicalDetails.technicalPerLegLabels, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.debugDiagnostics, true);
   assert.equal(model.learnerUi.feedbackEntryPoints, 1);
+});
+
+test("Stage 161.6.22 beta practice keeps the map full-size with an overlay feedback drawer", () => {
+  const model = requireAvailableModel();
+
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.desktopPlacement, "right-overlay-drawer");
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.mobilePlacement, "bottom-sheet");
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.widthCss, "min(26rem, calc(100vw - 2rem))");
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.mobileMaxHeightCss, "78dvh");
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.opensAfterSubmit, true);
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.closeActionLabel, "Close");
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.reopenActionLabel, "View feedback");
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.overlaysMapWithoutResizing, true);
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.duplicateBelowMapPanelVisible, false);
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.preservesSubmittedResultWhenClosed, true);
+  assert.equal(model.learnerUi.resultPanels.feedbackDrawer.resetViewDoesNotClose, true);
+  assert.equal(model.desktopLayout.fillsAvailablePracticePanelWidth, true);
+  assert.equal(model.desktopLayout.viewportBoundedMap, true);
 });
 
 test("Stage 161.6.21 beta practice marker and issue feedback contract matches concept direction", () => {

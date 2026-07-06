@@ -1237,6 +1237,12 @@ grouped no-entry, wrong-way, turn-restriction, restricted movement,
 disconnected-gap, and missed-checkpoint issues keep one map marker per grouped
 issue, with explanatory text staying in the feedback panel or accessibility
 surfaces rather than repeated map callouts.
+Stage 161.6.22 keeps `/practice/real-london` as a full-size map workspace
+after submission. Route feedback now opens as a closeable desktop overlay
+drawer on the right side of the map and as a compact mobile bottom sheet, so
+the map is not squeezed into a smaller column. Closing the drawer preserves the
+submitted result and a `View feedback` control reopens it; `Reset view` remains
+view-only, while `Erase route` still clears the drawing and result.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

@@ -3564,6 +3564,7 @@ export function RouteRunnerClient({
   const [drawnSubmitState, setDrawnSubmitState] = useState<DrawnRouteSubmitState>(() =>
     createIdleDrawnRouteSubmitState()
   );
+  const [routeFeedbackDrawerOpen, setRouteFeedbackDrawerOpen] = useState(false);
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
   const [isDrawing, setIsDrawing] = useState(false);
   const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
@@ -4121,6 +4122,10 @@ export function RouteRunnerClient({
   const showLearnerAttemptReviewDetails = !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt;
   const showAttemptFeedbackPanel =
     !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt || hasBlockedCurrentDrawnSubmit;
+  const shouldRenderAttemptFeedbackPanel =
+    showAttemptFeedbackPanel && (!isStudentBetaRouteRunner || routeFeedbackDrawerOpen);
+  const showRouteFeedbackReopenButton =
+    isStudentBetaRouteRunner && showAttemptFeedbackPanel && !routeFeedbackDrawerOpen;
   const learnerDrawnDisplayText = getLearnerDrawnPipelineStatusText({
     status: drawnDisplayStatus,
     submitted: hasSubmittedCurrentDrawnAttempt,
@@ -4482,7 +4487,16 @@ export function RouteRunnerClient({
     }
 
     setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+    setRouteFeedbackDrawerOpen(false);
   }, [currentDrawnSubmitAttemptKey, drawnSubmitState.attemptKey, drawnSubmitState.state]);
+
+  useEffect(() => {
+    if (!isStudentBetaRouteRunner || showAttemptFeedbackPanel || !routeFeedbackDrawerOpen) {
+      return;
+    }
+
+    setRouteFeedbackDrawerOpen(false);
+  }, [isStudentBetaRouteRunner, routeFeedbackDrawerOpen, showAttemptFeedbackPanel]);
 
   useEffect(() => {
     if (selectedRestrictionReviewItemId && !selectedRestrictionReviewItem) {
@@ -5029,6 +5043,7 @@ export function RouteRunnerClient({
     setResult(null);
     setError(null);
     setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+    setRouteFeedbackDrawerOpen(false);
     setAttemptSaveStatus({
       state: "idle",
       message: null
@@ -5096,6 +5111,9 @@ export function RouteRunnerClient({
       message: outcome.learnerMessage,
       devMessage: outcome.devMessage
     });
+    if (isStudentBetaRouteRunner) {
+      setRouteFeedbackDrawerOpen(true);
+    }
 
     if (outcome.submitted && drawnPipelineResult.exerciseResult) {
       setError(null);
@@ -6295,7 +6313,7 @@ export function RouteRunnerClient({
         <div
           className={
             isStudentBetaRouteRunner
-              ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,24rem)] lg:items-start"
+              ? "grid gap-3"
               : "contents"
           }
         >
@@ -6545,6 +6563,16 @@ export function RouteRunnerClient({
               <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm sm:bottom-4 sm:right-4">
                 {Math.round(mapViewportState.zoom * 100)}%
               </div>
+              {showRouteFeedbackReopenButton ? (
+                <button
+                  type="button"
+                  onClick={() => setRouteFeedbackDrawerOpen(true)}
+                  aria-expanded={routeFeedbackDrawerOpen}
+                  className="pointer-events-auto absolute bottom-14 right-2 z-30 inline-flex min-h-11 items-center justify-center rounded-full border border-blue-200 bg-white/95 px-4 py-2 text-sm font-semibold text-blue-900 shadow-md transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:bottom-16 sm:right-4"
+                >
+                  View feedback
+                </button>
+              ) : null}
               <div
                 className={`pointer-events-none absolute bottom-2 left-2 z-20 flex flex-col items-start gap-2 sm:bottom-4 sm:left-4 ${
                   isStudentBetaRouteRunner
@@ -7250,11 +7278,12 @@ export function RouteRunnerClient({
             ) : null}
           </section>
 
-          {showAttemptFeedbackPanel ? (
+          {shouldRenderAttemptFeedbackPanel ? (
             <section
+              aria-label={isStudentBetaRouteRunner ? "Route feedback drawer" : "Attempt review"}
               className={
                 isStudentBetaRouteRunner
-                  ? "order-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-3 lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-auto"
+                  ? "fixed inset-x-2 bottom-2 z-50 max-h-[78dvh] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:w-[min(26rem,calc(100vw-2rem))] lg:max-h-none"
                   : "order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
               }
             >
@@ -7269,13 +7298,24 @@ export function RouteRunnerClient({
                       : "Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner when the match is usable."}
                   </p>
                 </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(
-                  drawnDisplayStatus
-                )}`}
-              >
-                {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
-              </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(
+                      drawnDisplayStatus
+                    )}`}
+                  >
+                    {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
+                  </span>
+                  {isStudentBetaRouteRunner ? (
+                    <button
+                      type="button"
+                      onClick={() => setRouteFeedbackDrawerOpen(false)}
+                      className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      Close
+                    </button>
+                  ) : null}
+                </div>
             </div>
 
             {!isStudentBetaRouteRunner ? (

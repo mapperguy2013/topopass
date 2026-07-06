@@ -43,6 +43,8 @@ export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE = "viewport-height-boun
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX = 1920;
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX = 912;
 export const REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
+export const REAL_LONDON_BETA_FEEDBACK_DRAWER_WIDTH_CSS = "min(26rem, calc(100vw - 2rem))";
+export const REAL_LONDON_BETA_FEEDBACK_DRAWER_MOBILE_MAX_HEIGHT_CSS = "78dvh";
 export const REAL_LONDON_BETA_MAP_OPTIONS = getRealLondonBetaMapOptions(
   ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
 );
@@ -137,8 +139,8 @@ export type RealLondonBetaPracticeScreenModel =
           routeHeaderIsCompact: true;
           routeSetupPanelCollapsible: true;
           routeSetupPanelDefaultOpen: false;
-          visualOrder: ["route-header", "route-setup", "map", "route-feedback"];
-          feedbackPanelPlacement: "desktop-right-side-panel-mobile-bottom-sheet";
+          visualOrder: ["route-header", "route-setup", "map", "feedback-drawer"];
+          feedbackPanelPlacement: "desktop-overlay-drawer-mobile-bottom-sheet";
         };
         routeHeaderCount: 1;
         visibleMapWorkspaceHeading: false;
@@ -167,8 +169,21 @@ export type RealLondonBetaPracticeScreenModel =
           routeReplayVisibleByDefault: false;
           summaryHeaderFirst: true;
           metricLabels: ["Score", "Your route", "Shortest legal route", "Extra distance"];
-          desktopPlacement: "right-side-panel";
-          mobilePlacement: "bottom-sheet-or-stacked-panel";
+          desktopPlacement: "right-overlay-drawer";
+          mobilePlacement: "bottom-sheet";
+          feedbackDrawer: {
+            desktopPlacement: "right-overlay-drawer";
+            mobilePlacement: "bottom-sheet";
+            widthCss: typeof REAL_LONDON_BETA_FEEDBACK_DRAWER_WIDTH_CSS;
+            mobileMaxHeightCss: typeof REAL_LONDON_BETA_FEEDBACK_DRAWER_MOBILE_MAX_HEIGHT_CSS;
+            opensAfterSubmit: true;
+            closeActionLabel: "Close";
+            reopenActionLabel: "View feedback";
+            overlaysMapWithoutResizing: true;
+            duplicateBelowMapPanelVisible: false;
+            preservesSubmittedResultWhenClosed: true;
+            resetViewDoesNotClose: true;
+          };
           resultBadgeLabels: ["PASS", "FAIL", "NEEDS REVIEW"];
           whatHappenedSectionVisible: true;
           issueCategories: ["Route efficiency", "Illegal movements", "Required stops", "Matching"];
@@ -426,8 +441,8 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         routeHeaderIsCompact: true,
         routeSetupPanelCollapsible: true,
         routeSetupPanelDefaultOpen: false,
-        visualOrder: ["route-header", "route-setup", "map", "route-feedback"],
-        feedbackPanelPlacement: "desktop-right-side-panel-mobile-bottom-sheet"
+        visualOrder: ["route-header", "route-setup", "map", "feedback-drawer"],
+        feedbackPanelPlacement: "desktop-overlay-drawer-mobile-bottom-sheet"
       },
       routeHeaderCount: 1,
       visibleMapWorkspaceHeading: false,
@@ -456,8 +471,21 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         routeReplayVisibleByDefault: false,
         summaryHeaderFirst: true,
         metricLabels: ["Score", "Your route", "Shortest legal route", "Extra distance"],
-        desktopPlacement: "right-side-panel",
-        mobilePlacement: "bottom-sheet-or-stacked-panel",
+        desktopPlacement: "right-overlay-drawer",
+        mobilePlacement: "bottom-sheet",
+        feedbackDrawer: {
+          desktopPlacement: "right-overlay-drawer",
+          mobilePlacement: "bottom-sheet",
+          widthCss: REAL_LONDON_BETA_FEEDBACK_DRAWER_WIDTH_CSS,
+          mobileMaxHeightCss: REAL_LONDON_BETA_FEEDBACK_DRAWER_MOBILE_MAX_HEIGHT_CSS,
+          opensAfterSubmit: true,
+          closeActionLabel: "Close",
+          reopenActionLabel: "View feedback",
+          overlaysMapWithoutResizing: true,
+          duplicateBelowMapPanelVisible: false,
+          preservesSubmittedResultWhenClosed: true,
+          resetViewDoesNotClose: true
+        },
         resultBadgeLabels: ["PASS", "FAIL", "NEEDS REVIEW"],
         whatHappenedSectionVisible: true,
         issueCategories: ["Route efficiency", "Illegal movements", "Required stops", "Matching"],
