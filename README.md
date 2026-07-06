@@ -1265,6 +1265,12 @@ their base asset size at 100% zoom, about 75% at 250%, their full base size at
 500%, then grow gently to 1.3x by 5000% so route lines, labels, and junction
 detail remain visible. The bottom-centre SVG anchor remains fixed to the route
 graph point at every scale.
+Stage 161.6.23.4 separates learner marker icons from marker labels. The
+`start-marker.svg`, `destination-marker.svg`, and `checkpoint-marker.svg`
+assets now contain icon-only pins with transparent backgrounds and bottom-centre
+anchors. Canvas-rendered label bubbles draw `START`, `DESTINATION`, and
+`CHECKPOINT n` separately, using screen-space font sizes around 12-13px that
+stay capped at high zoom while the pin icon scales modestly.
 Stage 161.6.24 makes Marlowe District the deterministic beta landing map on
 `/practice/real-london` when no map or exercise query params are supplied. The
 preferred default route is the validated scoreable `Fox Lane Station to

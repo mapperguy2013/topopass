@@ -680,6 +680,15 @@ bottom-centre anchor calculation scales with the rendered asset dimensions so
 the marker tip stays fixed to the exact graph point during pan, wheel zoom,
 pinch zoom, reset view, route review, and fastest-route comparison.
 
+Stage 161.6.23.4 separates marker icons from marker labels. The public marker
+SVGs are icon-only pins; they no longer contain baked `START`, `DESTINATION`,
+`CHECKPOINT`, or numeric text. The pin bottom-centre anchor remains the route
+graph point. `START`, `DESTINATION`, and `CHECKPOINT n` are now rendered as
+separate canvas label bubbles above the pins. Label text uses screen-space
+font sizing, around 12-13px at normal zoom and capped at high zoom, while label
+offset follows the rendered icon height so zoom, pan, reset view, and mobile
+pinch zoom do not make the marker drift from the road point.
+
 Stage 161.6.24 makes Marlowe District the default beta landing map for
 `/practice/real-london` when no map or exercise query params are present. The
 default route is the validated scoreable `Fox Lane Station to Northgate

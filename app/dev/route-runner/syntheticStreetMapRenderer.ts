@@ -20,6 +20,7 @@ import {
   TOPOPASS_STREET_ATLAS_STYLE,
   type TopopassContextLabelStyle,
   type TopopassLabelStyle,
+  type TopopassMarkerAssetStyle,
   type TopopassRoadInteractionStyle,
   type TopopassRoadLabelStyle
 } from "./topopassCartographyStyle.ts";
@@ -829,26 +830,29 @@ export function labelStyleForSyntheticMapLabel(
   }
 
   if (label.kind === "start") {
-    return scaleLabelStyleForViewport(
+    return stopMarkerLabelStyleForKind(
+      "start",
       TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markerLabels.start,
-      cartographicLabelScaleForTier("stop", viewport, currentZoom),
-      viewport
+      viewport,
+      currentZoom
     );
   }
 
   if (label.kind === "finish") {
-    return scaleLabelStyleForViewport(
+    return stopMarkerLabelStyleForKind(
+      "finish",
       TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markerLabels.destination,
-      cartographicLabelScaleForTier("stop", viewport, currentZoom),
-      viewport
+      viewport,
+      currentZoom
     );
   }
 
   if (label.kind === "checkpoint") {
-    return scaleLabelStyleForViewport(
+    return stopMarkerLabelStyleForKind(
+      "checkpoint",
       TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markerLabels.checkpoint,
-      cartographicLabelScaleForTier("stop", viewport, currentZoom),
-      viewport
+      viewport,
+      currentZoom
     );
   }
 
@@ -857,6 +861,49 @@ export function labelStyleForSyntheticMapLabel(
     cartographicLabelScaleForTier("stop", viewport, currentZoom),
     viewport
   );
+}
+
+type StopMarkerLabelKind = "start" | "finish" | "checkpoint";
+
+function stopMarkerAssetForLabelKind(kind: StopMarkerLabelKind): TopopassMarkerAssetStyle | undefined {
+  if (kind === "start") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset;
+  }
+
+  if (kind === "finish") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset;
+}
+
+function stopMarkerLabelStyleForKind(
+  kind: StopMarkerLabelKind,
+  style: TopopassLabelStyle,
+  viewport?: ScreenMapViewport,
+  currentZoom?: number
+): TopopassLabelStyle {
+  const scaledStyle = scaleLabelStyleForViewport(
+    style,
+    cartographicLabelScaleForTier("stop", viewport, currentZoom),
+    viewport
+  );
+  const asset = stopMarkerAssetForLabelKind(kind);
+
+  if (!asset) {
+    return scaledStyle;
+  }
+
+  const assetScale = cartographicCustomMarkerAssetScaleForZoom(currentZoom ?? 1);
+  const markerTopOffset = -((asset.anchorY / asset.sourceHeight) * asset.displayHeight * assetScale);
+  const bubble = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble;
+  const bubbleHeight = labelFontSize(scaledStyle) + bubble.paddingY * 2;
+  const spacing = kind === "checkpoint" ? 4 : 5;
+
+  return {
+    ...scaledStyle,
+    yOffset: markerTopOffset - spacing - bubbleHeight / 2
+  };
 }
 
 export function filterSyntheticMapLabelsForViewport(

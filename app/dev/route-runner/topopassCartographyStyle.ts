@@ -1413,25 +1413,25 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     ],
     markerLabels: {
       start: {
-        font: "800 10px Arial, sans-serif",
+        font: "800 13px Arial, sans-serif",
         color: "#047857",
         haloColor: "rgba(255,255,255,0.96)",
         haloWidth: 0,
-        yOffset: -61
+        yOffset: -58
       },
       destination: {
-        font: "800 10px Arial, sans-serif",
+        font: "800 13px Arial, sans-serif",
         color: "#b91c1c",
         haloColor: "rgba(255,255,255,0.96)",
         haloWidth: 0,
-        yOffset: -61
+        yOffset: -58
       },
       checkpoint: {
-        font: "800 9px Arial, sans-serif",
+        font: "800 12px Arial, sans-serif",
         color: "#1d4ed8",
         haloColor: "rgba(255,255,255,0.94)",
         haloWidth: 0,
-        yOffset: -32
+        yOffset: -46
       },
       hint: {
         font: "700 10px Arial, sans-serif",
@@ -1464,12 +1464,12 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         innerRadiusRatio: 0.36,
         asset: {
           src: "/map-icons/start-marker.svg",
-          sourceWidth: 160,
-          sourceHeight: 190,
-          displayWidth: 83.2,
-          displayHeight: 98.8,
-          anchorX: 80,
-          anchorY: 184
+          sourceWidth: 120,
+          sourceHeight: 180,
+          displayWidth: 48,
+          displayHeight: 72,
+          anchorX: 60,
+          anchorY: 174
         }
       },
       destination: {
@@ -1489,12 +1489,12 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         innerRadiusRatio: 0.36,
         asset: {
           src: "/map-icons/destination-marker.svg",
-          sourceWidth: 230,
-          sourceHeight: 190,
-          displayWidth: 119.6,
-          displayHeight: 98.8,
-          anchorX: 115,
-          anchorY: 184
+          sourceWidth: 120,
+          sourceHeight: 180,
+          displayWidth: 48,
+          displayHeight: 72,
+          anchorX: 60,
+          anchorY: 174
         }
       },
       checkpointBase: {
@@ -1510,12 +1510,12 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         textColor: "#ffffff",
         asset: {
           src: "/map-icons/checkpoint-marker.svg",
-          sourceWidth: 150,
-          sourceHeight: 170,
-          displayWidth: 78,
-          displayHeight: 88.4,
-          anchorX: 75,
-          anchorY: 164
+          sourceWidth: 110,
+          sourceHeight: 160,
+          displayWidth: 42,
+          displayHeight: 61.0909090909,
+          anchorX: 55,
+          anchorY: 154
         }
       },
       requiredCheckpoint: {
@@ -1531,12 +1531,12 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         textColor: "#ffffff",
         asset: {
           src: "/map-icons/checkpoint-marker.svg",
-          sourceWidth: 150,
-          sourceHeight: 170,
-          displayWidth: 78,
-          displayHeight: 88.4,
-          anchorX: 75,
-          anchorY: 164
+          sourceWidth: 110,
+          sourceHeight: 160,
+          displayWidth: 42,
+          displayHeight: 61.0909090909,
+          anchorX: 55,
+          anchorY: 154
         }
       }
     },

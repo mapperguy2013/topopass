@@ -3566,14 +3566,12 @@ function drawRouteCanvas(input: {
     });
   }
 
-  if (!input.markerAssets?.allLoaded) {
-    drawSyntheticStopLabels({
-      context,
-      viewport: input.viewport,
-      labels: input.stopLabels,
-      currentZoom: input.currentZoom
-    });
-  }
+  drawSyntheticStopLabels({
+    context,
+    viewport: input.viewport,
+    labels: input.stopLabels,
+    currentZoom: input.currentZoom
+  });
 
   for (const marker of input.routeReplayMarkers) {
     drawRouteReplayMarker(context, marker, input.viewport, input.currentZoom);

@@ -239,6 +239,8 @@ test("Stage 161.6.23.2 learner marker SVG assets are present and bottom-centre a
 
     assert.match(svg, /<svg\b/);
     assert.match(svg, /transparent background; anchor point is bottom-centre/i);
+    assert.doesNotMatch(svg, /<text\b/);
+    assert.doesNotMatch(svg, /START|DESTINATION|CHECKPOINT/);
     assert.equal(asset.anchorX, asset.sourceWidth / 2);
     assert.ok(asset.anchorY > asset.sourceHeight * 0.95);
     assert.ok(
@@ -272,6 +274,53 @@ test("Stage 161.6.23.3 custom marker SVG sizing adapts by zoom without anchor dr
     assert.equal(anchorX, width / 2);
     assert.ok(anchorY > height * 0.95);
   }
+});
+
+test("Stage 161.6.23.4 marker labels are separate screen-space canvas text", () => {
+  const viewport = {
+    width: 800,
+    height: 500,
+    mapBounds: {
+      minX: 0,
+      minY: 0,
+      maxX: 800,
+      maxY: 500
+    }
+  };
+  const startLabel = {
+    id: "start-label",
+    kind: "start" as const,
+    text: "START",
+    point: { x: 100, y: 100 },
+    priority: 0
+  };
+  const destinationLabel = {
+    id: "destination-label",
+    kind: "finish" as const,
+    text: "DESTINATION",
+    point: { x: 200, y: 100 },
+    priority: 0
+  };
+  const checkpointLabel = {
+    id: "checkpoint-label",
+    kind: "checkpoint" as const,
+    text: "CHECKPOINT 1",
+    point: { x: 300, y: 100 },
+    priority: 0
+  };
+  const startNormal = labelStyleForSyntheticMapLabel(startLabel, viewport, 1);
+  const startHigh = labelStyleForSyntheticMapLabel(startLabel, viewport, 50);
+  const destinationNormal = labelStyleForSyntheticMapLabel(destinationLabel, viewport, 1);
+  const checkpointNormal = labelStyleForSyntheticMapLabel(checkpointLabel, viewport, 1);
+
+  assert.match(startNormal.font, /13px/);
+  assert.match(startHigh.font, /13px/);
+  assert.match(destinationNormal.font, /13px/);
+  assert.match(checkpointNormal.font, /12px/);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale.labelGain.stop, 0);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.zoom.cartographicScale.labelMaxMultiplier.stop, 1);
+  assert.ok((startHigh.yOffset ?? 0) < (startNormal.yOffset ?? 0));
+  assert.ok((checkpointNormal.yOffset ?? 0) < -35);
 });
 
 test("Stage 160 atlas identity tokens keep hierarchy calm and original", () => {
@@ -438,21 +487,21 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
       x: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset?.anchorX,
       y: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset?.anchorY
     },
-    { x: 80, y: 184 }
+    { x: 60, y: 174 }
   );
   assert.deepEqual(
     {
       x: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset?.anchorX,
       y: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset?.anchorY
     },
-    { x: 115, y: 184 }
+    { x: 60, y: 174 }
   );
   assert.deepEqual(
     {
       x: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset?.anchorX,
       y: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset?.anchorY
     },
-    { x: 75, y: 164 }
+    { x: 55, y: 154 }
   );
   const startMarkerAsset = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset;
 
