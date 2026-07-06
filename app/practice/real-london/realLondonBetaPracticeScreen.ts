@@ -45,6 +45,8 @@ export const REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX = 912;
 export const REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
 export const REAL_LONDON_BETA_FEEDBACK_DRAWER_WIDTH_CSS = "min(26rem, calc(100vw - 2rem))";
 export const REAL_LONDON_BETA_FEEDBACK_DRAWER_MOBILE_MAX_HEIGHT_CSS = "78dvh";
+export const REAL_LONDON_BETA_DEFAULT_MAP_ID = DEFAULT_ROUTE_RUNNER_MAP_ID;
+export const REAL_LONDON_BETA_PREFERRED_DEFAULT_EXERCISE_TITLE = "Fox Lane Station to Northgate Hospital";
 export const REAL_LONDON_BETA_MAP_OPTIONS = getRealLondonBetaMapOptions(
   ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
 );
@@ -355,7 +357,8 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
 } = {}): RealLondonBetaPracticeScreenModel {
   const betaEnabled = input.betaEnabled ?? isRealLondonBetaAccessEnabled(input.env);
   const mapOptions = input.mapOptions ?? REAL_LONDON_BETA_MAP_OPTIONS;
-  const requestedMapId = input.requestedMapId ?? REAL_LONDON_OSM_PILOT_MAP_ID;
+  const requestedMapId =
+    input.requestedMapId ?? (betaEnabled ? REAL_LONDON_BETA_DEFAULT_MAP_ID : REAL_LONDON_OSM_PILOT_MAP_ID);
   const access = resolveRealLondonBetaMapAccess({
     requestedMapId,
     betaEnabled,

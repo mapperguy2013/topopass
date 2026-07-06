@@ -680,6 +680,17 @@ bottom-centre anchor calculation scales with the rendered asset dimensions so
 the marker tip stays fixed to the exact graph point during pan, wheel zoom,
 pinch zoom, reset view, route review, and fastest-route comparison.
 
+Stage 161.6.24 makes Marlowe District the default beta landing map for
+`/practice/real-london` when no map or exercise query params are present. The
+default route is the validated scoreable `Fox Lane Station to Northgate
+Hospital` Marlowe exercise, with deterministic fallback to the first validated
+scoreable Marlowe exercise if the preferred route is unavailable. Explicit URL
+map/exercise selections still override the default. The learner setup row now
+shows `Map and route`, a concise `Marlowe District — Fictional practice` map
+label, the exercise title, and a clearer `Change map or route` button. Fictional
+Marlowe practice does not show OSM attribution, while Real London OSM maps keep
+OpenStreetMap attribution.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

@@ -49,6 +49,7 @@ test("Stage 134 feedback metadata includes map exercise version beta and source-
 test("Stage 134 feedback metadata can be built from the beta practice screen model", () => {
   const model = buildRealLondonBetaPracticeScreenModel({
     betaEnabled: true,
+    requestedMapId: "osm-real-london-pilot",
     selectedExerciseId: "osm-real-pilot-checkpoint-route"
   });
   const metadata = buildRealLondonBetaFeedbackMetadataFromModel({

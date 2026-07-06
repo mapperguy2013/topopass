@@ -17,12 +17,14 @@ import {
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
 import {
   REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX,
+  REAL_LONDON_BETA_DEFAULT_MAP_ID,
   REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX,
   REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX,
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
   REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
   REAL_LONDON_BETA_MAP_OPTIONS,
+  REAL_LONDON_BETA_PREFERRED_DEFAULT_EXERCISE_TITLE,
   REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL,
   REAL_LONDON_BETA_PRACTICE_PATH,
   type RealLondonBetaPracticeScreenModel,
@@ -45,7 +47,11 @@ test("Stage 132 beta users can access the real London practice screen", () => {
     throw new Error("Expected available beta practice screen.");
   }
 
-  assert.equal(model.mapId, realLondonOsmPilotRouteMap.id);
+  assert.equal(model.mapId, DEFAULT_ROUTE_RUNNER_MAP_ID);
+  assert.equal(model.mapId, REAL_LONDON_BETA_DEFAULT_MAP_ID);
+  assert.equal(model.selectedExercise?.id, "ex-station-to-hospital");
+  assert.equal(model.selectedExercise?.title, REAL_LONDON_BETA_PREFERRED_DEFAULT_EXERCISE_TITLE);
+  assert.equal(model.selectedMap.scoreable, true);
   assert.equal(model.routeRunnerMode, "student-beta");
   assert.equal(model.mapInteraction.drawingEnabled, true);
   assert.equal(model.mapInteraction.usesExistingRouteRunnerLogic, true);
@@ -85,7 +91,7 @@ test("Stage 132 screen exposes compact exercise selector metadata", () => {
 });
 
 test("Stage 132 selected exercise instructions include start destination and checkpoints", () => {
-  const model = requireAvailableModel("osm-real-pilot-checkpoint-route");
+  const model = requireAvailableModel("osm-real-pilot-checkpoint-route", realLondonOsmPilotRouteMap.id);
 
   assert.equal(model.selectedExercise.id, "osm-real-pilot-checkpoint-route");
   assert.ok(model.selectedExercise.startLabel.length > 0);
@@ -136,7 +142,7 @@ test("Stage 132 beta screen hides dev QA diagnostics", () => {
 });
 
 test("Stage 132 screen includes OSM attribution limitations feedback hook and legend", () => {
-  const model = requireAvailableModel();
+  const model = requireAvailableModel(undefined, realLondonOsmPilotRouteMap.id);
 
   assert.equal(model.attribution, "OpenStreetMap contributors");
   assert.ok(model.feedback.visible);
@@ -410,7 +416,7 @@ test("Stage 132 mobile layout remains acceptable for the beta map", () => {
 });
 
 test("Stage 139 beta mobile layout exposes compact task state without duplicate practice panels", () => {
-  const model = requireAvailableModel("osm-real-pilot-checkpoint-route");
+  const model = requireAvailableModel("osm-real-pilot-checkpoint-route", realLondonOsmPilotRouteMap.id);
 
   assert.equal(model.mobileLayout.compactHeader, true);
   assert.equal(model.mobileLayout.mapFirstLayout, true);
@@ -604,6 +610,55 @@ test("Stage 161.6.19 Marlowe beta exercises are validated and restrictions still
   assert.equal(illegalResult.score.automaticFail, true);
   assert.ok(illegalResult.score.failureReasons.includes("illegal_route"));
   assert.ok(illegalResult.score.legality.illegalMovements.some((movement) => movement.type === "no_entry"));
+});
+
+test("Stage 161.6.24 beta landing defaults deterministically to Marlowe District practice", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({ betaEnabled: true });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available" || !model.selectedExercise) {
+    throw new Error("Expected available Marlowe beta practice screen.");
+  }
+
+  assert.equal(model.mapId, REAL_LONDON_BETA_DEFAULT_MAP_ID);
+  assert.equal(model.selectedMap.label, "Marlowe District - Fictional London-style practice");
+  assert.equal(model.selectedMap.scoreable, true);
+  assert.equal(model.selectedExercise.id, "ex-station-to-hospital");
+  assert.equal(model.selectedExercise.title, REAL_LONDON_BETA_PREFERRED_DEFAULT_EXERCISE_TITLE);
+  assert.equal(model.exerciseRows.filter((row) => row.selected).length, 1);
+  assert.equal(model.attribution, "Fictional practice map");
+  assert.doesNotMatch(model.attribution, /OpenStreetMap/i);
+  assert.equal(model.routeFlow.shortestRouteFound, true);
+  assert.equal(model.routeFlow.existingRunnerScorePassed, true);
+});
+
+test("Stage 161.6.24 explicit map and exercise params override the Marlowe default", () => {
+  const model = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: "osm-real-london-pilot",
+    selectedExerciseId: "osm-real-pilot-checkpoint-route"
+  });
+
+  assert.equal(model.state, "available");
+
+  if (model.state !== "available" || !model.selectedExercise) {
+    throw new Error("Expected requested Real London pilot exercise.");
+  }
+
+  assert.equal(model.mapId, "osm-real-london-pilot");
+  assert.equal(model.selectedExercise.id, "osm-real-pilot-checkpoint-route");
+  assert.equal(model.selectedMap.selected, true);
+  assert.match(model.attribution, /OpenStreetMap/i);
+  assert.notEqual(model.mapId, REAL_LONDON_BETA_DEFAULT_MAP_ID);
+});
+
+test("Stage 161.6.24 beta route setup exposes a clear change map or route CTA", () => {
+  const routeRunnerClientSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.ok(routeRunnerClientSource.includes("Change map or route"));
+  assert.ok(routeRunnerClientSource.includes("Marlowe District — Fictional practice"));
+  assert.equal(routeRunnerClientSource.includes(">Change</span>"), false);
 });
 
 test("Stage 161.6 beta screen can select a curated routable fixture", () => {
@@ -889,9 +944,10 @@ test("Stage 161.8.6 learner client avoids eager full-catalogue imports", () => {
   assert.equal(lazyLoaderSource.includes("./curatedRealLondonRouteRunnerMaps"), false);
 });
 
-function requireAvailableModel(selectedExerciseId?: string): ScoreablePracticeModel {
+function requireAvailableModel(selectedExerciseId?: string, requestedMapId?: string): ScoreablePracticeModel {
   const model = buildRealLondonBetaPracticeScreenModel({
     betaEnabled: true,
+    requestedMapId,
     selectedExerciseId
   });
 

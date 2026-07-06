@@ -1265,6 +1265,14 @@ their base asset size at 100% zoom, about 75% at 250%, their full base size at
 500%, then grow gently to 1.3x by 5000% so route lines, labels, and junction
 detail remain visible. The bottom-centre SVG anchor remains fixed to the route
 graph point at every scale.
+Stage 161.6.24 makes Marlowe District the deterministic beta landing map on
+`/practice/real-london` when no map or exercise query params are supplied. The
+preferred default route is the validated scoreable `Fox Lane Station to
+Northgate Hospital` exercise, with the first validated scoreable Marlowe
+exercise as the catalogue fallback. Real London OSM fixtures remain selectable
+and keep OpenStreetMap attribution, while Marlowe is labelled as fictional
+practice without OSM attribution. The route setup summary now separates map and
+exercise names and uses the clearer `Change map or route` CTA.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

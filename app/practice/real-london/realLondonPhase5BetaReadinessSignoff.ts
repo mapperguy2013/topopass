@@ -149,7 +149,10 @@ export function buildPhase5BetaReadinessSignoffReport(): Phase5BetaReadinessSign
   const betaMapOptions = getRealLondonBetaMapOptions().filter((option) => isRealLondonBetaMapId(option.map.id));
   const readinessReview = buildPhase5RealLondonBetaReadinessReview();
   const versionValidation = validateRegisteredRouteRunnerVersionMetadata(ROUTE_RUNNER_MAP_OPTIONS);
-  const enabledPracticeModel = buildRealLondonBetaPracticeScreenModel({ betaEnabled: true });
+  const enabledPracticeModel = buildRealLondonBetaPracticeScreenModel({
+    betaEnabled: true,
+    requestedMapId: realLondonOsmPilotRouteMap.id
+  });
   const disabledPracticeModel = buildRealLondonBetaPracticeScreenModel({ betaEnabled: false });
   const configuredFeedbackStore = getSupabaseBetaFeedbackConfig({
     NODE_ENV: "production",

@@ -333,6 +333,7 @@ const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
 const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
+const MARLOWE_BETA_MAP_SUMMARY_LABEL = "Marlowe District — Fictional practice";
 
 type LearnerMarkerImageAssets = {
   start: HTMLImageElement | null;
@@ -347,6 +348,10 @@ function requireRouteRunnerMapOption(option: RouteRunnerMapOption | undefined): 
   }
 
   return option;
+}
+
+function learnerPracticeMapSummaryLabel(option: RouteRunnerMapOption): string {
+  return option.map.id === DEFAULT_ROUTE_RUNNER_MAP_ID ? MARLOWE_BETA_MAP_SUMMARY_LABEL : option.label;
 }
 
 function updateStudentBetaRouteRunnerUrl(mapId: string, exerciseId: string): void {
@@ -6038,13 +6043,21 @@ export function RouteRunnerClient({
                   : "hidden"
               }
             >
-              <span>Map and route</span>
-              <span className="min-w-0 flex-1 truncate text-right text-xs font-medium text-slate-500">
-                {selectedMapOption.label}
-                {selectedExerciseDisplay?.title ? ` - ${selectedExerciseDisplay.title}` : ""}
+              <span className="grid min-w-0 flex-1 gap-0.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">Map and route</span>
+                <span className="truncate text-sm font-semibold text-slate-950">
+                  {learnerPracticeMapSummaryLabel(selectedMapOption)}
+                </span>
+                {selectedExerciseDisplay?.title ? (
+                  <span className="truncate text-xs font-medium text-slate-500">{selectedExerciseDisplay.title}</span>
+                ) : null}
               </span>
-              <span className="text-xs font-semibold text-blue-700 group-open:hidden">Change</span>
-              <span className="text-xs font-semibold text-blue-700 group-open:inline hidden">Hide</span>
+              <span className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 shadow-sm group-open:hidden">
+                Change map or route
+              </span>
+              <span className="hidden min-h-9 shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 group-open:inline-flex">
+                Hide
+              </span>
             </summary>
             <div
               className={
