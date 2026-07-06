@@ -828,6 +828,30 @@ export function labelStyleForSyntheticMapLabel(
     );
   }
 
+  if (label.kind === "start") {
+    return scaleLabelStyleForViewport(
+      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markerLabels.start,
+      cartographicLabelScaleForTier("stop", viewport, currentZoom),
+      viewport
+    );
+  }
+
+  if (label.kind === "finish") {
+    return scaleLabelStyleForViewport(
+      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markerLabels.destination,
+      cartographicLabelScaleForTier("stop", viewport, currentZoom),
+      viewport
+    );
+  }
+
+  if (label.kind === "checkpoint") {
+    return scaleLabelStyleForViewport(
+      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markerLabels.checkpoint,
+      cartographicLabelScaleForTier("stop", viewport, currentZoom),
+      viewport
+    );
+  }
+
   return scaleLabelStyleForViewport(
     TOPOPASS_STREET_ATLAS_STYLE.labels.stop,
     cartographicLabelScaleForTier("stop", viewport, currentZoom),
@@ -2130,19 +2154,19 @@ export function buildSyntheticStreetMapLegendItems(): SyntheticStreetMapLegendIt
     {
       id: "start",
       label: "Start",
-      description: "Blue marker identifies the required start.",
+      description: "Green pin and START bubble identify the required start.",
       tone: "start"
     },
     {
       id: "checkpoint",
       label: "Checkpoint",
-      description: "Orange marker identifies an ordered intermediate stop.",
+      description: "Blue numbered marker identifies an ordered intermediate stop.",
       tone: "checkpoint"
     },
     {
       id: "finish",
       label: "Finish",
-      description: "Dark marker identifies the destination.",
+      description: "Red pin and DESTINATION bubble identify the required finish.",
       tone: "finish"
     },
     {

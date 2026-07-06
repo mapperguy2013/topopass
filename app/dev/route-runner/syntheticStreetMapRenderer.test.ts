@@ -86,12 +86,12 @@ test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () 
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe8c6");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#647184");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#26384c");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#047857");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#be123c");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#059669");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#dc2626");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.shape, "pin");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.shape, "pin");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#f97316");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.fillColor, "#d97706");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#2563eb");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.fillColor, "#1d4ed8");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#0d9488");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.color, "#245da8");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.review.fastestRoute.route.strokeColor, "#0284c7");
@@ -368,6 +368,10 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
   assert.equal(markers.destination.shape, "pin");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.shape, "pin");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.shape, "pin");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.innerFillColor, "#ffffff");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.innerFillColor, "#ffffff");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.fillColor, "rgba(255,255,255,0.97)");
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.minWidth >= 42);
   assert.equal(markers.requiredVia.textPrefix, "VIA");
   assert.ok(markers.start.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.tipDistance);
   assert.ok(markers.destination.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius);

@@ -230,6 +230,9 @@ export type RealLondonBetaPracticeScreenModel =
             colourRole: "green";
             label: "START";
             compactText: "S";
+            whiteCentreDetail: true;
+            labelBubble: true;
+            anchor: "pin-tip";
             haloAndShadow: true;
           };
           destination: {
@@ -237,11 +240,15 @@ export type RealLondonBetaPracticeScreenModel =
             colourRole: "red";
             label: "DESTINATION";
             compactText: "D";
+            whiteCentreDetail: true;
+            labelBubble: true;
+            anchor: "pin-tip";
             haloAndShadow: true;
           };
           checkpoint: {
             shape: "numbered-circle";
-            colourRole: "orange";
+            colourRole: "blue";
+            labelBubble: true;
             learnerFriendly: true;
           };
         };
@@ -533,6 +540,9 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
           colourRole: "green",
           label: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.text,
           compactText: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.compactText,
+          whiteCentreDetail: true,
+          labelBubble: true,
+          anchor: "pin-tip",
           haloAndShadow: true
         },
         destination: {
@@ -540,11 +550,15 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
           colourRole: "red",
           label: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text,
           compactText: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.compactText,
+          whiteCentreDetail: true,
+          labelBubble: true,
+          anchor: "pin-tip",
           haloAndShadow: true
         },
         checkpoint: {
           shape: "numbered-circle",
-          colourRole: "orange",
+          colourRole: "blue",
+          labelBubble: true,
           learnerFriendly: true
         }
       },

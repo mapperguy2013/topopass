@@ -158,6 +158,7 @@ import {
   type SyntheticLandmarkVisual,
   type SyntheticLinearFeature,
   type SyntheticMapLabel,
+  type SyntheticMapLabelKind,
   type SyntheticRoadInteractionState,
   type SyntheticRoadRenderLayer,
   type SyntheticRoadVisual,
@@ -166,6 +167,7 @@ import {
 import {
   TOPOPASS_STREET_ATLAS_STYLE,
   type TopopassCalloutStyle,
+  type TopopassLearnerMarkerStyle,
   type TopopassLineStyle
 } from "./topopassCartographyStyle";
 import {
@@ -1463,7 +1465,7 @@ function drawExerciseStopMarker(input: {
         : input.index === 1
           ? style.requiredVia
           : style.checkpoint;
-  const learnerMarkerStyle =
+  const learnerMarkerStyle: TopopassLearnerMarkerStyle =
     input.role === "start"
       ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start
       : input.role === "finish"
@@ -1482,7 +1484,7 @@ function drawExerciseStopMarker(input: {
           : `${style.checkpoint.textPrefix}${input.index}`;
   const radius = learnerMarkerStyle.radius * scale;
   const isPinMarker = learnerMarkerStyle.shape === "pin";
-  const pinTipLength = (isPinMarker ? learnerMarkerStyle.pinTipLength : 0) * scale;
+  const pinTipLength = (isPinMarker ? learnerMarkerStyle.pinTipLength ?? 0 : 0) * scale;
   const markerCenter = {
     x: input.point.x,
     y: isPinMarker ? input.point.y - pinTipLength * 0.72 : input.point.y
@@ -1519,7 +1521,16 @@ function drawExerciseStopMarker(input: {
   input.context.fill();
   input.context.stroke();
 
-  input.context.fillStyle = learnerMarkerStyle.textColor;
+  if (isPinMarker && learnerMarkerStyle.innerFillColor) {
+    const innerRadius = radius * (learnerMarkerStyle.innerRadiusRatio ?? 0.45);
+
+    input.context.fillStyle = learnerMarkerStyle.innerFillColor;
+    input.context.beginPath();
+    input.context.arc(markerCenter.x, markerCenter.y, innerRadius, 0, Math.PI * 2);
+    input.context.fill();
+  }
+
+  input.context.fillStyle = learnerMarkerStyle.innerTextColor ?? learnerMarkerStyle.textColor;
   input.context.font = learnerMarkerStyle.font || legacyMarkerStyle.font;
   input.context.textAlign = "center";
   input.context.textBaseline = "middle";
@@ -1893,9 +1904,16 @@ function drawSyntheticMapLabel(
   context.textAlign = "center";
   context.textBaseline = "middle";
   const labelStyle = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
-  const yOffset = isStopLabel ? TOPOPASS_STREET_ATLAS_STYLE.labels.stop.yOffset ?? 0 : 0;
+  const yOffset = isStopLabel ? labelStyle.yOffset ?? 0 : 0;
 
   context.font = labelStyle.font;
+
+  if (isStopLabel) {
+    drawStopLabelBubble(context, label.text, label.kind, labelStyle, yOffset);
+    context.restore();
+    return;
+  }
+
   context.lineWidth = labelStyle.haloWidth;
   context.shadowColor = labelStyle.shadowColor ?? "transparent";
   context.shadowBlur = labelStyle.shadowBlur ?? 0;
@@ -1908,6 +1926,52 @@ function drawSyntheticMapLabel(
   context.shadowOffsetY = 0;
   context.fillText(label.text, 0, yOffset);
   context.restore();
+}
+
+function stopLabelStrokeColor(kind: SyntheticMapLabelKind): string {
+  if (kind === "start") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.fillColor;
+  }
+
+  if (kind === "finish") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.fillColor;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.fillColor;
+}
+
+function drawStopLabelBubble(
+  context: CanvasRenderingContext2D,
+  text: string,
+  kind: SyntheticMapLabelKind,
+  labelStyle: ReturnType<typeof labelStyleForSyntheticMapLabel>,
+  yOffset: number
+): void {
+  const bubble = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble;
+  const metrics = context.measureText(text);
+  const fontSizeMatch = /(\d+(?:\.\d+)?)px/.exec(labelStyle.font);
+  const fontSize = fontSizeMatch ? Number(fontSizeMatch[1]) : 10;
+  const width = Math.max(bubble.minWidth, metrics.width + bubble.paddingX * 2);
+  const height = fontSize + bubble.paddingY * 2;
+  const x = -width / 2;
+  const y = yOffset - height / 2;
+
+  context.shadowColor = bubble.shadowColor;
+  context.shadowBlur = bubble.shadowBlur;
+  context.shadowOffsetY = bubble.shadowOffsetY;
+  context.fillStyle = bubble.fillColor;
+  context.strokeStyle = stopLabelStrokeColor(kind);
+  context.lineWidth = bubble.strokeWidth;
+  context.beginPath();
+  context.roundRect(x, y, width, height, bubble.borderRadius);
+  context.fill();
+  context.shadowColor = "transparent";
+  context.shadowBlur = 0;
+  context.shadowOffsetY = 0;
+  context.stroke();
+
+  context.fillStyle = labelStyle.color;
+  context.fillText(text, 0, yOffset + 0.5);
 }
 
 function drawSyntheticStreetMapBase(input: {

@@ -1243,6 +1243,12 @@ drawer on the right side of the map and as a compact mobile bottom sheet, so
 the map is not squeezed into a smaller column. Closing the drawer preserves the
 submitted result and a `View feedback` control reopens it; `Reset view` remains
 view-only, while `Erase route` still clears the drawing and result.
+Stage 161.6.23 updates learner start and destination markers toward the concept
+pin style. The start marker is a green drop pin with a white centre detail and
+compact `START` label bubble; the destination marker uses the same family in
+red with a `DESTINATION` bubble. Checkpoints remain distinct as blue numbered
+markers so they fit the marker family without being confused with start or
+finish points.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

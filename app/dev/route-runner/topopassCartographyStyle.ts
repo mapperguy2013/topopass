@@ -42,6 +42,21 @@ export type TopopassLearnerMarkerStyle = {
   font: string;
   textColor: string;
   pinTipLength?: number;
+  innerFillColor?: string;
+  innerTextColor?: string;
+  innerRadiusRatio?: number;
+};
+
+export type TopopassMarkerLabelBubbleStyle = {
+  fillColor: string;
+  strokeWidth: number;
+  paddingX: number;
+  paddingY: number;
+  borderRadius: number;
+  minWidth: number;
+  shadowColor: string;
+  shadowBlur: number;
+  shadowOffsetY: number;
 };
 
 export type TopopassCheckpointStateStyle = {
@@ -351,6 +366,7 @@ export type TopopassStreetAtlasStyle = {
     shadowColor: string;
     shadowBlur: number;
     shadowOffsetY: number;
+    labelBubble: TopopassMarkerLabelBubbleStyle;
     start: { fillColor: string; radius: number; text: string; compactText: string; font: string; shape: "pin"; pinTipLength: number };
     checkpoint: { fillColor: string; radius: number; textPrefix: string; font: string; shape: "circle" };
     requiredVia: { fillColor: string; radius: number; textPrefix: string; font: string; shape: "circle" };
@@ -1293,25 +1309,36 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     shadowColor: "rgba(15,23,42,0.28)",
     shadowBlur: 12,
     shadowOffsetY: 2,
+    labelBubble: {
+      fillColor: "rgba(255,255,255,0.97)",
+      strokeWidth: 1.7,
+      paddingX: 7,
+      paddingY: 4,
+      borderRadius: 7,
+      minWidth: 42,
+      shadowColor: "rgba(15,23,42,0.22)",
+      shadowBlur: 6,
+      shadowOffsetY: 1.5
+    },
     start: {
-      fillColor: "#047857",
-      radius: 17,
+      fillColor: "#059669",
+      radius: 18,
       text: "START",
       compactText: "S",
       font: "800 10px Arial, sans-serif",
       shape: "pin",
-      pinTipLength: 13
+      pinTipLength: 15
     },
-    checkpoint: { fillColor: "#f97316", radius: 15, textPrefix: "CP", font: "800 9px Arial, sans-serif", shape: "circle" },
-    requiredVia: { fillColor: "#d97706", radius: 16, textPrefix: "VIA", font: "800 8px Arial, sans-serif", shape: "circle" },
+    checkpoint: { fillColor: "#2563eb", radius: 15, textPrefix: "CP", font: "800 9px Arial, sans-serif", shape: "circle" },
+    requiredVia: { fillColor: "#1d4ed8", radius: 16, textPrefix: "VIA", font: "800 8px Arial, sans-serif", shape: "circle" },
     destination: {
-      fillColor: "#be123c",
-      radius: 17,
+      fillColor: "#dc2626",
+      radius: 18,
       text: "DESTINATION",
       compactText: "D",
       font: "800 10px Arial, sans-serif",
       shape: "pin",
-      pinTipLength: 13
+      pinTipLength: 15
     }
   },
   hints: {
@@ -1346,24 +1373,24 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     markerLabels: {
       start: {
         font: "800 10px Arial, sans-serif",
-        color: "#065f46",
+        color: "#047857",
         haloColor: "rgba(255,255,255,0.96)",
-        haloWidth: 4,
-        yOffset: -33
+        haloWidth: 0,
+        yOffset: -50
       },
       destination: {
         font: "800 10px Arial, sans-serif",
-        color: "#9f1239",
+        color: "#b91c1c",
         haloColor: "rgba(255,255,255,0.96)",
-        haloWidth: 4,
-        yOffset: -33
+        haloWidth: 0,
+        yOffset: -50
       },
       checkpoint: {
         font: "800 9px Arial, sans-serif",
-        color: "#92400e",
+        color: "#1d4ed8",
         haloColor: "rgba(255,255,255,0.94)",
-        haloWidth: 3,
-        yOffset: -28
+        haloWidth: 0,
+        yOffset: -32
       },
       hint: {
         font: "700 10px Arial, sans-serif",
@@ -1381,36 +1408,42 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     markers: {
       start: {
         shape: "pin",
-        fillColor: "#047857",
+        fillColor: "#059669",
         strokeColor: "#ffffff",
-        haloColor: "rgba(4,120,87,0.16)",
-        haloStrokeColor: "rgba(6,95,70,0.34)",
-        haloRadiusPadding: 9,
+        haloColor: "rgba(5,150,105,0.18)",
+        haloStrokeColor: "rgba(6,95,70,0.38)",
+        haloRadiusPadding: 10,
         strokeWidth: 3.5,
-        radius: 17,
+        radius: 18,
         font: "800 10px Arial, sans-serif",
         textColor: "#ffffff",
-        pinTipLength: 13
+        pinTipLength: 15,
+        innerFillColor: "#ffffff",
+        innerTextColor: "#047857",
+        innerRadiusRatio: 0.47
       },
       destination: {
         shape: "pin",
-        fillColor: "#be123c",
+        fillColor: "#dc2626",
         strokeColor: "#ffffff",
-        haloColor: "rgba(190,18,60,0.11)",
-        haloStrokeColor: "rgba(159,18,57,0.3)",
-        haloRadiusPadding: 8,
+        haloColor: "rgba(220,38,38,0.14)",
+        haloStrokeColor: "rgba(153,27,27,0.34)",
+        haloRadiusPadding: 9,
         strokeWidth: 3.25,
-        radius: 17,
+        radius: 18,
         font: "800 10px Arial, sans-serif",
         textColor: "#ffffff",
-        pinTipLength: 13
+        pinTipLength: 15,
+        innerFillColor: "#ffffff",
+        innerTextColor: "#b91c1c",
+        innerRadiusRatio: 0.47
       },
       checkpointBase: {
         shape: "circle",
-        fillColor: "#f97316",
+        fillColor: "#2563eb",
         strokeColor: "#ffffff",
-        haloColor: "rgba(249,115,22,0.14)",
-        haloStrokeColor: "rgba(194,65,12,0.28)",
+        haloColor: "rgba(37,99,235,0.13)",
+        haloStrokeColor: "rgba(29,78,216,0.28)",
         haloRadiusPadding: 7,
         strokeWidth: 3,
         radius: 15,
@@ -1419,10 +1452,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       },
       requiredCheckpoint: {
         shape: "circle",
-        fillColor: "#d97706",
+        fillColor: "#1d4ed8",
         strokeColor: "#ffffff",
-        haloColor: "rgba(217,119,6,0.16)",
-        haloStrokeColor: "rgba(146,64,14,0.32)",
+        haloColor: "rgba(29,78,216,0.16)",
+        haloStrokeColor: "rgba(30,64,175,0.32)",
         haloRadiusPadding: 8,
         strokeWidth: 3.25,
         radius: 16,

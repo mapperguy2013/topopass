@@ -328,6 +328,9 @@ test("Stage 161.6.21 beta practice marker and issue feedback contract matches co
     colourRole: "green",
     label: "START",
     compactText: "S",
+    whiteCentreDetail: true,
+    labelBubble: true,
+    anchor: "pin-tip",
     haloAndShadow: true
   });
   assert.deepEqual(model.learnerUi.markerDesign.destination, {
@@ -335,11 +338,15 @@ test("Stage 161.6.21 beta practice marker and issue feedback contract matches co
     colourRole: "red",
     label: "DESTINATION",
     compactText: "D",
+    whiteCentreDetail: true,
+    labelBubble: true,
+    anchor: "pin-tip",
     haloAndShadow: true
   });
   assert.deepEqual(model.learnerUi.markerDesign.checkpoint, {
     shape: "numbered-circle",
-    colourRole: "orange",
+    colourRole: "blue",
+    labelBubble: true,
     learnerFriendly: true
   });
   assert.equal(model.learnerUi.issueMarkerDesign.mapPresentation, "icon-first");

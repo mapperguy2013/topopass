@@ -643,6 +643,15 @@ a compact bottom sheet. Closing the drawer does not clear the submitted result,
 below the map. `Reset view` remains a viewport-only action; `Erase route`
 continues to clear the drawing, result, and route-review state.
 
+Stage 161.6.23 updates the learner-facing stop marker family. Start and
+destination markers now use concept-style drop pins anchored at the route node:
+green for `START`, red for `DESTINATION`, each with a white centre detail, halo,
+shadow, and compact white label bubble. Checkpoints remain distinct as blue
+numbered circular markers with matching bubble labels, so ordered stops fit the
+same family without looking like the start or finish. The marker changes are
+rendering-only and do not alter matching, scoring, legality, route data, or
+review behavior.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,
