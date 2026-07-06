@@ -330,7 +330,9 @@ test("Stage 161.6.21 beta practice marker and issue feedback contract matches co
     compactText: "S",
     whiteCentreDetail: true,
     labelBubble: true,
-    anchor: "pin-tip",
+    assetSrc: "/map-icons/start-marker.svg",
+    transparentBackground: true,
+    anchor: "bottom-centre",
     haloAndShadow: true
   });
   assert.deepEqual(model.learnerUi.markerDesign.destination, {
@@ -340,12 +342,17 @@ test("Stage 161.6.21 beta practice marker and issue feedback contract matches co
     compactText: "D",
     whiteCentreDetail: true,
     labelBubble: true,
-    anchor: "pin-tip",
+    assetSrc: "/map-icons/destination-marker.svg",
+    transparentBackground: true,
+    anchor: "bottom-centre",
     haloAndShadow: true
   });
   assert.deepEqual(model.learnerUi.markerDesign.checkpoint, {
-    shape: "numbered-circle",
+    shape: "checkpoint-pin",
     colourRole: "blue",
+    assetSrc: "/map-icons/checkpoint-marker.svg",
+    transparentBackground: true,
+    anchor: "bottom-centre",
     labelBubble: true,
     learnerFriendly: true
   });

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="230" height="190" viewBox="0 0 230 190" role="img" aria-label="Destination marker">
+  <defs>
+    <filter id="shadow" x="-30%" y="-25%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.22"/>
+    </filter>
+    <linearGradient id="pinRed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF3030"/>
+      <stop offset="100%" stop-color="#B00020"/>
+    </linearGradient>
+  </defs>
+
+  <!-- transparent background; anchor point is bottom-centre: 115,184 -->
+  <g filter="url(#shadow)">
+    <path d="M115 184 C115 184 65 124 65 75 C65 41 87 18 115 18 C143 18 165 41 165 75 C165 124 115 184 115 184 Z" fill="#FFFFFF"/>
+    <path d="M115 176 C115 176 74 122 74 76 C74 47 92 27 115 27 C138 27 156 47 156 76 C156 122 115 176 115 176 Z" fill="url(#pinRed)"/>
+    <circle cx="115" cy="76" r="22" fill="#FFFFFF"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="13" y="4" width="204" height="42" rx="18" fill="#FFFFFF"/>
+    <path d="M106 45 L115 56 L124 45 Z" fill="#FFFFFF"/>
+    <rect x="13" y="4" width="204" height="42" rx="18" fill="none" stroke="#E7D8D8" stroke-width="1.5"/>
+    <text x="115" y="33" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="23" font-weight="900" letter-spacing="0.3" fill="#B00020">DESTINATION</text>
+  </g>
+</svg>

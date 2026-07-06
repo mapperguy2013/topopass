@@ -45,6 +45,17 @@ export type TopopassLearnerMarkerStyle = {
   innerFillColor?: string;
   innerTextColor?: string;
   innerRadiusRatio?: number;
+  asset?: TopopassMarkerAssetStyle;
+};
+
+export type TopopassMarkerAssetStyle = {
+  src: string;
+  sourceWidth: number;
+  sourceHeight: number;
+  displayWidth: number;
+  displayHeight: number;
+  anchorX: number;
+  anchorY: number;
 };
 
 export type TopopassMarkerLabelBubbleStyle = {
@@ -1420,7 +1431,16 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         pinTipLength: 25,
         innerFillColor: "#ffffff",
         innerTextColor: "#047857",
-        innerRadiusRatio: 0.36
+        innerRadiusRatio: 0.36,
+        asset: {
+          src: "/map-icons/start-marker.svg",
+          sourceWidth: 160,
+          sourceHeight: 190,
+          displayWidth: 83.2,
+          displayHeight: 98.8,
+          anchorX: 80,
+          anchorY: 184
+        }
       },
       destination: {
         shape: "pin",
@@ -1436,7 +1456,16 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         pinTipLength: 25,
         innerFillColor: "#ffffff",
         innerTextColor: "#b91c1c",
-        innerRadiusRatio: 0.36
+        innerRadiusRatio: 0.36,
+        asset: {
+          src: "/map-icons/destination-marker.svg",
+          sourceWidth: 230,
+          sourceHeight: 190,
+          displayWidth: 119.6,
+          displayHeight: 98.8,
+          anchorX: 115,
+          anchorY: 184
+        }
       },
       checkpointBase: {
         shape: "circle",
@@ -1448,7 +1477,16 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         strokeWidth: 3,
         radius: 15,
         font: "800 9px Arial, sans-serif",
-        textColor: "#ffffff"
+        textColor: "#ffffff",
+        asset: {
+          src: "/map-icons/checkpoint-marker.svg",
+          sourceWidth: 150,
+          sourceHeight: 170,
+          displayWidth: 78,
+          displayHeight: 88.4,
+          anchorX: 75,
+          anchorY: 164
+        }
       },
       requiredCheckpoint: {
         shape: "circle",
@@ -1460,7 +1498,16 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         strokeWidth: 3.25,
         radius: 16,
         font: "800 8px Arial, sans-serif",
-        textColor: "#ffffff"
+        textColor: "#ffffff",
+        asset: {
+          src: "/map-icons/checkpoint-marker.svg",
+          sourceWidth: 150,
+          sourceHeight: 170,
+          displayWidth: 78,
+          displayHeight: 88.4,
+          anchorX: 75,
+          anchorY: 164
+        }
       }
     },
     checkpointStates: {

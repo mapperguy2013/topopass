@@ -232,7 +232,9 @@ export type RealLondonBetaPracticeScreenModel =
             compactText: "S";
             whiteCentreDetail: true;
             labelBubble: true;
-            anchor: "pin-tip";
+            assetSrc: "/map-icons/start-marker.svg";
+            transparentBackground: true;
+            anchor: "bottom-centre";
             haloAndShadow: true;
           };
           destination: {
@@ -242,12 +244,17 @@ export type RealLondonBetaPracticeScreenModel =
             compactText: "D";
             whiteCentreDetail: true;
             labelBubble: true;
-            anchor: "pin-tip";
+            assetSrc: "/map-icons/destination-marker.svg";
+            transparentBackground: true;
+            anchor: "bottom-centre";
             haloAndShadow: true;
           };
           checkpoint: {
-            shape: "numbered-circle";
+            shape: "checkpoint-pin";
             colourRole: "blue";
+            assetSrc: "/map-icons/checkpoint-marker.svg";
+            transparentBackground: true;
+            anchor: "bottom-centre";
             labelBubble: true;
             learnerFriendly: true;
           };
@@ -542,7 +549,9 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
           compactText: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.compactText,
           whiteCentreDetail: true,
           labelBubble: true,
-          anchor: "pin-tip",
+          assetSrc: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset?.src ?? "/map-icons/start-marker.svg",
+          transparentBackground: true,
+          anchor: "bottom-centre",
           haloAndShadow: true
         },
         destination: {
@@ -552,12 +561,19 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
           compactText: TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.compactText,
           whiteCentreDetail: true,
           labelBubble: true,
-          anchor: "pin-tip",
+          assetSrc:
+            TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset?.src ?? "/map-icons/destination-marker.svg",
+          transparentBackground: true,
+          anchor: "bottom-centre",
           haloAndShadow: true
         },
         checkpoint: {
-          shape: "numbered-circle",
+          shape: "checkpoint-pin",
           colourRole: "blue",
+          assetSrc:
+            TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset?.src ?? "/map-icons/checkpoint-marker.svg",
+          transparentBackground: true,
+          anchor: "bottom-centre",
           labelBubble: true,
           learnerFriendly: true
         }

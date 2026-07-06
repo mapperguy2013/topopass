@@ -1254,6 +1254,12 @@ silhouette. Start and destination pins now have a longer pointed anchor, smaller
 white centre detail, quieter white halo, and larger label bubble, reducing the
 previous circular badge feel while preserving checkpoint styling and all route
 matching, scoring, legality, and map data behaviour.
+Stage 161.6.23.2 switches the learner stop markers to the custom SVG assets in
+`public/map-icons`: `start-marker.svg`, `destination-marker.svg`, and
+`checkpoint-marker.svg`. The canvas renderer preloads those transparent assets
+and draws them without stretching, using the SVG bottom-centre anchor as the
+exact route graph point. The older vector marker drawing remains only as a safe
+fallback while assets load or if an asset fails.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

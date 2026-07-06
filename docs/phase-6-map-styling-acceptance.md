@@ -661,6 +661,16 @@ mobile. Checkpoint markers remain blue numbered circles, and the correction is
 still rendering-only with no routing, matching, scoring, legality, or map data
 changes.
 
+Stage 161.6.23.2 replaces the learner-facing stop marker artwork with custom
+transparent SVG assets: `public/map-icons/start-marker.svg`,
+`public/map-icons/destination-marker.svg`, and
+`public/map-icons/checkpoint-marker.svg`. The Real London canvas preloads those
+assets and draws them without stretching. Each marker uses the SVG bottom-centre
+anchor as the exact graph/route point, so pan, zoom, reset view, drawing,
+submit, route review, and fastest-route comparison keep the same marker
+alignment. The previous vector marker path remains a fallback only while assets
+load or if an asset cannot be decoded.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

@@ -168,6 +168,7 @@ import {
   TOPOPASS_STREET_ATLAS_STYLE,
   type TopopassCalloutStyle,
   type TopopassLearnerMarkerStyle,
+  type TopopassMarkerAssetStyle,
   type TopopassLineStyle
 } from "./topopassCartographyStyle";
 import {
@@ -331,6 +332,13 @@ const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
 const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
+
+type LearnerMarkerImageAssets = {
+  start: HTMLImageElement | null;
+  destination: HTMLImageElement | null;
+  checkpoint: HTMLImageElement | null;
+  allLoaded: boolean;
+};
 
 function requireRouteRunnerMapOption(option: RouteRunnerMapOption | undefined): RouteRunnerMapOption {
   if (!option) {
@@ -1454,6 +1462,7 @@ function drawExerciseStopMarker(input: {
   index: number;
   reviewStatus?: "completed" | "missed";
   currentZoom?: number;
+  markerAssets?: LearnerMarkerImageAssets;
 }): void {
   const style = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers;
   const scale = cartographicLearnerMarkerScaleForZoom(input.currentZoom ?? 1);
@@ -1489,50 +1498,62 @@ function drawExerciseStopMarker(input: {
     x: input.point.x,
     y: isPinMarker ? input.point.y - pinTipLength : input.point.y
   };
+  const markerAsset = learnerMarkerImageForRole(input.role, input.markerAssets);
 
   input.context.save();
-  input.context.shadowColor = style.shadowColor;
-  input.context.shadowBlur = style.shadowBlur;
-  input.context.shadowOffsetY = style.shadowOffsetY;
-  input.context.fillStyle = learnerMarkerStyle.haloColor;
-  input.context.strokeStyle = learnerMarkerStyle.haloStrokeColor;
-  input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
-  input.context.beginPath();
-  if (isPinMarker) {
-    drawMapPinPath(input.context, markerCenter, radius + learnerMarkerStyle.haloRadiusPadding * scale, input.point);
+
+  if (markerAsset && learnerMarkerStyle.asset) {
+    drawExerciseStopMarkerAsset({
+      context: input.context,
+      image: markerAsset,
+      point: input.point,
+      asset: learnerMarkerStyle.asset,
+      scale
+    });
   } else {
-    input.context.arc(markerCenter.x, markerCenter.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
-  }
-  input.context.fill();
-  input.context.stroke();
-  input.context.shadowColor = "transparent";
-
-  input.context.fillStyle = fillStyle;
-  input.context.strokeStyle = learnerMarkerStyle.strokeColor;
-  input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
-  input.context.beginPath();
-  if (isPinMarker) {
-    drawMapPinPath(input.context, markerCenter, radius, input.point);
-  } else {
-    input.context.arc(markerCenter.x, markerCenter.y, radius, 0, Math.PI * 2);
-  }
-  input.context.fill();
-  input.context.stroke();
-
-  if (isPinMarker && learnerMarkerStyle.innerFillColor) {
-    const innerRadius = radius * (learnerMarkerStyle.innerRadiusRatio ?? 0.45);
-
-    input.context.fillStyle = learnerMarkerStyle.innerFillColor;
+    input.context.shadowColor = style.shadowColor;
+    input.context.shadowBlur = style.shadowBlur;
+    input.context.shadowOffsetY = style.shadowOffsetY;
+    input.context.fillStyle = learnerMarkerStyle.haloColor;
+    input.context.strokeStyle = learnerMarkerStyle.haloStrokeColor;
+    input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
     input.context.beginPath();
-    input.context.arc(markerCenter.x, markerCenter.y, innerRadius, 0, Math.PI * 2);
+    if (isPinMarker) {
+      drawMapPinPath(input.context, markerCenter, radius + learnerMarkerStyle.haloRadiusPadding * scale, input.point);
+    } else {
+      input.context.arc(markerCenter.x, markerCenter.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
+    }
     input.context.fill();
-  }
+    input.context.stroke();
+    input.context.shadowColor = "transparent";
 
-  input.context.fillStyle = learnerMarkerStyle.innerTextColor ?? learnerMarkerStyle.textColor;
-  input.context.font = learnerMarkerStyle.font || legacyMarkerStyle.font;
-  input.context.textAlign = "center";
-  input.context.textBaseline = "middle";
-  input.context.fillText(markerText, markerCenter.x, markerCenter.y + 0.5);
+    input.context.fillStyle = fillStyle;
+    input.context.strokeStyle = learnerMarkerStyle.strokeColor;
+    input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
+    input.context.beginPath();
+    if (isPinMarker) {
+      drawMapPinPath(input.context, markerCenter, radius, input.point);
+    } else {
+      input.context.arc(markerCenter.x, markerCenter.y, radius, 0, Math.PI * 2);
+    }
+    input.context.fill();
+    input.context.stroke();
+
+    if (isPinMarker && learnerMarkerStyle.innerFillColor) {
+      const innerRadius = radius * (learnerMarkerStyle.innerRadiusRatio ?? 0.45);
+
+      input.context.fillStyle = learnerMarkerStyle.innerFillColor;
+      input.context.beginPath();
+      input.context.arc(markerCenter.x, markerCenter.y, innerRadius, 0, Math.PI * 2);
+      input.context.fill();
+    }
+
+    input.context.fillStyle = learnerMarkerStyle.innerTextColor ?? learnerMarkerStyle.textColor;
+    input.context.font = learnerMarkerStyle.font || legacyMarkerStyle.font;
+    input.context.textAlign = "center";
+    input.context.textBaseline = "middle";
+    input.context.fillText(markerText, markerCenter.x, markerCenter.y + 0.5);
+  }
 
   if (input.role === "checkpoint" && input.reviewStatus) {
     const checkpointStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates[input.reviewStatus];
@@ -1581,6 +1602,40 @@ function drawExerciseStopMarker(input: {
   }
 
   input.context.restore();
+}
+
+function learnerMarkerImageForRole(
+  role: "start" | "checkpoint" | "finish",
+  markerAssets?: LearnerMarkerImageAssets
+): HTMLImageElement | null {
+  if (!markerAssets) {
+    return null;
+  }
+
+  if (role === "start") {
+    return markerAssets.start;
+  }
+
+  if (role === "finish") {
+    return markerAssets.destination;
+  }
+
+  return markerAssets.checkpoint;
+}
+
+function drawExerciseStopMarkerAsset(input: {
+  context: CanvasRenderingContext2D;
+  image: HTMLImageElement;
+  point: Vec2;
+  asset: TopopassMarkerAssetStyle;
+  scale: number;
+}): void {
+  const width = input.asset.displayWidth * input.scale;
+  const height = input.asset.displayHeight * input.scale;
+  const anchorX = (input.asset.anchorX / input.asset.sourceWidth) * width;
+  const anchorY = (input.asset.anchorY / input.asset.sourceHeight) * height;
+
+  input.context.drawImage(input.image, input.point.x - anchorX, input.point.y - anchorY, width, height);
 }
 
 function drawMapPinPath(context: CanvasRenderingContext2D, center: Vec2, radius: number, tip: Vec2): void {
@@ -3259,6 +3314,7 @@ function drawRouteCanvas(input: {
   restrictionMapVisualItems: RestrictionMapVisualItem[];
   selectedRestrictionHighlight: SelectedRestrictionHighlight | null;
   requiredStopStatuses: RequiredStopVisitStatus[];
+  markerAssets?: LearnerMarkerImageAssets;
   osmDebugOverlay: OsmDebugOverlayModel | null;
   osmExerciseDebugOverlay: OsmExerciseDebugOverlayModel | null;
 }) {
@@ -3493,6 +3549,7 @@ function drawRouteCanvas(input: {
         role,
         index,
         currentZoom: input.currentZoom,
+        markerAssets: input.markerAssets,
         reviewStatus:
           role === "checkpoint" && requiredStopStatus
             ? requiredStopStatus.visited
@@ -3503,12 +3560,14 @@ function drawRouteCanvas(input: {
     });
   }
 
-  drawSyntheticStopLabels({
-    context,
-    viewport: input.viewport,
-    labels: input.stopLabels,
-    currentZoom: input.currentZoom
-  });
+  if (!input.markerAssets?.allLoaded) {
+    drawSyntheticStopLabels({
+      context,
+      viewport: input.viewport,
+      labels: input.stopLabels,
+      currentZoom: input.currentZoom
+    });
+  }
 
   for (const marker of input.routeReplayMarkers) {
     drawRouteReplayMarker(context, marker, input.viewport, input.currentZoom);
@@ -3606,6 +3665,64 @@ function learnerDrawnRouteScoreDisplay(input: {
   };
 }
 
+function createEmptyLearnerMarkerImageAssets(): LearnerMarkerImageAssets {
+  return {
+    start: null,
+    destination: null,
+    checkpoint: null,
+    allLoaded: false
+  };
+}
+
+function useLearnerMarkerImageAssets(): LearnerMarkerImageAssets {
+  const [assets, setAssets] = useState<LearnerMarkerImageAssets>(() => createEmptyLearnerMarkerImageAssets());
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadedAssets = createEmptyLearnerMarkerImageAssets();
+    const assetEntries = [
+      ["start", TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset],
+      ["destination", TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset],
+      ["checkpoint", TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset]
+    ] as const;
+    let remaining = assetEntries.length;
+
+    const finishOne = () => {
+      remaining -= 1;
+
+      if (remaining === 0 && !cancelled) {
+        setAssets({
+          ...loadedAssets,
+          allLoaded: Boolean(loadedAssets.start && loadedAssets.destination && loadedAssets.checkpoint)
+        });
+      }
+    };
+
+    assetEntries.forEach(([role, asset]) => {
+      if (!asset) {
+        finishOne();
+        return;
+      }
+
+      const image = new window.Image();
+
+      image.decoding = "async";
+      image.onload = () => {
+        loadedAssets[role] = image;
+        finishOne();
+      };
+      image.onerror = finishOne;
+      image.src = asset.src;
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return assets;
+}
+
 export function RouteRunnerClient({
   initialMapOptionId,
   initialExerciseId,
@@ -3621,6 +3738,7 @@ export function RouteRunnerClient({
   const isStudentBetaRouteRunner = mode === "student-beta";
   const canvasWidth = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_WIDTH : CANVAS_WIDTH;
   const canvasHeight = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_HEIGHT : CANVAS_HEIGHT;
+  const learnerMarkerImageAssets = useLearnerMarkerImageAssets();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
@@ -4929,6 +5047,7 @@ export function RouteRunnerClient({
       restrictionMapVisualItems,
       selectedRestrictionHighlight,
       requiredStopStatuses,
+      markerAssets: learnerMarkerImageAssets,
       osmDebugOverlay: visibleOsmDebugOverlayAvailable ? osmDebugOverlay : null,
       osmExerciseDebugOverlay: visibleOsmExerciseDebugOverlayAvailable ? osmExerciseDebugOverlay : null
     });
@@ -4938,6 +5057,7 @@ export function RouteRunnerClient({
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
+    learnerMarkerImageAssets,
     mapViewportState.zoom,
     osmDebugOverlay,
     osmExerciseDebugOverlay,

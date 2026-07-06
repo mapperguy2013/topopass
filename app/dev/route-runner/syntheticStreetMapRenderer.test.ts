@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   buildSyntheticBackgroundFeatures,
@@ -90,6 +91,9 @@ test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () 
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#dc2626");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.shape, "pin");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.shape, "pin");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset?.src, "/map-icons/start-marker.svg");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset?.src, "/map-icons/destination-marker.svg");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset?.src, "/map-icons/checkpoint-marker.svg");
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.pinTipLength >
       TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.radius
@@ -219,6 +223,27 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
   ]);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 56);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
+});
+
+test("Stage 161.6.23.2 learner marker SVG assets are present and bottom-centre anchored", () => {
+  const markerAssets = [
+    TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset,
+    TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset,
+    TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset
+  ];
+
+  for (const asset of markerAssets) {
+    assert.ok(asset);
+    const svg = readFileSync(`public${asset.src}`, "utf8");
+
+    assert.match(svg, /<svg\b/);
+    assert.match(svg, /transparent background; anchor point is bottom-centre/i);
+    assert.equal(asset.anchorX, asset.sourceWidth / 2);
+    assert.ok(asset.anchorY > asset.sourceHeight * 0.95);
+    assert.ok(
+      Math.abs(asset.displayWidth / asset.displayHeight - asset.sourceWidth / asset.sourceHeight) < 0.0001
+    );
+  }
 });
 
 test("Stage 160 atlas identity tokens keep hierarchy calm and original", () => {
@@ -380,6 +405,36 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.innerFillColor, "#ffffff");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.fillColor, "rgba(255,255,255,0.97)");
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.minWidth >= 54);
+  assert.deepEqual(
+    {
+      x: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset?.anchorX,
+      y: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset?.anchorY
+    },
+    { x: 80, y: 184 }
+  );
+  assert.deepEqual(
+    {
+      x: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset?.anchorX,
+      y: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset?.anchorY
+    },
+    { x: 115, y: 184 }
+  );
+  assert.deepEqual(
+    {
+      x: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset?.anchorX,
+      y: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset?.anchorY
+    },
+    { x: 75, y: 164 }
+  );
+  const startMarkerAsset = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset;
+
+  assert.ok(startMarkerAsset);
+  assert.ok(
+    Math.abs(
+      startMarkerAsset.displayWidth / startMarkerAsset.displayHeight -
+        startMarkerAsset.sourceWidth / startMarkerAsset.sourceHeight
+    ) < 0.0001
+  );
   assert.ok(
     (TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.pinTipLength ?? 0) >
       TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.radius

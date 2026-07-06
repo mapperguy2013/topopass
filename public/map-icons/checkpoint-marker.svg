@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="170" viewBox="0 0 150 170" role="img" aria-label="Checkpoint marker">
+  <defs>
+    <filter id="shadow" x="-30%" y="-25%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.20"/>
+    </filter>
+    <linearGradient id="pinBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2F80ED"/>
+      <stop offset="100%" stop-color="#1554C0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- transparent background; anchor point is bottom-centre: 75,164 -->
+  <g filter="url(#shadow)">
+    <path d="M75 164 C75 164 31 111 31 68 C31 38 50 18 75 18 C100 18 119 38 119 68 C119 111 75 164 75 164 Z" fill="#FFFFFF"/>
+    <path d="M75 156 C75 156 40 108 40 69 C40 44 55 27 75 27 C95 27 110 44 110 69 C110 108 75 156 75 156 Z" fill="url(#pinBlue)"/>
+    <circle cx="75" cy="69" r="22" fill="#FFFFFF"/>
+    <text x="75" y="78" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="900" fill="#1554C0">1</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="25" y="3" width="100" height="34" rx="15" fill="#FFFFFF"/>
+    <path d="M67 36 L75 46 L83 36 Z" fill="#FFFFFF"/>
+    <rect x="25" y="3" width="100" height="34" rx="15" fill="none" stroke="#DCE7FF" stroke-width="1.5"/>
+    <text x="75" y="26" text-anchor="middle" font-family="Inter, Arial, Helvetica, sans-serif" font-size="15" font-weight="900" letter-spacing="0.4" fill="#1554C0">CHECKPOINT</text>
+  </g>
+</svg>
