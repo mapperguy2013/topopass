@@ -154,7 +154,7 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
       "Accepted alternative",
       "Illegal / wrong way",
       "Missed checkpoint",
-      "One-way street",
+      "One-way",
       "No entry",
       "Restricted turn",
       "Major road",
@@ -198,8 +198,15 @@ test("Stage 132 route attempt flow uses existing runner and remains scoreable", 
 test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   const model = requireAvailableModel();
 
+  assert.equal(model.learnerUi.shell.layoutPattern, "modern-map-app");
+  assert.equal(model.learnerUi.shell.mapIsPrimaryWorkspace, true);
+  assert.equal(model.learnerUi.shell.routeHeaderIsCompact, true);
+  assert.equal(model.learnerUi.shell.routeSetupPanelCollapsible, true);
+  assert.equal(model.learnerUi.shell.routeSetupPanelDefaultOpen, true);
+  assert.equal(model.learnerUi.shell.feedbackPanelPlacement, "post-submit-side-or-bottom-panel");
   assert.equal(model.learnerUi.routeHeaderCount, 1);
   assert.equal(model.learnerUi.visibleMapWorkspaceHeading, false);
+  assert.equal(model.learnerUi.routeControls.toolbarCount, 1);
   assert.equal(model.learnerUi.routeControls.undoCount, 1);
   assert.equal(model.learnerUi.routeControls.eraseRouteCount, 1);
   assert.equal(model.learnerUi.routeControls.resetViewCount, 1);
@@ -207,6 +214,7 @@ test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   assert.equal(model.learnerUi.routeControls.restrictionToggleCount, 1);
   assert.equal(model.learnerUi.routeControls.submitPlacement, "route-header");
   assert.equal(model.learnerUi.routeControls.mapToolbarSubmitVisible, false);
+  assert.equal(model.learnerUi.routeControls.duplicateControlGroupsVisible, false);
 });
 
 test("Stage 161.6.11 beta practice has one learner-facing result panel without internal IDs", () => {
@@ -231,6 +239,11 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   );
   assert.equal(model.learnerUi.routeStatus.badgeCount, 1);
   assert.deepEqual(model.learnerUi.routeStatus.labels, ["Not started", "Drawing", "Ready to submit", "Submitted"]);
+  assert.equal(model.learnerUi.legendControl.presentation, "compact-collapsible-layer-control");
+  assert.equal(model.learnerUi.legendControl.collapsedByDefault, true);
+  assert.equal(model.learnerUi.legendControl.scrollbarHeavyPanel, false);
+  assert.equal(model.learnerUi.legendControl.rawOsmTagsVisible, false);
+  assert.equal(model.learnerUi.legendControl.learnerRestrictionEntriesVisible, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawOsmNodeIds, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawGraphIds, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawRoadIds, true);

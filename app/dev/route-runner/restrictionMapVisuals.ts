@@ -678,7 +678,7 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "one-way",
-      label: "One-way street",
+      label: "One-way",
       description: "Blue arrowheads show the permitted one-way travel direction.",
       tone: "one-way"
     },
@@ -809,7 +809,7 @@ export function buildLearnerRestrictionLegendItems(): SyntheticStreetMapLegendIt
     },
     {
       id: "one-way",
-      label: "One-way street",
+      label: "One-way",
       description: "Blue arrowheads show the permitted one-way travel direction.",
       tone: "one-way"
     },

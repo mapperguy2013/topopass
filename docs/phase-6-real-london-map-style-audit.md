@@ -283,10 +283,35 @@ learner-friendly restriction comments.
 The in-map learner legend is collapsed by default, uses a smaller 144 px scroll
 cap, and switches to the compact learner label set: Start, Destination,
 Checkpoint, Your route, Correct route, Accepted alternative, Illegal / wrong
-way, Missed checkpoint, One-way street, No entry, Restricted turn, Major road,
+way, Missed checkpoint, One-way, No entry, Restricted turn, Major road,
 Secondary road, Local street, Park / open space, Water, and Rail / station.
 The full dev/QA legend and raw diagnostics remain outside the beta practice
 surface.
+
+## Stage 161.6.14 Modern Map-App Beta Practice UI Shell
+
+Stage 161.6.14 keeps the TOPOPASS London street-atlas cartography intact but
+refines the learner shell around it. `/practice/real-london` now treats the map
+as the primary workspace, uses a compact route header above the map, keeps
+Submit as the single primary route action, and keeps Draw/Pan, Undo, Erase
+route, restriction visibility, and Reset view together in one floating map
+toolbar.
+
+Map and exercise selection are presented as a compact collapsible Route setup
+panel rather than a large debug-style side panel. The Route feedback panel still
+does not render before Submit, and after Submit it remains the single learner
+feedback surface for pass/fail state, score, distance, shortest legal route,
+extra distance, missed checkpoints, illegal movement feedback, and the current
+coaching note. The map legend is treated as a compact collapsible layer/legend
+control with learner language such as One-way, No entry, and Restricted turn.
+
+This stage intentionally borrows only broad interaction expectations from
+modern map apps: map-first layout, compact floating controls, collapsible
+panels, and a simple route header. It does not use or copy Google, Apple, A-Z,
+Ordnance Survey, or other proprietary cartographic styling, UI assets, icons,
+fonts, colours, tiles, screenshots, or symbols. Dev QA controls, manual route
+input, raw IDs, fixture filenames, and blocked-way diagnostics remain outside
+the beta practice surface.
 
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 

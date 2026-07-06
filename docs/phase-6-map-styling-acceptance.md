@@ -454,13 +454,38 @@ the existing review pipeline.
 
 The learner legend is now collapsed and compact. It uses the beta-friendly
 labels Start, Destination, Checkpoint, Your route, Correct route, Accepted
-alternative, Illegal / wrong way, Missed checkpoint, One-way street, No entry,
+alternative, Illegal / wrong way, Missed checkpoint, One-way, No entry,
 Restricted turn, Major road, Secondary road, Local street, Park / open space,
 Water, and Rail / station. The larger dev/QA legend remains available outside
 student beta mode. Restriction symbols still render where converted data
 exists, with the existing zoom decluttering rules, and no dev QA panels,
 manual route input, raw OSM IDs, graph IDs, or fixture filenames are exposed on
 `/practice/real-london`.
+
+Stage 161.6.14 refines the same beta route practice surface into a modern
+map-app style shell without changing route matching, scoring, legality,
+exercise generation, map data, zoom behaviour, or TOPOPASS cartography. The map
+is treated as the primary workspace, with a compact route header above it and
+one primary Submit action. Draw, Pan, Undo, Erase route, restriction visibility,
+and Reset view remain in one floating map toolbar, so controls are not
+duplicated across the page.
+
+Map and exercise selection move into a compact collapsible Route setup panel,
+and Route feedback remains hidden before Submit. After Submit, the existing
+single feedback panel is the learner-facing place for pass/fail state, score,
+route distance, shortest legal route distance, extra distance, missed
+checkpoints, illegal movement feedback, and one clear coaching note from the
+current review pipeline. The compact collapsed legend behaves like a map
+layer/legend control and uses learner wording such as One-way, No entry, and
+Restricted turn. Dev QA, raw IDs, blocked-way diagnostics, manual route input,
+and fixture filenames remain hidden from `/practice/real-london` and available
+only in dev routes or explicit dev mode.
+
+The Stage 161.6.14 shell uses familiar modern map-app interaction patterns
+while keeping the visual design original to TOPOPASS. It does not use or copy
+Google, Apple, A-Z, Ordnance Survey, or other proprietary map tiles,
+cartographic styling, UI assets, icons, typography, colours, symbols, or
+screenshots.
 
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at

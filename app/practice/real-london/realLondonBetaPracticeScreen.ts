@@ -128,9 +128,18 @@ export type RealLondonBetaPracticeScreenModel =
         restrictionLayerDefaultVisible: true;
       };
       learnerUi: {
+        shell: {
+          layoutPattern: "modern-map-app";
+          mapIsPrimaryWorkspace: true;
+          routeHeaderIsCompact: true;
+          routeSetupPanelCollapsible: true;
+          routeSetupPanelDefaultOpen: true;
+          feedbackPanelPlacement: "post-submit-side-or-bottom-panel";
+        };
         routeHeaderCount: 1;
         visibleMapWorkspaceHeading: false;
         routeControls: {
+          toolbarCount: 1;
           undoCount: 1;
           eraseRouteCount: 1;
           resetViewCount: 1;
@@ -138,6 +147,7 @@ export type RealLondonBetaPracticeScreenModel =
           restrictionToggleCount: 1;
           submitPlacement: "route-header";
           mapToolbarSubmitVisible: false;
+          duplicateControlGroupsVisible: false;
         };
         resultPanels: {
           learnerPanelTitle: "Route feedback";
@@ -157,6 +167,13 @@ export type RealLondonBetaPracticeScreenModel =
         routeStatus: {
           badgeCount: 1;
           labels: ["Not started", "Drawing", "Ready to submit", "Submitted"];
+        };
+        legendControl: {
+          presentation: "compact-collapsible-layer-control";
+          collapsedByDefault: true;
+          scrollbarHeavyPanel: false;
+          rawOsmTagsVisible: false;
+          learnerRestrictionEntriesVisible: true;
         };
         hiddenTechnicalDetails: {
           rawOsmNodeIds: true;
@@ -337,16 +354,26 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       restrictionLayerDefaultVisible: true
     },
     learnerUi: {
+      shell: {
+        layoutPattern: "modern-map-app",
+        mapIsPrimaryWorkspace: true,
+        routeHeaderIsCompact: true,
+        routeSetupPanelCollapsible: true,
+        routeSetupPanelDefaultOpen: true,
+        feedbackPanelPlacement: "post-submit-side-or-bottom-panel"
+      },
       routeHeaderCount: 1,
       visibleMapWorkspaceHeading: false,
       routeControls: {
+        toolbarCount: 1,
         undoCount: 1,
         eraseRouteCount: 1,
         resetViewCount: 1,
         submitCount: 1,
         restrictionToggleCount: 1,
         submitPlacement: "route-header",
-        mapToolbarSubmitVisible: false
+        mapToolbarSubmitVisible: false,
+        duplicateControlGroupsVisible: false
       },
       resultPanels: {
         learnerPanelTitle: "Route feedback",
@@ -367,6 +394,13 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       routeStatus: {
         badgeCount: 1,
         labels: ["Not started", "Drawing", "Ready to submit", "Submitted"]
+      },
+      legendControl: {
+        presentation: "compact-collapsible-layer-control",
+        collapsedByDefault: true,
+        scrollbarHeavyPanel: false,
+        rawOsmTagsVisible: false,
+        learnerRestrictionEntriesVisible: true
       },
       hiddenTechnicalDetails: {
         rawOsmNodeIds: true,

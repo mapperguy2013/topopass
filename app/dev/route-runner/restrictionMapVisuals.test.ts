@@ -791,7 +791,7 @@ test("Stage 161.6.13 learner legend is compact and uses beta-friendly labels", (
       "Accepted alternative",
       "Illegal / wrong way",
       "Missed checkpoint",
-      "One-way street",
+      "One-way",
       "No entry",
       "Restricted turn",
       "Major road",

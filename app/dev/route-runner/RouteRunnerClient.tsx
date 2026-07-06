@@ -5399,9 +5399,19 @@ export function RouteRunnerClient({
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 xl:flex-row xl:items-center xl:justify-between">
+    <div className={isStudentBetaRouteRunner ? "space-y-3" : "space-y-6"}>
+      <section
+        className={
+          isStudentBetaRouteRunner
+            ? "rounded-xl border border-slate-200 bg-white/95 shadow-sm"
+            : "rounded-lg border border-slate-200 bg-white shadow-sm"
+        }
+      >
+        <div
+          className={`flex flex-col gap-4 border-b border-slate-100 px-5 py-4 xl:flex-row xl:items-center xl:justify-between ${
+            isStudentBetaRouteRunner ? "sm:px-6" : ""
+          }`}
+        >
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
               {isStudentBetaRouteRunner ? "Real London Practice - Beta" : "TOPOPASS / Route Runner"}
@@ -5458,7 +5468,7 @@ export function RouteRunnerClient({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 px-5 py-3 text-xs text-slate-600">
+        <div className="flex flex-wrap items-center gap-2 px-5 py-3 text-xs text-slate-600 sm:px-6">
           <span className={`rounded-full px-3 py-1 font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
             {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
           </span>
@@ -5498,9 +5508,42 @@ export function RouteRunnerClient({
         </div>
       </section>
 
-      <section className="grid gap-4">
-        <div className="order-3 grid gap-4 xl:grid-cols-[minmax(320px,0.95fr)_minmax(280px,0.65fr)]">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <section className={isStudentBetaRouteRunner ? "grid gap-3" : "grid gap-4"}>
+        <div
+          className={`grid gap-4 ${
+            isStudentBetaRouteRunner ? "order-2" : "order-3 xl:grid-cols-[minmax(320px,0.95fr)_minmax(280px,0.65fr)]"
+          }`}
+        >
+          <details
+            open
+            className={
+              isStudentBetaRouteRunner
+                ? "group rounded-xl border border-slate-200 bg-white/95 shadow-sm"
+                : "rounded-lg border border-slate-200 bg-white shadow-sm"
+            }
+          >
+            <summary
+              className={
+                isStudentBetaRouteRunner
+                  ? "flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-950 marker:hidden"
+                  : "hidden"
+              }
+            >
+              <span>Route setup</span>
+              <span className="min-w-0 flex-1 truncate text-right text-xs font-medium text-slate-500">
+                {selectedMapOption.label}
+                {selectedExerciseDisplay?.title ? ` - ${selectedExerciseDisplay.title}` : ""}
+              </span>
+              <span className="text-xs font-semibold text-blue-700 group-open:hidden">Show</span>
+              <span className="text-xs font-semibold text-blue-700 group-open:inline hidden">Hide</span>
+            </summary>
+            <div
+              className={
+                isStudentBetaRouteRunner
+                  ? "border-t border-slate-100 p-4 pt-3"
+                  : "p-4"
+              }
+            >
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Practice Exercises</p>
@@ -5897,7 +5940,8 @@ export function RouteRunnerClient({
                 ) : null}
               </div>
             ) : null}
-          </div>
+            </div>
+          </details>
 
           {routeRunnerPanelVisibility.showInternalQaPanels ? (
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -5952,13 +5996,13 @@ export function RouteRunnerClient({
                 </p>
               </div>
             </div>
-          ) : null}
+            ) : null}
         </div>
 
         <div className="contents">
           <section
-            className={`order-1 rounded-lg border border-slate-200 bg-white shadow-sm ${
-              isStudentBetaRouteRunner ? "p-3 sm:p-4" : "p-4 sm:p-5"
+            className={`order-1 overflow-hidden border border-slate-200 bg-white shadow-sm ${
+              isStudentBetaRouteRunner ? "rounded-xl p-2 sm:p-3" : "rounded-lg p-4 sm:p-5"
             }`}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -6061,7 +6105,7 @@ export function RouteRunnerClient({
             <div
               className={`relative w-full overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
                 isStudentBetaRouteRunner
-                  ? "mx-auto mt-2 min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
+                  ? "mx-auto min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
                   : "mt-4 min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               }`}
               style={{

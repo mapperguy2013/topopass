@@ -1139,10 +1139,21 @@ feedback panel is hidden before Submit, then appears after a submitted or
 blocked submit attempt with the existing score, distance, and learner comments.
 The in-map learner legend is collapsed, capped to a smaller height, and uses a
 compact label set: start, destination, checkpoint, your route, correct route,
-accepted alternative, illegal/wrong way, missed checkpoint, one-way street, no
+accepted alternative, illegal/wrong way, missed checkpoint, one-way, no
 entry, restricted turn, major/secondary/local roads, park/open space, water,
 and rail/station. Dev QA panels and manual/debug controls remain hidden from
 `/practice/real-london` and available in dev routes only.
+Stage 161.6.14 refines `/practice/real-london` into a more familiar modern
+map-app beta shell while preserving original TOPOPASS cartography. The map is
+the primary workspace, the route header remains compact, Submit stays as the
+single primary route action, and Draw/Pan, Undo, Erase route, restriction
+visibility, and Reset view stay in one floating map toolbar. Map and exercise
+selection now live in a compact collapsible Route setup panel, and post-submit
+Route feedback remains the only large feedback panel. The collapsed learner
+legend behaves like a compact layer/legend control and uses learner labels such
+as One-way, No entry, and Restricted turn without raw OSM or graph language. No
+Google, Apple, A-Z, Ordnance Survey, proprietary map assets, colours, icons,
+typography, tiles, or copied UI artwork are used.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor
