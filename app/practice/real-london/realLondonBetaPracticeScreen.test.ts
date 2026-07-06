@@ -202,7 +202,8 @@ test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   assert.equal(model.learnerUi.shell.mapIsPrimaryWorkspace, true);
   assert.equal(model.learnerUi.shell.routeHeaderIsCompact, true);
   assert.equal(model.learnerUi.shell.routeSetupPanelCollapsible, true);
-  assert.equal(model.learnerUi.shell.routeSetupPanelDefaultOpen, true);
+  assert.equal(model.learnerUi.shell.routeSetupPanelDefaultOpen, false);
+  assert.deepEqual(model.learnerUi.shell.visualOrder, ["route-header", "route-setup", "map", "route-feedback"]);
   assert.equal(model.learnerUi.shell.feedbackPanelPlacement, "post-submit-side-or-bottom-panel");
   assert.equal(model.learnerUi.routeHeaderCount, 1);
   assert.equal(model.learnerUi.visibleMapWorkspaceHeading, false);
@@ -213,7 +214,16 @@ test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   assert.equal(model.learnerUi.routeControls.submitCount, 1);
   assert.equal(model.learnerUi.routeControls.restrictionToggleCount, 1);
   assert.equal(model.learnerUi.routeControls.submitPlacement, "route-header");
+  assert.deepEqual(model.learnerUi.routeControls.mapToolbarActionLabels, [
+    "Draw",
+    "Pan",
+    "Undo",
+    "Erase route",
+    "Reset view"
+  ]);
   assert.equal(model.learnerUi.routeControls.mapToolbarSubmitVisible, false);
+  assert.equal(model.learnerUi.routeControls.mapToolbarRestrictionToggleVisible, false);
+  assert.equal(model.learnerUi.routeControls.restrictionControlPlacement, "legend-control");
   assert.equal(model.learnerUi.routeControls.duplicateControlGroupsVisible, false);
 });
 
@@ -224,6 +234,7 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   assert.equal(model.learnerUi.resultPanels.preSubmitFeedbackPanelVisible, false);
   assert.equal(model.learnerUi.resultPanels.postSubmitFeedbackPanelVisible, true);
   assert.equal(model.learnerUi.resultPanels.submittedResultPanelCount, 1);
+  assert.equal(model.learnerUi.resultPanels.betaCoachingNoteCount, 1);
   assert.equal(model.learnerUi.resultPanels.drawnRouteScoreSummaryVisible, false);
   assert.equal(model.learnerUi.resultPanels.routeAttemptReviewAndDrawnScoreSummaryTogether, false);
   assert.equal(model.learnerUi.resultPanels.routeReplayVisibleByDefault, false);
@@ -244,6 +255,7 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   assert.equal(model.learnerUi.legendControl.scrollbarHeavyPanel, false);
   assert.equal(model.learnerUi.legendControl.rawOsmTagsVisible, false);
   assert.equal(model.learnerUi.legendControl.learnerRestrictionEntriesVisible, true);
+  assert.equal(model.learnerUi.legendControl.restrictionToggleVisible, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawOsmNodeIds, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawGraphIds, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawRoadIds, true);

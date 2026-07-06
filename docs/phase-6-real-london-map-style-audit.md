@@ -313,6 +313,36 @@ fonts, colours, tiles, screenshots, or symbols. Dev QA controls, manual route
 input, raw IDs, fixture filenames, and blocked-way diagnostics remain outside
 the beta practice surface.
 
+## Stage 161.6.16 Beta Practice Mockup Parity Pass
+
+Stage 161.6.16 aligns `/practice/real-london` more closely with the approved
+beta practice mockup without changing route matching, legality, scoring, route
+generation, OSM data, cartography tokens, zoom behaviour, lazy fixture loading,
+or Phase 7 scope. The final learner-facing structure is route header, compact
+collapsed map/route setup, map workspace, and one Route feedback panel only
+after Submit.
+
+The compact route header keeps Real London Practice - Beta, selected route,
+selected map, difficulty, route type, route state, and the primary Submit
+action. The map/route setup panel sits above the map but is collapsed by
+default, so testers can change map or exercise without forcing a large panel
+above the workspace.
+
+The map toolbar now contains only the route drawing controls: Draw, Pan, Undo,
+Erase route, and Reset view. One-way, no-entry, no-left-turn, no-right-turn,
+no-U-turn, and restricted-road symbols remain visible by default as
+learner-facing restriction cartography. The restriction visibility control
+moves into the compact legend/layer control, which keeps learner labels for
+stops, route overlays, restriction symbols, road hierarchy, park/open space,
+water, and rail/station context.
+
+After Submit, Route feedback remains the only large feedback surface. It shows
+pass/fail/needs-review state, score, route distances, grouped illegal issues,
+missed checkpoints, Show on map actions, and one coaching note for beta
+learners. Dev QA panels, manual route input, duplicate status boxes, route
+replay, raw OSM/graph/node/road ids, local attempt ids, and proprietary map UI
+or cartographic assets remain excluded from the beta practice page.
+
 ## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
 
 Stage 161.6.15 refines the post-submit learner feedback path without changing

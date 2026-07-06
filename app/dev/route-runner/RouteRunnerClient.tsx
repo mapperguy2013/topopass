@@ -5400,7 +5400,7 @@ export function RouteRunnerClient({
   }
 
   return (
-    <div className={isStudentBetaRouteRunner ? "space-y-3" : "space-y-6"}>
+    <div className={isStudentBetaRouteRunner ? "space-y-2" : "space-y-6"}>
       <section
         className={
           isStudentBetaRouteRunner
@@ -5409,7 +5409,7 @@ export function RouteRunnerClient({
         }
       >
         <div
-          className={`flex flex-col gap-4 border-b border-slate-100 px-5 py-4 xl:flex-row xl:items-center xl:justify-between ${
+          className={`flex flex-col gap-3 border-b border-slate-100 px-4 py-3 xl:flex-row xl:items-center xl:justify-between ${
             isStudentBetaRouteRunner ? "sm:px-6" : ""
           }`}
         >
@@ -5417,10 +5417,10 @@ export function RouteRunnerClient({
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
               {isStudentBetaRouteRunner ? "Real London Practice - Beta" : "TOPOPASS / Route Runner"}
             </p>
-            <h1 className="mt-1 text-xl font-bold text-slate-950">
+            <h1 className="mt-1 text-lg font-bold text-slate-950 sm:text-xl">
               {selectedExerciseDisplay?.title ?? `${selectedMapOption.label} route exercise runner`}
             </h1>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
+            <p className="mt-1 text-sm leading-5 text-slate-600">
               {isStudentBetaRouteRunner
                 ? selectedMapIsScoreable
                   ? "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions."
@@ -5469,7 +5469,7 @@ export function RouteRunnerClient({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 px-5 py-3 text-xs text-slate-600 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2 px-4 py-2 text-xs text-slate-600 sm:px-6">
           <span className={`rounded-full px-3 py-1 font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
             {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
           </span>
@@ -5509,17 +5509,17 @@ export function RouteRunnerClient({
         </div>
       </section>
 
-      <section className={isStudentBetaRouteRunner ? "grid gap-3" : "grid gap-4"}>
+      <section className={isStudentBetaRouteRunner ? "grid gap-2" : "grid gap-4"}>
         <div
           className={`grid gap-4 ${
-            isStudentBetaRouteRunner ? "order-2" : "order-3 xl:grid-cols-[minmax(320px,0.95fr)_minmax(280px,0.65fr)]"
+            isStudentBetaRouteRunner ? "order-1" : "order-3 xl:grid-cols-[minmax(320px,0.95fr)_minmax(280px,0.65fr)]"
           }`}
         >
           <details
-            open
+            open={!isStudentBetaRouteRunner}
             className={
               isStudentBetaRouteRunner
-                ? "group rounded-xl border border-slate-200 bg-white/95 shadow-sm"
+                ? "group rounded-lg border border-slate-200 bg-white/95 shadow-sm"
                 : "rounded-lg border border-slate-200 bg-white shadow-sm"
             }
           >
@@ -5530,18 +5530,18 @@ export function RouteRunnerClient({
                   : "hidden"
               }
             >
-              <span>Route setup</span>
+              <span>Map and route</span>
               <span className="min-w-0 flex-1 truncate text-right text-xs font-medium text-slate-500">
                 {selectedMapOption.label}
                 {selectedExerciseDisplay?.title ? ` - ${selectedExerciseDisplay.title}` : ""}
               </span>
-              <span className="text-xs font-semibold text-blue-700 group-open:hidden">Show</span>
+              <span className="text-xs font-semibold text-blue-700 group-open:hidden">Change</span>
               <span className="text-xs font-semibold text-blue-700 group-open:inline hidden">Hide</span>
             </summary>
             <div
               className={
                 isStudentBetaRouteRunner
-                  ? "border-t border-slate-100 p-4 pt-3"
+                  ? "border-t border-slate-100 p-3"
                   : "p-4"
               }
             >
@@ -6002,9 +6002,9 @@ export function RouteRunnerClient({
 
         <div className="contents">
           <section
-            className={`order-1 overflow-hidden border border-slate-200 bg-white shadow-sm ${
+            className={`overflow-hidden border border-slate-200 bg-white shadow-sm ${
               isStudentBetaRouteRunner ? "rounded-xl p-2 sm:p-3" : "rounded-lg p-4 sm:p-5"
-            }`}
+            } ${isStudentBetaRouteRunner ? "order-2" : "order-1"}`}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -6162,24 +6162,6 @@ export function RouteRunnerClient({
                 >
                   {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
                 </button>
-                {isStudentBetaRouteRunner ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextValue = !(showRoadRestrictions || showTurnRestrictions);
-                      setShowRoadRestrictions(nextValue);
-                      setShowTurnRestrictions(nextValue);
-                    }}
-                    aria-pressed={showRoadRestrictions || showTurnRestrictions}
-                    className={`pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-red-100 ${
-                      showRoadRestrictions || showTurnRestrictions
-                        ? "border-red-300 bg-red-50/95 text-red-950 hover:bg-red-100"
-                        : "border-slate-300 bg-white/95 text-slate-700 hover:bg-white"
-                    }`}
-                  >
-                    {showRoadRestrictions || showTurnRestrictions ? "Hide restrictions" : "Show restrictions"}
-                  </button>
-                ) : null}
                 {!isStudentBetaRouteRunner ? (
                   <button
                     type="button"
@@ -6298,6 +6280,24 @@ export function RouteRunnerClient({
                         {item.label}
                       </span>
                     ))}
+                    {isStudentBetaRouteRunner ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextValue = !(showRoadRestrictions || showTurnRestrictions);
+                          setShowRoadRestrictions(nextValue);
+                          setShowTurnRestrictions(nextValue);
+                        }}
+                        aria-pressed={showRoadRestrictions || showTurnRestrictions}
+                        className={`mt-1 rounded-md border px-2.5 py-2 text-left text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-red-100 ${
+                          showRoadRestrictions || showTurnRestrictions
+                            ? "border-red-300 bg-red-50 text-red-950 hover:bg-red-100"
+                            : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {showRoadRestrictions || showTurnRestrictions ? "Restrictions visible" : "Show restrictions"}
+                      </button>
+                    ) : null}
                   </div>
                 </details>
                 {selectedMapOption.attribution ? (
@@ -6953,7 +6953,7 @@ export function RouteRunnerClient({
           </section>
 
           {showAttemptFeedbackPanel ? (
-            <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <section className="order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-slate-950">
@@ -6961,7 +6961,7 @@ export function RouteRunnerClient({
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
                     {isStudentBetaRouteRunner
-                      ? "Submit your drawn route to see score, distance, and route feedback."
+                      ? "Review your result, route distance, grouped issues, and one next step."
                       : "Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner when the match is usable."}
                   </p>
                 </div>
@@ -7270,9 +7270,14 @@ export function RouteRunnerClient({
 
               {showLearnerAttemptReviewDetails && drawnAttemptReview.correctionHints.length > 0 ? (
                 <div className="mt-3 rounded-md border border-current/10 bg-white/70 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Try next</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">
+                    {isStudentBetaRouteRunner ? "Coaching note" : "Try next"}
+                  </p>
                   <ul className="mt-2 space-y-2 text-xs leading-5">
-                    {drawnAttemptReview.correctionHints.map((hint, index) => (
+                    {(isStudentBetaRouteRunner
+                      ? drawnAttemptReview.correctionHints.slice(0, 1)
+                      : drawnAttemptReview.correctionHints
+                    ).map((hint, index) => (
                       <li key={`${index}-${hint}`} className="flex gap-2">
                         <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-current/20 text-[10px] font-semibold">
                           {index + 1}

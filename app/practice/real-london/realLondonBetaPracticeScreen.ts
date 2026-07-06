@@ -133,7 +133,8 @@ export type RealLondonBetaPracticeScreenModel =
           mapIsPrimaryWorkspace: true;
           routeHeaderIsCompact: true;
           routeSetupPanelCollapsible: true;
-          routeSetupPanelDefaultOpen: true;
+          routeSetupPanelDefaultOpen: false;
+          visualOrder: ["route-header", "route-setup", "map", "route-feedback"];
           feedbackPanelPlacement: "post-submit-side-or-bottom-panel";
         };
         routeHeaderCount: 1;
@@ -146,7 +147,10 @@ export type RealLondonBetaPracticeScreenModel =
           submitCount: 1;
           restrictionToggleCount: 1;
           submitPlacement: "route-header";
+          mapToolbarActionLabels: ["Draw", "Pan", "Undo", "Erase route", "Reset view"];
           mapToolbarSubmitVisible: false;
+          mapToolbarRestrictionToggleVisible: false;
+          restrictionControlPlacement: "legend-control";
           duplicateControlGroupsVisible: false;
         };
         resultPanels: {
@@ -154,6 +158,7 @@ export type RealLondonBetaPracticeScreenModel =
           preSubmitFeedbackPanelVisible: false;
           postSubmitFeedbackPanelVisible: true;
           submittedResultPanelCount: 1;
+          betaCoachingNoteCount: 1;
           drawnRouteScoreSummaryVisible: false;
           routeAttemptReviewAndDrawnScoreSummaryTogether: false;
           routeReplayVisibleByDefault: false;
@@ -174,6 +179,7 @@ export type RealLondonBetaPracticeScreenModel =
           scrollbarHeavyPanel: false;
           rawOsmTagsVisible: false;
           learnerRestrictionEntriesVisible: true;
+          restrictionToggleVisible: true;
         };
         hiddenTechnicalDetails: {
           rawOsmNodeIds: true;
@@ -359,7 +365,8 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         mapIsPrimaryWorkspace: true,
         routeHeaderIsCompact: true,
         routeSetupPanelCollapsible: true,
-        routeSetupPanelDefaultOpen: true,
+        routeSetupPanelDefaultOpen: false,
+        visualOrder: ["route-header", "route-setup", "map", "route-feedback"],
         feedbackPanelPlacement: "post-submit-side-or-bottom-panel"
       },
       routeHeaderCount: 1,
@@ -372,7 +379,10 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         submitCount: 1,
         restrictionToggleCount: 1,
         submitPlacement: "route-header",
+        mapToolbarActionLabels: ["Draw", "Pan", "Undo", "Erase route", "Reset view"],
         mapToolbarSubmitVisible: false,
+        mapToolbarRestrictionToggleVisible: false,
+        restrictionControlPlacement: "legend-control",
         duplicateControlGroupsVisible: false
       },
       resultPanels: {
@@ -380,6 +390,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         preSubmitFeedbackPanelVisible: false,
         postSubmitFeedbackPanelVisible: true,
         submittedResultPanelCount: 1,
+        betaCoachingNoteCount: 1,
         drawnRouteScoreSummaryVisible: false,
         routeAttemptReviewAndDrawnScoreSummaryTogether: false,
         routeReplayVisibleByDefault: false
@@ -400,7 +411,8 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         collapsedByDefault: true,
         scrollbarHeavyPanel: false,
         rawOsmTagsVisible: false,
-        learnerRestrictionEntriesVisible: true
+        learnerRestrictionEntriesVisible: true,
+        restrictionToggleVisible: true
       },
       hiddenTechnicalDetails: {
         rawOsmNodeIds: true,

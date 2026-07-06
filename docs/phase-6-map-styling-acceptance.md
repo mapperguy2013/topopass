@@ -466,9 +466,8 @@ Stage 161.6.14 refines the same beta route practice surface into a modern
 map-app style shell without changing route matching, scoring, legality,
 exercise generation, map data, zoom behaviour, or TOPOPASS cartography. The map
 is treated as the primary workspace, with a compact route header above it and
-one primary Submit action. Draw, Pan, Undo, Erase route, restriction visibility,
-and Reset view remain in one floating map toolbar, so controls are not
-duplicated across the page.
+one primary Submit action. Draw, Pan, Undo, Erase route, and Reset view remain
+in one floating map toolbar, so controls are not duplicated across the page.
 
 Map and exercise selection move into a compact collapsible Route setup panel,
 and Route feedback remains hidden before Submit. After Submit, the existing
@@ -508,6 +507,32 @@ Learner text uses phrases such as "Wrong way on Chenies Street", "No entry
 from this direction", "No right turn at this junction", and "This road is
 restricted for this route" without exposing raw OSM, relation, node, graph, or
 internal road ids.
+
+Stage 161.6.16 applies the beta practice mockup parity pass. The accepted
+learner-facing structure is route header, compact collapsed map/route setup,
+map workspace, and one Route feedback panel only after Submit. The map remains
+the primary workspace: the setup panel is available above it for changing map
+or exercise, but it is collapsed by default so the map appears quickly.
+
+The route toolbar is limited to the core route actions: Draw, Pan, Undo, Erase
+route, and Reset view. Submit stays in the compact route header. Restriction
+symbols remain learner-facing and visible by default, but their visibility
+control moves into the compact legend/layer panel rather than crowding the
+route toolbar. The compact legend keeps the learner label set: Start,
+Destination, Checkpoint, Your route, Correct route, Accepted alternative,
+Illegal / wrong way, Missed checkpoint, One-way, No entry, Restricted turn,
+Major road, Secondary road, Local street, Park / open space, Water, and Rail /
+station.
+
+The post-submit Route feedback panel remains the only large feedback surface.
+It shows pass/fail/needs-review state, score, route distance, shortest legal
+route distance, extra distance, grouped illegal issues, missed checkpoints, and
+Show on map actions. Beta learners see one coaching note, while dev-only
+diagnostics, raw OSM/node/road/graph ids, local attempt ids, manual route
+input, duplicate feedback boxes, and route replay stay outside
+`/practice/real-london`. This stage does not change matching, legality,
+scoring, route generation, OSM data, cartography tokens, zoom behaviour, lazy
+fixture loading, or Phase 7 scope.
 
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
