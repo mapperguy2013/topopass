@@ -515,6 +515,70 @@ function routeIssueKey(overlay: RouteIssueOverlay): string {
   ].join(":");
 }
 
+function distanceSquared(first: Vec2, second: Vec2): number {
+  return (first.x - second.x) ** 2 + (first.y - second.y) ** 2;
+}
+
+function disconnectedRouteIssueBelongsToGroup(group: RouteIssueOverlay[], overlay: RouteIssueOverlay): boolean {
+  const DISCONNECTED_GAP_GROUPING_DISTANCE_METERS = 180;
+  const overlayRoadIds = new Set(overlay.roadIds);
+  const previous = group[group.length - 1];
+
+  if (!previous) {
+    return true;
+  }
+
+  if (previous.roadIds.some((roadId) => overlayRoadIds.has(roadId))) {
+    return true;
+  }
+
+  return distanceSquared(previous.midpoint, overlay.midpoint) <= DISCONNECTED_GAP_GROUPING_DISTANCE_METERS ** 2;
+}
+
+function mergeDisconnectedRouteIssueGroup(group: RouteIssueOverlay[]): RouteIssueOverlay | null {
+  const first = group[0];
+
+  if (!first) {
+    return null;
+  }
+
+  return {
+    ...first,
+    roadIds: [...new Set(group.flatMap((overlay) => overlay.roadIds))],
+    points: group.length === 1 ? first.points : [first.midpoint, group[group.length - 1].midpoint],
+    midpoint: first.midpoint,
+    message: "Your drawn route has a gap. Continue the line so it connects from start to finish."
+  };
+}
+
+function groupDisconnectedRouteIssueOverlays(overlays: RouteIssueOverlay[]): RouteIssueOverlay[] {
+  const groupedOverlays: RouteIssueOverlay[] = [];
+  let currentGroup: RouteIssueOverlay[] = [];
+
+  for (const overlay of overlays) {
+    if (currentGroup.length === 0 || disconnectedRouteIssueBelongsToGroup(currentGroup, overlay)) {
+      currentGroup.push(overlay);
+      continue;
+    }
+
+    const mergedGroup = mergeDisconnectedRouteIssueGroup(currentGroup);
+
+    if (mergedGroup) {
+      groupedOverlays.push(mergedGroup);
+    }
+
+    currentGroup = [overlay];
+  }
+
+  const mergedGroup = mergeDisconnectedRouteIssueGroup(currentGroup);
+
+  if (mergedGroup) {
+    groupedOverlays.push(mergedGroup);
+  }
+
+  return groupedOverlays;
+}
+
 function dedupeRouteIssueOverlays(overlays: RouteIssueOverlay[]): RouteIssueOverlay[] {
   const seen = new Set<string>();
 
@@ -536,6 +600,7 @@ export function buildRouteIssueOverlays(map: MapDefinition, result: DrawnRoutePi
   }
 
   const overlays: RouteIssueOverlay[] = [];
+  const disconnectedOverlays: RouteIssueOverlay[] = [];
 
   for (const warning of result.warnings) {
     if (warning.code !== "disconnected_roads" && warning.code !== "disconnected_selected_roads") {
@@ -546,15 +611,17 @@ export function buildRouteIssueOverlays(map: MapDefinition, result: DrawnRoutePi
       map,
       kind: "disconnected",
       label: "Disconnected roads",
-      message: "Your drawn route has a gap. Continue the route so it connects from start to finish.",
+      message: "Your drawn route has a gap. Continue the line so it connects from start to finish.",
       fromRoadId: warning.fromRoadId,
       toRoadId: warning.toRoadId
     });
 
     if (overlay) {
-      overlays.push(overlay);
+      disconnectedOverlays.push(overlay);
     }
   }
+
+  overlays.push(...groupDisconnectedRouteIssueOverlays(disconnectedOverlays));
 
   const illegalHighlights = buildIllegalDrawnMovementHighlights({
     map,

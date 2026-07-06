@@ -1152,7 +1152,7 @@ stay in one floating map toolbar. Map and exercise selection now live in a
 compact collapsible Route setup panel, and post-submit Route feedback remains
 the only large feedback panel. The collapsed learner legend behaves like a
 compact layer/legend control and uses learner labels such as One-way, No entry,
-and Restricted turn without raw OSM or graph language. No Google, Apple, A-Z,
+No left turn, No right turn, No U-turn, and Restricted movement without raw OSM or graph language. No Google, Apple, A-Z,
 Ordnance Survey, proprietary map assets, colours, icons, typography, tiles, or
 copied UI artwork are used.
 Stage 161.6.15 cleans submitted route feedback and illegal issue grouping.
@@ -1195,6 +1195,17 @@ for actionable map issues such as illegal movements, required stops, or
 matching locations. Required stop progress uses Start, Destination, and
 Checkpoint labels instead of raw node IDs, while dev-only diagnostics remain
 outside `/practice/real-london`.
+Stage 161.6.18 fixes the remaining beta route-review controls. The learner
+restriction layer stays visible by default for scored beta practice and the
+legend names One-way, No entry, No left turn, No right turn, No U-turn, No
+straight on, and Restricted movement separately. Repeated disconnected-road
+review markers now group into one learner gap issue at the first break point,
+using the message "Your drawn route has a gap. Continue the line so it connects
+from start to finish." Reset view is view-only: it resets zoom/pan/framing and
+returns to Draw mode without clearing the drawing, submitted result, or
+feedback. Erase route remains the action that deletes the drawing and attempt
+state. After Submit, beta learners can reveal or hide the shortest legal route
+for comparison while keeping their own route and mistake markers visible.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

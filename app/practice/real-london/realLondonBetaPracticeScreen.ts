@@ -120,8 +120,10 @@ export type RealLondonBetaPracticeScreenModel =
         eraseClearsDrawingAndResult: true;
         eraseKeepsSelectedMapAndExercise: true;
         eraseKeepsCurrentMapView: true;
-        resetClearsDrawingAndResult: true;
+        resetClearsDrawingAndResult: false;
         resetResetsMapView: true;
+        resetKeepsCurrentDrawing: true;
+        resetKeepsSubmittedResult: true;
         resetKeepsSelectedMapAndExercise: true;
         resetReturnsToDrawMode: true;
         restrictionToggleLabel: "Show restrictions";
@@ -172,6 +174,9 @@ export type RealLondonBetaPracticeScreenModel =
           requiredStopProgressUsesLearnerLabels: true;
           duplicateRequiredStopProgressPanelVisible: false;
           rawInternalIdsVisible: false;
+          shortestLegalRouteComparisonAvailableAfterSubmit: true;
+          shortestLegalRouteComparisonKeepsAttemptVisible: true;
+          shortestLegalRouteComparisonActionLabel: "Show shortest legal route";
         };
         instructionArea: {
           visibleInstructionAreaCount: 1;
@@ -362,8 +367,10 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       eraseClearsDrawingAndResult: true,
       eraseKeepsSelectedMapAndExercise: true,
       eraseKeepsCurrentMapView: true,
-      resetClearsDrawingAndResult: true,
+      resetClearsDrawingAndResult: false,
       resetResetsMapView: true,
+      resetKeepsCurrentDrawing: true,
+      resetKeepsSubmittedResult: true,
       resetKeepsSelectedMapAndExercise: true,
       resetReturnsToDrawMode: true,
       restrictionToggleLabel: "Show restrictions",
@@ -413,7 +420,10 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         emptyIssueCategoriesHidden: true,
         requiredStopProgressUsesLearnerLabels: true,
         duplicateRequiredStopProgressPanelVisible: false,
-        rawInternalIdsVisible: false
+        rawInternalIdsVisible: false,
+        shortestLegalRouteComparisonAvailableAfterSubmit: true,
+        shortestLegalRouteComparisonKeepsAttemptVisible: true,
+        shortestLegalRouteComparisonActionLabel: "Show shortest legal route"
       },
       instructionArea: {
         visibleInstructionAreaCount: 1,

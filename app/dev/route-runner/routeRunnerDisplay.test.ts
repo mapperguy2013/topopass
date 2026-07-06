@@ -501,7 +501,7 @@ test("route issue overlays highlight disconnected matching transitions before sc
     {
       kind: "disconnected",
       label: "Disconnected roads",
-      message: "Your drawn route has a gap. Continue the route so it connects from start to finish.",
+      message: "Your drawn route has a gap. Continue the line so it connects from start to finish.",
       points: [
         { x: 50, y: 0 },
         { x: 50, y: 100 }
@@ -510,6 +510,40 @@ test("route issue overlays highlight disconnected matching transitions before sc
       roadIds: ["one-way-road", "closed-road"]
     }
   ]);
+});
+
+test("Stage 161.6.18 route issue overlays group repeated disconnected road labels", () => {
+  const overlays = buildRouteIssueOverlays(
+    restrictionOverlayMap,
+    pipelineResult({
+      status: "matching_failed",
+      warnings: [
+        {
+          source: "matching",
+          code: "disconnected_roads",
+          severity: "warning",
+          message: "Road one-way-road does not share a node with no-entry-road.",
+          fromRoadId: "one-way-road",
+          toRoadId: "no-entry-road"
+        },
+        {
+          source: "matching",
+          code: "disconnected_roads",
+          severity: "warning",
+          message: "Road no-entry-road does not share a node with closed-road.",
+          fromRoadId: "no-entry-road",
+          toRoadId: "closed-road"
+        }
+      ]
+    })
+  );
+
+  assert.equal(overlays.length, 1);
+  assert.equal(overlays[0].kind, "disconnected");
+  assert.equal(overlays[0].label, "Disconnected roads");
+  assert.equal(overlays[0].message, "Your drawn route has a gap. Continue the line so it connects from start to finish.");
+  assert.deepEqual(overlays[0].midpoint, { x: 75, y: 25 });
+  assert.deepEqual(overlays[0].roadIds, ["one-way-road", "no-entry-road", "closed-road"]);
 });
 
 test("route issue overlays highlight explicit prohibited turns after scoring", () => {

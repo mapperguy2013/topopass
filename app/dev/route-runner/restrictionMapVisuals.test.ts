@@ -787,13 +787,17 @@ test("Stage 161.6.13 learner legend is compact and uses beta-friendly labels", (
       "Destination",
       "Checkpoint",
       "Your route",
-      "Correct route",
+      "Shortest legal route",
       "Accepted alternative",
       "Illegal / wrong way",
       "Missed checkpoint",
       "One-way",
       "No entry",
-      "Restricted turn",
+      "No left turn",
+      "No right turn",
+      "No U-turn",
+      "No straight on",
+      "Restricted movement",
       "Major road",
       "Secondary road",
       "Local street",
@@ -802,8 +806,11 @@ test("Stage 161.6.13 learner legend is compact and uses beta-friendly labels", (
       "Rail / station"
     ]
   );
-  assert.ok(legend.length <= 18);
-  assert.ok(legend.some((item) => item.id === "restricted-turn"));
+  assert.ok(legend.length <= 22);
+  assert.ok(legend.some((item) => item.id === "no-left-turn"));
+  assert.ok(legend.some((item) => item.id === "no-right-turn"));
+  assert.ok(legend.some((item) => item.id === "no-u-turn"));
+  assert.ok(legend.some((item) => item.id === "restricted-movement"));
   assert.ok(
     legend.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
   );

@@ -2077,8 +2077,8 @@ export function buildSyntheticStreetMapLegendItems(): SyntheticStreetMapLegendIt
     },
     {
       id: "shortest-legal-route",
-      label: "Correct route",
-      description: "Blue dashed line shows the reference route to compare against the attempt.",
+      label: "Shortest legal route",
+      description: "Blue dashed line shows the legal comparison route to compare against the attempt.",
       tone: "shortest"
     },
     {

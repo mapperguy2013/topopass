@@ -243,8 +243,9 @@ diagnostics remain hidden.
 
 The legend now separates no-left-turn, no-right-turn, and no-U-turn entries
 instead of presenting one generic restricted-turn item. It also labels
-attempted route, correct route, start, checkpoint, destination, one-way,
-no-entry, and restricted-road symbols with learner text and no raw OSM,
+attempted route, shortest legal route, start, checkpoint, destination,
+one-way, no-entry, no-left-turn, no-right-turn, no-U-turn, no-straight-on, and
+restricted-movement symbols with learner text and no raw OSM,
 relation, way, node, road, or graph IDs.
 
 Restriction data audit:
@@ -282,9 +283,10 @@ learner-friendly restriction comments.
 
 The in-map learner legend is collapsed by default, uses a smaller 144 px scroll
 cap, and switches to the compact learner label set: Start, Destination,
-Checkpoint, Your route, Correct route, Accepted alternative, Illegal / wrong
-way, Missed checkpoint, One-way, No entry, Restricted turn, Major road,
-Secondary road, Local street, Park / open space, Water, and Rail / station.
+Checkpoint, Your route, Shortest legal route, Accepted alternative, Illegal /
+wrong way, Missed checkpoint, One-way, No entry, No left turn, No right turn,
+No U-turn, No straight on, Restricted movement, Major road, Secondary road,
+Local street, Park / open space, Water, and Rail / station.
 The full dev/QA legend and raw diagnostics remain outside the beta practice
 surface.
 
@@ -303,7 +305,8 @@ does not render before Submit, and after Submit it remains the single learner
 feedback surface for pass/fail state, score, distance, shortest legal route,
 extra distance, missed checkpoints, illegal movement feedback, and the current
 coaching note. The map legend is treated as a compact collapsible layer/legend
-control with learner language such as One-way, No entry, and Restricted turn.
+control with learner language such as One-way, No entry, No left turn, No
+right turn, No U-turn, No straight on, and Restricted movement.
 
 This stage intentionally borrows only broad interaction expectations from
 modern map apps: map-first layout, compact floating controls, collapsible
@@ -361,6 +364,30 @@ only for issues with an actionable map target. Empty "no illegal movement" and
 progress uses Start, Destination, and Checkpoint labels instead of raw OSM node
 or graph IDs. The stage does not change matching, legality, scoring, route
 generation, OSM data, cartography tokens, beta gating, or Phase 7 scope.
+
+## Stage 161.6.18 Beta Restriction Visibility, Reset View, and Route Comparison
+
+Stage 161.6.18 keeps learner restriction cartography visible by default for
+scored `/practice/real-london` routes. The beta legend now names One-way, No
+entry, No left turn, No right turn, No U-turn, No straight on, and Restricted
+movement separately, while dev QA overlays, raw OSM IDs, relation IDs, way IDs,
+node IDs, graph IDs, manual route input, and fixture filenames remain hidden
+from the learner page.
+
+Route-review issue overlays are grouped before rendering. Repeated
+disconnected-road diagnostics across adjacent split roads collapse to one
+learner gap issue at the first break point, with the message "Your drawn route
+has a gap. Continue the line so it connects from start to finish." Existing
+wrong-way, no-entry, restricted-road, and turn issue grouping still places one
+marker at the meaningful mistake point rather than one marker per split OSM
+segment.
+
+Reset view is now view-only. It resets zoom, pan/framing, and interaction mode
+without clearing the drawing, submitted score, matching state, feedback, map
+selection, or exercise selection. Erase route remains the explicit destructive
+action that clears the drawing and attempt state. After Submit, learners can
+show or hide the shortest legal route for comparison when one exists; the
+comparison overlay keeps the learner's route and issue markers visible.
 
 ## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
 

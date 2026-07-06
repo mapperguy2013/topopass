@@ -648,7 +648,7 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "shortest-legal-route",
-      label: "Correct route",
+      label: "Shortest legal route",
       description: "Blue dashed line is the legal comparison route when available.",
       tone: "shortest"
     },
@@ -785,7 +785,7 @@ export function buildLearnerRestrictionLegendItems(): SyntheticStreetMapLegendIt
     },
     {
       id: "shortest-legal-route",
-      label: "Correct route",
+      label: "Shortest legal route",
       description: "Blue dashed line is the legal comparison route when available.",
       tone: "shortest"
     },
@@ -820,9 +820,33 @@ export function buildLearnerRestrictionLegendItems(): SyntheticStreetMapLegendIt
       tone: "restriction"
     },
     {
-      id: "restricted-turn",
-      label: "Restricted turn",
-      description: "Red turn-ban symbols mark banned junction turns where converted data exists.",
+      id: "no-left-turn",
+      label: "No left turn",
+      description: "Red turn-ban symbols mark banned left turns where converted data exists.",
+      tone: "turn"
+    },
+    {
+      id: "no-right-turn",
+      label: "No right turn",
+      description: "Red turn-ban symbols mark banned right turns where converted data exists.",
+      tone: "turn"
+    },
+    {
+      id: "no-u-turn",
+      label: "No U-turn",
+      description: "Red turn-ban symbols mark banned U-turns where converted data exists.",
+      tone: "turn"
+    },
+    {
+      id: "no-straight-on",
+      label: "No straight on",
+      description: "Red turn-ban symbols mark banned straight-ahead movements where converted data exists.",
+      tone: "turn"
+    },
+    {
+      id: "restricted-movement",
+      label: "Restricted movement",
+      description: "Red restriction symbols mark restricted roads or blocked movements where converted data exists.",
       tone: "turn"
     },
     {

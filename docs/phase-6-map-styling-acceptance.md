@@ -74,7 +74,7 @@ Layer and overlay rules:
   hierarchy and labels.
 - One-way and restriction cartography remains zoom-aware and subordinate to
   route-review warnings.
-- Correct route, attempted route, accepted alternative, illegal sections,
+- Shortest legal route, attempted route, accepted alternative, illegal sections,
   checkpoints, hints, review callouts, selected focus, legend, and attribution
   stay above the base map in the documented Phase 6 layer order.
 - Mobile readability keeps 44 px touch targets, map-first scenarios, and
@@ -453,10 +453,11 @@ distance, extra distance, pass/fail state, and learner-friendly comments from
 the existing review pipeline.
 
 The learner legend is now collapsed and compact. It uses the beta-friendly
-labels Start, Destination, Checkpoint, Your route, Correct route, Accepted
-alternative, Illegal / wrong way, Missed checkpoint, One-way, No entry,
-Restricted turn, Major road, Secondary road, Local street, Park / open space,
-Water, and Rail / station. The larger dev/QA legend remains available outside
+labels Start, Destination, Checkpoint, Your route, Shortest legal route,
+Accepted alternative, Illegal / wrong way, Missed checkpoint, One-way, No
+entry, No left turn, No right turn, No U-turn, No straight on, Restricted
+movement, Major road, Secondary road, Local street, Park / open space, Water,
+and Rail / station. The larger dev/QA legend remains available outside
 student beta mode. Restriction symbols still render where converted data
 exists, with the existing zoom decluttering rules, and no dev QA panels,
 manual route input, raw OSM IDs, graph IDs, or fixture filenames are exposed on
@@ -475,9 +476,9 @@ single feedback panel is the learner-facing place for pass/fail state, score,
 route distance, shortest legal route distance, extra distance, missed
 checkpoints, illegal movement feedback, and one clear coaching note from the
 current review pipeline. The compact collapsed legend behaves like a map
-layer/legend control and uses learner wording such as One-way, No entry, and
-Restricted turn. Dev QA, raw IDs, blocked-way diagnostics, manual route input,
-and fixture filenames remain hidden from `/practice/real-london` and available
+layer/legend control and uses learner wording such as One-way, No entry, No
+left turn, No right turn, No U-turn, and Restricted movement. Dev QA, raw IDs,
+blocked-way diagnostics, manual route input, and fixture filenames remain hidden from `/practice/real-london` and available
 only in dev routes or explicit dev mode.
 
 The Stage 161.6.14 shell uses familiar modern map-app interaction patterns
@@ -519,9 +520,10 @@ route, and Reset view. Submit stays in the compact route header. Restriction
 symbols remain learner-facing and visible by default, but their visibility
 control moves into the compact legend/layer panel rather than crowding the
 route toolbar. The compact legend keeps the learner label set: Start,
-Destination, Checkpoint, Your route, Correct route, Accepted alternative,
-Illegal / wrong way, Missed checkpoint, One-way, No entry, Restricted turn,
-Major road, Secondary road, Local street, Park / open space, Water, and Rail /
+Destination, Checkpoint, Your route, Shortest legal route, Accepted
+alternative, Illegal / wrong way, Missed checkpoint, One-way, No entry, No left
+turn, No right turn, No U-turn, No straight on, Restricted movement, Major
+road, Secondary road, Local street, Park / open space, Water, and Rail /
 station.
 
 The post-submit Route feedback panel remains the only large feedback surface.
@@ -549,6 +551,29 @@ map issues where a focus target exists. Empty "No illegal movement..." and "No
 missed checkpoint..." cards are hidden from beta feedback. Required stop
 progress uses Start, Destination, and Checkpoint labels rather than OSM node
 ids or internal graph labels.
+
+Stage 161.6.18 fixes the remaining beta restriction, reset, and route
+comparison usability issues without changing matching, legality, scoring,
+route generation, OSM data, cartography tokens, beta gates, or Phase 7 scope.
+The learner restriction layer remains visible by default for scored beta
+practice. The compact legend names One-way, No entry, No left turn, No right
+turn, No U-turn, No straight on, and Restricted movement separately and keeps
+raw OSM, relation, way, node, road, and graph IDs out of `/practice/real-london`.
+
+Repeated issue callouts are grouped before rendering. Wrong-way, no-entry,
+restricted-road, and turn issues continue to group by meaningful learner
+mistake, while repeated disconnected-road warnings across adjacent split roads
+collapse into one gap marker at the first break point. The learner message is
+"Your drawn route has a gap. Continue the line so it connects from start to
+finish."
+
+Reset view is view-only: it resets zoom, pan/framing, and map interaction mode
+without clearing the drawing, submitted result, matching message, or feedback.
+Erase route remains the explicit action for clearing the drawing and attempt
+state. After Submit, a Show shortest legal route / Hide shortest legal route
+comparison action appears when a legal comparison route exists. The comparison
+draws the existing validated shortest legal route while keeping the learner's
+attempt and issue markers visible.
 
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
@@ -763,7 +788,7 @@ before wider scored practice use.
 
 ### 6. Route Review Clarity
 
-- [ ] Correct route, user route, missed sections, illegal sections, hints,
+- [ ] Shortest legal route, user route, missed sections, illegal sections, hints,
       checkpoints, and scoring/review feedback are readable together.
 - [ ] The review state explains what happened without relying only on colour.
 - [ ] Illegal movements and missed checkpoints are visually separable from
@@ -971,7 +996,7 @@ Route-review styling meanings:
 
 - Attempted route: orange learner line with a pale casing. This is the route the
   learner drew or submitted.
-- Correct route: blue dashed reference line with a quiet casing. This answers
+- Shortest legal route: blue dashed reference line with a quiet casing. This answers
   what the learner should have done when a fastest/correct route is available.
 - Accepted alternative route: teal dotted line in visual QA fixture support.
   This communicates also valid without adding route-engine alternative logic.

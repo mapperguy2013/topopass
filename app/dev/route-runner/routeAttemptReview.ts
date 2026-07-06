@@ -438,7 +438,7 @@ function itemForPipelineWarning(warning: DrawnRoutePipelineResult["warnings"][nu
     return {
       id: `warning-${warning.code}-${warning.fromRoadId ?? "unknown"}-${warning.toRoadId ?? "unknown"}`,
       label: "Disconnected matched roads",
-      detail: "Your drawn route has a gap. Continue the route so it connects from start to finish.",
+      detail: "Your drawn route has a gap. Continue the line so it connects from start to finish.",
       severity: "error"
     };
   }

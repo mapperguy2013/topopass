@@ -744,6 +744,10 @@ function learnerFeedbackWhatHappened(review: RouteAttemptReview): string {
   return review.suggestedFailureReason ?? learnerFeedbackSummarySentence(review);
 }
 
+function learnerRouteMatchesShortestLegalRoute(review: RouteAttemptReview): boolean {
+  return learnerReviewMetricValue(review, "extra-distance") === "0 m";
+}
+
 function buildLearnerFeedbackIssueSections(review: RouteAttemptReview): LearnerFeedbackIssueSection[] {
   const routeEfficiencyItems = review.missedRestrictions.filter(isRouteEfficiencyReviewItem);
   const requiredStopItems = review.missedRestrictions.filter(isRequiredStopReviewItem);
@@ -3978,6 +3982,8 @@ export function RouteRunnerClient({
       }),
     [activeMap, activeMapGraph, selectedExercise, selectedExerciseAvailability]
   );
+  const shortestLegalRouteComparisonAvailable = shortestRouteReplayOverlay.status === "available";
+  const shortestLegalRouteComparisonVisible = fastestRouteOverlay.status === "available";
   const selectedExerciseMetadata = useMemo(
     () => (isConvertedOsmMap ? null : getExerciseMetadata(MARLOWE_DISTRICT_EXERCISE_METADATA, selectedExerciseId)),
     [isConvertedOsmMap, selectedExerciseId]
@@ -4990,9 +4996,6 @@ export function RouteRunnerClient({
   function resetRouteMapView() {
     clearMapPointerGestureState();
     setIsPanningMap(false);
-    if (isStudentBetaRouteRunner) {
-      clearDrawnAttempt();
-    }
     setMapViewportState(resetMapViewport());
   }
 
@@ -7291,6 +7294,29 @@ export function RouteRunnerClient({
                     <p className="mt-1 text-xs leading-5 text-slate-600">{drawnSubmitState.message}</p>
                   ) : null}
                 </div>
+
+                {shortestLegalRouteComparisonAvailable ? (
+                  <div className="mt-4 flex flex-col gap-3 rounded-lg bg-sky-50 px-3 py-3 text-sky-950 ring-1 ring-sky-100 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Route comparison</p>
+                      <p className="mt-1 leading-6">
+                        {learnerRouteMatchesShortestLegalRoute(drawnAttemptReview)
+                          ? "Your route matches the shortest legal route."
+                          : drawnAttemptReview.missedRestrictions.some(isRouteEfficiencyReviewItem)
+                            ? "Compare your route with the shortest legal route to remove unnecessary detours."
+                            : "Compare your route with the shortest legal route while keeping your attempt visible."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleFastestRouteOverlay}
+                      aria-pressed={shortestLegalRouteComparisonVisible}
+                      className="min-h-11 rounded-md border border-sky-300 bg-white px-3 py-2 text-sm font-semibold text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                    >
+                      {shortestLegalRouteComparisonVisible ? "Hide shortest legal route" : "Show shortest legal route"}
+                    </button>
+                  </div>
+                ) : null}
 
                 {learnerFeedbackIssueSections.length > 0 ? (
                   <div className="mt-4 space-y-3">

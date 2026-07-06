@@ -150,13 +150,17 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
       "Destination",
       "Checkpoint",
       "Your route",
-      "Correct route",
+      "Shortest legal route",
       "Accepted alternative",
       "Illegal / wrong way",
       "Missed checkpoint",
       "One-way",
       "No entry",
-      "Restricted turn",
+      "No left turn",
+      "No right turn",
+      "No U-turn",
+      "No straight on",
+      "Restricted movement",
       "Major road",
       "Secondary road",
       "Local street",
@@ -167,11 +171,14 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
   );
   assert.ok(model.legendItems.some((item) => item.id === "one-way" && /one-way/i.test(item.description)));
   assert.ok(model.legendItems.some((item) => item.id === "no-entry" && /no entry/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "restricted-turn" && /turn/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-left-turn" && /left turn/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-right-turn" && /right turn/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-u-turn" && /u-turn/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "restricted-movement" && /movement/i.test(item.label)));
   assert.ok(
     model.legendItems.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
   );
-  assert.ok(model.legendItems.length <= 18);
+  assert.ok(model.legendItems.length <= 22);
 });
 
 test("Stage 132 route attempt flow uses existing runner and remains scoreable", () => {
@@ -187,8 +194,10 @@ test("Stage 132 route attempt flow uses existing runner and remains scoreable", 
   assert.equal(model.mapInteraction.eraseClearsDrawingAndResult, true);
   assert.equal(model.mapInteraction.eraseKeepsSelectedMapAndExercise, true);
   assert.equal(model.mapInteraction.eraseKeepsCurrentMapView, true);
-  assert.equal(model.mapInteraction.resetClearsDrawingAndResult, true);
+  assert.equal(model.mapInteraction.resetClearsDrawingAndResult, false);
   assert.equal(model.mapInteraction.resetResetsMapView, true);
+  assert.equal(model.mapInteraction.resetKeepsCurrentDrawing, true);
+  assert.equal(model.mapInteraction.resetKeepsSubmittedResult, true);
   assert.equal(model.mapInteraction.resetKeepsSelectedMapAndExercise, true);
   assert.equal(model.mapInteraction.resetReturnsToDrawMode, true);
   assert.equal(model.mapInteraction.restrictionToggleLabel, "Show restrictions");
@@ -258,6 +267,9 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   assert.equal(model.learnerUi.resultPanels.requiredStopProgressUsesLearnerLabels, true);
   assert.equal(model.learnerUi.resultPanels.duplicateRequiredStopProgressPanelVisible, false);
   assert.equal(model.learnerUi.resultPanels.rawInternalIdsVisible, false);
+  assert.equal(model.learnerUi.resultPanels.shortestLegalRouteComparisonAvailableAfterSubmit, true);
+  assert.equal(model.learnerUi.resultPanels.shortestLegalRouteComparisonKeepsAttemptVisible, true);
+  assert.equal(model.learnerUi.resultPanels.shortestLegalRouteComparisonActionLabel, "Show shortest legal route");
   assert.equal(model.learnerUi.instructionArea.visibleInstructionAreaCount, 1);
   assert.equal(model.learnerUi.instructionArea.mapWorkspaceInstructionVisible, false);
   assert.equal(
