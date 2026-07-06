@@ -218,7 +218,12 @@ import {
   isMiddleButtonMapPanActive,
   isMiddleButtonMapPanPointer,
   leaveMapScrollLockState,
+  routeRunnerMapZoomLimitsForViewport,
   resetMapViewport,
+  ROUTE_RUNNER_MAP_ZOOM_LIMITS,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+  ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX,
   setMapInteractionMode,
   shouldPreventWheelPageScrollOverMap,
   tryReleaseMapPointerCapture,
@@ -320,6 +325,7 @@ const CANVAS_WIDTH = 1120;
 const STUDENT_BETA_CANVAS_WIDTH = 1920;
 const CANVAS_HEIGHT = 760;
 const STUDENT_BETA_CANVAS_HEIGHT = 912;
+const STUDENT_BETA_PHONE_MEDIA_QUERY = `(max-width: ${ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX}px)`;
 const STUDENT_BETA_MAP_MAX_WIDTH_CSS = "min(100%, 1920px, max(640px, calc(210.5dvh - 168px)))";
 const STUDENT_BETA_MAP_MAX_HEIGHT_CSS = "min(912px, calc(100dvh - 80px))";
 const STUDENT_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
@@ -3740,8 +3746,22 @@ export function RouteRunnerClient({
     mapOptions
   });
   const isStudentBetaRouteRunner = mode === "student-beta";
-  const canvasWidth = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_WIDTH : CANVAS_WIDTH;
-  const canvasHeight = isStudentBetaRouteRunner ? STUDENT_BETA_CANVAS_HEIGHT : CANVAS_HEIGHT;
+  const [isStudentBetaPhoneViewport, setIsStudentBetaPhoneViewport] = useState(false);
+  const isStudentBetaPhoneMap = isStudentBetaRouteRunner && isStudentBetaPhoneViewport;
+  const canvasWidth = isStudentBetaPhoneMap
+    ? ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH
+    : isStudentBetaRouteRunner
+      ? STUDENT_BETA_CANVAS_WIDTH
+      : CANVAS_WIDTH;
+  const canvasHeight = isStudentBetaPhoneMap
+    ? ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT
+    : isStudentBetaRouteRunner
+      ? STUDENT_BETA_CANVAS_HEIGHT
+      : CANVAS_HEIGHT;
+  const activeMapZoomLimits = routeRunnerMapZoomLimitsForViewport({
+    studentBeta: isStudentBetaRouteRunner,
+    viewportWidth: isStudentBetaPhoneViewport ? ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX : Number.POSITIVE_INFINITY
+  });
   const learnerMarkerImageAssets = useLearnerMarkerImageAssets();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
@@ -3766,6 +3786,7 @@ export function RouteRunnerClient({
   const [routeFeedbackDrawerOpen, setRouteFeedbackDrawerOpen] = useState(false);
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
   const [isDrawing, setIsDrawing] = useState(false);
+  const studentBetaPhoneInitialZoomAppliedRef = useRef(false);
   const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
   const [showTurnRestrictions, setShowTurnRestrictions] = useState(true);
   const [osmDebugOverlayState, setOsmDebugOverlayState] = useState<OsmDebugOverlayState>(() =>
@@ -3821,6 +3842,34 @@ export function RouteRunnerClient({
     () => mapOptions.map((option) => lazyMapOptionsById[option.id] ?? option),
     [lazyMapOptionsById, mapOptions]
   );
+
+  useEffect(() => {
+    if (!isStudentBetaRouteRunner || typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      setIsStudentBetaPhoneViewport(false);
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(STUDENT_BETA_PHONE_MEDIA_QUERY);
+    const syncPhoneViewport = () => {
+      setIsStudentBetaPhoneViewport(mediaQuery.matches);
+    };
+
+    syncPhoneViewport();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncPhoneViewport);
+
+      return () => {
+        mediaQuery.removeEventListener("change", syncPhoneViewport);
+      };
+    }
+
+    mediaQuery.addListener(syncPhoneViewport);
+
+    return () => {
+      mediaQuery.removeListener(syncPhoneViewport);
+    };
+  }, [isStudentBetaRouteRunner]);
 
   const visibleMapOptions = useMemo(
     () => {
@@ -4038,11 +4087,36 @@ export function RouteRunnerClient({
     setShowTurnRestrictions(!isConvertedOsmMap);
   }, [activeMap.id, isConvertedOsmMap, isStudentBetaRouteRunner]);
 
+  useEffect(() => {
+    if (!isStudentBetaPhoneMap || studentBetaPhoneInitialZoomAppliedRef.current) {
+      if (!isStudentBetaPhoneMap) {
+        studentBetaPhoneInitialZoomAppliedRef.current = false;
+      }
+
+      return;
+    }
+
+    studentBetaPhoneInitialZoomAppliedRef.current = true;
+    setMapViewportState((currentState) => {
+      const desktopDefault = createDefaultMapViewportState(ROUTE_RUNNER_MAP_ZOOM_LIMITS);
+      const isUntouchedDefault =
+        currentState.zoom === desktopDefault.zoom &&
+        currentState.panX === desktopDefault.panX &&
+        currentState.panY === desktopDefault.panY &&
+        currentState.interactionMode === desktopDefault.interactionMode;
+
+      return isUntouchedDefault ? createDefaultMapViewportState(activeMapZoomLimits) : currentState;
+    });
+  }, [activeMapZoomLimits, isStudentBetaPhoneMap]);
+
   const baseViewport = useMemo(() => createViewport(activeMap, canvasWidth, canvasHeight), [activeMap, canvasHeight, canvasWidth]);
-  const viewport = useMemo(() => buildZoomedMapViewport(baseViewport, mapViewportState), [baseViewport, mapViewportState]);
+  const viewport = useMemo(
+    () => buildZoomedMapViewport(baseViewport, mapViewportState, activeMapZoomLimits),
+    [activeMapZoomLimits, baseViewport, mapViewportState]
+  );
   const activeMapGraph = useMemo(() => buildMapGraph(activeMap), [activeMap]);
-  const canZoomIn = canZoomInMapView(mapViewportState);
-  const canZoomOut = canZoomOutMapView(mapViewportState);
+  const canZoomIn = canZoomInMapView(mapViewportState, activeMapZoomLimits);
+  const canZoomOut = canZoomOutMapView(mapViewportState, activeMapZoomLimits);
   const mapInteractionMode = mapViewportState.interactionMode;
   const isPanMode = mapInteractionMode === "pan";
   const exerciseAvailabilityById = useMemo(
@@ -4915,7 +4989,7 @@ export function RouteRunnerClient({
       };
 
       setMapViewportState((currentState) =>
-        applyWheelZoomToMapView(currentState, event.deltaY, focusPoint, baseViewport)
+        applyWheelZoomToMapView(currentState, event.deltaY, focusPoint, baseViewport, activeMapZoomLimits)
       );
     };
 
@@ -4926,7 +5000,7 @@ export function RouteRunnerClient({
     return () => {
       canvas.removeEventListener("wheel", handleWheel);
     };
-  }, [baseViewport, canvasHeight, canvasWidth]);
+  }, [activeMapZoomLimits, baseViewport, canvasHeight, canvasWidth]);
 
   useEffect(() => {
     const handleDocumentPointerDown = (event: globalThis.PointerEvent) => {
@@ -5176,7 +5250,8 @@ export function RouteRunnerClient({
     }
 
     activePinchGestureRef.current =
-      activePinchGestureRef.current ?? createMapPinchGesture(mapViewportStateRef.current, pinchPointers);
+      activePinchGestureRef.current ??
+      createMapPinchGesture(mapViewportStateRef.current, pinchPointers, activeMapZoomLimits);
     cancelActiveRouteGestureForPinch();
 
     return true;
@@ -5259,17 +5334,17 @@ export function RouteRunnerClient({
   }
 
   function zoomInRouteMap() {
-    setMapViewportState((currentState) => zoomInMapView(currentState, undefined, baseViewport));
+    setMapViewportState((currentState) => zoomInMapView(currentState, activeMapZoomLimits, baseViewport));
   }
 
   function zoomOutRouteMap() {
-    setMapViewportState((currentState) => zoomOutMapView(currentState, undefined, baseViewport));
+    setMapViewportState((currentState) => zoomOutMapView(currentState, activeMapZoomLimits, baseViewport));
   }
 
   function resetRouteMapView() {
     clearMapPointerGestureState();
     setIsPanningMap(false);
-    setMapViewportState(resetMapViewport());
+    setMapViewportState(resetMapViewport(activeMapZoomLimits));
   }
 
   function setRouteMapInteractionMode(interactionMode: MapInteractionMode) {
@@ -5378,7 +5453,7 @@ export function RouteRunnerClient({
       setIsPanningMap(false);
       setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
       setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
-      setMapViewportState(resetMapViewport());
+      setMapViewportState(resetMapViewport(activeMapZoomLimits));
       setMapOptionId(linkedMapOption?.id ?? DEFAULT_ROUTE_RUNNER_MAP_ID);
       setExerciseId(linkedExercise.id);
       setAdaptiveLauncherMessage(
@@ -5445,7 +5520,7 @@ export function RouteRunnerClient({
     setIsPanningMap(false);
     setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
     setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
-    setMapViewportState(resetMapViewport());
+    setMapViewportState(resetMapViewport(activeMapZoomLimits));
     setFastestRouteRevealState(hideFastestRouteReveal());
     clearDrawnAttempt();
   }
@@ -5489,7 +5564,7 @@ export function RouteRunnerClient({
     setIsPanningMap(false);
     setOsmDebugOverlayState(createDefaultOsmDebugOverlayState());
     setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
-    setMapViewportState(resetMapViewport());
+    setMapViewportState(resetMapViewport(activeMapZoomLimits));
     setFastestRouteRevealState(hideFastestRouteReveal());
     clearDrawnAttempt();
   }
@@ -5568,7 +5643,7 @@ export function RouteRunnerClient({
 
       if (pinchGesture && pinchPointers) {
         setMapViewportState(() => {
-          const nextState = applyPinchZoomToMapView(pinchGesture, pinchPointers, baseViewport);
+          const nextState = applyPinchZoomToMapView(pinchGesture, pinchPointers, baseViewport, activeMapZoomLimits);
 
           mapViewportStateRef.current = nextState;
 
@@ -5611,7 +5686,8 @@ export function RouteRunnerClient({
             deltaX: currentPoint.clientX - previousPoint.clientX,
             deltaY: currentPoint.clientY - previousPoint.clientY
           },
-          baseViewport
+          baseViewport,
+          activeMapZoomLimits
         )
       );
       return;
@@ -5662,7 +5738,7 @@ export function RouteRunnerClient({
       const remainingPinchPointers = activePinchPointerPair();
 
       activePinchGestureRef.current = remainingPinchPointers
-        ? createMapPinchGesture(mapViewportStateRef.current, remainingPinchPointers)
+        ? createMapPinchGesture(mapViewportStateRef.current, remainingPinchPointers, activeMapZoomLimits)
         : null;
 
       if (!remainingPinchPointers) {
@@ -6631,13 +6707,19 @@ export function RouteRunnerClient({
             <div
               className={`relative w-full overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
                 isStudentBetaRouteRunner
-                  ? "mx-auto min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
+                  ? isStudentBetaPhoneMap
+                    ? "mx-auto min-h-[720px]"
+                    : "mx-auto min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
                   : "mt-4 min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               }`}
               style={{
                 aspectRatio: `${canvasWidth} / ${canvasHeight}`,
                 ...(isStudentBetaRouteRunner
-                  ? {
+                  ? isStudentBetaPhoneMap
+                    ? {
+                        maxWidth: "100%"
+                      }
+                    : {
                       maxWidth: STUDENT_BETA_MAP_MAX_WIDTH_CSS,
                       maxHeight: STUDENT_BETA_MAP_MAX_HEIGHT_CSS
                     }

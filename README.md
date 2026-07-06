@@ -1279,6 +1279,14 @@ exercise as the catalogue fallback. Real London OSM fixtures remain selectable
 and keep OpenStreetMap attribution, while Marlowe is labelled as fictional
 practice without OSM attribution. The route setup summary now separates map and
 exercise names and uses the clearer `Change map or route` CTA.
+Stage 161.6.25 improves the phone layout for `/practice/real-london`. On
+phone-width student-beta viewports, the map switches to a tall portrait canvas
+with matching internal and displayed aspect ratio, so the map is resized rather
+than stretched and pointer-to-map conversion stays aligned for drawing. Phone
+users start at 300% zoom, and Reset view is device-default view-only behaviour:
+it returns phone users to 300% zoom while preserving the selected map, selected
+exercise, drawing, submitted result, and route feedback state. Desktop and
+tablet sizing keep the existing wide, viewport-bounded canvas.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

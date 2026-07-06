@@ -24,6 +24,9 @@ import {
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
   REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
   REAL_LONDON_BETA_MAP_OPTIONS,
+  REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT,
+  REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX,
+  REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX,
   REAL_LONDON_BETA_PREFERRED_DEFAULT_EXERCISE_TITLE,
   REAL_LONDON_BETA_PRACTICE_DISPLAY_LABEL,
   REAL_LONDON_BETA_PRACTICE_PATH,
@@ -450,8 +453,8 @@ test("Stage 139 mobile feedback and map interaction affordances stay usable", ()
   assert.equal(model.feedback.visible, true);
   assert.equal(model.mobileLayout.feedbackFormMobileSafe, true);
   assert.equal(model.mobileLayout.feedbackMinTouchTargetPx, 44);
-  assert.equal(model.mobileLayout.routeRunnerMapMinHeightPx, 360);
-  assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, 420);
+  assert.equal(model.mobileLayout.routeRunnerMapMinHeightPx, REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX);
+  assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX);
   assert.equal(model.mobileLayout.routeRunnerMapTouchAction, "none");
   assert.equal(model.mapInteraction.drawingEnabled, true);
   assert.equal(model.mapInteraction.clearActionLabel, "Erase route");
@@ -469,12 +472,20 @@ test("Stage 156 mobile and tablet map readability contract uses central touch-sa
   assert.equal(model.mobileLayout.markerHitTargetMinPx, 44);
   assert.ok(model.mobileLayout.reviewIssueHitTargetMinPx > model.mobileLayout.markerHitTargetMinPx);
   assert.ok(model.mobileLayout.calloutMinHeightPx >= 34);
-  assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, 420);
+  assert.equal(model.mobileLayout.routeRunnerMapPreferredMinHeightPx, REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX);
+  assert.equal(model.mobileLayout.routeRunnerPhoneMapMinHeightPx, REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX);
+  assert.equal(model.mobileLayout.routeRunnerPhoneInitialZoomPercent, REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT);
+  assert.equal(model.mobileLayout.routeRunnerPhoneResetZoomPercent, REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT);
+  assert.equal(model.mobileLayout.routeRunnerPhoneUsesMatchingCanvasAspect, true);
+  assert.ok(
+    model.mobileLayout.routeRunnerPhoneCanvasHeightPx / model.mobileLayout.routeRunnerPhoneCanvasWidthPx > 2,
+    "phone canvas should use a tall portrait aspect ratio"
+  );
   assert.equal(model.mobileLayout.routeRunnerTabletMapPreferredMinHeightPx, 560);
   assert.equal(model.mobileLayout.routeRunnerLandscapeMapPreferredMinHeightPx, 360);
   assert.ok(
-    model.mobileLayout.routeRunnerTabletMapPreferredMinHeightPx >
-      model.mobileLayout.routeRunnerMapPreferredMinHeightPx
+    model.mobileLayout.routeRunnerMapPreferredMinHeightPx >
+      model.mobileLayout.routeRunnerTabletMapPreferredMinHeightPx
   );
   assert.equal(model.mobileLayout.horizontalOverflowRisk, false);
 });

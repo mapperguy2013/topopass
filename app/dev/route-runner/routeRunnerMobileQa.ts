@@ -8,6 +8,8 @@ import {
   createDefaultMapViewportState,
   enterMapScrollLockState,
   leaveMapScrollLockState,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
   shouldPreventWheelPageScrollOverMap
 } from "./mapViewport.ts";
 import { buildRouteExerciseDisplayModel } from "./routeRunnerExerciseDisplay.ts";
@@ -138,6 +140,7 @@ const MOBILE_MIN_MAP_WIDTH = 280;
 const MOBILE_MIN_MAP_HEIGHT = 240;
 const ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH = 1920;
 const ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT = 912;
+const ROUTE_RUNNER_PHONE_MAP_MIN_HEIGHT = 720;
 
 const CONTROL_ORDER: RouteRunnerMobileQaControlId[] = [
   "map-selector",
@@ -319,9 +322,10 @@ function buildRouteRunnerMobileQaMapArea(
   const width = Math.min(ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH, Math.max(0, viewportWidth - horizontalPadding));
   const viewportBoundedDesktopHeight = Math.max(360, viewportHeight - 80);
   const desktopAspectHeight = width / (ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH / ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT);
+  const phoneAspectHeight = width / (ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH / ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT);
   const preferredHeight =
     viewportCategory === "mobile"
-      ? Math.min(420, Math.max(MOBILE_MIN_MAP_HEIGHT, viewportHeight * 0.45))
+      ? Math.min(viewportHeight * 1.1, Math.max(ROUTE_RUNNER_PHONE_MAP_MIN_HEIGHT, phoneAspectHeight))
       : Math.min(ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT, viewportBoundedDesktopHeight, Math.max(420, desktopAspectHeight));
   const height = normalizeDimension(preferredHeight);
   const mapViewport = buildSemanticScreenMapViewport(option, width, height);

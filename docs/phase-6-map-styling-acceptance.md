@@ -700,6 +700,15 @@ label, the exercise title, and a clearer `Change map or route` button. Fictional
 Marlowe practice does not show OSM attribution, while Real London OSM maps keep
 OpenStreetMap attribution.
 
+Stage 161.6.25 changes only the phone-sized student beta map layout. Phones use
+a taller portrait canvas with matching internal/display aspect ratio, so roads,
+labels, markers, overlays, and drawn-route input are resized/refit rather than
+stretched. Phone users start at 300% zoom; desktop and tablet keep the existing
+wide, viewport-bounded default. Reset view remains view-only and returns to the
+current device default, so on phones it resets pan/framing and zoom back to
+300% without clearing the drawn route, submitted result, selected map, selected
+exercise, or feedback drawer state.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

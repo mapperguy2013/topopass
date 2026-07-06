@@ -17,6 +17,11 @@ import {
 import { buildPracticeExercisesPanelModel } from "../../dev/route-runner/routeRunnerCompactPracticePanels.ts";
 import { resolveRouteRunnerExerciseSelection } from "../../dev/route-runner/routeRunnerInitialState.ts";
 import {
+  ROUTE_RUNNER_PHONE_DEFAULT_ZOOM,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH
+} from "../../dev/route-runner/mapViewport.ts";
+import {
   ONE_WAY_ARROW_MIN_SPACING_METERS,
   buildLearnerRestrictionLegendItems
 } from "../../dev/route-runner/restrictionMapVisuals.ts";
@@ -42,6 +47,13 @@ export const REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS = "100%";
 export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE = "viewport-height-bounded-wide-canvas";
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX = 1920;
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX = 912;
+export const REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX = 720;
+export const REAL_LONDON_BETA_PHONE_REFERENCE_WIDTH_PX = 390;
+export const REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX = Math.round(
+  REAL_LONDON_BETA_PHONE_REFERENCE_WIDTH_PX *
+    (ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT / ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH)
+);
+export const REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT = ROUTE_RUNNER_PHONE_DEFAULT_ZOOM * 100;
 export const REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
 export const REAL_LONDON_BETA_FEEDBACK_DRAWER_WIDTH_CSS = "min(26rem, calc(100vw - 2rem))";
 export const REAL_LONDON_BETA_FEEDBACK_DRAWER_MOBILE_MAX_HEIGHT_CSS = "78dvh";
@@ -309,8 +321,15 @@ export type RealLondonBetaPracticeScreenModel =
         limitationsCollapsedByDefault: true;
         feedbackFormMobileSafe: true;
         feedbackMinTouchTargetPx: 44;
-        routeRunnerMapMinHeightPx: 360;
-        routeRunnerMapPreferredMinHeightPx: 420;
+        routeRunnerMapMinHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX;
+        routeRunnerMapPreferredMinHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX;
+        routeRunnerPhoneCanvasWidthPx: typeof ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH;
+        routeRunnerPhoneCanvasHeightPx: typeof ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT;
+        routeRunnerPhoneMapMinHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX;
+        routeRunnerPhoneMapPreferredHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX;
+        routeRunnerPhoneInitialZoomPercent: typeof REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT;
+        routeRunnerPhoneResetZoomPercent: typeof REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT;
+        routeRunnerPhoneUsesMatchingCanvasAspect: true;
         routeRunnerTabletMapPreferredMinHeightPx: number;
         routeRunnerLandscapeMapPreferredMinHeightPx: number;
         routeRunnerMapTouchAction: "none";
@@ -673,8 +692,15 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       limitationsCollapsedByDefault: true,
       feedbackFormMobileSafe: true,
       feedbackMinTouchTargetPx: 44,
-      routeRunnerMapMinHeightPx: 360,
-      routeRunnerMapPreferredMinHeightPx: 420,
+      routeRunnerMapMinHeightPx: REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX,
+      routeRunnerMapPreferredMinHeightPx: REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX,
+      routeRunnerPhoneCanvasWidthPx: ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+      routeRunnerPhoneCanvasHeightPx: ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+      routeRunnerPhoneMapMinHeightPx: REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX,
+      routeRunnerPhoneMapPreferredHeightPx: REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX,
+      routeRunnerPhoneInitialZoomPercent: REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT,
+      routeRunnerPhoneResetZoomPercent: REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT,
+      routeRunnerPhoneUsesMatchingCanvasAspect: true,
       routeRunnerTabletMapPreferredMinHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.tabletMapMinHeightPx,
       routeRunnerLandscapeMapPreferredMinHeightPx: 360,
       routeRunnerMapTouchAction: "none",

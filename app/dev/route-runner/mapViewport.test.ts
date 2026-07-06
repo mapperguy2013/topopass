@@ -36,6 +36,12 @@ import {
   leaveMapScrollLockState,
   resetMapViewport,
   ROUTE_RUNNER_MAP_ZOOM_LIMITS,
+  ROUTE_RUNNER_PHONE_DEFAULT_ZOOM,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+  ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS,
+  ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX,
+  routeRunnerMapZoomLimitsForViewport,
   setMapInteractionMode,
   setMapPanMode,
   shouldPreventWheelPageScrollOverMap,
@@ -137,6 +143,27 @@ test("default route-runner zoom limits allow 5000 percent maximum zoom", () => {
   assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom, 50);
   assert.equal(zoomed.zoom, 50);
   assert.equal(canZoomInMapView(zoomed), false);
+});
+
+test("Stage 161.6.25 phone beta viewport starts at 300 percent while desktop stays unchanged", () => {
+  const phoneLimits = routeRunnerMapZoomLimitsForViewport({
+    studentBeta: true,
+    viewportWidth: ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX
+  });
+  const desktopLimits = routeRunnerMapZoomLimitsForViewport({
+    studentBeta: true,
+    viewportWidth: ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX + 1
+  });
+  const devLimits = routeRunnerMapZoomLimitsForViewport({
+    studentBeta: false,
+    viewportWidth: ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX
+  });
+
+  assert.equal(ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS.defaultZoom, ROUTE_RUNNER_PHONE_DEFAULT_ZOOM);
+  assert.equal(createDefaultMapViewportState(phoneLimits).zoom, 3);
+  assert.equal(resetMapViewport(phoneLimits).zoom, 3);
+  assert.equal(createDefaultMapViewportState(desktopLimits).zoom, ROUTE_RUNNER_MAP_ZOOM_LIMITS.defaultZoom);
+  assert.equal(createDefaultMapViewportState(devLimits).zoom, ROUTE_RUNNER_MAP_ZOOM_LIMITS.defaultZoom);
 });
 
 test("zoom clamp prevents route-runner viewport going above 5000 percent or below minimum", () => {
@@ -596,6 +623,30 @@ test("high zoom preserves isotropic map scale and coordinate alignment", () => {
   assert.equal(mapWidth / mapHeight, baseViewport.width / baseViewport.height);
   assertPointsRoundTrip([mapPoint], zoomedViewport);
   assert.deepEqual(screenToMapPoint(screenPoint, zoomedViewport), mapPoint);
+});
+
+test("Stage 161.6.25 tall phone viewport preserves isotropic projection and pointer alignment", () => {
+  const phoneViewport: ScreenMapViewport = {
+    width: ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+    height: ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+    mapBounds: {
+      minX: 0,
+      minY: 0,
+      maxX: ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+      maxY: ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT
+    }
+  };
+  const zoomedViewport = buildZoomedMapViewport(
+    phoneViewport,
+    createDefaultMapViewportState(ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS),
+    ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS
+  );
+  const routeDrawingPoint = { x: 420, y: 1440 };
+  const mapWidth = zoomedViewport.mapBounds.maxX - zoomedViewport.mapBounds.minX;
+  const mapHeight = zoomedViewport.mapBounds.maxY - zoomedViewport.mapBounds.minY;
+
+  assertClose(mapWidth / mapHeight, phoneViewport.width / phoneViewport.height, "phone map projection should stay isotropic");
+  assertPointsRoundTrip([routeDrawingPoint], zoomedViewport);
 });
 
 test("panned and zoomed viewport keeps drawing coordinates aligned", () => {

@@ -72,6 +72,14 @@ export type MapWheelInput = {
 export const ROUTE_RUNNER_MAP_ZOOM_LIMITS: MapZoomLimits = {
   ...TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds
 };
+export const ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX = 640;
+export const ROUTE_RUNNER_PHONE_DEFAULT_ZOOM = 3;
+export const ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH = 900;
+export const ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT = 2160;
+export const ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS: MapZoomLimits = {
+  ...ROUTE_RUNNER_MAP_ZOOM_LIMITS,
+  defaultZoom: ROUTE_RUNNER_PHONE_DEFAULT_ZOOM
+};
 
 const ZOOM_EPSILON = 0.000001;
 const MIDDLE_MOUSE_BUTTON = 1;
@@ -404,6 +412,23 @@ export function resetMapViewport(limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_L
 }
 
 export const resetMapViewZoom = resetMapViewport;
+
+export function routeRunnerMapZoomLimitsForViewport(input: {
+  studentBeta: boolean;
+  viewportWidth: number | null | undefined;
+}): MapZoomLimits {
+  const viewportWidth = input.viewportWidth;
+
+  if (
+    input.studentBeta &&
+    Number.isFinite(viewportWidth) &&
+    (viewportWidth as number) <= ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX
+  ) {
+    return ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS;
+  }
+
+  return ROUTE_RUNNER_MAP_ZOOM_LIMITS;
+}
 
 export function setMapInteractionMode(state: MapViewportState, interactionMode: MapInteractionMode): MapViewportState {
   return {
