@@ -1487,7 +1487,7 @@ function drawExerciseStopMarker(input: {
   const pinTipLength = (isPinMarker ? learnerMarkerStyle.pinTipLength ?? 0 : 0) * scale;
   const markerCenter = {
     x: input.point.x,
-    y: isPinMarker ? input.point.y - pinTipLength * 0.72 : input.point.y
+    y: isPinMarker ? input.point.y - pinTipLength : input.point.y
   };
 
   input.context.save();
@@ -1498,11 +1498,10 @@ function drawExerciseStopMarker(input: {
   input.context.strokeStyle = learnerMarkerStyle.haloStrokeColor;
   input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
   input.context.beginPath();
-  input.context.arc(markerCenter.x, markerCenter.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
   if (isPinMarker) {
-    input.context.moveTo(markerCenter.x - radius * 0.58, markerCenter.y + radius * 0.58);
-    input.context.lineTo(input.point.x, input.point.y + 1.5 * scale);
-    input.context.lineTo(markerCenter.x + radius * 0.58, markerCenter.y + radius * 0.58);
+    drawMapPinPath(input.context, markerCenter, radius + learnerMarkerStyle.haloRadiusPadding * scale, input.point);
+  } else {
+    input.context.arc(markerCenter.x, markerCenter.y, radius + learnerMarkerStyle.haloRadiusPadding * scale, 0, Math.PI * 2);
   }
   input.context.fill();
   input.context.stroke();
@@ -1512,11 +1511,10 @@ function drawExerciseStopMarker(input: {
   input.context.strokeStyle = learnerMarkerStyle.strokeColor;
   input.context.lineWidth = learnerMarkerStyle.strokeWidth * scale;
   input.context.beginPath();
-  input.context.arc(markerCenter.x, markerCenter.y, radius, 0, Math.PI * 2);
   if (isPinMarker) {
-    input.context.moveTo(markerCenter.x - radius * 0.5, markerCenter.y + radius * 0.52);
-    input.context.lineTo(input.point.x, input.point.y);
-    input.context.lineTo(markerCenter.x + radius * 0.5, markerCenter.y + radius * 0.52);
+    drawMapPinPath(input.context, markerCenter, radius, input.point);
+  } else {
+    input.context.arc(markerCenter.x, markerCenter.y, radius, 0, Math.PI * 2);
   }
   input.context.fill();
   input.context.stroke();
@@ -1583,6 +1581,21 @@ function drawExerciseStopMarker(input: {
   }
 
   input.context.restore();
+}
+
+function drawMapPinPath(context: CanvasRenderingContext2D, center: Vec2, radius: number, tip: Vec2): void {
+  const top = center.y - radius;
+  const shoulderY = center.y + radius * 0.2;
+  const lowerY = center.y + radius * 0.64;
+  const leftX = center.x - radius * 0.94;
+  const rightX = center.x + radius * 0.94;
+
+  context.moveTo(center.x, top);
+  context.bezierCurveTo(center.x - radius * 0.9, top + radius * 0.1, leftX, center.y - radius * 0.1, leftX, shoulderY);
+  context.bezierCurveTo(leftX, center.y + radius * 0.5, center.x - radius * 0.34, lowerY, tip.x, tip.y);
+  context.bezierCurveTo(center.x + radius * 0.34, lowerY, rightX, center.y + radius * 0.5, rightX, shoulderY);
+  context.bezierCurveTo(rightX, center.y - radius * 0.1, center.x + radius * 0.9, top + radius * 0.1, center.x, top);
+  context.closePath();
 }
 
 function drawSyntheticBackgroundFeature(

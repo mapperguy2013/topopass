@@ -1249,6 +1249,11 @@ compact `START` label bubble; the destination marker uses the same family in
 red with a `DESTINATION` bubble. Checkpoints remain distinct as blue numbered
 markers so they fit the marker family without being confused with start or
 finish points.
+Stage 161.6.23.1 refines that marker family with a stronger teardrop pin
+silhouette. Start and destination pins now have a longer pointed anchor, smaller
+white centre detail, quieter white halo, and larger label bubble, reducing the
+previous circular badge feel while preserving checkpoint styling and all route
+matching, scoring, legality, and map data behaviour.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

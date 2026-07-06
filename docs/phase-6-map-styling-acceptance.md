@@ -652,6 +652,15 @@ same family without looking like the start or finish. The marker changes are
 rendering-only and do not alter matching, scoring, legality, route data, or
 review behavior.
 
+Stage 161.6.23.1 tightens the start/destination pin shape. The canvas renderer
+now draws each start and destination as a single teardrop pin path with a longer
+pointed tip anchored to the exact route node, a smaller white centre detail, a
+quieter white halo, and a larger label bubble. This reduces the previous
+circular badge or target-ring feel while keeping pins readable on desktop and
+mobile. Checkpoint markers remain blue numbered circles, and the correction is
+still rendering-only with no routing, matching, scoring, legality, or map data
+changes.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

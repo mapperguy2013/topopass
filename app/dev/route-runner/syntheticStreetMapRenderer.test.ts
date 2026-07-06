@@ -90,6 +90,14 @@ test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () 
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.fillColor, "#dc2626");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.shape, "pin");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.shape, "pin");
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.pinTipLength >
+      TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.radius
+  );
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.pinTipLength >
+      TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.radius
+  );
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.checkpoint.fillColor, "#2563eb");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.requiredVia.fillColor, "#1d4ed8");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.hints.snapPreview.strokeColor, "#0d9488");
@@ -371,7 +379,19 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.innerFillColor, "#ffffff");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.innerFillColor, "#ffffff");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.fillColor, "rgba(255,255,255,0.97)");
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.minWidth >= 42);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble.minWidth >= 54);
+  assert.ok(
+    (TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.pinTipLength ?? 0) >
+      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.radius
+  );
+  assert.ok(
+    (TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.pinTipLength ?? 0) >
+      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.radius
+  );
+  assert.ok((TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.innerRadiusRatio ?? 1) < 0.4);
+  assert.ok((TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.innerRadiusRatio ?? 1) < 0.4);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.haloRadiusPadding < 7);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding < 7);
   assert.equal(markers.requiredVia.textPrefix, "VIA");
   assert.ok(markers.start.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.tipDistance);
   assert.ok(markers.destination.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius);

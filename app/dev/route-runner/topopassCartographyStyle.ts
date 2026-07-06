@@ -1311,34 +1311,34 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     shadowOffsetY: 2,
     labelBubble: {
       fillColor: "rgba(255,255,255,0.97)",
-      strokeWidth: 1.7,
-      paddingX: 7,
-      paddingY: 4,
-      borderRadius: 7,
-      minWidth: 42,
-      shadowColor: "rgba(15,23,42,0.22)",
-      shadowBlur: 6,
+      strokeWidth: 1.8,
+      paddingX: 9,
+      paddingY: 5,
+      borderRadius: 8,
+      minWidth: 54,
+      shadowColor: "rgba(15,23,42,0.24)",
+      shadowBlur: 7,
       shadowOffsetY: 1.5
     },
     start: {
       fillColor: "#059669",
-      radius: 18,
+      radius: 17,
       text: "START",
       compactText: "S",
       font: "800 10px Arial, sans-serif",
       shape: "pin",
-      pinTipLength: 15
+      pinTipLength: 25
     },
     checkpoint: { fillColor: "#2563eb", radius: 15, textPrefix: "CP", font: "800 9px Arial, sans-serif", shape: "circle" },
     requiredVia: { fillColor: "#1d4ed8", radius: 16, textPrefix: "VIA", font: "800 8px Arial, sans-serif", shape: "circle" },
     destination: {
       fillColor: "#dc2626",
-      radius: 18,
+      radius: 17,
       text: "DESTINATION",
       compactText: "D",
       font: "800 10px Arial, sans-serif",
       shape: "pin",
-      pinTipLength: 15
+      pinTipLength: 25
     }
   },
   hints: {
@@ -1376,14 +1376,14 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "#047857",
         haloColor: "rgba(255,255,255,0.96)",
         haloWidth: 0,
-        yOffset: -50
+        yOffset: -61
       },
       destination: {
         font: "800 10px Arial, sans-serif",
         color: "#b91c1c",
         haloColor: "rgba(255,255,255,0.96)",
         haloWidth: 0,
-        yOffset: -50
+        yOffset: -61
       },
       checkpoint: {
         font: "800 9px Arial, sans-serif",
@@ -1410,33 +1410,33 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shape: "pin",
         fillColor: "#059669",
         strokeColor: "#ffffff",
-        haloColor: "rgba(5,150,105,0.18)",
-        haloStrokeColor: "rgba(6,95,70,0.38)",
-        haloRadiusPadding: 10,
-        strokeWidth: 3.5,
-        radius: 18,
+        haloColor: "rgba(255,255,255,0.72)",
+        haloStrokeColor: "rgba(6,95,70,0.24)",
+        haloRadiusPadding: 6,
+        strokeWidth: 3.2,
+        radius: 17,
         font: "800 10px Arial, sans-serif",
         textColor: "#ffffff",
-        pinTipLength: 15,
+        pinTipLength: 25,
         innerFillColor: "#ffffff",
         innerTextColor: "#047857",
-        innerRadiusRatio: 0.47
+        innerRadiusRatio: 0.36
       },
       destination: {
         shape: "pin",
         fillColor: "#dc2626",
         strokeColor: "#ffffff",
-        haloColor: "rgba(220,38,38,0.14)",
-        haloStrokeColor: "rgba(153,27,27,0.34)",
-        haloRadiusPadding: 9,
-        strokeWidth: 3.25,
-        radius: 18,
+        haloColor: "rgba(255,255,255,0.72)",
+        haloStrokeColor: "rgba(153,27,27,0.24)",
+        haloRadiusPadding: 5,
+        strokeWidth: 3.1,
+        radius: 17,
         font: "800 10px Arial, sans-serif",
         textColor: "#ffffff",
-        pinTipLength: 15,
+        pinTipLength: 25,
         innerFillColor: "#ffffff",
         innerTextColor: "#b91c1c",
-        innerRadiusRatio: 0.47
+        innerRadiusRatio: 0.36
       },
       checkpointBase: {
         shape: "circle",
