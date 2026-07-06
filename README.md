@@ -1113,6 +1113,22 @@ feedback, with the duplicate drawn-score panel, route replay block, local
 attempt IDs, raw OSM/graph IDs, and technical per-leg labels hidden from
 `/practice/real-london`. Dev/debug detail remains available in
 `/dev/route-runner`.
+Stage 161.6.12 makes restriction cartography learner-facing on
+`/practice/real-london`. Converted OSM beta maps now show road and turn
+restriction symbols by default, with one simple `Show restrictions` /
+`Hide restrictions` learner toggle in the map toolbar instead of dev QA
+controls. The legend now names one-way arrows, no-entry/blocked movements,
+no-left-turn, no-right-turn, no-U-turn, restricted roads, attempted route,
+correct route, checkpoints, start, and destination without raw OSM, way,
+node, road, or graph IDs. Post-submit restriction feedback uses learner
+phrases such as "No entry from this direction", "This is a one-way street",
+and "This road is restricted"; raw legality messages remain available only as
+dev/internal detail. The audit found the curated raw Overpass files contain
+one-way tags, access tags, and turn-restriction relations, but the current
+converted scored maps expose one-way road geometry only for those OSM
+fixtures; no-entry, road-closed, and turn-restriction map symbols appear only
+where converted `MapRestriction` data already exists. The renderer does not
+invent restriction data from unconverted raw tags.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

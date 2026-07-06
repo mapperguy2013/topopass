@@ -3548,9 +3548,9 @@ export function RouteRunnerClient({
   }, [exerciseId, selectedExerciseId]);
 
   useEffect(() => {
-    if (isStudentBetaRouteRunner && isConvertedOsmMap) {
-      setShowRoadRestrictions(false);
-      setShowTurnRestrictions(false);
+    if (isStudentBetaRouteRunner) {
+      setShowRoadRestrictions(true);
+      setShowTurnRestrictions(true);
       return;
     }
 
@@ -6113,6 +6113,24 @@ export function RouteRunnerClient({
                 >
                   {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
                 </button>
+                {isStudentBetaRouteRunner ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextValue = !(showRoadRestrictions || showTurnRestrictions);
+                      setShowRoadRestrictions(nextValue);
+                      setShowTurnRestrictions(nextValue);
+                    }}
+                    aria-pressed={showRoadRestrictions || showTurnRestrictions}
+                    className={`pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border px-3 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-red-100 ${
+                      showRoadRestrictions || showTurnRestrictions
+                        ? "border-red-300 bg-red-50/95 text-red-950 hover:bg-red-100"
+                        : "border-slate-300 bg-white/95 text-slate-700 hover:bg-white"
+                    }`}
+                  >
+                    {showRoadRestrictions || showTurnRestrictions ? "Hide restrictions" : "Show restrictions"}
+                  </button>
+                ) : null}
                 {!isStudentBetaRouteRunner ? (
                   <button
                     type="button"
@@ -8141,7 +8159,9 @@ export function RouteRunnerClient({
                                 {isFocused ? "Hide map focus" : "Show on map"}
                               </button>
                             </div>
-                            {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
+                            {item.detail && !isStudentBetaRouteRunner ? (
+                              <p className="mt-1 text-xs leading-5">{item.detail}</p>
+                            ) : null}
                           </li>
                         );
                       })}
@@ -8185,7 +8205,9 @@ export function RouteRunnerClient({
                                 {isFocused ? "Hide map focus" : "Show on map"}
                               </button>
                             </div>
-                            {item.detail ? <p className="mt-1 text-xs leading-5">{item.detail}</p> : null}
+                            {item.detail && !isStudentBetaRouteRunner ? (
+                              <p className="mt-1 text-xs leading-5">{item.detail}</p>
+                            ) : null}
                           </li>
                         );
                       })}

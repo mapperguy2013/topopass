@@ -642,7 +642,7 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     },
     {
       id: "your-route",
-      label: "Your route",
+      label: "Attempted route",
       description: "Orange is raw drawing; purple is the matched route.",
       tone: "route"
     },
@@ -683,9 +683,21 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
       tone: "one-way"
     },
     {
-      id: "prohibited-turn",
-      label: "Restricted turn",
-      description: "Compact turn-ban symbols mark banned junction turns.",
+      id: "no-left-turn",
+      label: "No left turn",
+      description: "Red turn-ban symbols mark junctions where turning left is not allowed.",
+      tone: "turn"
+    },
+    {
+      id: "no-right-turn",
+      label: "No right turn",
+      description: "Red turn-ban symbols mark junctions where turning right is not allowed.",
+      tone: "turn"
+    },
+    {
+      id: "no-u-turn",
+      label: "No U-turn",
+      description: "Red turn-ban symbols mark junctions where turning back is not allowed.",
       tone: "turn"
     },
     {

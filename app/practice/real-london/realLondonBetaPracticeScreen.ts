@@ -123,6 +123,8 @@ export type RealLondonBetaPracticeScreenModel =
         resetResetsMapView: true;
         resetKeepsSelectedMapAndExercise: true;
         resetReturnsToDrawMode: true;
+        restrictionToggleLabel: "Show restrictions";
+        restrictionLayerDefaultVisible: true;
       };
       learnerUi: {
         routeHeaderCount: 1;
@@ -132,6 +134,7 @@ export type RealLondonBetaPracticeScreenModel =
           eraseRouteCount: 1;
           resetViewCount: 1;
           submitCount: 1;
+          restrictionToggleCount: 1;
           submitPlacement: "route-header";
           mapToolbarSubmitVisible: false;
         };
@@ -191,7 +194,7 @@ export type RealLondonBetaPracticeScreenModel =
         restrictionSummaryFirst: true;
         restrictionDetailsCollapsedByDefault: true;
         restrictionDebugDetailsHidden: true;
-        baseRestrictionOverlaysDefaultVisible: false;
+        baseRestrictionOverlaysDefaultVisible: true;
         oneWayArrowMinSpacingMeters: typeof ONE_WAY_ARROW_MIN_SPACING_METERS;
         horizontalOverflowRisk: false;
       };
@@ -316,7 +319,9 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       resetClearsDrawingAndResult: true,
       resetResetsMapView: true,
       resetKeepsSelectedMapAndExercise: true,
-      resetReturnsToDrawMode: true
+      resetReturnsToDrawMode: true,
+      restrictionToggleLabel: "Show restrictions",
+      restrictionLayerDefaultVisible: true
     },
     learnerUi: {
       routeHeaderCount: 1,
@@ -326,6 +331,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
         eraseRouteCount: 1,
         resetViewCount: 1,
         submitCount: 1,
+        restrictionToggleCount: 1,
         submitPlacement: "route-header",
         mapToolbarSubmitVisible: false
       },
@@ -423,7 +429,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       restrictionSummaryFirst: true,
       restrictionDetailsCollapsedByDefault: true,
       restrictionDebugDetailsHidden: true,
-      baseRestrictionOverlaysDefaultVisible: false,
+      baseRestrictionOverlaysDefaultVisible: true,
       oneWayArrowMinSpacingMeters: ONE_WAY_ARROW_MIN_SPACING_METERS,
       horizontalOverflowRisk: false
     },

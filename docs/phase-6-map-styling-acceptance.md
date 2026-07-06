@@ -411,6 +411,32 @@ raw OSM/graph/road IDs, fixture IDs, and technical per-leg labels are hidden
 from `/practice/real-london`. Dev/debug detail remains available in
 `/dev/route-runner` or explicit dev QA mode.
 
+Stage 161.6.12 makes the restriction layer a learner-facing part of beta
+practice rather than a dev-only diagnostic. On `/practice/real-london`, road
+restriction and turn-restriction symbols default to visible for scored beta
+maps and are controlled by one compact `Show restrictions` / `Hide
+restrictions` toolbar button. The legacy dev controls for Converted OSM QA,
+graph overlays, node/segment IDs, manual route input, and raw OSM diagnostics
+remain hidden from beta practice.
+
+The learner legend now explicitly explains one-way arrows, no-entry/blocked
+movements, no-left-turn, no-right-turn, no-U-turn, restricted roads, attempted
+route, correct/review route, checkpoints, start, and destination. Legend and
+review text must not mention raw OSM relation IDs, way IDs, node IDs, road IDs,
+or graph IDs. Per-attempt restriction feedback uses learner language such as
+"No entry from this direction", "This is a one-way street", "No U-turn here",
+and "This road is restricted"; raw movement messages stay available only in
+dev/internal detail.
+
+Data limitation: the current curated raw Overpass files contain useful
+restriction source data, including one-way tags, access tags, and
+turn-restriction relations. The converted beta scored maps currently expose
+one-way road geometry for those OSM fixtures, but no converted no-entry,
+road-closed, or prohibited-turn `MapRestriction` objects. The renderer still
+uses zoom decluttering and collision filtering for every existing restriction
+visual, but it does not infer or invent no-entry/turn symbols from raw fixture
+tags that have not been converted.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

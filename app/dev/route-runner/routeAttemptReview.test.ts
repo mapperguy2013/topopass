@@ -264,9 +264,9 @@ test("buildRouteAttemptReview explains illegal movements from Stage 69 highlight
 
   assert.equal(review.status, "fail");
   assert.equal(review.illegalMovements.length, 1);
-  assert.equal(review.illegalMovements[0].label, "No-entry road used on road-bc");
+  assert.equal(review.illegalMovements[0].label, "No entry from this direction");
   assert.equal(review.missedRestrictions.length, 0);
-  assert.equal(review.suggestedFailureReason, illegalMovement.message);
+  assert.equal(review.suggestedFailureReason, "No entry from this direction");
   assert.ok(review.correctionHints.some((hint) => hint.includes("Do not enter no-entry roads")));
   assert.deepEqual(recommendationIds(review), ["practice-no-entry-roads"]);
   assert.equal(review.practiceRecommendations[0].priority, "high");
@@ -338,10 +338,13 @@ test("buildRouteAttemptReview lists multiple illegal movements with display-frie
 
   assert.deepEqual(
     review.illegalMovements.map((movement) => movement.label),
-    ["Prohibited turn: r24 -> r22", "Wrong way on one-way road r18"]
+    ["Restricted turn at this junction", "This is a one-way street"]
+  );
+  assert.ok(
+    review.illegalMovements.every((movement) => !/\b(road id|node id|graph id|r\d+|n\d+)\b/i.test(movement.label))
   );
   assert.equal(review.missedRestrictions.length, 0);
-  assert.equal(review.suggestedFailureReason, illegalMovements[0].message);
+  assert.equal(review.suggestedFailureReason, "Restricted turn at this junction");
   assert.ok(review.correctionHints.some((hint) => hint.includes("Avoid the prohibited turn")));
   assert.ok(review.correctionHints.some((hint) => hint.includes("Follow the one-way arrows")));
   assert.deepEqual(recommendationIds(review), ["practice-prohibited-turns", "practice-one-way-direction"]);
@@ -418,6 +421,7 @@ test("buildRouteAttemptReview recommends practice for restricted roads", () => {
   });
 
   assert.deepEqual(recommendationIds(review), ["practice-restricted-roads"]);
+  assert.equal(review.illegalMovements[0].label, "This road is restricted");
   assert.equal(review.practiceRecommendations[0].priority, "high");
   assert.equal(review.recommendedPracticeQueue[0].weaknessType, "restricted-road");
 });
@@ -814,7 +818,7 @@ test("buildRouteAttemptHistoryItem summarizes failed attempts with illegal movem
   assert.equal(item.extraDistanceLabel, "+340 m");
   assert.equal(item.illegalMovementCount, 1);
   assert.equal(item.missedRestrictionCount, 1);
-  assert.match(item.primaryFailureReason ?? "", /no-entry road r09/i);
+  assert.equal(item.primaryFailureReason, "No entry from this direction");
 });
 
 test("route attempt history appends attempts in stable order and selects the latest attempt", () => {

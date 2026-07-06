@@ -753,7 +753,9 @@ test("buildRestrictionLegendItems covers the polished restriction layer", () => 
       "missed-checkpoint",
       "no-entry",
       "one-way",
-      "prohibited-turn",
+      "no-left-turn",
+      "no-right-turn",
+      "no-u-turn",
       "restricted-road",
       "selected-focus",
       "start",
@@ -764,5 +766,12 @@ test("buildRestrictionLegendItems covers the polished restriction layer", () => 
       "rail",
       "station"
     ]
+  );
+  assert.equal(legend.find((item) => item.id === "your-route")?.label, "Attempted route");
+  assert.equal(legend.find((item) => item.id === "no-left-turn")?.label, "No left turn");
+  assert.equal(legend.find((item) => item.id === "no-right-turn")?.label, "No right turn");
+  assert.equal(legend.find((item) => item.id === "no-u-turn")?.label, "No U-turn");
+  assert.ok(
+    legend.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
   );
 });

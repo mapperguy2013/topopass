@@ -230,6 +230,39 @@ UI hides duplicate drawn-score summaries, route replay controls, local attempt
 IDs, raw OSM/graph/road IDs, fixture IDs, and technical per-leg labels. Those
 details remain dev-only in `/dev/route-runner` or explicit dev QA mode.
 
+## Stage 161.6.12 Learner-Facing Restriction Cartography
+
+Stage 161.6.12 turns the beta restriction layer back on for
+`/practice/real-london` and keeps it learner-facing. One-way arrows,
+no-entry/blocked symbols, turn-ban symbols, restricted-road symbols, and
+route-review issue symbols continue to use the existing zoom-aware
+decluttering, alpha, scale, and collision rules. Beta learners get a single
+`Show restrictions` / `Hide restrictions` toolbar toggle; dev-only Converted
+OSM QA, graph overlays, node/segment IDs, manual route input, and raw
+diagnostics remain hidden.
+
+The legend now separates no-left-turn, no-right-turn, and no-U-turn entries
+instead of presenting one generic restricted-turn item. It also labels
+attempted route, correct route, start, checkpoint, destination, one-way,
+no-entry, and restricted-road symbols with learner text and no raw OSM,
+relation, way, node, road, or graph IDs.
+
+Restriction data audit:
+
+- Converted OSM beta maps expose one-way road geometry: pilot `202`,
+  Piccadilly Circus `616`, Waterloo Bridge `905`, one-way system `919`, quiet
+  residential `53`, and the current King's Cross placeholder `0`.
+- Converted no-entry, road-closed, and prohibited-turn `MapRestriction` counts
+  are currently `0` for those scored curated OSM maps.
+- The raw curated Overpass files do contain richer source tags. Piccadilly has
+  12 restriction relations, Waterloo 41, the one-way system 50, quiet
+  residential 12, and King's Cross / Euston 112, plus access-restricted ways.
+
+Known limitation: Stage 161.6.12 does not convert new OSM relation/access data
+and does not invent restrictions. No-entry and turn-ban learner symbols appear
+where existing converted `MapRestriction` data exists; otherwise the stage
+documents the raw data gap for a later controlled conversion pass.
+
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled

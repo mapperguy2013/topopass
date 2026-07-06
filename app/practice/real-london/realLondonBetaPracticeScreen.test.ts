@@ -143,6 +143,12 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
   assert.ok(model.knownLimitations.some((limitation) => limitation.includes("does not fetch live OSM")));
   assert.ok(model.knownLimitations.every((limitation) => !limitation.includes("QA")));
   assert.ok(model.legendItems.some((item) => item.id === "one-way" && /one-way/i.test(item.description)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-entry" && /no-entry|blocked/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-left-turn" && /left/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-right-turn" && /right/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-u-turn" && /u-turn/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "restricted-road" && /restricted/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "your-route" && /attempted/i.test(item.label)));
   assert.ok(model.legendItems.some((item) => item.id === "context-roads" && /context/i.test(item.description)));
   assert.ok(model.legendItems.some((item) => item.id === "major-road" && /major/i.test(item.label)));
   assert.ok(model.legendItems.some((item) => item.id === "secondary-road" && /secondary/i.test(item.label)));
@@ -154,6 +160,9 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
   assert.ok(model.legendItems.some((item) => item.id === "water" && /water/i.test(item.label)));
   assert.ok(model.legendItems.some((item) => item.id === "rail" && /rail/i.test(item.label)));
   assert.ok(model.legendItems.some((item) => item.id === "station" && /station/i.test(item.label)));
+  assert.ok(
+    model.legendItems.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
+  );
 });
 
 test("Stage 132 route attempt flow uses existing runner and remains scoreable", () => {
@@ -173,6 +182,8 @@ test("Stage 132 route attempt flow uses existing runner and remains scoreable", 
   assert.equal(model.mapInteraction.resetResetsMapView, true);
   assert.equal(model.mapInteraction.resetKeepsSelectedMapAndExercise, true);
   assert.equal(model.mapInteraction.resetReturnsToDrawMode, true);
+  assert.equal(model.mapInteraction.restrictionToggleLabel, "Show restrictions");
+  assert.equal(model.mapInteraction.restrictionLayerDefaultVisible, true);
 });
 
 test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
@@ -184,6 +195,7 @@ test("Stage 161.6.11 beta practice exposes one clean route control set", () => {
   assert.equal(model.learnerUi.routeControls.eraseRouteCount, 1);
   assert.equal(model.learnerUi.routeControls.resetViewCount, 1);
   assert.equal(model.learnerUi.routeControls.submitCount, 1);
+  assert.equal(model.learnerUi.routeControls.restrictionToggleCount, 1);
   assert.equal(model.learnerUi.routeControls.submitPlacement, "route-header");
   assert.equal(model.learnerUi.routeControls.mapToolbarSubmitVisible, false);
 });
@@ -260,7 +272,7 @@ test("Stage 139 mobile instructions limitations and restriction overlays are col
   assert.equal(model.mobileLayout.restrictionSummaryFirst, true);
   assert.equal(model.mobileLayout.restrictionDetailsCollapsedByDefault, true);
   assert.equal(model.mobileLayout.restrictionDebugDetailsHidden, true);
-  assert.equal(model.mobileLayout.baseRestrictionOverlaysDefaultVisible, false);
+  assert.equal(model.mobileLayout.baseRestrictionOverlaysDefaultVisible, true);
   assert.equal(model.devDiagnostics.visible, false);
   assert.ok(model.devDiagnostics.hiddenPanelIds.includes("full-restriction-debug-details"));
 });

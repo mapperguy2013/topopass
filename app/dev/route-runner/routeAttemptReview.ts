@@ -147,27 +147,32 @@ function compactAttemptScoreLabel(scoreLabel: string): string {
 }
 
 function illegalMovementLabel(movement: IllegalDrawnMovement): string {
-  const roadId = movement.roadId ?? "";
-
   if (movement.kind === "prohibited-turn") {
-    const roads =
-      movement.incomingRoadId && movement.outgoingRoadId
-        ? `: ${movement.incomingRoadId} -> ${movement.outgoingRoadId}`
-        : "";
+    if (/u-turn|immediately reverses/i.test(movement.message)) {
+      return "No U-turn here";
+    }
 
-    return `Prohibited turn${roads}`;
+    if (/right/i.test(movement.message)) {
+      return "No right turn at this junction";
+    }
+
+    if (/left/i.test(movement.message)) {
+      return "No left turn at this junction";
+    }
+
+    return "Restricted turn at this junction";
   }
 
   if (movement.kind === "closed-road" || movement.kind === "restricted-road") {
-    return roadId ? `Restricted road used on ${roadId}` : "Restricted road used";
+    return "This road is restricted";
   }
 
   if (movement.kind === "no-entry-road") {
-    return roadId ? `No-entry road used on ${roadId}` : "No-entry road used";
+    return "No entry from this direction";
   }
 
   if (movement.kind === "one-way-wrong-direction") {
-    return roadId ? `Wrong way on one-way road ${roadId}` : "Wrong way on one-way road";
+    return "This is a one-way street";
   }
 
   return "Illegal movement";
@@ -326,7 +331,7 @@ function suggestedFailureReason(input: {
   }
 
   if (input.illegalMovements.length > 0) {
-    return input.illegalMovements[0].message;
+    return illegalMovementLabel(input.illegalMovements[0]);
   }
 
   if (score.failureReasons.includes("illegal_route")) {
