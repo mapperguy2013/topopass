@@ -437,6 +437,31 @@ uses zoom decluttering and collision filtering for every existing restriction
 visual, but it does not infer or invent no-entry/turn symbols from raw fixture
 tags that have not been converted.
 
+Stage 161.6.13 is the final beta practice UI polish pass. The learner-facing
+page keeps one instruction area in the route header: "Draw from the start
+marker to the destination marker. Visit checkpoints in order and follow road
+restrictions." The map card no longer repeats the same instruction or a second
+route-state badge. When Pan mode is active, the only extra instruction is the
+contextual pan hint: "Pan mode is on. Drag the map to move the view. Switch
+back to Draw to add route strokes."
+
+Route state is shown once as a badge with the learner labels `Not started`,
+`Drawing`, `Ready to submit`, and `Submitted`. The large Route feedback panel
+is hidden before Submit, including the old "No route drawn" card. It appears
+after a submitted or blocked submit attempt and continues to show score,
+distance, extra distance, pass/fail state, and learner-friendly comments from
+the existing review pipeline.
+
+The learner legend is now collapsed and compact. It uses the beta-friendly
+labels Start, Destination, Checkpoint, Your route, Correct route, Accepted
+alternative, Illegal / wrong way, Missed checkpoint, One-way street, No entry,
+Restricted turn, Major road, Secondary road, Local street, Park / open space,
+Water, and Rail / station. The larger dev/QA legend remains available outside
+student beta mode. Restriction symbols still render where converted data
+exists, with the existing zoom decluttering rules, and no dev QA panels,
+manual route input, raw OSM IDs, graph IDs, or fixture filenames are exposed on
+`/practice/real-london`.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

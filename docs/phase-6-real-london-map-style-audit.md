@@ -263,6 +263,31 @@ and does not invent restrictions. No-entry and turn-ban learner symbols appear
 where existing converted `MapRestriction` data exists; otherwise the stage
 documents the raw data gap for a later controlled conversion pass.
 
+## Stage 161.6.13 Final Beta Practice UI Polish
+
+Stage 161.6.13 reduces the final learner-facing repetition on
+`/practice/real-london`. The beta page now uses one route-header instruction:
+draw from the start marker to the destination marker, visit checkpoints in
+order, and follow road restrictions. The map workspace no longer repeats
+"Draw your route, then submit it for feedback", and it no longer shows a second
+route-state badge. Pan mode still shows one contextual hint explaining how to
+drag the map and return to Draw mode.
+
+Route state is intentionally constrained to one learner badge: `Not started`,
+`Drawing`, `Ready to submit`, or `Submitted`. The large Route feedback panel is
+not rendered before Submit, so beta testers no longer see a large "No route
+drawn" feedback card. After Submit, the existing review panel appears with
+score, distance, extra distance, pass/fail state, legal feedback, and
+learner-friendly restriction comments.
+
+The in-map learner legend is collapsed by default, uses a smaller 144 px scroll
+cap, and switches to the compact learner label set: Start, Destination,
+Checkpoint, Your route, Correct route, Accepted alternative, Illegal / wrong
+way, Missed checkpoint, One-way street, No entry, Restricted turn, Major road,
+Secondary road, Local street, Park / open space, Water, and Rail / station.
+The full dev/QA legend and raw diagnostics remain outside the beta practice
+surface.
+
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled

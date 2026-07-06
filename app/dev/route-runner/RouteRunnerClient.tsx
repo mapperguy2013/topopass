@@ -168,6 +168,7 @@ import {
   type TopopassLineStyle
 } from "./topopassCartographyStyle";
 import {
+  buildLearnerRestrictionLegendItems,
   buildRestrictionLegendItems,
   buildRestrictionMapVisualItems,
   buildSelectedRestrictionHighlight,
@@ -317,11 +318,13 @@ const CANVAS_HEIGHT = 760;
 const STUDENT_BETA_CANVAS_HEIGHT = 912;
 const STUDENT_BETA_MAP_MAX_WIDTH_CSS = "min(100%, 1920px, max(640px, calc(210.5dvh - 168px)))";
 const STUDENT_BETA_MAP_MAX_HEIGHT_CSS = "min(912px, calc(100dvh - 80px))";
+const STUDENT_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
 const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
 const MAX_PIPELINE_TRACE_POINTS = 1200;
 const RESTRICTION_MAP_LEGEND_ITEMS = buildRestrictionLegendItems();
+const LEARNER_RESTRICTION_MAP_LEGEND_ITEMS = buildLearnerRestrictionLegendItems();
 const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
@@ -3275,8 +3278,8 @@ function learnerDrawnRouteScoreDisplay(input: {
 
   return {
     state: "pending",
-    label: "No route drawn",
-    summary: "Draw a route for the selected exercise, then submit it for feedback."
+    label: "Not started",
+    summary: "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions."
   };
 }
 
@@ -3827,6 +3830,8 @@ export function RouteRunnerClient({
   const hasSubmittedCurrentDrawnAttempt = drawnSubmitState.state === "submitted" && drawnSubmitMatchesCurrentAttempt;
   const hasBlockedCurrentDrawnSubmit = drawnSubmitState.state === "blocked" && drawnSubmitMatchesCurrentAttempt;
   const showLearnerAttemptReviewDetails = !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt;
+  const showAttemptFeedbackPanel =
+    !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt || hasBlockedCurrentDrawnSubmit;
   const learnerDrawnDisplayText = getLearnerDrawnPipelineStatusText({
     status: drawnDisplayStatus,
     submitted: hasSubmittedCurrentDrawnAttempt,
@@ -5407,7 +5412,7 @@ export function RouteRunnerClient({
             <p className="mt-1 text-sm leading-6 text-slate-600">
               {isStudentBetaRouteRunner
                 ? selectedMapIsScoreable
-                  ? "Choose an exercise, draw your route on the map, then submit it for feedback."
+                  ? "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions."
                   : "Review this map with pan, zoom, legend, and attribution. Scored exercises are not available yet."
                 : exercisePositionLabel}
               {!isStudentBetaRouteRunner && selectedExerciseMetadata
@@ -5934,7 +5939,7 @@ export function RouteRunnerClient({
                 Run route
               </button>
             </div>
-          ) : (
+          ) : !isStudentBetaRouteRunner ? (
             <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-base font-semibold text-slate-950">Route instructions</h2>
               <p className="mt-1 text-sm leading-6 text-slate-600">
@@ -5947,7 +5952,7 @@ export function RouteRunnerClient({
                 </p>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="contents">
@@ -5961,27 +5966,33 @@ export function RouteRunnerClient({
                 <h2 className={isStudentBetaRouteRunner ? "sr-only" : "text-base font-semibold text-slate-950"}>
                   {isStudentBetaRouteRunner ? "Practice map" : "Route map workspace"}
                 </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {isStudentBetaRouteRunner
-                    ? "Draw your route, then submit it for feedback."
-                    : "Draw with mouse, touch, or stylus on the synthetic street-map renderer. The orange trace is raw input; green preview points are snapped candidates. The panel below shows the dev-only pipeline result."}
-                </p>
+                {!isStudentBetaRouteRunner ? (
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Draw with mouse, touch, or stylus on the synthetic street-map renderer. The orange trace is raw
+                    input; green preview points are snapped candidates. The panel below shows the dev-only pipeline
+                    result.
+                  </p>
+                ) : null}
               </div>
               <div className="flex flex-col gap-2 sm:max-w-md sm:items-end">
-                <span
-                  className={`min-w-[9.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold ${pipelineStatusClass(
-                    drawnDisplayStatus
-                  )}`}
-                >
-                  {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
-                </span>
-                <p className="text-xs leading-5 text-slate-500">
-                  Draw in multiple strokes. Release and click again to continue. Switch to Pan when you want to move
-                  the map instead of drawing.
-                </p>
+                {!isStudentBetaRouteRunner ? (
+                  <>
+                    <span
+                      className={`min-w-[9.5rem] whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold ${pipelineStatusClass(
+                        drawnDisplayStatus
+                      )}`}
+                    >
+                      {displayStatusText(drawnDisplayStatus)}
+                    </span>
+                    <p className="text-xs leading-5 text-slate-500">
+                      Draw in multiple strokes. Release and click again to continue. Switch to Pan when you want to
+                      move the map instead of drawing.
+                    </p>
+                  </>
+                ) : null}
                 {isPanMode ? (
                   <p className="text-xs font-medium leading-5 text-blue-700">
-                    Pan mode is on. Drag the map to move the view; switch back to Draw to add route strokes.
+                    Pan mode is on. Drag the map to move the view. Switch back to Draw to add route strokes.
                   </p>
                 ) : null}
                 {fastestRouteOverlay.status === "available" ? (
@@ -6005,31 +6016,24 @@ export function RouteRunnerClient({
               </div>
             </div>
 
-            <div
-              className={`mt-4 flex items-center rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950 ${
-                isStudentBetaRouteRunner ? "min-h-[56px]" : "min-h-[76px]"
-              }`}
-            >
-              {isDrawing ? (
-                <p className="font-medium">
-                  {isStudentBetaRouteRunner
-                    ? "Drawing active. Release the pointer when your route is complete."
-                    : "Drawing active. Release the pointer to score the captured route."}
-                </p>
-              ) : drawnDisplayStatus === "no drawing" ? (
-                <p>
-                  {isStudentBetaRouteRunner
-                    ? "Draw your route, then submit it for feedback."
-                    : "Draw from marker 1 through the ordered stop markers. The route runner will simplify, snap, match, and score the captured route."}
-                </p>
-              ) : (
-                <p>
-                  {isStudentBetaRouteRunner
-                    ? "Route drawn. Submit it, keep drawing to extend it, use Undo, or erase it to start again."
-                    : `Trace captured for ${selectedExerciseDisplay?.title ?? "the selected exercise"}. Press and drag again to continue the same route, use Undo to remove the latest stroke, or clear it to reset everything.`}
-                </p>
-              )}
-            </div>
+            {!isStudentBetaRouteRunner ? (
+              <div className="mt-4 flex min-h-[76px] items-center rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-blue-950">
+                {isDrawing ? (
+                  <p className="font-medium">Drawing active. Release the pointer to score the captured route.</p>
+                ) : drawnDisplayStatus === "no drawing" ? (
+                  <p>
+                    Draw from marker 1 through the ordered stop markers. The route runner will simplify, snap, match,
+                    and score the captured route.
+                  </p>
+                ) : (
+                  <p>
+                    Trace captured for {selectedExerciseDisplay?.title ?? "the selected exercise"}. Press and drag
+                    again to continue the same route, use Undo to remove the latest stroke, or clear it to reset
+                    everything.
+                  </p>
+                )}
+              </div>
+            ) : null}
 
             {!isStudentBetaRouteRunner ? (
               <div className="mt-4 flex flex-wrap gap-3 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
@@ -6055,10 +6059,10 @@ export function RouteRunnerClient({
             ) : null}
 
             <div
-              className={`relative mt-4 w-full overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
+              className={`relative w-full overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
                 isStudentBetaRouteRunner
-                  ? "mx-auto min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
-                  : "min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
+                  ? "mx-auto mt-2 min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
+                  : "mt-4 min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               }`}
               style={{
                 aspectRatio: `${canvasWidth} / ${canvasHeight}`,
@@ -6216,16 +6220,31 @@ export function RouteRunnerClient({
               <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm sm:bottom-4 sm:right-4">
                 {Math.round(mapViewportState.zoom * 100)}%
               </div>
-              <div className="pointer-events-none absolute bottom-2 left-2 z-20 flex max-w-[min(24rem,calc(100%-5.75rem))] flex-col items-start gap-2 sm:bottom-4 sm:left-4 sm:max-w-[min(28rem,calc(100%-7rem))]">
+              <div
+                className={`pointer-events-none absolute bottom-2 left-2 z-20 flex flex-col items-start gap-2 sm:bottom-4 sm:left-4 ${
+                  isStudentBetaRouteRunner
+                    ? "max-w-[min(18rem,calc(100%-5.75rem))] sm:max-w-[min(22rem,calc(100%-7rem))]"
+                    : "max-w-[min(24rem,calc(100%-5.75rem))] sm:max-w-[min(28rem,calc(100%-7rem))]"
+                }`}
+              >
                 <details className="pointer-events-auto max-w-full rounded-lg border border-slate-200 bg-white/95 text-xs text-slate-800 shadow-md">
                   <summary className="min-h-11 cursor-pointer select-none px-3 py-3 font-semibold text-slate-900 sm:min-h-0 sm:py-2">
                     Map legend
                   </summary>
                   <div
-                    className="grid gap-1 overflow-y-auto border-t border-slate-100 p-2 sm:grid-cols-2"
-                    style={{ maxHeight: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.legendMaxHeightPx }}
+                    className={`grid gap-1 overflow-y-auto border-t border-slate-100 p-2 ${
+                      isStudentBetaRouteRunner ? "" : "sm:grid-cols-2"
+                    }`}
+                    style={{
+                      maxHeight: isStudentBetaRouteRunner
+                        ? STUDENT_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX
+                        : TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.legendMaxHeightPx
+                    }}
                   >
-                    {RESTRICTION_MAP_LEGEND_ITEMS.map((item) => (
+                    {(isStudentBetaRouteRunner
+                      ? LEARNER_RESTRICTION_MAP_LEGEND_ITEMS
+                      : RESTRICTION_MAP_LEGEND_ITEMS
+                    ).map((item) => (
                       <span
                         key={item.id}
                         title={item.description}
@@ -6888,18 +6907,19 @@ export function RouteRunnerClient({
             ) : null}
           </section>
 
-          <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">
-                  {isStudentBetaRouteRunner ? "Route feedback" : "Attempt review"}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {isStudentBetaRouteRunner
-                    ? "Submit your drawn route to see score, distance, and route feedback."
-                    : "Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner when the match is usable."}
-                </p>
-              </div>
+          {showAttemptFeedbackPanel ? (
+            <section className="order-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-slate-950">
+                    {isStudentBetaRouteRunner ? "Route feedback" : "Attempt review"}
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    {isStudentBetaRouteRunner
+                      ? "Submit your drawn route to see score, distance, and route feedback."
+                      : "Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner when the match is usable."}
+                  </p>
+                </div>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(
                   drawnDisplayStatus
@@ -8487,7 +8507,8 @@ export function RouteRunnerClient({
                 </pre>
               </>
             ) : null}
-          </section>
+            </section>
+          ) : null}
 
           {showDeveloperPanels ? (
             <>

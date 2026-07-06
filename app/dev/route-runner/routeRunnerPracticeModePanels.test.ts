@@ -56,7 +56,10 @@ test("beta practice mode preserves core student-facing route-runner labels", () 
   assert.ok(visibility.visibleCorePanelLabels.includes("Real London Practice - Beta"));
   assert.ok(visibility.visibleCorePanelLabels.includes("Practice Exercises"));
   assert.ok(visibility.visibleCorePanelLabels.includes("Route instructions"));
-  assert.ok(visibility.visibleCorePanelLabels.includes("Route map workspace"));
-  assert.ok(visibility.visibleCorePanelLabels.includes("Attempt review"));
-  assert.ok(visibility.visibleCorePanelLabels.includes("Submit Attempt"));
+  assert.ok(visibility.visibleCorePanelLabels.includes("Practice map"));
+  assert.ok(visibility.visibleCorePanelLabels.includes("Route feedback"));
+  assert.ok(visibility.visibleCorePanelLabels.includes("Submit"));
+  assert.equal(visibility.visibleCorePanelLabels.includes("Route map workspace"), false);
+  assert.equal(visibility.visibleCorePanelLabels.includes("Attempt review"), false);
+  assert.equal(visibility.visibleCorePanelLabels.includes("Submit Attempt"), false);
 });

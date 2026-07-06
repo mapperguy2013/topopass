@@ -756,3 +756,110 @@ export function buildRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
     }
   ];
 }
+
+export function buildLearnerRestrictionLegendItems(): SyntheticStreetMapLegendItem[] {
+  return [
+    {
+      id: "start",
+      label: "Start",
+      description: "Blue marker identifies the required start.",
+      tone: "start"
+    },
+    {
+      id: "finish",
+      label: "Destination",
+      description: "Dark marker identifies the destination.",
+      tone: "finish"
+    },
+    {
+      id: "checkpoint",
+      label: "Checkpoint",
+      description: "Orange marker identifies an ordered intermediate stop.",
+      tone: "checkpoint"
+    },
+    {
+      id: "your-route",
+      label: "Your route",
+      description: "Orange is raw drawing; purple is the matched route.",
+      tone: "route"
+    },
+    {
+      id: "shortest-legal-route",
+      label: "Correct route",
+      description: "Blue dashed line is the legal comparison route when available.",
+      tone: "shortest"
+    },
+    {
+      id: "accepted-alternative-route",
+      label: "Accepted alternative",
+      description: "Teal dotted line marks another accepted route when available.",
+      tone: "alternative-route"
+    },
+    {
+      id: "illegal-movement",
+      label: "Illegal / wrong way",
+      description: "Red review marks show a route section or warning that needs attention.",
+      tone: "illegal"
+    },
+    {
+      id: "missed-checkpoint",
+      label: "Missed checkpoint",
+      description: "Red dashed checkpoint ring marks an ordered stop missed during review.",
+      tone: "missed-checkpoint"
+    },
+    {
+      id: "one-way",
+      label: "One-way street",
+      description: "Blue arrowheads show the permitted one-way travel direction.",
+      tone: "one-way"
+    },
+    {
+      id: "no-entry",
+      label: "No entry",
+      description: "Red barred-circle symbols mark no-entry movements where converted data exists.",
+      tone: "restriction"
+    },
+    {
+      id: "restricted-turn",
+      label: "Restricted turn",
+      description: "Red turn-ban symbols mark banned junction turns where converted data exists.",
+      tone: "turn"
+    },
+    {
+      id: "major-road",
+      label: "Major road",
+      description: "Wider orange roads are the strongest road hierarchy and useful for orientation.",
+      tone: "road-highlight"
+    },
+    {
+      id: "secondary-road",
+      label: "Secondary road",
+      description: "Yellow roads show important connecting streets below major roads.",
+      tone: "secondary-road"
+    },
+    {
+      id: "local-side-streets",
+      label: "Local street",
+      description: "Pale side streets stay visible for turn-by-turn reading.",
+      tone: "local-road"
+    },
+    {
+      id: "park",
+      label: "Park / open space",
+      description: "Green areas show parks and open spaces for orientation only.",
+      tone: "park"
+    },
+    {
+      id: "water",
+      label: "Water",
+      description: "Blue areas and lines show rivers, canals, basins, and water crossings.",
+      tone: "water"
+    },
+    {
+      id: "rail-station",
+      label: "Rail / station",
+      description: "Grey rail lines and station markers help with orientation.",
+      tone: "station"
+    }
+  ];
+}

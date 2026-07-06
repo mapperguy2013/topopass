@@ -19,7 +19,7 @@ import { buildPracticeExercisesPanelModel } from "../../dev/route-runner/routeRu
 import { resolveRouteRunnerExerciseSelection } from "../../dev/route-runner/routeRunnerInitialState.ts";
 import {
   ONE_WAY_ARROW_MIN_SPACING_METERS,
-  buildRestrictionLegendItems
+  buildLearnerRestrictionLegendItems
 } from "../../dev/route-runner/restrictionMapVisuals.ts";
 import {
   REAL_LONDON_BETA_ENV_FLAG,
@@ -43,6 +43,7 @@ export const REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS = "100%";
 export const REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE = "viewport-height-bounded-wide-canvas";
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX = 1920;
 export const REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX = 912;
+export const REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
 export const REAL_LONDON_BETA_MAP_OPTIONS = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON;
 
 export type RealLondonBetaPracticeMapRow = {
@@ -140,10 +141,22 @@ export type RealLondonBetaPracticeScreenModel =
         };
         resultPanels: {
           learnerPanelTitle: "Route feedback";
+          preSubmitFeedbackPanelVisible: false;
+          postSubmitFeedbackPanelVisible: true;
           submittedResultPanelCount: 1;
           drawnRouteScoreSummaryVisible: false;
           routeAttemptReviewAndDrawnScoreSummaryTogether: false;
           routeReplayVisibleByDefault: false;
+        };
+        instructionArea: {
+          visibleInstructionAreaCount: 1;
+          mapWorkspaceInstructionVisible: false;
+          instructionText: "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions.";
+          panModeText: "Pan mode is on. Drag the map to move the view. Switch back to Draw to add route strokes.";
+        };
+        routeStatus: {
+          badgeCount: 1;
+          labels: ["Not started", "Drawing", "Ready to submit", "Submitted"];
         };
         hiddenTechnicalDetails: {
           rawOsmNodeIds: true;
@@ -187,7 +200,7 @@ export type RealLondonBetaPracticeScreenModel =
         mapControlsMinTouchTargetPx: number;
         mapControlsAvoidPrimaryMarkers: true;
         mapLegendCollapsedByDefault: true;
-        mapLegendMaxHeightPx: number;
+        mapLegendMaxHeightPx: typeof REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX;
         markerHitTargetMinPx: number;
         reviewIssueHitTargetMinPx: number;
         calloutMinHeightPx: number;
@@ -337,10 +350,23 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       },
       resultPanels: {
         learnerPanelTitle: "Route feedback",
+        preSubmitFeedbackPanelVisible: false,
+        postSubmitFeedbackPanelVisible: true,
         submittedResultPanelCount: 1,
         drawnRouteScoreSummaryVisible: false,
         routeAttemptReviewAndDrawnScoreSummaryTogether: false,
         routeReplayVisibleByDefault: false
+      },
+      instructionArea: {
+        visibleInstructionAreaCount: 1,
+        mapWorkspaceInstructionVisible: false,
+        instructionText:
+          "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions.",
+        panModeText: "Pan mode is on. Drag the map to move the view. Switch back to Draw to add route strokes."
+      },
+      routeStatus: {
+        badgeCount: 1,
+        labels: ["Not started", "Drawing", "Ready to submit", "Submitted"]
       },
       hiddenTechnicalDetails: {
         rawOsmNodeIds: true,
@@ -359,7 +385,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
     },
     knownLimitations: [...REAL_LONDON_BETA_KNOWN_LIMITATIONS],
     attribution: mapOption.attribution ?? "OpenStreetMap contributors",
-    legendItems: buildRestrictionLegendItems().map((item) => ({
+    legendItems: buildLearnerRestrictionLegendItems().map((item) => ({
       id: item.id,
       label: item.label,
       description: item.description
@@ -422,7 +448,7 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       mapControlsMinTouchTargetPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.compactControlMinHeightPx,
       mapControlsAvoidPrimaryMarkers: true,
       mapLegendCollapsedByDefault: true,
-      mapLegendMaxHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.legendMaxHeightPx,
+      mapLegendMaxHeightPx: REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX,
       markerHitTargetMinPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.minTapTargetPx,
       reviewIssueHitTargetMinPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.reviewIssueHitRadius * 2,
       calloutMinHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.calloutMinHeight,

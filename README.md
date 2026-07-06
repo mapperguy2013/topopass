@@ -1129,6 +1129,20 @@ converted scored maps expose one-way road geometry only for those OSM
 fixtures; no-entry, road-closed, and turn-restriction map symbols appear only
 where converted `MapRestriction` data already exists. The renderer does not
 invent restriction data from unconverted raw tags.
+Stage 161.6.13 applies the final beta practice UI polish. The learner page now
+uses one concise instruction in the route header: draw from start to
+destination, visit checkpoints in order, and follow restrictions. The map card
+no longer repeats that instruction or a second route-state badge; Pan mode only
+shows the contextual pan hint. Learner route state is reduced to one badge:
+`Not started`, `Drawing`, `Ready to submit`, or `Submitted`. The large Route
+feedback panel is hidden before Submit, then appears after a submitted or
+blocked submit attempt with the existing score, distance, and learner comments.
+The in-map learner legend is collapsed, capped to a smaller height, and uses a
+compact label set: start, destination, checkpoint, your route, correct route,
+accepted alternative, illegal/wrong way, missed checkpoint, one-way street, no
+entry, restricted turn, major/secondary/local roads, park/open space, water,
+and rail/station. Dev QA panels and manual/debug controls remain hidden from
+`/practice/real-london` and available in dev routes only.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

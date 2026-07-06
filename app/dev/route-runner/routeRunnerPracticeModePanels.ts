@@ -28,9 +28,9 @@ export const ROUTE_RUNNER_BETA_CORE_PANEL_LABELS = [
   "Real London Practice - Beta",
   "Practice Exercises",
   "Route instructions",
-  "Route map workspace",
-  "Attempt review",
-  "Submit Attempt",
+  "Practice map",
+  "Route feedback",
+  "Submit",
   "Score",
   "Distance",
   "OpenStreetMap contributors"

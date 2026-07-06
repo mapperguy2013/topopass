@@ -4,6 +4,7 @@ import type { TurnRestrictionVisual } from "../../../lib/map-engine/index.ts";
 import type { RoadRestrictionOverlay, RouteIssueOverlay } from "./routeRunnerDisplay.ts";
 import {
   buildIllegalMovementVisualItems,
+  buildLearnerRestrictionLegendItems,
   buildNoEntryVisualItems,
   buildOneWayVisualItems,
   buildProhibitedTurnVisualItems,
@@ -771,6 +772,38 @@ test("buildRestrictionLegendItems covers the polished restriction layer", () => 
   assert.equal(legend.find((item) => item.id === "no-left-turn")?.label, "No left turn");
   assert.equal(legend.find((item) => item.id === "no-right-turn")?.label, "No right turn");
   assert.equal(legend.find((item) => item.id === "no-u-turn")?.label, "No U-turn");
+  assert.ok(
+    legend.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
+  );
+});
+
+test("Stage 161.6.13 learner legend is compact and uses beta-friendly labels", () => {
+  const legend = buildLearnerRestrictionLegendItems();
+
+  assert.deepEqual(
+    legend.map((item) => item.label),
+    [
+      "Start",
+      "Destination",
+      "Checkpoint",
+      "Your route",
+      "Correct route",
+      "Accepted alternative",
+      "Illegal / wrong way",
+      "Missed checkpoint",
+      "One-way street",
+      "No entry",
+      "Restricted turn",
+      "Major road",
+      "Secondary road",
+      "Local street",
+      "Park / open space",
+      "Water",
+      "Rail / station"
+    ]
+  );
+  assert.ok(legend.length <= 18);
+  assert.ok(legend.some((item) => item.id === "restricted-turn"));
   assert.ok(
     legend.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
   );

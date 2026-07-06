@@ -614,22 +614,22 @@ export function getLearnerDrawnPipelineStatusText(input: {
   }
 
   if (input.status === "drawing") {
-    return "Drawing route";
+    return "Drawing";
   }
 
   if (input.status === "no drawing") {
-    return "No route drawn";
+    return "Not started";
   }
 
   if (input.status === "insufficient drawing") {
-    return "Draw a longer route";
+    return "Drawing";
   }
 
   if (input.status === "scored") {
     return "Ready to submit";
   }
 
-  return "Route drawn";
+  return "Ready to submit";
 }
 
 export function getDrawnRouteSubmitReadiness(input: {

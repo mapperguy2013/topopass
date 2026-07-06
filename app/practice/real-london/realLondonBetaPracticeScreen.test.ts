@@ -15,6 +15,7 @@ import {
   REAL_LONDON_BETA_ENV_FLAG
 } from "../../dev/route-runner/routeRunnerRealLondonBetaGate.ts";
 import {
+  REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX,
   REAL_LONDON_BETA_DESKTOP_CANVAS_HEIGHT_PX,
   REAL_LONDON_BETA_DESKTOP_CANVAS_WIDTH_PX,
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
@@ -142,27 +143,35 @@ test("Stage 132 screen includes OSM attribution limitations feedback hook and le
   assert.ok(model.knownLimitations.some((limitation) => limitation.includes("committed local OSM fixtures only")));
   assert.ok(model.knownLimitations.some((limitation) => limitation.includes("does not fetch live OSM")));
   assert.ok(model.knownLimitations.every((limitation) => !limitation.includes("QA")));
+  assert.deepEqual(
+    model.legendItems.map((item) => item.label),
+    [
+      "Start",
+      "Destination",
+      "Checkpoint",
+      "Your route",
+      "Correct route",
+      "Accepted alternative",
+      "Illegal / wrong way",
+      "Missed checkpoint",
+      "One-way street",
+      "No entry",
+      "Restricted turn",
+      "Major road",
+      "Secondary road",
+      "Local street",
+      "Park / open space",
+      "Water",
+      "Rail / station"
+    ]
+  );
   assert.ok(model.legendItems.some((item) => item.id === "one-way" && /one-way/i.test(item.description)));
-  assert.ok(model.legendItems.some((item) => item.id === "no-entry" && /no-entry|blocked/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "no-left-turn" && /left/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "no-right-turn" && /right/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "no-u-turn" && /u-turn/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "restricted-road" && /restricted/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "your-route" && /attempted/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "context-roads" && /context/i.test(item.description)));
-  assert.ok(model.legendItems.some((item) => item.id === "major-road" && /major/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "secondary-road" && /secondary/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "local-side-streets" && /local/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "finish" && /destination/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "accepted-alternative-route" && /valid/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "missed-checkpoint" && /missed/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "park" && /park/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "water" && /water/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "rail" && /rail/i.test(item.label)));
-  assert.ok(model.legendItems.some((item) => item.id === "station" && /station/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "no-entry" && /no entry/i.test(item.label)));
+  assert.ok(model.legendItems.some((item) => item.id === "restricted-turn" && /turn/i.test(item.label)));
   assert.ok(
     model.legendItems.every((item) => !/\b(osm|relation|way id|node id|road id|graph id)\b/i.test(`${item.label} ${item.description}`))
   );
+  assert.ok(model.legendItems.length <= 18);
 });
 
 test("Stage 132 route attempt flow uses existing runner and remains scoreable", () => {
@@ -204,10 +213,24 @@ test("Stage 161.6.11 beta practice has one learner-facing result panel without i
   const model = requireAvailableModel();
 
   assert.equal(model.learnerUi.resultPanels.learnerPanelTitle, "Route feedback");
+  assert.equal(model.learnerUi.resultPanels.preSubmitFeedbackPanelVisible, false);
+  assert.equal(model.learnerUi.resultPanels.postSubmitFeedbackPanelVisible, true);
   assert.equal(model.learnerUi.resultPanels.submittedResultPanelCount, 1);
   assert.equal(model.learnerUi.resultPanels.drawnRouteScoreSummaryVisible, false);
   assert.equal(model.learnerUi.resultPanels.routeAttemptReviewAndDrawnScoreSummaryTogether, false);
   assert.equal(model.learnerUi.resultPanels.routeReplayVisibleByDefault, false);
+  assert.equal(model.learnerUi.instructionArea.visibleInstructionAreaCount, 1);
+  assert.equal(model.learnerUi.instructionArea.mapWorkspaceInstructionVisible, false);
+  assert.equal(
+    model.learnerUi.instructionArea.instructionText,
+    "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions."
+  );
+  assert.equal(
+    model.learnerUi.instructionArea.panModeText,
+    "Pan mode is on. Drag the map to move the view. Switch back to Draw to add route strokes."
+  );
+  assert.equal(model.learnerUi.routeStatus.badgeCount, 1);
+  assert.deepEqual(model.learnerUi.routeStatus.labels, ["Not started", "Drawing", "Ready to submit", "Submitted"]);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawOsmNodeIds, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawGraphIds, true);
   assert.equal(model.learnerUi.hiddenTechnicalDetails.rawRoadIds, true);
@@ -298,7 +321,7 @@ test("Stage 156 mobile and tablet map readability contract uses central touch-sa
   assert.equal(model.mobileLayout.mapControlsMinTouchTargetPx, 44);
   assert.equal(model.mobileLayout.mapControlsAvoidPrimaryMarkers, true);
   assert.equal(model.mobileLayout.mapLegendCollapsedByDefault, true);
-  assert.equal(model.mobileLayout.mapLegendMaxHeightPx, 192);
+  assert.equal(model.mobileLayout.mapLegendMaxHeightPx, REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX);
   assert.equal(model.mobileLayout.markerHitTargetMinPx, 44);
   assert.ok(model.mobileLayout.reviewIssueHitTargetMinPx > model.mobileLayout.markerHitTargetMinPx);
   assert.ok(model.mobileLayout.calloutMinHeightPx >= 34);

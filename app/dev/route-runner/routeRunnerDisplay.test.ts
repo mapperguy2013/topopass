@@ -940,11 +940,27 @@ test("drawn route score display distinguishes blocked, pass, fail, and drawing s
 test("Stage 161.6.10 learner drawn status hides internal pipeline labels", () => {
   assert.equal(
     getLearnerDrawnPipelineStatusText({
+      status: "no drawing",
+      submitted: false,
+      blocked: false
+    }),
+    "Not started"
+  );
+  assert.equal(
+    getLearnerDrawnPipelineStatusText({
+      status: "drawing",
+      submitted: false,
+      blocked: false
+    }),
+    "Drawing"
+  );
+  assert.equal(
+    getLearnerDrawnPipelineStatusText({
       status: "snapped",
       submitted: false,
       blocked: false
     }),
-    "Route drawn"
+    "Ready to submit"
   );
   assert.equal(
     getLearnerDrawnPipelineStatusText({
