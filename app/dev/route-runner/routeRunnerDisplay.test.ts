@@ -322,13 +322,13 @@ test("route issue overlays highlight illegal no-entry movements", () => {
   assert.deepEqual(overlays, [
     {
       kind: "no-entry",
-      label: "No entry",
-      message: "Movement 0 uses no-entry road no-entry-road from b to c.",
+      label: "No entry from this direction",
+      message: "Your route enters from a direction that is not allowed.",
       points: [
         { x: 100, y: 0 },
         { x: 100, y: 100 }
       ],
-      midpoint: { x: 100, y: 50 },
+      midpoint: { x: 100, y: 0 },
       roadIds: ["no-entry-road"],
       movementIndex: 0,
       direction: {
@@ -374,12 +374,109 @@ test("route issue overlays highlight wrong-way one-way movements", () => {
 
   assert.equal(overlays.length, 1);
   assert.equal(overlays[0].kind, "wrong-way");
-  assert.equal(overlays[0].label, "Wrong way");
+  assert.equal(overlays[0].label, "Wrong way on this one-way street");
+  assert.equal(overlays[0].message, "Your route travels against the allowed one-way direction.");
   assert.deepEqual(overlays[0].roadIds, ["one-way-road"]);
+  assert.deepEqual(overlays[0].midpoint, { x: 100, y: 0 });
   assert.deepEqual(overlays[0].direction, {
     from: { x: 100, y: 0 },
     to: { x: 0, y: 0 }
   });
+});
+
+test("Stage 161.6.15 route issue overlays group split one-way mistakes at first entry point", () => {
+  const splitOneWayMap: MapDefinition = {
+    id: "split-one-way-overlay-map",
+    name: "Split One Way Overlay Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 200, y: 0 },
+      { id: "d", x: 300, y: 0 }
+    ],
+    roads: [
+      {
+        id: "chenies-1",
+        fromNodeId: "a",
+        toNodeId: "b",
+        distanceMeters: 100,
+        isOneWay: true,
+        name: "Chenies Street"
+      },
+      {
+        id: "chenies-2",
+        fromNodeId: "b",
+        toNodeId: "c",
+        distanceMeters: 100,
+        isOneWay: true,
+        name: "Chenies Street"
+      },
+      {
+        id: "chenies-3",
+        fromNodeId: "c",
+        toNodeId: "d",
+        distanceMeters: 100,
+        isOneWay: true,
+        name: "Chenies Street"
+      }
+    ],
+    restrictions: [],
+    landmarks: []
+  };
+  const overlays = buildRouteIssueOverlays(
+    splitOneWayMap,
+    pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          automaticFail: true,
+          status: "fail",
+          isLegal: false,
+          scorePercent: 0,
+          failureReasons: ["illegal_route"],
+          legality: {
+            isLegal: false,
+            automaticFail: true,
+            illegalMovements: [
+              {
+                type: "wrong_way_one_way",
+                movementIndex: 1,
+                roadId: "chenies-3",
+                fromNodeId: "d",
+                toNodeId: "c",
+                message: "Movement 1 travels the wrong way on one-way road chenies-3."
+              },
+              {
+                type: "wrong_way_one_way",
+                movementIndex: 2,
+                roadId: "chenies-2",
+                fromNodeId: "c",
+                toNodeId: "b",
+                message: "Movement 2 travels the wrong way on one-way road chenies-2."
+              },
+              {
+                type: "wrong_way_one_way",
+                movementIndex: 3,
+                roadId: "chenies-1",
+                fromNodeId: "b",
+                toNodeId: "a",
+                message: "Movement 3 travels the wrong way on one-way road chenies-1."
+              }
+            ]
+          }
+        }
+      })
+    })
+  );
+
+  assert.equal(overlays.length, 1);
+  assert.equal(overlays[0].kind, "wrong-way");
+  assert.equal(overlays[0].label, "Wrong way on Chenies Street");
+  assert.equal(overlays[0].movementIndex, 1);
+  assert.deepEqual(overlays[0].midpoint, { x: 300, y: 0 });
+  assert.deepEqual(overlays[0].roadIds, ["chenies-3", "chenies-2", "chenies-1"]);
 });
 
 test("route issue overlays highlight disconnected matching transitions before scoring", () => {
@@ -404,7 +501,7 @@ test("route issue overlays highlight disconnected matching transitions before sc
     {
       kind: "disconnected",
       label: "Disconnected roads",
-      message: "Disconnected between one-way-road and closed-road.",
+      message: "Your drawn route has a gap. Continue the route so it connects from start to finish.",
       points: [
         { x: 50, y: 0 },
         { x: 50, y: 100 }
@@ -453,7 +550,8 @@ test("route issue overlays highlight explicit prohibited turns after scoring", (
 
   assert.equal(overlays.length, 1);
   assert.equal(overlays[0].kind, "prohibited-turn");
-  assert.equal(overlays[0].label, "Prohibited turn");
+  assert.equal(overlays[0].label, "Restricted turn at this junction");
+  assert.equal(overlays[0].message, "Your route uses a banned turn at this junction.");
   assert.deepEqual(overlays[0].roadIds, ["turn-only-road", "one-way-road"]);
 });
 
@@ -503,7 +601,7 @@ test("route issue overlays prefer no-entry over redundant prohibited turn on the
 
   assert.equal(overlays.length, 1);
   assert.equal(overlays[0].kind, "no-entry");
-  assert.equal(overlays[0].label, "No entry");
+  assert.equal(overlays[0].label, "No entry from this direction");
   assert.deepEqual(overlays[0].roadIds, ["no-entry-road"]);
 });
 
@@ -1086,6 +1184,55 @@ test("Stage 161.6.10 submit outcome succeeds when matching and scoring produce a
   assert.equal(outcome.canSubmit, true);
   assert.equal(outcome.code, null);
   assert.equal(outcome.learnerMessage, "Submitted. Your route passed.");
+});
+
+test("Stage 161.6.15 submit outcome preserves matched illegal routes for feedback", () => {
+  const readiness = getDrawnRouteSubmitReadiness({
+    mapIsLoading: false,
+    mapLoadError: null,
+    selectedMapIsScoreable: true,
+    hasSelectedExercise: true,
+    selectedExerciseIsValid: true,
+    isDrawing: false,
+    drawnPointCount: 12
+  });
+
+  const outcome = getDrawnRouteSubmitOutcome({
+    readiness,
+    result: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          automaticFail: true,
+          status: "fail",
+          isLegal: false,
+          scorePercent: 0,
+          failureReasons: ["illegal_route"],
+          legality: {
+            isLegal: false,
+            automaticFail: true,
+            illegalMovements: [
+              {
+                type: "wrong_way_one_way",
+                movementIndex: 1,
+                roadId: "one-way-road",
+                fromNodeId: "b",
+                toNodeId: "a",
+                message: "Movement 1 travels the wrong way on one-way road one-way-road."
+              }
+            ]
+          }
+        }
+      })
+    })
+  });
+
+  assert.equal(outcome.submitted, true);
+  assert.equal(outcome.canSubmit, true);
+  assert.equal(outcome.code, null);
+  assert.equal(outcome.learnerMessage, "Submitted. Review the route feedback below.");
 });
 
 test("required stop visit statuses follow required order and mark missing stops", () => {

@@ -1,6 +1,8 @@
 import type {
   DrawnRoutePipelineResult,
   IllegalDrawnMovement,
+  MapDefinition,
+  MapRoad,
   RouteScoringFailureReason
 } from "../../../lib/map-engine/index.ts";
 import {
@@ -113,8 +115,20 @@ export type RouteAttemptHistoryState = {
 export type BuildRouteAttemptReviewInput = {
   pipelineResult: DrawnRoutePipelineResult;
   illegalMovements: readonly IllegalDrawnMovement[];
+  map?: MapDefinition;
   isDrawing?: boolean;
   versionSnapshot?: RouteAttemptVersionSnapshot | null;
+};
+
+export type GroupedIllegalDrawnMovement = {
+  id: string;
+  kind: IllegalDrawnMovement["kind"];
+  label: string;
+  detail: string;
+  firstMovementIndex: number;
+  movementIndices: number[];
+  roadIds: string[];
+  representative: IllegalDrawnMovement;
 };
 
 function formatDistance(distanceMeters: number): string {
@@ -146,10 +160,12 @@ function compactAttemptScoreLabel(scoreLabel: string): string {
   return scoreLabel.replace(/\s+\((?:pass|fail)\)$/i, "");
 }
 
-function illegalMovementLabel(movement: IllegalDrawnMovement): string {
+function illegalMovementLabel(movement: IllegalDrawnMovement, map?: MapDefinition): string {
+  const roadName = movement.roadId ? learnerRoadName(map, movement.roadId) : null;
+
   if (movement.kind === "prohibited-turn") {
     if (/u-turn|immediately reverses/i.test(movement.message)) {
-      return "No U-turn here";
+      return "No U-turn at this junction";
     }
 
     if (/right/i.test(movement.message)) {
@@ -164,18 +180,158 @@ function illegalMovementLabel(movement: IllegalDrawnMovement): string {
   }
 
   if (movement.kind === "closed-road" || movement.kind === "restricted-road") {
-    return "This road is restricted";
+    return roadName ? `${roadName} is restricted for this route` : "This road is restricted for this route";
   }
 
   if (movement.kind === "no-entry-road") {
-    return "No entry from this direction";
+    return roadName ? `No entry onto ${roadName} from this direction` : "No entry from this direction";
   }
 
   if (movement.kind === "one-way-wrong-direction") {
-    return "This is a one-way street";
+    return roadName ? `Wrong way on ${roadName}` : "Wrong way on this one-way street";
   }
 
   return "Illegal movement";
+}
+
+function roadById(map: MapDefinition | undefined, roadId: string | undefined): MapRoad | undefined {
+  return roadId && map ? map.roads.find((road) => road.id === roadId) : undefined;
+}
+
+function learnerRoadName(map: MapDefinition | undefined, roadId: string): string | null {
+  const name = roadById(map, roadId)?.name?.trim();
+
+  return name ? name : null;
+}
+
+function roadGroupingKey(map: MapDefinition | undefined, roadId: string | undefined): string {
+  if (!roadId) {
+    return "unknown-road";
+  }
+
+  return learnerRoadName(map, roadId)?.toLowerCase() ?? roadId;
+}
+
+function illegalMovementActionKey(movement: IllegalDrawnMovement, map?: MapDefinition): string {
+  if (movement.kind === "prohibited-turn") {
+    return [
+      movement.kind,
+      movement.viaNodeId ?? "unknown-junction",
+      roadGroupingKey(map, movement.incomingRoadId),
+      roadGroupingKey(map, movement.outgoingRoadId),
+      /u-turn|immediately reverses/i.test(movement.message)
+        ? "u-turn"
+        : /right/i.test(movement.message)
+          ? "right"
+          : /left/i.test(movement.message)
+            ? "left"
+            : "turn"
+    ].join(":");
+  }
+
+  if (movement.kind === "no-entry-road") {
+    return [
+      movement.kind,
+      roadGroupingKey(map, movement.roadId),
+      movement.fromNodeId ?? "unknown-from"
+    ].join(":");
+  }
+
+  return [movement.kind, roadGroupingKey(map, movement.roadId)].join(":");
+}
+
+function illegalMovementDetail(movement: IllegalDrawnMovement): string {
+  if (movement.kind === "one-way-wrong-direction") {
+    return "Your route travels against the allowed one-way direction.";
+  }
+
+  if (movement.kind === "no-entry-road") {
+    return "Your route enters from a direction that is not allowed.";
+  }
+
+  if (movement.kind === "prohibited-turn") {
+    if (/u-turn|immediately reverses/i.test(movement.message)) {
+      return "Your route makes a U-turn where it is not allowed.";
+    }
+
+    return "Your route uses a banned turn at this junction.";
+  }
+
+  if (movement.kind === "closed-road" || movement.kind === "restricted-road") {
+    return "Your route uses a road movement that is restricted for this exercise.";
+  }
+
+  return "Your route uses a movement that is not allowed.";
+}
+
+function compareIllegalMovement(left: IllegalDrawnMovement, right: IllegalDrawnMovement): number {
+  if (left.movementIndex !== right.movementIndex) {
+    return left.movementIndex - right.movementIndex;
+  }
+
+  return left.id.localeCompare(right.id);
+}
+
+function groupCanAcceptMovement(group: GroupedIllegalDrawnMovement, movement: IllegalDrawnMovement, map?: MapDefinition): boolean {
+  if (group.kind !== movement.kind) {
+    return false;
+  }
+
+  if (illegalMovementActionKey(group.representative, map) !== illegalMovementActionKey(movement, map)) {
+    return false;
+  }
+
+  const lastMovementIndex = group.movementIndices[group.movementIndices.length - 1] ?? group.firstMovementIndex;
+
+  return movement.movementIndex <= lastMovementIndex + 1;
+}
+
+function uniqueStrings(values: readonly (string | undefined)[]): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  for (const value of values) {
+    if (!value || seen.has(value)) {
+      continue;
+    }
+
+    seen.add(value);
+    output.push(value);
+  }
+
+  return output;
+}
+
+export function groupIllegalDrawnMovements(
+  movements: readonly IllegalDrawnMovement[],
+  map?: MapDefinition
+): GroupedIllegalDrawnMovement[] {
+  const groups: GroupedIllegalDrawnMovement[] = [];
+
+  for (const movement of [...movements].sort(compareIllegalMovement)) {
+    const lastGroup = groups[groups.length - 1];
+
+    if (lastGroup && groupCanAcceptMovement(lastGroup, movement, map)) {
+      lastGroup.movementIndices.push(movement.movementIndex);
+      lastGroup.roadIds = uniqueStrings([...lastGroup.roadIds, movement.roadId, movement.incomingRoadId, movement.outgoingRoadId]);
+      continue;
+    }
+
+    const firstRoadIds = uniqueStrings([movement.roadId, movement.incomingRoadId, movement.outgoingRoadId]);
+
+    groups.push({
+      id: `${movement.movementIndex}:group:${movement.kind}:${illegalMovementActionKey(movement, map)}`,
+      kind: movement.kind,
+      label: illegalMovementLabel(movement, map),
+      detail: illegalMovementDetail(movement),
+      firstMovementIndex: movement.movementIndex,
+      movementIndices: [movement.movementIndex],
+      roadIds: firstRoadIds,
+      representative: movement
+    });
+  }
+
+  return groups;
 }
 
 function itemForFailureReason(reason: RouteScoringFailureReason): RouteAttemptReviewItem | null {
@@ -282,10 +438,7 @@ function itemForPipelineWarning(warning: DrawnRoutePipelineResult["warnings"][nu
     return {
       id: `warning-${warning.code}-${warning.fromRoadId ?? "unknown"}-${warning.toRoadId ?? "unknown"}`,
       label: "Disconnected matched roads",
-      detail:
-        warning.fromRoadId && warning.toRoadId
-          ? `The matched route breaks between ${warning.fromRoadId} and ${warning.toRoadId}.`
-          : "The matched roads do not form one continuous route.",
+      detail: "Your drawn route has a gap. Continue the route so it connects from start to finish.",
       severity: "error"
     };
   }
@@ -314,6 +467,7 @@ function itemForPipelineWarning(warning: DrawnRoutePipelineResult["warnings"][nu
 function suggestedFailureReason(input: {
   result: DrawnRoutePipelineResult;
   illegalMovements: readonly IllegalDrawnMovement[];
+  map?: MapDefinition;
   blocked: boolean;
 }): string | null {
   const score = input.result.exerciseResult?.score;
@@ -331,7 +485,7 @@ function suggestedFailureReason(input: {
   }
 
   if (input.illegalMovements.length > 0) {
-    return illegalMovementLabel(input.illegalMovements[0]);
+    return groupIllegalDrawnMovements(input.illegalMovements, input.map)[0]?.label ?? illegalMovementLabel(input.illegalMovements[0], input.map);
   }
 
   if (score.failureReasons.includes("illegal_route")) {
@@ -380,6 +534,14 @@ function hasReviewItem(items: readonly RouteAttemptReviewItem[], text: string): 
   return items.some((item) => reviewItemIncludes(item, text));
 }
 
+function hasRestrictedRoadReviewItem(items: readonly RouteAttemptReviewItem[]): boolean {
+  return items.some((item) => {
+    const label = item.label.toLowerCase();
+
+    return label === "this road is restricted for this route" || label.endsWith(" is restricted for this route");
+  });
+}
+
 function addHint(hints: string[], hint: string): void {
   if (!hints.includes(hint)) {
     hints.push(hint);
@@ -425,19 +587,19 @@ export function buildStudentCorrectionHints(review: RouteAttemptReviewBase): str
     return ["Good route. Keep those legal choices and look for any shorter legal alternative."];
   }
 
-  if (hasReviewItem(review.illegalMovements, "Prohibited turn")) {
+  if (hasReviewItem(review.illegalMovements, "Restricted turn") || hasReviewItem(review.illegalMovements, "No right turn") || hasReviewItem(review.illegalMovements, "No left turn") || hasReviewItem(review.illegalMovements, "No U-turn")) {
     addHint(hints, "Avoid the prohibited turn shown in the review; continue to the next legal junction before changing roads.");
   }
 
-  if (hasReviewItem(review.illegalMovements, "No-entry road")) {
+  if (hasReviewItem(review.illegalMovements, "No entry")) {
     addHint(hints, "Do not enter no-entry roads; approach the destination from a road direction that is allowed.");
   }
 
-  if (hasReviewItem(review.illegalMovements, "Wrong way on one-way road")) {
+  if (hasReviewItem(review.illegalMovements, "Wrong way")) {
     addHint(hints, "Follow the one-way arrows and choose roads that allow travel in your direction.");
   }
 
-  if (hasReviewItem(review.illegalMovements, "Restricted road")) {
+  if (hasRestrictedRoadReviewItem(review.illegalMovements)) {
     addHint(hints, "Avoid restricted or closed roads and choose the nearest legal alternative.");
   }
 
@@ -542,7 +704,7 @@ export function buildAdaptivePracticeRecommendations(
     });
   }
 
-  if (hasReviewItem(review.illegalMovements, "Prohibited turn")) {
+  if (hasReviewItem(review.illegalMovements, "Restricted turn") || hasReviewItem(review.illegalMovements, "No right turn") || hasReviewItem(review.illegalMovements, "No left turn") || hasReviewItem(review.illegalMovements, "No U-turn")) {
     addPracticeRecommendation(recommendations, {
       id: "practice-prohibited-turns",
       title: "Practise prohibited turns",
@@ -552,7 +714,7 @@ export function buildAdaptivePracticeRecommendations(
     });
   }
 
-  if (hasReviewItem(review.illegalMovements, "No-entry road")) {
+  if (hasReviewItem(review.illegalMovements, "No entry")) {
     addPracticeRecommendation(recommendations, {
       id: "practice-no-entry-roads",
       title: "Practise no-entry roads",
@@ -562,7 +724,7 @@ export function buildAdaptivePracticeRecommendations(
     });
   }
 
-  if (hasReviewItem(review.illegalMovements, "Wrong way on one-way road")) {
+  if (hasReviewItem(review.illegalMovements, "Wrong way")) {
     addPracticeRecommendation(recommendations, {
       id: "practice-one-way-direction",
       title: "Practise one-way direction",
@@ -572,7 +734,7 @@ export function buildAdaptivePracticeRecommendations(
     });
   }
 
-  if (hasReviewItem(review.illegalMovements, "Restricted road")) {
+  if (hasRestrictedRoadReviewItem(review.illegalMovements)) {
     addPracticeRecommendation(recommendations, {
       id: "practice-restricted-roads",
       title: "Practise restricted roads",
@@ -1039,6 +1201,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
       suggestedFailureReason: suggestedFailureReason({
         result,
         illegalMovements: input.illegalMovements,
+        map: input.map,
         blocked
       })
     });
@@ -1063,10 +1226,11 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
       value: formatExtraDistance(extraDistanceMeters)
     }
   ];
-  const illegalMovements = input.illegalMovements.map((movement) => ({
-    id: movement.id,
-    label: illegalMovementLabel(movement),
-    detail: movement.message,
+  const groupedIllegalMovements = groupIllegalDrawnMovements(input.illegalMovements, input.map);
+  const illegalMovements = groupedIllegalMovements.map((group) => ({
+    id: group.id,
+    label: group.label,
+    detail: group.detail,
     severity: "error" as const
   }));
   const missedRestrictions = dedupeItems(
@@ -1090,6 +1254,7 @@ export function buildRouteAttemptReview(input: BuildRouteAttemptReviewInput): Ro
     suggestedFailureReason: suggestedFailureReason({
       result,
       illegalMovements: input.illegalMovements,
+      map: input.map,
       blocked: false
     })
   });

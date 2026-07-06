@@ -3880,6 +3880,7 @@ export function RouteRunnerClient({
       buildRouteAttemptReview({
         pipelineResult: drawnPipelineResult,
         illegalMovements: illegalDrawnMovements,
+        map: activeMap,
         isDrawing,
         versionSnapshot: selectedExercise
           ? createRouteAttemptVersionSnapshot({

@@ -313,6 +313,33 @@ fonts, colours, tiles, screenshots, or symbols. Dev QA controls, manual route
 input, raw IDs, fixture filenames, and blocked-way diagnostics remain outside
 the beta practice surface.
 
+## Stage 161.6.15 Clean Route Feedback and Illegal Issue Grouping
+
+Stage 161.6.15 refines the post-submit learner feedback path without changing
+route matching, legality, scoring, route generation, OSM data, or cartography
+tokens. `/practice/real-london` now treats a matched illegal route differently
+from a true matching failure: unmatched drawings receive a matching message,
+while matched one-way, no-entry, restricted-road, turn-rule, or checkpoint
+failures produce a submitted failed/needs-review result with score and
+distance fields where the existing scoring result provides them.
+
+Illegal movement review items are grouped by issue type, learner road name or
+road id group, action/direction, and contiguous illegal run. This avoids
+repeating the same one-way message across many split OSM segments. Learner text
+uses names when available, for example "Wrong way on Chenies Street", and
+falls back to plain messages such as "Wrong way on this one-way street", "No
+entry from this direction", "No right turn at this junction", or "This road is
+restricted for this route". Raw OSM, graph, node, relation, and road ids stay
+out of beta feedback labels and details.
+
+The review overlay now places one marker per grouped issue. Wrong-way,
+no-entry, and restricted-road markers use the first illegal entry point when
+available; prohibited-turn markers use the via junction; missed-checkpoint
+markers remain at the checkpoint. "Show on map" continues to focus the grouped
+issue marker instead of a stack of repeated segment labels. Legality remains
+authoritative: grouped feedback makes failures clearer, but illegal routes
+still fail and correct legal routes still score through the existing pipeline.
+
 ## Stage 161.8.3 King's Cross / Euston Beta Fixture Check
 
 Stage 161.8.3 adds `kingsCrossEustonOverpass.json` as a controlled

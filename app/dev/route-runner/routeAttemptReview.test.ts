@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DrawnRoutePipelineResult, IllegalDrawnMovement, RunRouteExerciseResult } from "../../../lib/map-engine/index.ts";
+import type {
+  DrawnRoutePipelineResult,
+  IllegalDrawnMovement,
+  MapDefinition,
+  RunRouteExerciseResult
+} from "../../../lib/map-engine/index.ts";
 import {
   appendRouteAttemptToHistory,
   buildAdaptivePracticeRecommendations,
@@ -11,6 +16,7 @@ import {
   getLearnerWeakAreaPracticeFocus,
   getSelectedRouteAttemptHistoryItem,
   getStrongestWeakAreas,
+  groupIllegalDrawnMovements,
   buildRecommendedPracticeQueue,
   buildRouteAttemptReview,
   buildStudentCorrectionHints,
@@ -338,7 +344,7 @@ test("buildRouteAttemptReview lists multiple illegal movements with display-frie
 
   assert.deepEqual(
     review.illegalMovements.map((movement) => movement.label),
-    ["Restricted turn at this junction", "This is a one-way street"]
+    ["Restricted turn at this junction", "Wrong way on this one-way street"]
   );
   assert.ok(
     review.illegalMovements.every((movement) => !/\b(road id|node id|graph id|r\d+|n\d+)\b/i.test(movement.label))
@@ -354,6 +360,239 @@ test("buildRouteAttemptReview lists multiple illegal movements with display-frie
     review.recommendedPracticeQueue.map((recommendation) => recommendation.weaknessType).sort(),
     ["one-way-direction", "prohibited-turn"]
   );
+});
+
+test("Stage 161.6.15 groups repeated wrong-way split-road issues into one learner item", () => {
+  const splitOneWayMap: MapDefinition = {
+    id: "split-one-way-map",
+    name: "Split One Way Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 200, y: 0 },
+      { id: "d", x: 300, y: 0 }
+    ],
+    roads: [
+      {
+        id: "osm-way-1-segment-1",
+        fromNodeId: "a",
+        toNodeId: "b",
+        distanceMeters: 100,
+        isOneWay: true,
+        name: "Chenies Street"
+      },
+      {
+        id: "osm-way-1-segment-2",
+        fromNodeId: "b",
+        toNodeId: "c",
+        distanceMeters: 100,
+        isOneWay: true,
+        name: "Chenies Street"
+      },
+      {
+        id: "osm-way-1-segment-3",
+        fromNodeId: "c",
+        toNodeId: "d",
+        distanceMeters: 100,
+        isOneWay: true,
+        name: "Chenies Street"
+      }
+    ],
+    restrictions: [],
+    landmarks: []
+  };
+  const illegalMovements: IllegalDrawnMovement[] = [
+    {
+      id: "1:one-way-wrong-direction:osm-way-1-segment-3:c",
+      kind: "one-way-wrong-direction",
+      movementIndex: 1,
+      roadId: "osm-way-1-segment-3",
+      fromNodeId: "d",
+      toNodeId: "c",
+      message: "Movement 1 travels the wrong way on one-way road osm-way-1-segment-3."
+    },
+    {
+      id: "2:one-way-wrong-direction:osm-way-1-segment-2:b",
+      kind: "one-way-wrong-direction",
+      movementIndex: 2,
+      roadId: "osm-way-1-segment-2",
+      fromNodeId: "c",
+      toNodeId: "b",
+      message: "Movement 2 travels the wrong way on one-way road osm-way-1-segment-2."
+    },
+    {
+      id: "3:one-way-wrong-direction:osm-way-1-segment-1:a",
+      kind: "one-way-wrong-direction",
+      movementIndex: 3,
+      roadId: "osm-way-1-segment-1",
+      fromNodeId: "b",
+      toNodeId: "a",
+      message: "Movement 3 travels the wrong way on one-way road osm-way-1-segment-1."
+    }
+  ];
+  const review = buildRouteAttemptReview({
+    map: splitOneWayMap,
+    pipelineResult: pipelineResult({
+      status: "scored",
+      exerciseResult: exerciseResult({
+        score: {
+          ...exerciseResult().score,
+          passed: false,
+          automaticFail: true,
+          status: "fail",
+          isLegal: false,
+          scorePercent: 0,
+          efficiencyRatio: 0,
+          scoreRatio: 0,
+          failureReasons: ["illegal_route"],
+          legality: {
+            isLegal: false,
+            automaticFail: true,
+            illegalMovements: []
+          }
+        }
+      })
+    }),
+    illegalMovements
+  });
+
+  assert.equal(review.status, "fail");
+  assert.equal(review.scoreLabel, "0.0% (fail)");
+  assert.equal(review.illegalMovements.length, 1);
+  assert.equal(review.illegalMovements[0].label, "Wrong way on Chenies Street");
+  assert.equal(review.suggestedFailureReason, "Wrong way on Chenies Street");
+  assert.equal(review.missedRestrictions.length, 0);
+  assert.ok(review.correctionHints.some((hint) => hint.includes("Follow the one-way arrows")));
+  assert.ok(
+    review.illegalMovements.every((movement) => !/\b(osm-way|segment|node id|road id|graph id)\b/i.test(`${movement.label} ${movement.detail}`))
+  );
+});
+
+test("Stage 161.6.15 groups no-entry issues once per entrance point", () => {
+  const noEntryMap: MapDefinition = {
+    id: "no-entry-group-map",
+    name: "No Entry Group Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 200, y: 0 }
+    ],
+    roads: [
+      {
+        id: "no-entry-road-1",
+        fromNodeId: "a",
+        toNodeId: "b",
+        distanceMeters: 100,
+        name: "Charlotte Street"
+      },
+      {
+        id: "no-entry-road-2",
+        fromNodeId: "b",
+        toNodeId: "c",
+        distanceMeters: 100,
+        name: "Charlotte Street"
+      }
+    ],
+    restrictions: [],
+    landmarks: []
+  };
+  const groups = groupIllegalDrawnMovements(
+    [
+      {
+        id: "1:no-entry-road:no-entry-road-1:a",
+        kind: "no-entry-road",
+        movementIndex: 1,
+        roadId: "no-entry-road-1",
+        fromNodeId: "a",
+        toNodeId: "b",
+        message: "Movement 1 uses no-entry road no-entry-road-1 from a to b."
+      },
+      {
+        id: "2:no-entry-road:no-entry-road-2:a",
+        kind: "no-entry-road",
+        movementIndex: 2,
+        roadId: "no-entry-road-2",
+        fromNodeId: "a",
+        toNodeId: "c",
+        message: "Movement 2 uses no-entry road no-entry-road-2 from a to c."
+      },
+      {
+        id: "3:no-entry-road:no-entry-road-2:b",
+        kind: "no-entry-road",
+        movementIndex: 3,
+        roadId: "no-entry-road-2",
+        fromNodeId: "b",
+        toNodeId: "c",
+        message: "Movement 3 uses no-entry road no-entry-road-2 from b to c."
+      }
+    ],
+    noEntryMap
+  );
+
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].label, "No entry onto Charlotte Street from this direction");
+  assert.deepEqual(groups[0].movementIndices, [1, 2]);
+  assert.deepEqual(groups[1].movementIndices, [3]);
+});
+
+test("Stage 161.6.15 groups repeated turn issues once per junction and action", () => {
+  const turnMap: MapDefinition = {
+    id: "turn-group-map",
+    name: "Turn Group Map",
+    nodes: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 100, y: 0 },
+      { id: "c", x: 100, y: 100 },
+      { id: "d", x: 0, y: 100 }
+    ],
+    roads: [
+      { id: "incoming-1", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, name: "Goodge Street" },
+      { id: "incoming-2", fromNodeId: "a", toNodeId: "b", distanceMeters: 100, name: "Goodge Street" },
+      { id: "outgoing-1", fromNodeId: "b", toNodeId: "c", distanceMeters: 100, name: "Tottenham Court Road" },
+      { id: "outgoing-2", fromNodeId: "b", toNodeId: "c", distanceMeters: 100, name: "Tottenham Court Road" },
+      { id: "left-road", fromNodeId: "b", toNodeId: "d", distanceMeters: 100, name: "Store Street" }
+    ],
+    restrictions: [],
+    landmarks: []
+  };
+  const groups = groupIllegalDrawnMovements(
+    [
+      {
+        id: "4:prohibited-turn:incoming-1:outgoing-1",
+        kind: "prohibited-turn",
+        movementIndex: 4,
+        viaNodeId: "b",
+        incomingRoadId: "incoming-1",
+        outgoingRoadId: "outgoing-1",
+        message: "Movement 4 makes a prohibited right turn at node b."
+      },
+      {
+        id: "5:prohibited-turn:incoming-2:outgoing-2",
+        kind: "prohibited-turn",
+        movementIndex: 5,
+        viaNodeId: "b",
+        incomingRoadId: "incoming-2",
+        outgoingRoadId: "outgoing-2",
+        message: "Movement 5 makes a prohibited right turn at node b."
+      },
+      {
+        id: "6:prohibited-turn:incoming-2:left-road",
+        kind: "prohibited-turn",
+        movementIndex: 6,
+        viaNodeId: "b",
+        incomingRoadId: "incoming-2",
+        outgoingRoadId: "left-road",
+        message: "Movement 6 makes a prohibited left turn at node b."
+      }
+    ],
+    turnMap
+  );
+
+  assert.equal(groups.length, 2);
+  assert.equal(groups[0].label, "No right turn at this junction");
+  assert.deepEqual(groups[0].movementIndices, [4, 5]);
+  assert.equal(groups[1].label, "No left turn at this junction");
+  assert.deepEqual(groups[1].movementIndices, [6]);
 });
 
 test("buildRouteAttemptReview explains blocked pre-scoring matching failures", () => {
@@ -421,7 +660,7 @@ test("buildRouteAttemptReview recommends practice for restricted roads", () => {
   });
 
   assert.deepEqual(recommendationIds(review), ["practice-restricted-roads"]);
-  assert.equal(review.illegalMovements[0].label, "This road is restricted");
+  assert.equal(review.illegalMovements[0].label, "This road is restricted for this route");
   assert.equal(review.practiceRecommendations[0].priority, "high");
   assert.equal(review.recommendedPracticeQueue[0].weaknessType, "restricted-road");
 });

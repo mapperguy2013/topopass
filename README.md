@@ -1121,9 +1121,10 @@ controls. The legend now names one-way arrows, no-entry/blocked movements,
 no-left-turn, no-right-turn, no-U-turn, restricted roads, attempted route,
 correct route, checkpoints, start, and destination without raw OSM, way,
 node, road, or graph IDs. Post-submit restriction feedback uses learner
-phrases such as "No entry from this direction", "This is a one-way street",
-and "This road is restricted"; raw legality messages remain available only as
-dev/internal detail. The audit found the curated raw Overpass files contain
+phrases such as "No entry from this direction", "Wrong way on this one-way
+street", and "This road is restricted for this route"; raw legality messages
+remain available only as dev/internal detail. The audit found the curated raw
+Overpass files contain
 one-way tags, access tags, and turn-restriction relations, but the current
 converted scored maps expose one-way road geometry only for those OSM
 fixtures; no-entry, road-closed, and turn-restriction map symbols appear only
@@ -1154,6 +1155,22 @@ legend behaves like a compact layer/legend control and uses learner labels such
 as One-way, No entry, and Restricted turn without raw OSM or graph language. No
 Google, Apple, A-Z, Ordnance Survey, proprietary map assets, colours, icons,
 typography, tiles, or copied UI artwork are used.
+Stage 161.6.15 cleans submitted route feedback and illegal issue grouping.
+`/practice/real-london` now distinguishes true matching failures from matched
+illegal routes: unmatched drawings get a matching message, while matched
+one-way, no-entry, restricted-road, turn-rule, or checkpoint failures produce a
+submitted failed/needs-review result with score and distance data where the
+existing scoring pipeline provides it. Split OSM one-way segments are grouped
+into one learner issue per type, road/action, and contiguous illegal run, so a
+mistake such as the wrong way on Chenies Street appears once instead of as many
+per-segment messages. Issue markers also group to one map point: first illegal
+entry for wrong-way/no-entry/restricted-road issues, the via junction for
+turn-rule issues, and the checkpoint location for missed checkpoints.
+Learner-facing wording uses examples such as "Wrong way on Chenies Street",
+"No entry from this direction", and "No right turn at this junction" without
+raw OSM, node, graph, relation, or road IDs. Legality remains authoritative:
+illegal matched routes still fail, and only genuine matching failures block
+scoring entirely.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

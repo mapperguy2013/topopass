@@ -424,9 +424,9 @@ movements, no-left-turn, no-right-turn, no-U-turn, restricted roads, attempted
 route, correct/review route, checkpoints, start, and destination. Legend and
 review text must not mention raw OSM relation IDs, way IDs, node IDs, road IDs,
 or graph IDs. Per-attempt restriction feedback uses learner language such as
-"No entry from this direction", "This is a one-way street", "No U-turn here",
-and "This road is restricted"; raw movement messages stay available only in
-dev/internal detail.
+"No entry from this direction", "Wrong way on this one-way street",
+"No U-turn at this junction", and "This road is restricted for this route";
+raw movement messages stay available only in dev/internal detail.
 
 Data limitation: the current curated raw Overpass files contain useful
 restriction source data, including one-way tags, access tags, and
@@ -486,6 +486,28 @@ while keeping the visual design original to TOPOPASS. It does not use or copy
 Google, Apple, A-Z, Ordnance Survey, or other proprietary map tiles,
 cartographic styling, UI assets, icons, typography, colours, symbols, or
 screenshots.
+
+Stage 161.6.15 cleans the learner feedback contract after Submit. Matching
+failure and illegal route failure are separate outcomes: a drawing that cannot
+be matched gets a matching message, while a matched route that violates
+one-way, no-entry, restricted-road, turn-rule, or checkpoint rules reaches the
+Route feedback panel as a submitted failed/needs-review result. Existing
+scoring remains authoritative, so illegal routes do not pass, but they no
+longer collapse into a generic "Route not submitted" state when the app has
+already matched the route and detected legal issues.
+
+Illegal movement feedback is grouped for learner readability. Repeated split
+OSM segments are collapsed into one issue when they share the same issue type,
+road name or road id group, action/direction, and contiguous illegal run.
+Turn-rule issues group by junction and turn action; no-entry issues group by
+entry point; restricted-road issues group by the first restricted road run.
+The map overlay shows one marker per grouped issue: wrong-way, no-entry, and
+restricted-road markers sit at the first illegal entry point, turn-rule markers
+sit at the via junction, and missed-checkpoint markers stay on the checkpoint.
+Learner text uses phrases such as "Wrong way on Chenies Street", "No entry
+from this direction", "No right turn at this junction", and "This road is
+restricted for this route" without exposing raw OSM, relation, node, graph, or
+internal road ids.
 
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at

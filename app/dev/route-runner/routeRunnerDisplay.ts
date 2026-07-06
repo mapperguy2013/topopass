@@ -9,6 +9,7 @@ import type {
   Vec2
 } from "../../../lib/map-engine/index.ts";
 import { buildIllegalDrawnMovementHighlights } from "../../../lib/map-engine/index.ts";
+import { groupIllegalDrawnMovements, type GroupedIllegalDrawnMovement } from "./routeAttemptReview.ts";
 
 export type DrawnPipelineDisplayStatus =
   | "no drawing"
@@ -481,6 +482,30 @@ function overlayFromIllegalDrawnMovement(map: MapDefinition, highlight: IllegalD
   return overlayFromIllegalRoadHighlight(map, highlight, kind);
 }
 
+function overlayFromGroupedIllegalDrawnMovement(
+  map: MapDefinition,
+  group: GroupedIllegalDrawnMovement
+): RouteIssueOverlay | null {
+  const overlay = overlayFromIllegalDrawnMovement(map, group.representative);
+
+  if (!overlay) {
+    return null;
+  }
+
+  const entryPoint = group.representative.fromNodeId ? mapNodeById(map, group.representative.fromNodeId) : undefined;
+  const junctionPoint = group.representative.viaNodeId ? mapNodeById(map, group.representative.viaNodeId) : undefined;
+  const issuePoint = group.kind === "prohibited-turn" ? junctionPoint : entryPoint;
+
+  return {
+    ...overlay,
+    label: group.label,
+    message: group.detail,
+    midpoint: issuePoint ?? overlay.midpoint,
+    roadIds: group.kind === "prohibited-turn" || group.roadIds.length === 0 ? overlay.roadIds : group.roadIds,
+    movementIndex: group.firstMovementIndex
+  };
+}
+
 function routeIssueKey(overlay: RouteIssueOverlay): string {
   return [
     overlay.kind,
@@ -521,9 +546,7 @@ export function buildRouteIssueOverlays(map: MapDefinition, result: DrawnRoutePi
       map,
       kind: "disconnected",
       label: "Disconnected roads",
-      message: warning.fromRoadId && warning.toRoadId
-        ? `Disconnected between ${warning.fromRoadId} and ${warning.toRoadId}.`
-        : warning.message,
+      message: "Your drawn route has a gap. Continue the route so it connects from start to finish.",
       fromRoadId: warning.fromRoadId,
       toRoadId: warning.toRoadId
     });
@@ -539,8 +562,8 @@ export function buildRouteIssueOverlays(map: MapDefinition, result: DrawnRoutePi
     scored: Boolean(result.exerciseResult)
   });
 
-  for (const illegalHighlight of illegalHighlights) {
-    const overlay = overlayFromIllegalDrawnMovement(map, illegalHighlight);
+  for (const illegalGroup of groupIllegalDrawnMovements(illegalHighlights, map)) {
+    const overlay = overlayFromGroupedIllegalDrawnMovement(map, illegalGroup);
 
     if (overlay) {
       overlays.push(overlay);
