@@ -13,6 +13,7 @@ import {
   LEARNER_TRAINING_PHASE6_CONTROL_LABELS,
   buildLearnerTrainingModePanelModel,
   createLearnerTrainingModeState,
+  createLearnerTrainingExerciseGenerationCache,
   openLearnerTrainingMode,
   requestLearnerTrainingHint,
   reviewLearnerTrainingAttempt,
@@ -269,6 +270,53 @@ test("exercise generation produces a startable route model", () => {
   assert.ok(model.currentInstruction?.text);
 });
 
+test("exercise generation cache reuses seeded results and records cache state", () => {
+  const cache = createLearnerTrainingExerciseGenerationCache();
+  const baseState = openLearnerTrainingMode(createLearnerTrainingModeState());
+  const first = startLearnerTrainingExercise({
+    state: baseState,
+    map: marloweDistrictMap,
+    seed: "training-ui-cache",
+    generationCache: cache
+  });
+  const second = startLearnerTrainingExercise({
+    state: baseState,
+    map: marloweDistrictMap,
+    seed: "training-ui-cache",
+    generationCache: cache
+  });
+
+  assert.equal(first.generation.cacheStatus, "miss");
+  assert.equal(second.generation.cacheStatus, "hit");
+  assert.equal(cache.size(), 1);
+  assert.equal(first.activeExercise?.id, second.activeExercise?.id);
+  assert.deepEqual(first.activeExercise?.expectedRouteSegments, second.activeExercise?.expectedRouteSegments);
+  assert.ok((second.generation.attemptLimit ?? 0) > 0);
+});
+
+test("training mode exposes accessible live regions focus targets and keyboard order", () => {
+  const model = buildLearnerTrainingModePanelModel({
+    state: openLearnerTrainingMode(createLearnerTrainingModeState()),
+    map: marloweDistrictMap,
+    viewport: "desktop"
+  });
+
+  assert.equal(model.accessibility.panelRole, "region");
+  assert.equal(model.accessibility.panelAriaLabel, "Learner driver training mode");
+  assert.equal(model.accessibility.liveRegion.id, "learner-training-status");
+  assert.equal(model.accessibility.liveRegion.politeness, "polite");
+  assert.equal(model.accessibility.liveRegion.atomic, true);
+  assert.match(model.accessibility.liveRegion.message, /choose a difficulty/i);
+  assert.equal(model.accessibility.focusTargetId, "generate-exercise");
+  assert.deepEqual(model.accessibility.keyboardNavigationOrder.slice(0, 4), [
+    "open-training-mode",
+    "learner-training-difficulty",
+    "learner-training-exercise-type",
+    "generate-exercise"
+  ]);
+  assert.equal(model.primaryActions.every((action) => action.ariaLabel.length > action.label.length), true);
+});
+
 test("hint button advances progressive hint output", () => {
   const firstHintState = requestLearnerTrainingHint({
     state: generatedState("training-ui-hints")
@@ -291,6 +339,8 @@ test("hint button advances progressive hint output", () => {
   assert.equal(secondHintModel.hint?.requestNumber, 2);
   assert.ok((secondHintModel.hint?.specificity ?? 0) > (firstHintModel.hint?.specificity ?? 0));
   assert.notEqual(secondHintModel.hint?.text, firstHintModel.hint?.text);
+  assert.equal(secondHintModel.accessibility.focusTargetId, "request-hint");
+  assert.match(secondHintModel.accessibility.liveRegion.message, /hint 2/i);
 });
 
 test("route and checkpoint overlays render for generated exercises", () => {
@@ -306,6 +356,12 @@ test("route and checkpoint overlays render for generated exercises", () => {
   assert.ok(model.overlay.route.segmentIds.length > 0);
   assert.ok(model.overlay.checkpoints.some((checkpoint) => checkpoint.role === "start"));
   assert.ok(model.overlay.checkpoints.some((checkpoint) => checkpoint.role === "finish"));
+  assert.equal(model.overlay.readability.preservesPhase6Labels, true);
+  assert.equal(model.overlay.readability.routeLineHalo, true);
+  assert.equal(model.overlay.readability.markerHalo, true);
+  assert.equal(model.performance.mapRerenderScope, "training-overlay-only");
+  assert.equal(model.performance.shouldRenderTrainingOverlay, true);
+  assert.ok(model.performance.overlayPointCount >= model.overlay.route.points.length);
 });
 
 test("existing Phase 6 map controls remain present in the training model", () => {
@@ -334,6 +390,10 @@ test("mobile layout keeps primary training actions available", () => {
   assert.equal(model.mobile.primaryActionsSticky, false);
   assert.equal(model.mobile.controlsAvoidMapOverlay, true);
   assert.equal(model.mobile.minimumTouchTargetPx >= 44, true);
+  assert.equal(model.mobile.panelPlacement, "below-map");
+  assert.equal(model.mobile.maxPanelHeightVh <= 72, true);
+  assert.equal(model.mobile.reservedStatusMinHeightPx >= 48, true);
+  assert.equal(model.mobile.layoutShiftGuard, true);
   assert.deepEqual(model.mobile.hiddenPrimaryActionIds, []);
   assert.deepEqual(actionIds, ["open-training-mode", "generate-exercise", "request-hint", "complete-review"]);
 });
@@ -366,6 +426,7 @@ test("mobile learner review preserves Phase 6 controls while rendering training 
   assert.deepEqual(model.mobile.hiddenPrimaryActionIds, []);
   assert.equal(model.mobile.controlsAvoidMapOverlay, true);
   assert.equal(model.mobile.minimumTouchTargetPx >= 44, true);
+  assert.equal(model.mobile.layoutShiftGuard, true);
   assert.equal(model.overlay.visible, true);
   assert.match(model.overlay.ariaLabel, /planned route, learner route, checkpoints, and review faults/i);
   assert.ok(model.overlay.route.points.length >= 4);
@@ -374,6 +435,31 @@ test("mobile learner review preserves Phase 6 controls while rendering training 
   assert.equal(model.overlay.hintMarkers.length, 1);
   assert.ok(model.overlay.segmentFeedback.some((item) => item.routeSegmentId === "wrong-turn-bf"));
   assert.ok(model.overlay.segmentFeedback.every((item) => item.points.length === 2));
+  assert.equal(model.accessibility.focusTargetId, "learner-training-feedback");
+  assert.match(model.accessibility.liveRegion.message, /learner attempt review ready/i);
+});
+
+test("training overlay render key is stable until training overlay inputs change", () => {
+  const state = generatedState("training-ui-render-key");
+  const firstModel = buildLearnerTrainingModePanelModel({
+    state,
+    map: marloweDistrictMap,
+    viewport: "desktop"
+  });
+  const repeatedModel = buildLearnerTrainingModePanelModel({
+    state,
+    map: marloweDistrictMap,
+    viewport: "desktop"
+  });
+  const hintedModel = buildLearnerTrainingModePanelModel({
+    state: requestLearnerTrainingHint({ state }),
+    map: marloweDistrictMap,
+    viewport: "desktop"
+  });
+
+  assert.equal(firstModel.performance.overlayRenderKey, repeatedModel.performance.overlayRenderKey);
+  assert.notEqual(firstModel.performance.overlayRenderKey, hintedModel.performance.overlayRenderKey);
+  assert.equal(firstModel.phase6Controls.join("|"), repeatedModel.phase6Controls.join("|"));
 });
 
 test("completion review action returns instructor-style feedback", () => {
@@ -392,6 +478,8 @@ test("completion review action returns instructor-style feedback", () => {
   assert.ok(model.review);
   assert.equal(typeof model.review?.scorePercent, "number");
   assert.ok(model.review?.summary);
+  assert.equal(model.accessibility.focusTargetId, "learner-training-feedback");
+  assert.match(model.accessibility.liveRegion.message, /learner attempt review ready/i);
 });
 
 test("training mode progress model shows summary, recent attempts, mistakes, and reset action", () => {
@@ -585,4 +673,7 @@ test("generation failure degrades gracefully without route context", () => {
   assert.equal(model.overlay.visible, false);
   assert.equal(model.primaryActions.find((action) => action.id === "request-hint")?.disabled, true);
   assert.ok(state.generation.explanation);
+  assert.equal(model.accessibility.liveRegion.politeness, "assertive");
+  assert.equal(model.accessibility.focusTargetId, "generate-exercise");
+  assert.equal(model.performance.shouldRenderTrainingOverlay, false);
 });

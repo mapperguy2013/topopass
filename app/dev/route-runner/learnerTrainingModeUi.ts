@@ -59,6 +59,8 @@ export type LearnerTrainingModeGeneration = {
   status: LearnerExerciseGenerationResult["status"] | "idle";
   explanation: string | null;
   reasonCodes: string[];
+  cacheStatus: "hit" | "miss" | "disabled";
+  attemptLimit: number | null;
 };
 
 export type LearnerTrainingModeReview = {
@@ -161,6 +163,12 @@ export type LearnerTrainingRouteOverlay = {
   faultMarkers: LearnerTrainingReviewMarker[];
   hintMarkers: LearnerTrainingReviewMarker[];
   segmentFeedback: LearnerTrainingSegmentFeedbackOverlay[];
+  readability: {
+    preservesPhase6Labels: true;
+    routeLineHalo: true;
+    markerHalo: true;
+    markerLabelMode: "token-with-text-panel";
+  };
 };
 
 export type LearnerTrainingProgressPanelModel = {
@@ -268,13 +276,111 @@ export type LearnerTrainingModePanelModel = {
   progress: LearnerTrainingProgressPanelModel | null;
   overlay: LearnerTrainingRouteOverlay;
   phase6Controls: string[];
+  accessibility: {
+    panelRole: "region";
+    panelAriaLabel: string;
+    headingId: string;
+    liveRegion: {
+      id: string;
+      politeness: "polite" | "assertive";
+      atomic: true;
+      message: string;
+    };
+    focusTargetId:
+      | LearnerTrainingModeActionId
+      | "learner-training-difficulty"
+      | "learner-training-exercise-type"
+      | "learner-training-current-objective"
+      | "learner-training-feedback";
+    keyboardNavigationOrder: Array<
+      | LearnerTrainingModeActionId
+      | "learner-training-difficulty"
+      | "learner-training-exercise-type"
+      | "learner-training-current-objective"
+      | "learner-training-feedback"
+    >;
+  };
+  performance: {
+    generationCacheStatus: LearnerTrainingModeGeneration["cacheStatus"];
+    generationAttemptLimit: number | null;
+    overlayRenderKey: string;
+    overlayPointCount: number;
+    shouldRenderTrainingOverlay: boolean;
+    mapRerenderScope: "training-overlay-only";
+  };
   mobile: {
     primaryActionsSticky: boolean;
     minimumTouchTargetPx: number;
+    panelPlacement: "below-map";
+    maxPanelHeightVh: number;
+    reservedStatusMinHeightPx: number;
     controlsAvoidMapOverlay: true;
+    layoutShiftGuard: true;
     hiddenPrimaryActionIds: LearnerTrainingModeActionId[];
   };
 };
+
+export type LearnerTrainingExerciseGenerationCache = {
+  get(key: string): LearnerExerciseGenerationResult | undefined;
+  set(key: string, result: LearnerExerciseGenerationResult): void;
+  clear(): void;
+  size(): number;
+};
+
+export function createLearnerTrainingExerciseGenerationCache(
+  maxEntries = 12
+): LearnerTrainingExerciseGenerationCache {
+  const entries = new Map<string, LearnerExerciseGenerationResult>();
+  const capacity = Math.max(1, Math.floor(maxEntries));
+
+  return {
+    get(key) {
+      const result = entries.get(key);
+
+      if (result) {
+        entries.delete(key);
+        entries.set(key, result);
+      }
+
+      return result;
+    },
+    set(key, result) {
+      if (entries.has(key)) {
+        entries.delete(key);
+      }
+
+      entries.set(key, result);
+
+      while (entries.size > capacity) {
+        const firstKey = entries.keys().next().value;
+
+        if (typeof firstKey !== "string") {
+          break;
+        }
+
+        entries.delete(firstKey);
+      }
+    },
+    clear() {
+      entries.clear();
+    },
+    size() {
+      return entries.size;
+    }
+  };
+}
+
+const defaultLearnerTrainingGenerationCache = createLearnerTrainingExerciseGenerationCache();
+
+function idleGenerationState(): LearnerTrainingModeGeneration {
+  return {
+    status: "idle",
+    explanation: null,
+    reasonCodes: [],
+    cacheStatus: "disabled",
+    attemptLimit: null
+  };
+}
 
 export function createLearnerTrainingModeState(input: Partial<LearnerTrainingModeState> = {}): LearnerTrainingModeState {
   return {
@@ -282,11 +388,7 @@ export function createLearnerTrainingModeState(input: Partial<LearnerTrainingMod
     selectedDifficulty: input.selectedDifficulty ?? "beginner",
     selectedExerciseType: input.selectedExerciseType ?? "follow-planned-route",
     activeExercise: input.activeExercise ?? null,
-    generation: input.generation ?? {
-      status: "idle",
-      explanation: null,
-      reasonCodes: []
-    },
+    generation: input.generation ?? idleGenerationState(),
     hints: input.hints ? [...input.hints] : [],
     review: input.review ?? null
   };
@@ -307,11 +409,7 @@ export function selectLearnerTrainingDifficulty(
     ...state,
     selectedDifficulty,
     activeExercise: null,
-    generation: {
-      status: "idle",
-      explanation: null,
-      reasonCodes: []
-    },
+    generation: idleGenerationState(),
     hints: [],
     review: null
   };
@@ -325,13 +423,41 @@ export function selectLearnerTrainingExerciseType(
     ...state,
     selectedExerciseType,
     activeExercise: null,
-    generation: {
-      status: "idle",
-      explanation: null,
-      reasonCodes: []
-    },
+    generation: idleGenerationState(),
     hints: [],
     review: null
+  };
+}
+
+function learnerTrainingGenerationCacheKey(input: {
+  state: LearnerTrainingModeState;
+  map: MapDefinition;
+  seed: string | number;
+  maxAttempts?: number;
+}): string {
+  return [
+    input.map.id,
+    input.map.nodes.length,
+    input.map.roads.length,
+    input.map.restrictions.length,
+    input.state.selectedDifficulty,
+    input.state.selectedExerciseType,
+    String(input.seed),
+    input.maxAttempts ?? "default"
+  ].join("|");
+}
+
+function generationStateFromResult(input: {
+  result: LearnerExerciseGenerationResult;
+  cacheStatus: LearnerTrainingModeGeneration["cacheStatus"];
+  attemptLimit: number | null;
+}): LearnerTrainingModeGeneration {
+  return {
+    status: input.result.status,
+    explanation: input.result.explanation,
+    reasonCodes: input.result.reasonCodes,
+    cacheStatus: input.cacheStatus,
+    attemptLimit: input.attemptLimit
   };
 }
 
@@ -340,6 +466,7 @@ export function startLearnerTrainingExercise(input: {
   map: MapDefinition;
   seed?: string | number;
   maxAttempts?: number;
+  generationCache?: LearnerTrainingExerciseGenerationCache | null;
 }): LearnerTrainingModeState {
   const seed = input.seed ?? [
     "route-runner-training-ui",
@@ -347,12 +474,37 @@ export function startLearnerTrainingExercise(input: {
     input.state.selectedDifficulty,
     input.state.selectedExerciseType
   ].join(":");
-  const result = generateLearnerExercise({
+  const cache = input.generationCache === undefined ? defaultLearnerTrainingGenerationCache : input.generationCache;
+  const cacheKey = learnerTrainingGenerationCacheKey({
+    state: input.state,
     map: input.map,
-    difficulty: input.state.selectedDifficulty,
-    exerciseType: input.state.selectedExerciseType,
     seed,
     maxAttempts: input.maxAttempts
+  });
+  const cachedResult = cache?.get(cacheKey);
+  const result =
+    cachedResult ??
+    generateLearnerExercise({
+      map: input.map,
+      difficulty: input.state.selectedDifficulty,
+      exerciseType: input.state.selectedExerciseType,
+      seed,
+      maxAttempts: input.maxAttempts
+    });
+  const cacheStatus: LearnerTrainingModeGeneration["cacheStatus"] = cache
+    ? cachedResult
+      ? "hit"
+      : "miss"
+    : "disabled";
+
+  if (cache && !cachedResult) {
+    cache.set(cacheKey, result);
+  }
+
+  const generation = generationStateFromResult({
+    result,
+    cacheStatus,
+    attemptLimit: input.maxAttempts ?? result.attempts.length
   });
 
   if (result.status === "failed") {
@@ -362,11 +514,7 @@ export function startLearnerTrainingExercise(input: {
       activeExercise: null,
       hints: [],
       review: null,
-      generation: {
-        status: result.status,
-        explanation: result.explanation,
-        reasonCodes: result.reasonCodes
-      }
+      generation
     };
   }
 
@@ -376,11 +524,7 @@ export function startLearnerTrainingExercise(input: {
     activeExercise: result.exercise,
     hints: [],
     review: null,
-    generation: {
-      status: result.status,
-      explanation: result.explanation,
-      reasonCodes: result.reasonCodes
-    }
+    generation
   };
 }
 
@@ -470,6 +614,15 @@ export function buildLearnerTrainingModePanelModel(input: {
   const instruction = exercise ? selectCurrentInstruction(exercise) : null;
   const latestHint = input.state.hints.at(-1) ?? null;
   const generatedHintModels = generatedHints(input.state.hints);
+  const review = input.state.review ? reviewModel(input.state.review, input.map) : null;
+  const overlay = exercise
+    ? overlayForExercise({
+        exercise,
+        map: input.map,
+        review: input.state.review,
+        hints: generatedHintModels
+      })
+    : emptyTrainingOverlay();
   const routeSummary = exercise
     ? {
         exerciseId: exercise.id,
@@ -550,7 +703,7 @@ export function buildLearnerTrainingModePanelModel(input: {
         }
       : null,
     hint: latestHint ? hintModel(latestHint, input.state.hints.length) : null,
-    review: input.state.review ? reviewModel(input.state.review, input.map) : null,
+    review,
     reviewActions: [
       {
         id: "retry-exercise",
@@ -566,22 +719,155 @@ export function buildLearnerTrainingModePanelModel(input: {
       }
     ],
     progress: input.progress ? progressPanelModel(input.progress) : null,
-    overlay: exercise
-      ? overlayForExercise({
-          exercise,
-          map: input.map,
-          review: input.state.review,
-          hints: generatedHintModels
-        })
-      : emptyTrainingOverlay(),
+    overlay,
     phase6Controls: [...LEARNER_TRAINING_PHASE6_CONTROL_LABELS],
+    accessibility: accessibilityModel({
+      state: input.state,
+      exercise,
+      review,
+      latestHint: latestHint ? hintModel(latestHint, input.state.hints.length) : null
+    }),
+    performance: {
+      generationCacheStatus: input.state.generation.cacheStatus,
+      generationAttemptLimit: input.state.generation.attemptLimit,
+      overlayRenderKey: overlayRenderKey({
+        state: input.state,
+        overlay,
+        hintCount: generatedHintModels.length
+      }),
+      overlayPointCount: overlayPointCount(overlay),
+      shouldRenderTrainingOverlay: overlay.visible,
+      mapRerenderScope: "training-overlay-only"
+    },
     mobile: {
       primaryActionsSticky: false,
       minimumTouchTargetPx: 44,
+      panelPlacement: "below-map",
+      maxPanelHeightVh: 72,
+      reservedStatusMinHeightPx: 48,
       controlsAvoidMapOverlay: true,
+      layoutShiftGuard: true,
       hiddenPrimaryActionIds: []
     }
   };
+}
+
+function liveRegionMessage(input: {
+  state: LearnerTrainingModeState;
+  exercise: GeneratedLearnerExercise | null;
+  review: NonNullable<LearnerTrainingModePanelModel["review"]> | null;
+  latestHint: LearnerTrainingModePanelModel["hint"];
+}): string {
+  if (!input.state.isOpen) {
+    return "Training Mode is closed.";
+  }
+
+  if (input.state.generation.status === "failed") {
+    return input.state.generation.explanation ?? "Exercise generation failed. Choose another setting and try again.";
+  }
+
+  if (input.review) {
+    return `Learner attempt review ready. ${input.review.summary}`;
+  }
+
+  if (input.latestHint) {
+    return `Hint ${input.latestHint.requestNumber}: ${input.latestHint.text}`;
+  }
+
+  if (input.exercise) {
+    return `Exercise ready: ${input.exercise.title}.`;
+  }
+
+  return "Choose a difficulty and exercise type, then generate an exercise.";
+}
+
+function focusTargetId(input: {
+  state: LearnerTrainingModeState;
+  exercise: GeneratedLearnerExercise | null;
+  review: NonNullable<LearnerTrainingModePanelModel["review"]> | null;
+  latestHint: LearnerTrainingModePanelModel["hint"];
+}): LearnerTrainingModePanelModel["accessibility"]["focusTargetId"] {
+  if (!input.state.isOpen) {
+    return "open-training-mode";
+  }
+
+  if (input.state.generation.status === "failed") {
+    return "generate-exercise";
+  }
+
+  if (input.review) {
+    return "learner-training-feedback";
+  }
+
+  if (input.latestHint) {
+    return "request-hint";
+  }
+
+  if (input.exercise) {
+    return "learner-training-current-objective";
+  }
+
+  return "generate-exercise";
+}
+
+function accessibilityModel(input: {
+  state: LearnerTrainingModeState;
+  exercise: GeneratedLearnerExercise | null;
+  review: NonNullable<LearnerTrainingModePanelModel["review"]> | null;
+  latestHint: LearnerTrainingModePanelModel["hint"];
+}): LearnerTrainingModePanelModel["accessibility"] {
+  const politeness = input.state.generation.status === "failed" ? "assertive" : "polite";
+
+  return {
+    panelRole: "region",
+    panelAriaLabel: "Learner driver training mode",
+    headingId: "learner-training-heading",
+    liveRegion: {
+      id: "learner-training-status",
+      politeness,
+      atomic: true,
+      message: liveRegionMessage(input)
+    },
+    focusTargetId: focusTargetId(input),
+    keyboardNavigationOrder: [
+      "open-training-mode",
+      "learner-training-difficulty",
+      "learner-training-exercise-type",
+      "generate-exercise",
+      "request-hint",
+      "complete-review",
+      "learner-training-feedback",
+      "retry-exercise",
+      "next-exercise"
+    ]
+  };
+}
+
+function overlayPointCount(overlay: LearnerTrainingRouteOverlay): number {
+  return (
+    overlay.route.points.length +
+    (overlay.attemptedRoute?.points.length ?? 0) +
+    overlay.checkpoints.length +
+    overlay.faultMarkers.length +
+    overlay.hintMarkers.length +
+    overlay.segmentFeedback.reduce((total, item) => total + item.points.length, 0)
+  );
+}
+
+function overlayRenderKey(input: {
+  state: LearnerTrainingModeState;
+  overlay: LearnerTrainingRouteOverlay;
+  hintCount: number;
+}): string {
+  return [
+    input.state.activeExercise?.id ?? "none",
+    input.state.review?.scoring.attemptId ?? "no-review",
+    input.hintCount,
+    input.overlay.route.segmentIds.length,
+    input.overlay.attemptedRoute?.segmentIds.length ?? 0,
+    input.overlay.faultMarkers.length,
+    input.overlay.segmentFeedback.length
+  ].join(":");
 }
 
 function percentLabel(value: number | null): string {
@@ -918,7 +1204,8 @@ function overlayForExercise(input: {
     checkpoints,
     faultMarkers: reviewOverlay.faultMarkers,
     hintMarkers: reviewOverlay.hintMarkers,
-    segmentFeedback: reviewOverlay.segmentFeedback
+    segmentFeedback: reviewOverlay.segmentFeedback,
+    readability: overlayReadability()
   };
 }
 
@@ -935,7 +1222,17 @@ function emptyTrainingOverlay(): LearnerTrainingRouteOverlay {
     checkpoints: [],
     faultMarkers: [],
     hintMarkers: [],
-    segmentFeedback: []
+    segmentFeedback: [],
+    readability: overlayReadability()
+  };
+}
+
+function overlayReadability(): LearnerTrainingRouteOverlay["readability"] {
+  return {
+    preservesPhase6Labels: true,
+    routeLineHalo: true,
+    markerHalo: true,
+    markerLabelMode: "token-with-text-panel"
   };
 }
 
