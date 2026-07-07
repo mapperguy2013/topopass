@@ -5,7 +5,14 @@ import {
   type OsmRoadProperties,
   type RoadAccessClass
 } from "../map/osmRoadAccess.ts";
-import { buildMapGraph, type MapDefinition, type MapGraph, type MapRestriction, type MapRoad } from "../map-engine/index.ts";
+import {
+  buildMapGraph,
+  type DirectedEdge,
+  type MapDefinition,
+  type MapGraph,
+  type MapRestriction,
+  type MapRoad
+} from "../map-engine/index.ts";
 import type { ExerciseDifficulty } from "./learnerDriverTraining.ts";
 
 export type LearnerRouteValidationStatus = "valid" | "invalid" | "warning";
@@ -100,6 +107,7 @@ type RouteRoadMetadata = {
   junction?: unknown;
   barrier?: unknown;
   rawTags?: Record<string, unknown>;
+  rawTagEntries?: readonly [string, unknown][];
 };
 
 type RouteRoadWithOptionalMetadata = MapRoad & {
@@ -110,6 +118,7 @@ type SegmentContext = {
   segment: LearnerRouteValidationSegment;
   segmentIndex: number;
   road?: MapRoad;
+  edge?: DirectedEdge;
   followsRoadEndpoints: boolean;
 };
 
@@ -283,6 +292,79 @@ function noEntryBlocksSegment(
   return restriction.fromNodeId === segment.fromNodeId && restriction.toNodeId === segment.toNodeId;
 }
 
+function restrictionDirectionMatchesEdge(
+  restriction: Extract<MapRestriction, { type: "no_entry" }>,
+  edge: DirectedEdge,
+  road: MapRoad | undefined
+): boolean {
+  if (!restriction.fromNodeId || !restriction.toNodeId) {
+    return true;
+  }
+
+  if (!road) {
+    return restriction.fromNodeId === edge.fromNodeId && restriction.toNodeId === edge.toNodeId;
+  }
+
+  if (restriction.fromNodeId === road.fromNodeId && restriction.toNodeId === road.toNodeId) {
+    return edge.direction === "forward";
+  }
+
+  if (restriction.fromNodeId === road.toNodeId && restriction.toNodeId === road.fromNodeId) {
+    return edge.direction === "reverse";
+  }
+
+  return restriction.fromNodeId === edge.fromNodeId && restriction.toNodeId === edge.toNodeId;
+}
+
+function restrictionHasDistanceRange(restriction: Extract<MapRestriction, { type: "no_entry" }>): boolean {
+  return Number.isFinite(restriction.blockedFromDistanceMeters) && Number.isFinite(restriction.blockedToDistanceMeters);
+}
+
+function edgeIsInsideBlockedDistanceRange(
+  edge: DirectedEdge,
+  restriction: Extract<MapRestriction, { type: "no_entry" }>
+): boolean {
+  if (!restrictionHasDistanceRange(restriction)) {
+    return true;
+  }
+
+  const blockedStart = restriction.blockedFromDistanceMeters as number;
+  const blockedEnd = restriction.blockedToDistanceMeters as number;
+  const blockedMin = Math.min(blockedStart, blockedEnd);
+  const blockedMax = Math.max(blockedStart, blockedEnd);
+  const edgeMin = Math.min(edge.sourceFromDistanceMeters, edge.sourceToDistanceMeters);
+  const edgeMax = Math.max(edge.sourceFromDistanceMeters, edge.sourceToDistanceMeters);
+
+  return edgeMin >= blockedMin && edgeMax <= blockedMax;
+}
+
+function noEntryBlocksEdge(
+  restriction: Extract<MapRestriction, { type: "no_entry" }>,
+  edge: DirectedEdge,
+  graph: MapGraph
+): boolean {
+  if (restriction.roadId !== edge.roadId) {
+    return false;
+  }
+
+  return (
+    restrictionDirectionMatchesEdge(restriction, edge, graph.roadsById[edge.roadId]) &&
+    edgeIsInsideBlockedDistanceRange(edge, restriction)
+  );
+}
+
+function noEntryBlocksContext(
+  restriction: Extract<MapRestriction, { type: "no_entry" }>,
+  context: SegmentContext,
+  graph: MapGraph
+): boolean {
+  if (context.edge) {
+    return noEntryBlocksEdge(restriction, context.edge, graph);
+  }
+
+  return noEntryBlocksSegment(restriction, context.segment);
+}
+
 function prohibitedTurnBlocksTransition(
   restriction: Extract<MapRestriction, { type: "prohibited_turn" }>,
   previousSegment: LearnerRouteValidationSegment,
@@ -295,18 +377,32 @@ function prohibitedTurnBlocksTransition(
   );
 }
 
+function routeSegmentMatchingEdge(
+  graph: MapGraph,
+  segment: LearnerRouteValidationSegment
+): DirectedEdge | undefined {
+  return graph.edges.find(
+    (edge) =>
+      edge.roadId === segment.roadId &&
+      edge.fromNodeId === segment.fromNodeId &&
+      edge.toNodeId === segment.toNodeId
+  );
+}
+
 function segmentContext(
   graph: MapGraph,
   segment: LearnerRouteValidationSegment,
   segmentIndex: number
 ): SegmentContext {
   const road = graph.roadsById[segment.roadId];
+  const edge = routeSegmentMatchingEdge(graph, segment);
 
   return {
     segment,
     segmentIndex,
     road,
-    followsRoadEndpoints: road ? routeSegmentFollowsRoadEndpoints(segment, road) : false
+    edge,
+    followsRoadEndpoints: road ? routeSegmentFollowsRoadEndpoints(segment, road) || Boolean(edge) : false
   };
 }
 
@@ -414,7 +510,7 @@ function validateSingleSegment(
   }
 
   for (const restriction of restrictions.noEntry) {
-    if (noEntryBlocksSegment(restriction, segment)) {
+    if (noEntryBlocksContext(restriction, context, graph)) {
       issues.push(
         issue({
           code: "no-entry-restriction",
