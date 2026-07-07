@@ -53,6 +53,9 @@ export const REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX = Math.round(
   REAL_LONDON_BETA_PHONE_REFERENCE_WIDTH_PX *
     (ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT / ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH)
 );
+export const REAL_LONDON_BETA_PHONE_CANVAS_CSS_WIDTH = "100%";
+export const REAL_LONDON_BETA_PHONE_CANVAS_CSS_HEIGHT = "auto";
+export const REAL_LONDON_BETA_HEADER_STICKY_BREAKPOINT = "md";
 export const REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT = ROUTE_RUNNER_PHONE_DEFAULT_ZOOM * 100;
 export const REAL_LONDON_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
 export const REAL_LONDON_BETA_FEEDBACK_DRAWER_WIDTH_CSS = "min(26rem, calc(100vw - 2rem))";
@@ -325,11 +328,16 @@ export type RealLondonBetaPracticeScreenModel =
         routeRunnerMapPreferredMinHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX;
         routeRunnerPhoneCanvasWidthPx: typeof ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH;
         routeRunnerPhoneCanvasHeightPx: typeof ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT;
+        routeRunnerPhoneCanvasCssWidth: typeof REAL_LONDON_BETA_PHONE_CANVAS_CSS_WIDTH;
+        routeRunnerPhoneCanvasCssHeight: typeof REAL_LONDON_BETA_PHONE_CANVAS_CSS_HEIGHT;
         routeRunnerPhoneMapMinHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX;
         routeRunnerPhoneMapPreferredHeightPx: typeof REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX;
         routeRunnerPhoneInitialZoomPercent: typeof REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT;
         routeRunnerPhoneResetZoomPercent: typeof REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT;
         routeRunnerPhoneUsesMatchingCanvasAspect: true;
+        routeRunnerPhoneUsesNonStretchCanvasCss: true;
+        siteHeaderStickyOnPhone: false;
+        siteHeaderStickyFromBreakpoint: typeof REAL_LONDON_BETA_HEADER_STICKY_BREAKPOINT;
         routeRunnerTabletMapPreferredMinHeightPx: number;
         routeRunnerLandscapeMapPreferredMinHeightPx: number;
         routeRunnerMapTouchAction: "none";
@@ -696,11 +704,16 @@ export function buildRealLondonBetaPracticeScreenModel(input: {
       routeRunnerMapPreferredMinHeightPx: REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX,
       routeRunnerPhoneCanvasWidthPx: ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
       routeRunnerPhoneCanvasHeightPx: ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+      routeRunnerPhoneCanvasCssWidth: REAL_LONDON_BETA_PHONE_CANVAS_CSS_WIDTH,
+      routeRunnerPhoneCanvasCssHeight: REAL_LONDON_BETA_PHONE_CANVAS_CSS_HEIGHT,
       routeRunnerPhoneMapMinHeightPx: REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX,
       routeRunnerPhoneMapPreferredHeightPx: REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX,
       routeRunnerPhoneInitialZoomPercent: REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT,
       routeRunnerPhoneResetZoomPercent: REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT,
       routeRunnerPhoneUsesMatchingCanvasAspect: true,
+      routeRunnerPhoneUsesNonStretchCanvasCss: true,
+      siteHeaderStickyOnPhone: false,
+      siteHeaderStickyFromBreakpoint: REAL_LONDON_BETA_HEADER_STICKY_BREAKPOINT,
       routeRunnerTabletMapPreferredMinHeightPx: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.tabletMapMinHeightPx,
       routeRunnerLandscapeMapPreferredMinHeightPx: 360,
       routeRunnerMapTouchAction: "none",

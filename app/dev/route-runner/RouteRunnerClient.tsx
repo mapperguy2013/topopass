@@ -7554,7 +7554,7 @@ export function RouteRunnerClient({
               className={`relative w-full overflow-hidden rounded-lg border border-slate-200 bg-[#eef3f8] ${
                 isStudentBetaRouteRunner
                   ? isStudentBetaPhoneMap
-                    ? "mx-auto min-h-[720px]"
+                    ? "mx-auto min-h-0"
                     : "mx-auto min-h-[320px] sm:min-h-[380px] lg:min-h-[420px]"
                   : "mt-4 min-h-[360px] sm:min-h-[460px] lg:min-h-[540px] xl:min-h-[680px] 2xl:min-h-[780px]"
               }`}
@@ -7788,9 +7788,12 @@ export function RouteRunnerClient({
                 onPointerCancel={handlePointerEnd}
                 onPointerLeave={handlePointerLeave}
                 onAuxClick={handleMapAuxClick}
-                className={`block h-full w-full touch-none select-none overscroll-contain ${
+                className={`block w-full touch-none select-none overscroll-contain ${
+                  isStudentBetaPhoneMap ? "h-auto" : "h-full"
+                } ${
                   isPanningMap ? "cursor-grabbing" : isPanMode ? "cursor-grab" : "cursor-crosshair"
                 }`}
+                style={isStudentBetaPhoneMap ? { aspectRatio: `${canvasWidth} / ${canvasHeight}` } : undefined}
                 aria-label={`${activeMap.name} drawing capture canvas`}
               />
             </div>

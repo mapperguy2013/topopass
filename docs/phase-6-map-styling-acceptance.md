@@ -735,6 +735,16 @@ rule. Drawing, route overlays, markers, restriction symbols, Show on map, and
 submit matching continue to use the normalized viewport conversion so screen
 points and map points stay aligned after pan, wheel zoom, pinch zoom, and reset.
 
+Stage 161.6.28 fixes the mobile shell regression around the practice map. On
+phone widths, the full TopoPass site header is document-flow content rather
+than sticky chrome, so navigation, account email, and sign-out controls scroll
+away before the learner reaches the map. Tablet and desktop keep sticky
+navigation from the `md` breakpoint upward. The phone canvas uses width-based,
+auto-height CSS while preserving the same 900 by 2160 internal canvas aspect
+ratio, so resizing cannot stretch the map differently on X and Y. If mobile
+height, marker alignment, and zoom compete, the acceptance order is no stretch,
+then route/marker alignment, then usable height, then default zoom.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,

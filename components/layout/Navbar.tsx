@@ -29,7 +29,7 @@ export async function Navbar() {
   const navItems = user ? learnerNavItems : publicNavItems;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+    <header className="relative z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur md:sticky md:top-0">
       <nav className="mx-auto flex min-h-[72px] max-w-[1500px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <Link
           className="inline-flex min-h-11 items-center gap-3 rounded-md text-xl font-bold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"

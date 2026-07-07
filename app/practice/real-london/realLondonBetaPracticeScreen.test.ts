@@ -23,7 +23,10 @@ import {
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_HEIGHT_CSS,
   REAL_LONDON_BETA_DESKTOP_MAP_MAX_WIDTH_RULE,
   REAL_LONDON_BETA_DESKTOP_MAP_WIDTH_CSS,
+  REAL_LONDON_BETA_HEADER_STICKY_BREAKPOINT,
   REAL_LONDON_BETA_MAP_OPTIONS,
+  REAL_LONDON_BETA_PHONE_CANVAS_CSS_HEIGHT,
+  REAL_LONDON_BETA_PHONE_CANVAS_CSS_WIDTH,
   REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT,
   REAL_LONDON_BETA_PHONE_MAP_MIN_HEIGHT_PX,
   REAL_LONDON_BETA_PHONE_MAP_PREFERRED_HEIGHT_PX,
@@ -477,6 +480,9 @@ test("Stage 156 mobile and tablet map readability contract uses central touch-sa
   assert.equal(model.mobileLayout.routeRunnerPhoneInitialZoomPercent, REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT);
   assert.equal(model.mobileLayout.routeRunnerPhoneResetZoomPercent, REAL_LONDON_BETA_PHONE_INITIAL_ZOOM_PERCENT);
   assert.equal(model.mobileLayout.routeRunnerPhoneUsesMatchingCanvasAspect, true);
+  assert.equal(model.mobileLayout.routeRunnerPhoneUsesNonStretchCanvasCss, true);
+  assert.equal(model.mobileLayout.routeRunnerPhoneCanvasCssWidth, REAL_LONDON_BETA_PHONE_CANVAS_CSS_WIDTH);
+  assert.equal(model.mobileLayout.routeRunnerPhoneCanvasCssHeight, REAL_LONDON_BETA_PHONE_CANVAS_CSS_HEIGHT);
   assert.ok(
     model.mobileLayout.routeRunnerPhoneCanvasHeightPx / model.mobileLayout.routeRunnerPhoneCanvasWidthPx > 2,
     "phone canvas should use a tall portrait aspect ratio"
@@ -488,6 +494,24 @@ test("Stage 156 mobile and tablet map readability contract uses central touch-sa
       model.mobileLayout.routeRunnerTabletMapPreferredMinHeightPx
   );
   assert.equal(model.mobileLayout.horizontalOverflowRisk, false);
+});
+
+test("Stage 161.6.28 mobile header scrolls away and phone canvas avoids CSS stretching", () => {
+  const model = requireAvailableModel();
+  const navbarSource = readFileSync("components/layout/Navbar.tsx", "utf8");
+  const routeRunnerSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.equal(model.mobileLayout.siteHeaderStickyOnPhone, false);
+  assert.equal(model.mobileLayout.siteHeaderStickyFromBreakpoint, REAL_LONDON_BETA_HEADER_STICKY_BREAKPOINT);
+  assert.match(navbarSource, /relative z-50[\s\S]*md:sticky md:top-0/);
+  assert.equal(navbarSource.includes('className="sticky top-0'), false);
+  assert.match(routeRunnerSource, /isStudentBetaPhoneMap \? "h-auto" : "h-full"/);
+  assert.match(
+    routeRunnerSource,
+    /style=\{isStudentBetaPhoneMap \? \{ aspectRatio: `\$\{canvasWidth\} \/ \$\{canvasHeight\}` \} : undefined\}/
+  );
+  assert.equal(model.mobileLayout.routeRunnerPhoneUsesMatchingCanvasAspect, true);
+  assert.equal(model.mobileLayout.routeRunnerPhoneUsesNonStretchCanvasCss, true);
 });
 
 test("Stage 139 one-way arrow visual thinning remains presentation-only", () => {
