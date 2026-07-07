@@ -290,11 +290,13 @@ import {
   createLearnerTrainingModeState,
   openLearnerTrainingMode,
   requestLearnerTrainingHint,
+  retryLearnerTrainingExercise,
   reviewLearnerTrainingAttempt,
   selectLearnerTrainingDifficulty,
   selectLearnerTrainingExerciseType,
   startLearnerTrainingExercise,
   type LearnerTrainingModeState,
+  type LearnerTrainingReviewMarker,
   type LearnerTrainingRouteOverlay
 } from "./learnerTrainingModeUi";
 import {
@@ -1200,6 +1202,18 @@ function reviewItemClass(severity: RouteAttemptReviewItemSeverity): string {
   }
 
   return "border-blue-100 bg-white text-blue-950";
+}
+
+function learnerTrainingReviewMessageClass(severity: string): string {
+  if (severity === "dangerous" || severity === "serious") {
+    return "border-red-200 bg-white text-red-950";
+  }
+
+  if (severity === "minor" || severity === "observation") {
+    return "border-amber-200 bg-white text-amber-950";
+  }
+
+  return "border-emerald-200 bg-white text-emerald-950";
 }
 
 function routeReplayModeButtonClass(active: boolean): string {
@@ -2804,6 +2818,115 @@ function drawFastestRouteOverlay(
   );
 }
 
+function learnerTrainingReviewLineStyle(
+  item: LearnerTrainingRouteOverlay["segmentFeedback"][number]
+): TopopassLineStyle {
+  if (item.severity === "dangerous" || item.severity === "serious") {
+    return TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement;
+  }
+
+  if (item.categoryLabels.some((label) => /efficiency/i.test(label))) {
+    return TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.inefficientSection;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.warnings.wrongTurn;
+}
+
+function learnerTrainingReviewMarkerToken(marker: LearnerTrainingReviewMarker): {
+  fillColor: string;
+  strokeColor: string;
+  haloColor: string;
+  text: string;
+} {
+  if (marker.kind === "hint-used") {
+    return {
+      fillColor: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.fillColor,
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.strokeColor,
+      haloColor: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.haloColor,
+      text: "H"
+    };
+  }
+
+  if (marker.kind === "missed-checkpoint") {
+    return {
+      fillColor: "#ffffff",
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.missed.strokeColor,
+      haloColor: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.checkpointStates.missed.haloColor,
+      text: "C"
+    };
+  }
+
+  if (marker.kind === "wrong-turn") {
+    return {
+      fillColor: "#ffffff",
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.turnColor,
+      haloColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor,
+      text: "T"
+    };
+  }
+
+  if (marker.kind === "illegal-segment" || marker.kind === "dangerous-fault") {
+    return {
+      fillColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.illegalSymbolFillColor,
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.illegalSymbolStrokeColor,
+      haloColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor,
+      text: "!"
+    };
+  }
+
+  if (marker.kind === "serious-fault") {
+    return {
+      fillColor: "#ffffff",
+      strokeColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.defaultColor,
+      haloColor: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor,
+      text: "S"
+    };
+  }
+
+  return {
+    fillColor: "#ffffff",
+    strokeColor: TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.inefficientSection.strokeColor,
+    haloColor: "rgba(255,255,255,0.9)",
+    text: "M"
+  };
+}
+
+function drawLearnerTrainingReviewMarker(
+  context: CanvasRenderingContext2D,
+  marker: LearnerTrainingReviewMarker,
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): void {
+  const point = mapToScreenPoint(marker.point, viewport);
+  const scale = cartographicMistakeOverlayScaleForZoom(currentZoom ?? 1);
+  const style = TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue;
+  const token = learnerTrainingReviewMarkerToken(marker);
+  const radius = style.markerRadius * 0.88 * scale;
+
+  context.save();
+  context.shadowColor = "rgba(15,23,42,0.22)";
+  context.shadowBlur = 8;
+  context.shadowOffsetY = 1.5;
+  context.fillStyle = token.haloColor;
+  context.beginPath();
+  context.arc(point.x, point.y, radius + style.markerHaloPadding * scale, 0, Math.PI * 2);
+  context.fill();
+  context.shadowColor = "transparent";
+  context.fillStyle = token.fillColor;
+  context.strokeStyle = token.strokeColor;
+  context.lineWidth = style.markerStrokeWidth * scale;
+  context.beginPath();
+  context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = token.strokeColor;
+  context.font = `700 ${Math.max(10, 11 * scale)}px Arial, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(token.text, point.x, point.y + 0.5 * scale);
+  context.restore();
+}
+
 function drawLearnerTrainingRouteOverlay(
   context: CanvasRenderingContext2D,
   overlay: LearnerTrainingRouteOverlay | undefined,
@@ -2825,6 +2948,26 @@ function drawLearnerTrainingRouteOverlay(
     );
   }
 
+  if (overlay.attemptedRoute?.points.length && overlay.attemptedRoute.points.length >= 2) {
+    drawStyledMapPolyline(
+      context,
+      overlay.attemptedRoute.points,
+      viewport,
+      TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute,
+      cartographicDrawnAttemptScaleForZoom(currentZoom ?? 1)
+    );
+  }
+
+  for (const item of overlay.segmentFeedback) {
+    drawStyledMapPolyline(
+      context,
+      item.points,
+      viewport,
+      learnerTrainingReviewLineStyle(item),
+      cartographicMistakeOverlayScaleForZoom(currentZoom ?? 1)
+    );
+  }
+
   for (const checkpoint of overlay.checkpoints) {
     drawExerciseStopMarker({
       context,
@@ -2832,8 +2975,13 @@ function drawLearnerTrainingRouteOverlay(
       role: checkpoint.role,
       index: checkpoint.sequence,
       currentZoom,
-      markerAssets
+      markerAssets,
+      reviewStatus: checkpoint.reviewStatus
     });
+  }
+
+  for (const marker of [...overlay.faultMarkers, ...overlay.hintMarkers]) {
+    drawLearnerTrainingReviewMarker(context, marker, viewport, currentZoom);
   }
 }
 
@@ -3190,6 +3338,32 @@ function buildLabelReservationBoxes(input: {
       padding: labelCollisionStyle.routePadding
     });
 
+    if (input.trainingOverlay.attemptedRoute?.points.length) {
+      addPolylineReservationBoxes({
+        boxes,
+        idPrefix: "training-attempted-route",
+        points: input.trainingOverlay.attemptedRoute.points,
+        viewport: input.viewport,
+        strokeWidth:
+          (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.casingWidth ??
+            TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth) * drawnAttemptScale,
+        padding: labelCollisionStyle.routePadding
+      });
+    }
+
+    input.trainingOverlay.segmentFeedback.forEach((item, index) => {
+      const itemStyle = learnerTrainingReviewLineStyle(item);
+
+      addPolylineReservationBoxes({
+        boxes,
+        idPrefix: `training-segment-feedback-${index}`,
+        points: item.points,
+        viewport: input.viewport,
+        strokeWidth: (itemStyle.casingWidth ?? itemStyle.strokeWidth) * mistakeScale,
+        padding: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
+      });
+    });
+
     input.trainingOverlay.checkpoints.forEach((checkpoint) => {
       const markerStyle =
         checkpoint.role === "start"
@@ -3211,7 +3385,25 @@ function buildLabelReservationBoxes(input: {
               checkpoint.role === "checkpoint" ? touchTargets.checkpointHitRadius : touchTargets.markerHitRadius
             ) *
               markerScale +
-            TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
+          TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
+        })
+      );
+    });
+
+    [...input.trainingOverlay.faultMarkers, ...input.trainingOverlay.hintMarkers].forEach((marker, index) => {
+      boxes.push(
+        screenPointReservationBox({
+          id: `training-review-marker-${index}`,
+          point: marker.point,
+          viewport: input.viewport,
+          radius:
+            Math.max(
+              TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
+                TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding,
+              touchTargets.reviewIssueHitRadius
+            ) *
+              mistakeScale +
+            TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
         })
       );
     });
@@ -5656,6 +5848,10 @@ export function RouteRunnerClient({
     );
   }
 
+  function handleRetryLearnerTrainingExercise() {
+    setLearnerTrainingModeState((currentState) => retryLearnerTrainingExercise(currentState));
+  }
+
   function handleExerciseChange(nextExerciseId: string) {
     const nextResolvedExerciseId = resolveRouteRunnerExerciseSelection({
       exercises: activeExercises,
@@ -6830,16 +7026,144 @@ export function RouteRunnerClient({
                   ) : null}
 
                   {learnerTrainingModePanel.review ? (
-                    <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm leading-6 text-emerald-950" role="status">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold">
-                          {learnerTrainingModePanel.review.passed ? "Passed" : "Needs review"}
-                        </p>
-                        <span className="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-semibold">
-                          {Math.round(learnerTrainingModePanel.review.scorePercent)}%
+                    <div
+                      className={`mt-3 rounded-md border p-3 text-sm leading-6 ${
+                        learnerTrainingModePanel.review.passed
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+                          : "border-amber-200 bg-amber-50 text-amber-950"
+                      }`}
+                      role="status"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Learner attempt review</p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <p className="font-semibold">
+                              {learnerTrainingModePanel.review.passed ? "Passed" : "Needs review"}
+                            </p>
+                            <span className="rounded-full border border-current/20 bg-white px-2 py-0.5 text-xs font-semibold">
+                              {Math.round(learnerTrainingModePanel.review.scorePercent)}%
+                            </span>
+                            <span className="rounded-full border border-current/20 bg-white px-2 py-0.5 text-xs font-semibold capitalize">
+                              {learnerTrainingModePanel.review.status}
+                            </span>
+                          </div>
+                          <p className="mt-1">{learnerTrainingModePanel.review.summary}</p>
+                        </div>
+                      </div>
+
+                      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Planned route</dt>
+                          <dd className="mt-1 font-semibold">{formatDistance(learnerTrainingModePanel.review.plannedDistanceMeters)}</dd>
+                        </div>
+                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Learner route</dt>
+                          <dd className="mt-1 font-semibold">{formatDistance(learnerTrainingModePanel.review.attemptedDistanceMeters)}</dd>
+                        </div>
+                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Route adherence</dt>
+                          <dd className="mt-1 font-semibold">
+                            {learnerTrainingModePanel.review.routeAdherencePercent.toFixed(1)}%
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Checkpoints</dt>
+                          <dd className="mt-1 font-semibold">
+                            {learnerTrainingModePanel.review.completedCheckpointCount}/
+                            {learnerTrainingModePanel.review.totalCheckpointCount}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
+                          Minor {learnerTrainingModePanel.review.minorFaultCount}
+                        </span>
+                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
+                          Serious {learnerTrainingModePanel.review.seriousFaultCount}
+                        </span>
+                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
+                          Dangerous {learnerTrainingModePanel.review.dangerousFaultCount}
+                        </span>
+                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
+                          Extra {formatDistance(learnerTrainingModePanel.review.extraDistanceMeters)}
                         </span>
                       </div>
-                      <p className="mt-1">{learnerTrainingModePanel.review.summary}</p>
+
+                      {learnerTrainingModePanel.review.messages.length > 0 ? (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Feedback</p>
+                          <ol className="mt-2 space-y-2">
+                            {learnerTrainingModePanel.review.messages.slice(0, 4).map((message) => (
+                              <li
+                                key={message.id}
+                                className={`rounded-md border p-3 text-xs leading-5 ${learnerTrainingReviewMessageClass(
+                                  message.severity
+                                )}`}
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-semibold">{message.categoryLabel}</span>
+                                  <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                                    {message.severity}
+                                  </span>
+                                </div>
+                                <p className="mt-1 font-semibold">{message.whatHappened}</p>
+                                <p className="mt-1">{message.whyItMatters}</p>
+                                <p className="mt-1">
+                                  <span className="font-semibold">Where: </span>
+                                  {message.location}
+                                </p>
+                                <p className="mt-1">
+                                  <span className="font-semibold">Improve: </span>
+                                  {message.improvementSuggestion}
+                                </p>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ) : null}
+
+                      {learnerTrainingModePanel.review.segmentFeedback.length > 0 ? (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Segment feedback</p>
+                          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {learnerTrainingModePanel.review.segmentFeedback.slice(0, 6).map((item) => (
+                              <li
+                                key={`${item.routeSegmentId}-${item.summary}`}
+                                className={`rounded-md border p-3 text-xs leading-5 ${learnerTrainingReviewMessageClass(
+                                  item.severity
+                                )}`}
+                              >
+                                <p className="font-semibold">{item.summary}</p>
+                                <p className="mt-1">Road segment: {item.roadId}</p>
+                                {item.improvementSuggestion ? <p className="mt-1">{item.improvementSuggestion}</p> : null}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={handleRetryLearnerTrainingExercise}
+                          disabled={learnerTrainingModePanel.reviewActions[0].disabled}
+                          aria-label={learnerTrainingModePanel.reviewActions[0].ariaLabel}
+                          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                        >
+                          {learnerTrainingModePanel.reviewActions[0].label}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleGenerateLearnerTrainingExercise}
+                          disabled={learnerTrainingModePanel.reviewActions[1].disabled}
+                          aria-label={learnerTrainingModePanel.reviewActions[1].ariaLabel}
+                          className="min-h-11 rounded-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {learnerTrainingModePanel.reviewActions[1].label}
+                        </button>
+                      </div>
                     </div>
                   ) : null}
                 </div>
