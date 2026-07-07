@@ -61,6 +61,9 @@ export type LearnerTrainingModeGeneration = {
   reasonCodes: string[];
   cacheStatus: "hit" | "miss" | "disabled";
   attemptLimit: number | null;
+  routeSignature: string | null;
+  recentRouteSignatures: string[];
+  generationRequestCount: number;
 };
 
 export type LearnerTrainingModeReview = {
@@ -222,7 +225,19 @@ export type LearnerTrainingModePanelModel = {
     distanceMeters: number;
     segmentCount: number;
     checkpointCount: number;
+    complexityScore: number;
+    routeSignature: string;
   } | null;
+  generationOptions: Array<{
+    id: string;
+    selected: boolean;
+    routeSignature: string;
+    distanceLabel: string;
+    turnCount: number;
+    decisionPointCount: number;
+    complexityScore: number;
+    skillTags: string[];
+  }>;
   validation: {
     status: GeneratedLearnerExercise["validation"]["status"];
     explanation: string;
@@ -378,7 +393,10 @@ function idleGenerationState(): LearnerTrainingModeGeneration {
     explanation: null,
     reasonCodes: [],
     cacheStatus: "disabled",
-    attemptLimit: null
+    attemptLimit: null,
+    routeSignature: null,
+    recentRouteSignatures: [],
+    generationRequestCount: 0
   };
 }
 
@@ -443,7 +461,8 @@ function learnerTrainingGenerationCacheKey(input: {
     input.state.selectedDifficulty,
     input.state.selectedExerciseType,
     String(input.seed),
-    input.maxAttempts ?? "default"
+    input.maxAttempts ?? "default",
+    input.state.generation.recentRouteSignatures.join(",")
   ].join("|");
 }
 
@@ -451,14 +470,27 @@ function generationStateFromResult(input: {
   result: LearnerExerciseGenerationResult;
   cacheStatus: LearnerTrainingModeGeneration["cacheStatus"];
   attemptLimit: number | null;
+  previousGeneration: LearnerTrainingModeGeneration;
 }): LearnerTrainingModeGeneration {
+  const routeSignature = input.result.exercise?.generationMetadata.routeSignature ?? null;
+  const recentRouteSignatures = routeSignature
+    ? [routeSignature, ...input.previousGeneration.recentRouteSignatures.filter((signature) => signature !== routeSignature)].slice(0, 6)
+    : input.previousGeneration.recentRouteSignatures;
+
   return {
     status: input.result.status,
     explanation: input.result.explanation,
     reasonCodes: input.result.reasonCodes,
     cacheStatus: input.cacheStatus,
-    attemptLimit: input.attemptLimit
+    attemptLimit: input.attemptLimit,
+    routeSignature,
+    recentRouteSignatures,
+    generationRequestCount: input.previousGeneration.generationRequestCount + 1
   };
+}
+
+function formatTrainingDistance(distanceMeters: number): string {
+  return distanceMeters >= 1000 ? `${(distanceMeters / 1000).toFixed(1)} km` : `${Math.round(distanceMeters)} m`;
 }
 
 export function startLearnerTrainingExercise(input: {
@@ -472,7 +504,8 @@ export function startLearnerTrainingExercise(input: {
     "route-runner-training-ui",
     input.map.id,
     input.state.selectedDifficulty,
-    input.state.selectedExerciseType
+    input.state.selectedExerciseType,
+    input.state.generation.generationRequestCount + 1
   ].join(":");
   const cache = input.generationCache === undefined ? defaultLearnerTrainingGenerationCache : input.generationCache;
   const cacheKey = learnerTrainingGenerationCacheKey({
@@ -489,7 +522,9 @@ export function startLearnerTrainingExercise(input: {
       difficulty: input.state.selectedDifficulty,
       exerciseType: input.state.selectedExerciseType,
       seed,
-      maxAttempts: input.maxAttempts
+      maxAttempts: input.maxAttempts,
+      avoidRouteSignatures: input.state.generation.recentRouteSignatures,
+      candidateOptionCount: 3
     });
   const cacheStatus: LearnerTrainingModeGeneration["cacheStatus"] = cache
     ? cachedResult
@@ -504,7 +539,8 @@ export function startLearnerTrainingExercise(input: {
   const generation = generationStateFromResult({
     result,
     cacheStatus,
-    attemptLimit: input.maxAttempts ?? result.attempts.length
+    attemptLimit: input.maxAttempts ?? result.attempts.length,
+    previousGeneration: input.state.generation
   });
 
   if (result.status === "failed") {
@@ -632,7 +668,9 @@ export function buildLearnerTrainingModePanelModel(input: {
         estimatedMinutes: exercise.estimatedMinutes ?? null,
         distanceMeters: exercise.validation.metrics.routeDistanceMeters,
         segmentCount: exercise.expectedRouteSegments.length,
-        checkpointCount: exercise.checkpoints.length
+        checkpointCount: exercise.checkpoints.length,
+        complexityScore: exercise.generationMetadata.complexity.score,
+        routeSignature: exercise.generationMetadata.routeSignature
       }
     : null;
 
@@ -658,8 +696,8 @@ export function buildLearnerTrainingModePanelModel(input: {
       },
       {
         id: "generate-exercise",
-        label: exercise ? "Generate new exercise" : "Generate exercise",
-        ariaLabel: "Generate learner training exercise",
+        label: exercise ? "Try another route" : "Generate exercise",
+        ariaLabel: exercise ? "Generate another learner training route" : "Generate learner training exercise",
         disabled: false
       },
       {
@@ -693,6 +731,18 @@ export function buildLearnerTrainingModePanelModel(input: {
         }
       : null,
     routeSummary,
+    generationOptions: exercise
+      ? exercise.generationMetadata.candidateOptions.map((option) => ({
+          id: option.id,
+          selected: option.selected,
+          routeSignature: option.routeSignature,
+          distanceLabel: formatTrainingDistance(option.distanceMeters),
+          turnCount: option.turnCount,
+          decisionPointCount: option.decisionPointCount,
+          complexityScore: option.complexityScore,
+          skillTags: [...option.skillTags]
+        }))
+      : [],
     validation: exercise
       ? {
           status: exercise.validation.status,

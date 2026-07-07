@@ -152,6 +152,101 @@ test("beginner route generation is simpler than advanced route generation", () =
   assert.ok(advanced.validation.metrics.routeDistanceMeters > beginner.validation.metrics.routeDistanceMeters);
 });
 
+test("learner exercise difficulty increases from beginner to intermediate to advanced", () => {
+  const map = generationFixtureMap();
+  const beginner = generateLearnerExercise({
+    map,
+    difficulty: "beginner",
+    exerciseType: "follow-planned-route",
+    seed: "difficulty-ladder"
+  });
+  const intermediate = generateLearnerExercise({
+    map,
+    difficulty: "intermediate",
+    exerciseType: "practise-junction-decision-making",
+    seed: "difficulty-ladder"
+  });
+  const advanced = generateLearnerExercise({
+    map,
+    difficulty: "advanced",
+    exerciseType: "route-review-mistake-correction",
+    seed: "difficulty-ladder"
+  });
+
+  assert.ok(beginner.exercise);
+  assert.ok(intermediate.exercise);
+  assert.ok(advanced.exercise);
+  assert.ok(
+    intermediate.exercise.generationMetadata.complexity.score >=
+      beginner.exercise.generationMetadata.complexity.score
+  );
+  assert.ok(
+    advanced.exercise.generationMetadata.complexity.score >=
+      intermediate.exercise.generationMetadata.complexity.score
+  );
+  assert.ok(intermediate.validation.metrics.segmentCount >= beginner.validation.metrics.segmentCount);
+  assert.ok(advanced.validation.metrics.segmentCount >= intermediate.validation.metrics.segmentCount);
+});
+
+test("advanced learner exercise generation rejects tiny simple routes when alternatives exist", () => {
+  const result = generateLearnerExercise({
+    map: generationFixtureMap(),
+    difficulty: "advanced",
+    exerciseType: "choose-legal-route",
+    seed: "advanced-not-tiny"
+  });
+
+  assert.ok(result.exercise);
+  assert.notEqual(result.status, "failed");
+  assert.equal(result.validation.valid, true);
+  assert.ok(result.validation.metrics.segmentCount >= 8);
+  assert.ok(result.validation.metrics.routeDistanceMeters >= 900);
+  assert.ok(result.exercise.generationMetadata.complexity.score >= 48);
+  assert.equal(result.exercise.generationMetadata.complexity.mostlyStraight, false);
+});
+
+test("repeated learner exercise generation can avoid recent route signatures", () => {
+  const map = generationFixtureMap();
+  const first = generateLearnerExercise({
+    map,
+    difficulty: "intermediate",
+    exerciseType: "follow-planned-route",
+    seed: "avoid-recent-signature"
+  });
+
+  assert.ok(first.exercise);
+
+  const second = generateLearnerExercise({
+    map,
+    difficulty: "intermediate",
+    exerciseType: "follow-planned-route",
+    seed: "avoid-recent-signature",
+    avoidRouteSignatures: [first.exercise.generationMetadata.routeSignature]
+  });
+
+  assert.ok(second.exercise);
+  assert.notEqual(second.exercise.generationMetadata.routeSignature, first.exercise.generationMetadata.routeSignature);
+  assert.equal(second.validation.valid, true);
+});
+
+test("learner exercise generator returns multiple candidate option summaries", () => {
+  const result = generateLearnerExercise({
+    map: generationFixtureMap(),
+    difficulty: "advanced",
+    exerciseType: "practise-junction-decision-making",
+    seed: "candidate-options",
+    candidateOptionCount: 3
+  });
+
+  assert.ok(result.exercise);
+  assert.ok(result.candidateOptions.length >= 2);
+  assert.equal(result.candidateOptions.filter((option) => option.selected).length, 1);
+  assert.deepEqual(result.exercise.generationMetadata.candidateOptions, result.candidateOptions);
+  assert.ok(result.candidateOptions.every((option) => option.routeSignature.length > 0));
+  assert.ok(result.candidateOptions.every((option) => option.skillTags.length > 0));
+  assert.ok(result.candidateOptions.some((option) => option.decisionPointCount > 0 || option.turnCount > 1));
+});
+
 test("learner exercise generator handles insufficient candidate data gracefully", () => {
   const result = generateLearnerExercise({
     map: sparseMap(),

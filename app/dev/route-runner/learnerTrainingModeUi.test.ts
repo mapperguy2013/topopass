@@ -159,8 +159,39 @@ function learnerReviewExercise(map = learnerReviewMap()): GeneratedLearnerExerci
       status: "generated",
       seed: "learner-review-fixture",
       attempts: 1,
+      routeSignature: "review-fixture-route",
+      complexity: {
+        score: 18,
+        routeSignature: "review-fixture-route",
+        roadChangeCount: 2,
+        turnCount: 2,
+        decisionPointCount: 1,
+        roundaboutExposure: 0,
+        restrictionExposure: 1,
+        instructionCountEstimate: 5,
+        shapeComplexity: 2,
+        repeatedRoadPenalty: 0,
+        straightnessRatio: 1,
+        mostlyStraight: false
+      },
       reasonCodes: ["candidate-selected"],
-      constraints: {}
+      constraints: {},
+      candidateOptions: [
+        {
+          id: "option-review-fixture-route",
+          routeSignature: "review-fixture-route",
+          difficulty: "beginner",
+          exerciseType: "follow-planned-route",
+          distanceMeters: 300,
+          segmentCount: 3,
+          turnCount: 2,
+          decisionPointCount: 1,
+          complexityScore: 18,
+          estimatedMinutes: 1,
+          skillTags: ["junction planning", "turn sequencing"],
+          selected: true
+        }
+      ]
     }
   };
 }
@@ -268,6 +299,11 @@ test("exercise generation produces a startable route model", () => {
   assert.equal(model.validation?.blockingErrorCount, 0);
   assert.ok(model.currentObjective?.title);
   assert.ok(model.currentInstruction?.text);
+  assert.ok(model.routeSummary?.routeSignature);
+  assert.ok((model.routeSummary?.complexityScore ?? 0) > 0);
+  assert.ok(model.generationOptions.length > 0);
+  assert.equal(model.generationOptions.filter((option) => option.selected).length, 1);
+  assert.equal(model.primaryActions.find((action) => action.id === "generate-exercise")?.label, "Try another route");
 });
 
 test("exercise generation cache reuses seeded results and records cache state", () => {
@@ -292,6 +328,39 @@ test("exercise generation cache reuses seeded results and records cache state", 
   assert.equal(first.activeExercise?.id, second.activeExercise?.id);
   assert.deepEqual(first.activeExercise?.expectedRouteSegments, second.activeExercise?.expectedRouteSegments);
   assert.ok((second.generation.attemptLimit ?? 0) > 0);
+});
+
+test("repeated Generate requests avoid recent learner training route signatures", () => {
+  const baseState = openLearnerTrainingMode(
+    selectLearnerTrainingDifficulty(createLearnerTrainingModeState(), "intermediate")
+  );
+  const first = startLearnerTrainingExercise({
+    state: baseState,
+    map: marloweDistrictMap,
+    seed: "training-ui-repeat"
+  });
+  const second = startLearnerTrainingExercise({
+    state: first,
+    map: marloweDistrictMap,
+    seed: "training-ui-repeat"
+  });
+  const secondModel = buildLearnerTrainingModePanelModel({
+    state: second,
+    map: marloweDistrictMap,
+    viewport: "mobile"
+  });
+
+  assert.ok(first.activeExercise);
+  assert.ok(second.activeExercise);
+  assert.notEqual(
+    second.activeExercise.generationMetadata.routeSignature,
+    first.activeExercise.generationMetadata.routeSignature
+  );
+  assert.ok(second.generation.recentRouteSignatures.includes(first.activeExercise.generationMetadata.routeSignature));
+  assert.ok(second.generation.recentRouteSignatures.includes(second.activeExercise.generationMetadata.routeSignature));
+  assert.equal(secondModel.primaryActions.find((action) => action.id === "generate-exercise")?.label, "Try another route");
+  assert.ok(secondModel.generationOptions.every((option) => option.distanceLabel.length > 0));
+  assert.equal(secondModel.mobile.hiddenPrimaryActionIds.length, 0);
 });
 
 test("training mode exposes accessible live regions focus targets and keyboard order", () => {

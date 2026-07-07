@@ -44,6 +44,8 @@ export type LearnerExerciseGenerationReasonCode =
   | "validation-blocked"
   | "validation-warning"
   | "difficulty-profile-warning"
+  | "difficulty-too-simple"
+  | "duplicate-route-signature"
   | "candidate-selected"
   | "candidate-degraded";
 
@@ -61,6 +63,36 @@ export type LearnerExerciseGenerationAttempt = {
   reasonCodes: LearnerExerciseGenerationReasonCode[];
 };
 
+export type LearnerRouteComplexityMetrics = {
+  score: number;
+  routeSignature: string;
+  roadChangeCount: number;
+  turnCount: number;
+  decisionPointCount: number;
+  roundaboutExposure: number;
+  restrictionExposure: number;
+  instructionCountEstimate: number;
+  shapeComplexity: number;
+  repeatedRoadPenalty: number;
+  straightnessRatio: number;
+  mostlyStraight: boolean;
+};
+
+export type LearnerExerciseCandidateOption = {
+  id: string;
+  routeSignature: string;
+  difficulty: ExerciseDifficulty;
+  exerciseType: ExerciseType;
+  distanceMeters: number;
+  segmentCount: number;
+  turnCount: number;
+  decisionPointCount: number;
+  complexityScore: number;
+  estimatedMinutes: number;
+  skillTags: string[];
+  selected: boolean;
+};
+
 export type GeneratedLearnerExercise = LearnerExercise & {
   routeGeometry: Vec2[];
   checkpoints: RouteStop[];
@@ -71,9 +103,12 @@ export type GeneratedLearnerExercise = LearnerExercise & {
     status: Exclude<LearnerExerciseGenerationStatus, "failed">;
     seed: string;
     attempts: number;
+    routeSignature: string;
+    complexity: LearnerRouteComplexityMetrics;
     reasonCodes: LearnerExerciseGenerationReasonCode[];
     targetBounds?: LearnerExerciseTargetBounds;
     constraints: LearnerRouteValidationConstraints;
+    candidateOptions: LearnerExerciseCandidateOption[];
   };
 };
 
@@ -85,6 +120,8 @@ export type GenerateLearnerExerciseInput = {
   constraints?: LearnerRouteValidationConstraints;
   seed?: string | number;
   maxAttempts?: number;
+  avoidRouteSignatures?: readonly string[];
+  candidateOptionCount?: number;
   published?: boolean;
 };
 
@@ -94,6 +131,7 @@ export type LearnerExerciseGenerationResult =
       exercise: GeneratedLearnerExercise;
       validation: LearnerRouteValidationResult;
       attempts: LearnerExerciseGenerationAttempt[];
+      candidateOptions: LearnerExerciseCandidateOption[];
       reasonCodes: LearnerExerciseGenerationReasonCode[];
       explanation: string;
     }
@@ -112,6 +150,11 @@ type DifficultyGenerationProfile = {
   minDistanceMeters: number;
   maxDistanceMeters: number;
   targetDistanceMeters: number;
+  minComplexityScore: number;
+  targetComplexityScore: number;
+  minTurnCount: number;
+  minJunctionDecisionCount: number;
+  minRoadChangeCount: number;
   targetSegmentCount: number;
   minSegmentCount: number;
   maxSegmentCount: number;
@@ -128,6 +171,8 @@ type CandidateRoute = {
   route: FoundShortestLegalRoute;
   routeSegments: LearnerRouteValidationSegment[];
   validation: LearnerRouteValidationResult;
+  complexity: LearnerRouteComplexityMetrics;
+  routeSignature: string;
   score: number;
   profileFit: boolean;
   reasonCodes: LearnerExerciseGenerationReasonCode[];
@@ -139,63 +184,83 @@ const DEFAULT_AVERAGE_SPEED_KMH = 20;
 const difficultyProfiles: Record<ExerciseDifficulty, DifficultyGenerationProfile> = {
   beginner: {
     minDistanceMeters: 80,
-    maxDistanceMeters: 900,
-    targetDistanceMeters: 350,
-    targetSegmentCount: 3,
-    minSegmentCount: 1,
-    maxSegmentCount: 5,
-    maxTurnCount: 3,
-    maxJunctionDecisionCount: 2,
-    maxRoundaboutSegmentCount: 0,
-    maxRepeatedRoadCount: 0,
-    maxEstimatedTimeMinutes: 6,
-    pairOffsets: [1, 2, 3, 4, 5, 8],
-    defaultMaxAttempts: 80
-  },
-  easy: {
-    minDistanceMeters: 120,
-    maxDistanceMeters: 1400,
-    targetDistanceMeters: 650,
+    maxDistanceMeters: 1100,
+    targetDistanceMeters: 520,
+    minComplexityScore: 8,
+    targetComplexityScore: 22,
+    minTurnCount: 0,
+    minJunctionDecisionCount: 0,
+    minRoadChangeCount: 1,
     targetSegmentCount: 5,
-    minSegmentCount: 2,
+    minSegmentCount: 1,
     maxSegmentCount: 8,
     maxTurnCount: 5,
     maxJunctionDecisionCount: 4,
+    maxRoundaboutSegmentCount: 0,
+    maxRepeatedRoadCount: 0,
+    maxEstimatedTimeMinutes: 6,
+    pairOffsets: [2, 3, 4, 5, 6, 8],
+    defaultMaxAttempts: 120
+  },
+  easy: {
+    minDistanceMeters: 120,
+    maxDistanceMeters: 1700,
+    targetDistanceMeters: 850,
+    minComplexityScore: 16,
+    targetComplexityScore: 34,
+    minTurnCount: 0,
+    minJunctionDecisionCount: 0,
+    minRoadChangeCount: 2,
+    targetSegmentCount: 7,
+    minSegmentCount: 2,
+    maxSegmentCount: 10,
+    maxTurnCount: 7,
+    maxJunctionDecisionCount: 5,
     maxRoundaboutSegmentCount: 1,
     maxRepeatedRoadCount: 0,
     maxEstimatedTimeMinutes: 9,
-    pairOffsets: [2, 3, 5, 8, 13],
-    defaultMaxAttempts: 90
+    pairOffsets: [3, 5, 6, 8, 10, 13],
+    defaultMaxAttempts: 130
   },
   intermediate: {
     minDistanceMeters: 300,
-    maxDistanceMeters: 3200,
-    targetDistanceMeters: 1400,
-    targetSegmentCount: 7,
+    maxDistanceMeters: 4200,
+    targetDistanceMeters: 1800,
+    minComplexityScore: 28,
+    targetComplexityScore: 52,
+    minTurnCount: 1,
+    minJunctionDecisionCount: 0,
+    minRoadChangeCount: 4,
+    targetSegmentCount: 12,
     minSegmentCount: 3,
-    maxSegmentCount: 14,
-    maxTurnCount: 10,
-    maxJunctionDecisionCount: 8,
+    maxSegmentCount: 18,
+    maxTurnCount: 13,
+    maxJunctionDecisionCount: 10,
     maxRoundaboutSegmentCount: 2,
     maxRepeatedRoadCount: 1,
     maxEstimatedTimeMinutes: 18,
-    pairOffsets: [4, 6, 9, 13, 17, 21],
-    defaultMaxAttempts: 110
+    pairOffsets: [5, 8, 10, 13, 17, 21, 26],
+    defaultMaxAttempts: 170
   },
   advanced: {
-    minDistanceMeters: 600,
-    maxDistanceMeters: 7000,
-    targetDistanceMeters: 2600,
-    targetSegmentCount: 11,
-    minSegmentCount: 5,
-    maxSegmentCount: 24,
-    maxTurnCount: 18,
-    maxJunctionDecisionCount: 16,
+    minDistanceMeters: 900,
+    maxDistanceMeters: 9000,
+    targetDistanceMeters: 3600,
+    minComplexityScore: 48,
+    targetComplexityScore: 82,
+    minTurnCount: 2,
+    minJunctionDecisionCount: 1,
+    minRoadChangeCount: 7,
+    targetSegmentCount: 20,
+    minSegmentCount: 8,
+    maxSegmentCount: 34,
+    maxTurnCount: 26,
+    maxJunctionDecisionCount: 22,
     maxRoundaboutSegmentCount: 4,
     maxRepeatedRoadCount: 2,
     maxEstimatedTimeMinutes: 32,
-    pairOffsets: [8, 13, 21, 34, 55, 89, 144],
-    defaultMaxAttempts: 140
+    pairOffsets: [8, 13, 17, 21, 26, 34, 42, 55, 89, 144],
+    defaultMaxAttempts: 240
   }
 };
 
@@ -355,8 +420,117 @@ function routeNodesInsideBounds(
   });
 }
 
+function distanceBetweenPoints(left: Vec2, right: Vec2): number {
+  return Math.hypot(right.x - left.x, right.y - left.y);
+}
+
+function headingDeltaScore(previous: Vec2, current: Vec2, next: Vec2): number {
+  const incoming = headingDegrees(previous, current);
+  const outgoing = headingDegrees(current, next);
+  const delta = Math.abs(normaliseTurnDegrees(outgoing - incoming));
+
+  if (delta < 25) {
+    return 0;
+  }
+
+  if (delta < 55) {
+    return 1;
+  }
+
+  if (delta < 105) {
+    return 2;
+  }
+
+  return 3;
+}
+
+function routeSignature(routeSegments: readonly LearnerRouteValidationSegment[]): string {
+  const roadPath = routeSegments.map((segment) => `${segment.roadId}:${segment.fromNodeId}>${segment.toNodeId}`);
+
+  return stableHash(roadPath.join("|")).toString(36);
+}
+
+function routeRestrictionExposure(map: MapDefinition, routeSegments: readonly LearnerRouteValidationSegment[]): number {
+  const routeRoadIds = new Set(routeSegments.map((segment) => segment.roadId));
+  const routeNodeIds = new Set(routeSegments.flatMap((segment) => [segment.fromNodeId, segment.toNodeId]));
+
+  return map.restrictions.filter((restriction) => {
+    if ("roadId" in restriction && typeof restriction.roadId === "string" && routeRoadIds.has(restriction.roadId)) {
+      return true;
+    }
+
+    if ("fromRoadId" in restriction && "toRoadId" in restriction) {
+      return (
+        (typeof restriction.fromRoadId === "string" && routeRoadIds.has(restriction.fromRoadId)) ||
+        (typeof restriction.toRoadId === "string" && routeRoadIds.has(restriction.toRoadId))
+      );
+    }
+
+    if ("viaNodeId" in restriction && typeof restriction.viaNodeId === "string") {
+      return routeNodeIds.has(restriction.viaNodeId);
+    }
+
+    return false;
+  }).length;
+}
+
+function calculateLearnerRouteComplexity(input: {
+  map: MapDefinition;
+  graph: MapGraph;
+  route: FoundShortestLegalRoute;
+  routeSegments: readonly LearnerRouteValidationSegment[];
+  validation: LearnerRouteValidationResult;
+}): LearnerRouteComplexityMetrics {
+  const geometry = routeGeometry(input.graph, input.route);
+  const directDistance =
+    geometry.length >= 2 ? distanceBetweenPoints(geometry[0], geometry[geometry.length - 1]) : 0;
+  const roadChangeCount = input.routeSegments.slice(1).filter(
+    (segment, index) => segment.roadId !== input.routeSegments[index].roadId
+  ).length;
+  const shapeComplexity = geometry.slice(1, -1).reduce((sum, point, index) => {
+    const previous = geometry[index];
+    const next = geometry[index + 2];
+
+    return previous && next ? sum + headingDeltaScore(previous, point, next) : sum;
+  }, 0);
+  const straightnessRatio =
+    input.validation.metrics.routeDistanceMeters > 0
+      ? directDistance / input.validation.metrics.routeDistanceMeters
+      : 1;
+  const restrictionExposure = routeRestrictionExposure(input.map, input.routeSegments);
+  const repeatedRoadPenalty = input.validation.metrics.repeatedRoadCount * 6;
+  const score = Math.max(
+    0,
+    input.validation.metrics.segmentCount * 2.4 +
+      roadChangeCount * 3.2 +
+      input.validation.metrics.turnCount * 3.4 +
+      input.validation.metrics.junctionDecisionCount * 5.5 +
+      input.validation.metrics.roundaboutSegmentCount * 5 +
+      restrictionExposure * 4 +
+      shapeComplexity * 2.1 +
+      Math.max(0, 0.92 - straightnessRatio) * 12 -
+      repeatedRoadPenalty
+  );
+
+  return {
+    score: Math.round(score * 10) / 10,
+    routeSignature: routeSignature(input.routeSegments),
+    roadChangeCount,
+    turnCount: input.validation.metrics.turnCount,
+    decisionPointCount: input.validation.metrics.junctionDecisionCount,
+    roundaboutExposure: input.validation.metrics.roundaboutSegmentCount,
+    restrictionExposure,
+    instructionCountEstimate: input.routeSegments.length + 2,
+    shapeComplexity,
+    repeatedRoadPenalty,
+    straightnessRatio: Math.round(straightnessRatio * 1000) / 1000,
+    mostlyStraight: straightnessRatio > 0.92 && input.validation.metrics.turnCount <= 1
+  };
+}
+
 function routeFitsProfile(
   validation: LearnerRouteValidationResult,
+  complexity: LearnerRouteComplexityMetrics,
   profile: DifficultyGenerationProfile,
   constraints: LearnerRouteValidationConstraints
 ): boolean {
@@ -369,6 +543,10 @@ function routeFitsProfile(
     metrics.routeDistanceMeters <= maxDistanceMeters &&
     metrics.segmentCount >= profile.minSegmentCount &&
     metrics.segmentCount <= (constraints.maxSegmentCount ?? profile.maxSegmentCount) &&
+    complexity.score >= profile.minComplexityScore &&
+    complexity.roadChangeCount >= profile.minRoadChangeCount &&
+    metrics.turnCount >= profile.minTurnCount &&
+    metrics.junctionDecisionCount >= profile.minJunctionDecisionCount &&
     metrics.turnCount <= (constraints.maxTurnCount ?? profile.maxTurnCount) &&
     metrics.junctionDecisionCount <= (constraints.maxJunctionDecisionCount ?? profile.maxJunctionDecisionCount) &&
     metrics.roundaboutSegmentCount <= (constraints.maxRoundaboutSegmentCount ?? profile.maxRoundaboutSegmentCount) &&
@@ -378,9 +556,11 @@ function routeFitsProfile(
 
 function candidateScore(input: {
   validation: LearnerRouteValidationResult;
+  complexity: LearnerRouteComplexityMetrics;
   profile: DifficultyGenerationProfile;
   constraints: LearnerRouteValidationConstraints;
   profileFit: boolean;
+  avoidedSignature: boolean;
 }): number {
   const metrics = input.validation.metrics;
   const minDistanceMeters = input.constraints.minDistanceMeters ?? input.profile.minDistanceMeters;
@@ -393,15 +573,31 @@ function candidateScore(input: {
         : 0;
   const warningPenalty = input.validation.advisoryWarnings.length * 5000;
   const profilePenalty = input.profileFit ? 0 : 2500;
+  const tooSimplePenalty =
+    input.complexity.score < input.profile.minComplexityScore
+      ? (input.profile.minComplexityScore - input.complexity.score) * 360
+      : 0;
+  const missingTurnPenalty = Math.max(0, input.profile.minTurnCount - metrics.turnCount) * 1400;
+  const missingDecisionPenalty =
+    Math.max(0, input.profile.minJunctionDecisionCount - metrics.junctionDecisionCount) * 1600;
+  const missingRoadChangePenalty = Math.max(0, input.profile.minRoadChangeCount - input.complexity.roadChangeCount) * 900;
+  const duplicatePenalty = input.avoidedSignature ? 12000 : 0;
 
   return (
     Math.abs(metrics.routeDistanceMeters - input.profile.targetDistanceMeters) +
     Math.abs(metrics.segmentCount - input.profile.targetSegmentCount) * 90 +
+    Math.abs(input.complexity.score - input.profile.targetComplexityScore) * 55 +
     metrics.roundaboutSegmentCount * 180 +
     metrics.repeatedRoadCount * 600 +
+    (input.complexity.mostlyStraight ? 1100 : 0) +
     distanceOutOfBoundsPenalty +
     warningPenalty +
-    profilePenalty
+    profilePenalty +
+    tooSimplePenalty +
+    missingTurnPenalty +
+    missingDecisionPenalty +
+    missingRoadChangePenalty +
+    duplicatePenalty
   );
 }
 
@@ -435,6 +631,7 @@ function evaluateCandidate(input: {
   difficulty: ExerciseDifficulty;
   profile: DifficultyGenerationProfile;
   constraints: LearnerRouteValidationConstraints;
+  avoidRouteSignatures: ReadonlySet<string>;
   targetAreaBounds?: LearnerExerciseTargetBounds;
 }): CandidateRoute | null {
   const route = findShortestLegalRoute({
@@ -448,22 +645,6 @@ function evaluateCandidate(input: {
     return null;
   }
 
-  if (!routeNodesInsideBounds(input.graph, route, input.targetAreaBounds)) {
-    return {
-      route,
-      routeSegments: [],
-      validation: validateLearnerRoute({
-        map: input.map,
-        difficulty: input.difficulty,
-        routeSegments: [],
-        constraints: input.constraints
-      }),
-      score: Number.POSITIVE_INFINITY,
-      profileFit: false,
-      reasonCodes: ["route-outside-target-bounds"]
-    };
-  }
-
   const routeSegments = routeSegmentsFromEdges(input.graph, route.edgeIds);
   const validation = validateLearnerRoute({
     map: input.map,
@@ -471,19 +652,42 @@ function evaluateCandidate(input: {
     routeSegments,
     constraints: input.constraints
   });
+  const complexity = calculateLearnerRouteComplexity({
+    map: input.map,
+    graph: input.graph,
+    route,
+    routeSegments,
+    validation
+  });
+  const avoidedSignature = input.avoidRouteSignatures.has(complexity.routeSignature);
+
+  if (!routeNodesInsideBounds(input.graph, route, input.targetAreaBounds)) {
+    return {
+      route,
+      routeSegments,
+      validation,
+      complexity,
+      routeSignature: complexity.routeSignature,
+      score: Number.POSITIVE_INFINITY,
+      profileFit: false,
+      reasonCodes: ["route-outside-target-bounds"]
+    };
+  }
 
   if (!validation.valid) {
     return {
       route,
       routeSegments,
       validation,
+      complexity,
+      routeSignature: complexity.routeSignature,
       score: Number.POSITIVE_INFINITY,
       profileFit: false,
       reasonCodes: ["validation-blocked"]
     };
   }
 
-  const profileFit = routeFitsProfile(validation, input.profile, input.constraints);
+  const profileFit = routeFitsProfile(validation, complexity, input.profile, input.constraints);
   const reasonCodes: LearnerExerciseGenerationReasonCode[] = [];
 
   if (validation.status === "warning") {
@@ -494,16 +698,28 @@ function evaluateCandidate(input: {
     reasonCodes.push("difficulty-profile-warning");
   }
 
+  if (complexity.score < input.profile.minComplexityScore) {
+    reasonCodes.push("difficulty-too-simple");
+  }
+
+  if (avoidedSignature) {
+    reasonCodes.push("duplicate-route-signature");
+  }
+
   return {
     route,
     routeSegments,
     validation,
+    complexity,
+    routeSignature: complexity.routeSignature,
     profileFit,
     score: candidateScore({
       validation,
+      complexity,
       profile: input.profile,
       constraints: input.constraints,
-      profileFit
+      profileFit,
+      avoidedSignature
     }),
     reasonCodes
   };
@@ -522,6 +738,107 @@ function bestCandidate(
   }
 
   return right.score < left.score ? right : left;
+}
+
+function skillTagsForCandidate(input: {
+  exerciseType: ExerciseType;
+  complexity: LearnerRouteComplexityMetrics;
+}): string[] {
+  const tags = [input.exerciseType.replaceAll("-", " ")];
+
+  if (input.complexity.decisionPointCount > 0) {
+    tags.push("junction planning");
+  }
+
+  if (input.complexity.roundaboutExposure > 0) {
+    tags.push("roundabout practice");
+  }
+
+  if (input.complexity.restrictionExposure > 0) {
+    tags.push("legal route choice");
+  }
+
+  if (!input.complexity.mostlyStraight && input.complexity.turnCount >= 2) {
+    tags.push("turn sequencing");
+  }
+
+  if (input.complexity.score >= difficultyProfiles.advanced.minComplexityScore) {
+    tags.push("multi-decision route");
+  }
+
+  return stableUnique(tags);
+}
+
+function candidateOption(input: {
+  candidate: CandidateRoute;
+  difficulty: ExerciseDifficulty;
+  exerciseType: ExerciseType;
+  selected: boolean;
+}): LearnerExerciseCandidateOption {
+  return {
+    id: `option-${input.candidate.routeSignature}`,
+    routeSignature: input.candidate.routeSignature,
+    difficulty: input.difficulty,
+    exerciseType: input.exerciseType,
+    distanceMeters: Math.round(input.candidate.validation.metrics.routeDistanceMeters),
+    segmentCount: input.candidate.validation.metrics.segmentCount,
+    turnCount: input.candidate.validation.metrics.turnCount,
+    decisionPointCount: input.candidate.validation.metrics.junctionDecisionCount,
+    complexityScore: input.candidate.complexity.score,
+    estimatedMinutes: Math.max(1, Math.ceil(input.candidate.validation.metrics.estimatedTimeMinutes)),
+    skillTags: skillTagsForCandidate({
+      exerciseType: input.exerciseType,
+      complexity: input.candidate.complexity
+    }),
+    selected: input.selected
+  };
+}
+
+function buildCandidateOptions(input: {
+  candidates: readonly CandidateRoute[];
+  selectedCandidate: CandidateRoute;
+  difficulty: ExerciseDifficulty;
+  exerciseType: ExerciseType;
+  count: number;
+}): LearnerExerciseCandidateOption[] {
+  const options: LearnerExerciseCandidateOption[] = [];
+  const seen = new Set<string>();
+  const orderedCandidates = [
+    input.selectedCandidate,
+    ...input.candidates.filter((candidate) => candidate.routeSignature !== input.selectedCandidate.routeSignature)
+  ].sort((left, right) => {
+    if (left.routeSignature === input.selectedCandidate.routeSignature) {
+      return -1;
+    }
+
+    if (right.routeSignature === input.selectedCandidate.routeSignature) {
+      return 1;
+    }
+
+    return left.score - right.score;
+  });
+
+  for (const candidate of orderedCandidates) {
+    if (options.length >= input.count) {
+      break;
+    }
+
+    if (seen.has(candidate.routeSignature)) {
+      continue;
+    }
+
+    seen.add(candidate.routeSignature);
+    options.push(
+      candidateOption({
+        candidate,
+        difficulty: input.difficulty,
+        exerciseType: input.exerciseType,
+        selected: candidate.routeSignature === input.selectedCandidate.routeSignature
+      })
+    );
+  }
+
+  return options;
 }
 
 function mapPointForNode(graph: MapGraph, nodeId: string): Vec2 | undefined {
@@ -987,6 +1304,7 @@ function buildGeneratedExercise(input: {
   reasonCodes: LearnerExerciseGenerationReasonCode[];
   targetAreaBounds?: LearnerExerciseTargetBounds;
   constraints: LearnerRouteValidationConstraints;
+  candidateOptions: LearnerExerciseCandidateOption[];
   published: boolean;
 }): GeneratedLearnerExercise {
   const checkpoints = checkpointStops({
@@ -1048,9 +1366,12 @@ function buildGeneratedExercise(input: {
       status: input.generationStatus,
       seed: input.seed,
       attempts: input.attempts,
+      routeSignature: input.candidate.routeSignature,
+      complexity: input.candidate.complexity,
       reasonCodes: stableUnique(input.reasonCodes),
       targetBounds: input.targetAreaBounds,
-      constraints: input.constraints
+      constraints: input.constraints,
+      candidateOptions: input.candidateOptions
     }
   };
 }
@@ -1094,8 +1415,11 @@ export function generateLearnerExercise(input: GenerateLearnerExerciseInput): Le
   }
 
   const constraints = constraintsForGeneration(input.difficulty, input.constraints);
+  const avoidRouteSignatures = new Set(input.avoidRouteSignatures ?? []);
+  const candidateOptionCount = Math.max(1, Math.floor(input.candidateOptionCount ?? 3));
   let bestStrictCandidate: CandidateRoute | null = null;
   let bestValidCandidate: CandidateRoute | null = null;
+  const validCandidates: CandidateRoute[] = [];
   let sawNoLegalRoute = false;
 
   for (let index = 0; index < pairs.length; index += 1) {
@@ -1108,6 +1432,7 @@ export function generateLearnerExercise(input: GenerateLearnerExerciseInput): Le
       difficulty: input.difficulty,
       profile,
       constraints,
+      avoidRouteSignatures,
       targetAreaBounds: input.targetAreaBounds
     });
 
@@ -1144,8 +1469,13 @@ export function generateLearnerExercise(input: GenerateLearnerExerciseInput): Le
     }
 
     bestValidCandidate = bestCandidate(bestValidCandidate, candidate);
+    validCandidates.push(candidate);
 
-    if (candidate.validation.status === "valid" && candidate.profileFit) {
+    if (
+      candidate.validation.status === "valid" &&
+      candidate.profileFit &&
+      !candidate.reasonCodes.includes("duplicate-route-signature")
+    ) {
       bestStrictCandidate = bestCandidate(bestStrictCandidate, candidate);
     }
   }
@@ -1166,11 +1496,22 @@ export function generateLearnerExercise(input: GenerateLearnerExerciseInput): Le
   }
 
   const generationStatus: Exclude<LearnerExerciseGenerationStatus, "failed"> =
-    selectedCandidate === bestStrictCandidate ? "generated" : "degraded";
+    selectedCandidate === bestStrictCandidate &&
+    !selectedCandidate.reasonCodes.includes("duplicate-route-signature") &&
+    !selectedCandidate.reasonCodes.includes("difficulty-too-simple")
+      ? "generated"
+      : "degraded";
   const reasonCodes: LearnerExerciseGenerationReasonCode[] =
     generationStatus === "generated"
       ? ["candidate-selected"]
       : stableUnique(["candidate-degraded", ...selectedCandidate.reasonCodes]);
+  const candidateOptions = buildCandidateOptions({
+    candidates: validCandidates,
+    selectedCandidate,
+    difficulty: input.difficulty,
+    exerciseType: input.exerciseType,
+    count: candidateOptionCount
+  });
   const exercise = buildGeneratedExercise({
     map: input.map,
     graph,
@@ -1183,6 +1524,7 @@ export function generateLearnerExercise(input: GenerateLearnerExerciseInput): Le
     reasonCodes,
     targetAreaBounds: input.targetAreaBounds,
     constraints,
+    candidateOptions,
     published: input.published ?? false
   });
 
@@ -1191,6 +1533,7 @@ export function generateLearnerExercise(input: GenerateLearnerExerciseInput): Le
     exercise,
     validation: selectedCandidate.validation,
     attempts,
+    candidateOptions,
     reasonCodes: stableUnique(reasonCodes),
     explanation:
       generationStatus === "generated"

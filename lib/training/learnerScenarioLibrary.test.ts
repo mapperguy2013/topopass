@@ -220,9 +220,11 @@ test("learner scenario templates map to the expected difficulties", () => {
     "missed-turn-recovery": "intermediate",
     "choose-the-legal-route": "intermediate",
     "junction-planning": "intermediate",
+    "one-way-awareness": "intermediate",
     "checkpoint-navigation": "intermediate",
     "route-review-challenge": "advanced",
-    "advanced-dense-network-navigation": "advanced"
+    "advanced-dense-network-navigation": "advanced",
+    "advanced-multi-decision-route": "advanced"
   } as const;
 
   for (const template of LEARNER_SCENARIO_TEMPLATES) {

@@ -75,7 +75,8 @@ The generator:
 - Builds candidate start/destination pairs from drivable graph nodes.
 - Uses the existing shortest legal route search to produce route candidates.
 - Validates candidates with the learner route validator.
-- Scores candidates against difficulty profile and constraints.
+- Scores candidates against difficulty profile, constraints, and route
+  complexity.
 - Returns the best valid candidate, or a degraded candidate with advisory
   metadata when strict profile fit is not available.
 - Fails gracefully with reason codes when the map does not contain enough route
@@ -85,6 +86,42 @@ The Training Mode wrapper adds a small bounded generation cache keyed by map
 identity, graph size, difficulty, exercise type, seed, and attempt limit. This
 keeps repeated seeded generation responsive and avoids unnecessary recomputation
 without changing route output.
+
+### Difficulty And Variation
+
+`learnerExerciseGeneration.ts` calculates a route complexity score for each
+candidate before choosing an exercise. The score uses only project map data:
+distance, segment count, road changes, turns, junction decision points,
+roundabout exposure where tagged, mapped restriction exposure, route shape,
+straightness, repeated roads, and estimated instruction count. If reliable
+distance is limited by a fixture, segment count and route geometry still
+contribute to the score.
+
+Difficulty profiles now separate the generated routes more clearly:
+
+- Beginner targets short, simple route-following with low complexity, few road
+  changes, and no roundabout exposure where the map can detect it.
+- Intermediate targets longer routes with more road changes, more turns, and
+  more junction decisions while keeping the route manageable.
+- Advanced targets noticeably longer multi-decision routes and rejects tiny
+  simple candidates when the map contains better alternatives. Advanced can use
+  denser networks, one-way or restriction exposure, roundabouts, and complex
+  junctions only when those features exist in the map data.
+
+Candidate ranking no longer accepts the first valid simple route. Generation
+evaluates multiple start/destination pairs, validates each candidate, scores
+the route complexity against the selected difficulty, penalises routes that are
+too easy, and exposes up to three candidate option summaries in generation
+metadata. Each option includes distance, segment count, turn count, decision
+point count, complexity score, a route signature, and skill tags such as
+junction planning, roundabout practice, legal route choice, or turn sequencing.
+
+Training Mode records the last few generated route signatures in the local UI
+state. Repeated Generate requests pass those signatures back to the generator,
+so the same session avoids repeating the same route shape when alternatives are
+available. If a map cannot produce a route that satisfies the requested
+difficulty, the generator returns the closest valid route as degraded with
+reason codes instead of silently labelling a simple route as fully advanced.
 
 ## Route Validation Rules
 
@@ -245,6 +282,10 @@ Known limitations:
 - Practical learner suitability is heuristic and based on graph complexity,
   route length, time estimate, repeated roads, junction count, and roundabout
   detection.
+- Difficulty and variation depend on the roads, restrictions, roundabouts,
+  junction density, and metadata present in the committed map fixture. Sparse
+  maps may return degraded advanced exercises rather than inventing complex
+  legal constraints.
 - Dense London map fixtures are curated project data, not live authoritative
   legal guidance.
 

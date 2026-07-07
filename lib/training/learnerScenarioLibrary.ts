@@ -43,9 +43,11 @@ export const LEARNER_SCENARIO_TEMPLATE_IDS = [
   "missed-turn-recovery",
   "choose-the-legal-route",
   "junction-planning",
+  "one-way-awareness",
   "checkpoint-navigation",
   "route-review-challenge",
-  "advanced-dense-network-navigation"
+  "advanced-dense-network-navigation",
+  "advanced-multi-decision-route"
 ] as const;
 
 export type LearnerScenarioTemplateId = (typeof LEARNER_SCENARIO_TEMPLATE_IDS)[number];
@@ -399,6 +401,29 @@ export const LEARNER_SCENARIO_TEMPLATES: LearnerScenarioTemplate[] = [
     tags: ["junctions", "planning"]
   },
   {
+    id: "one-way-awareness",
+    title: "One-way awareness",
+    exerciseType: "choose-legal-route",
+    targetDifficulty: "intermediate",
+    objectiveText: "Practise choosing a route where mapped one-way or restriction context may influence the legal path.",
+    objectiveCategory: "route-legality",
+    generationConstraints: {
+      minDistanceMeters: 420,
+      maxDistanceMeters: 2600,
+      maxEstimatedTimeMinutes: 16,
+      maxSegmentCount: 15,
+      maxTurnCount: 11,
+      maxJunctionDecisionCount: 9,
+      maxRoundaboutSegmentCount: 1,
+      maxRepeatedRoadCount: 1,
+      maxAttempts: 150
+    },
+    scoringEmphasis: ["legal-validity", "junction-planning", "route-adherence"],
+    hintStyle: "legal-reasoning",
+    feedbackEmphasis: ["legal-validity", "junction-handling", "observation-planning"],
+    tags: ["one-way-awareness", "legal-route", "restrictions"]
+  },
+  {
     id: "checkpoint-navigation",
     title: "Checkpoint navigation",
     exerciseType: "follow-planned-route",
@@ -429,15 +454,15 @@ export const LEARNER_SCENARIO_TEMPLATES: LearnerScenarioTemplate[] = [
     objectiveText: "Use route review feedback to correct legality, adherence, and efficiency mistakes.",
     objectiveCategory: "mistake-correction",
     generationConstraints: {
-      minDistanceMeters: 600,
-      maxDistanceMeters: 4200,
-      maxEstimatedTimeMinutes: 24,
-      maxSegmentCount: 18,
-      maxTurnCount: 14,
-      maxJunctionDecisionCount: 12,
+      minDistanceMeters: 900,
+      maxDistanceMeters: 6200,
+      maxEstimatedTimeMinutes: 30,
+      maxSegmentCount: 28,
+      maxTurnCount: 22,
+      maxJunctionDecisionCount: 18,
       maxRoundaboutSegmentCount: 3,
       maxRepeatedRoadCount: 2,
-      maxAttempts: 140
+      maxAttempts: 220
     },
     scoringEmphasis: ["legal-validity", "recovery", "efficiency"],
     hintStyle: "review-led",
@@ -452,20 +477,43 @@ export const LEARNER_SCENARIO_TEMPLATES: LearnerScenarioTemplate[] = [
     objectiveText: "Navigate a denser road network while balancing legality, junction planning, and route efficiency.",
     objectiveCategory: "route-legality",
     generationConstraints: {
-      minDistanceMeters: 700,
-      maxDistanceMeters: 5200,
-      maxEstimatedTimeMinutes: 30,
-      maxSegmentCount: 22,
-      maxTurnCount: 17,
-      maxJunctionDecisionCount: 15,
+      minDistanceMeters: 1000,
+      maxDistanceMeters: 7600,
+      maxEstimatedTimeMinutes: 34,
+      maxSegmentCount: 32,
+      maxTurnCount: 26,
+      maxJunctionDecisionCount: 22,
       maxRoundaboutSegmentCount: 4,
       maxRepeatedRoadCount: 2,
-      maxAttempts: 150
+      maxAttempts: 240
     },
     scoringEmphasis: ["legal-validity", "junction-planning", "efficiency"],
     hintStyle: "low-disclosure",
     feedbackEmphasis: ["legal-validity", "junction-handling", "efficiency"],
     tags: ["dense-network", "advanced", "legal-route"]
+  },
+  {
+    id: "advanced-multi-decision-route",
+    title: "Advanced multi-decision route",
+    exerciseType: "practise-junction-decision-making",
+    targetDifficulty: "advanced",
+    objectiveText: "Handle a longer route with repeated junction decisions, road changes, and route-choice pressure.",
+    objectiveCategory: "junction-decision",
+    generationConstraints: {
+      minDistanceMeters: 950,
+      maxDistanceMeters: 7000,
+      maxEstimatedTimeMinutes: 32,
+      maxSegmentCount: 30,
+      maxTurnCount: 24,
+      maxJunctionDecisionCount: 22,
+      maxRoundaboutSegmentCount: 4,
+      maxRepeatedRoadCount: 2,
+      maxAttempts: 240
+    },
+    scoringEmphasis: ["junction-planning", "route-adherence", "efficiency"],
+    hintStyle: "low-disclosure",
+    feedbackEmphasis: ["junction-handling", "observation-planning", "efficiency"],
+    tags: ["advanced", "multi-decision", "junctions"]
   }
 ];
 
