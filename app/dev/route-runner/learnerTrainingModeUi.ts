@@ -20,6 +20,9 @@ import {
   type LearnerAttemptSegmentFeedback,
   type LearnerExerciseGenerationResult,
   type LearnerHintGenerationResult,
+  type LearnerTrainingAttemptProgressRecord,
+  type LearnerTrainingProgressMistakeSummary,
+  type LearnerTrainingProgressState,
   type LearnerRouteValidationSegment,
   type RouteInstruction
 } from "../../../lib/training/index.ts";
@@ -80,7 +83,8 @@ export type LearnerTrainingModeActionId =
   | "request-hint"
   | "complete-review"
   | "retry-exercise"
-  | "next-exercise";
+  | "next-exercise"
+  | "reset-progress";
 
 export type LearnerTrainingModeAction = {
   id: LearnerTrainingModeActionId;
@@ -159,6 +163,40 @@ export type LearnerTrainingRouteOverlay = {
   segmentFeedback: LearnerTrainingSegmentFeedbackOverlay[];
 };
 
+export type LearnerTrainingProgressPanelModel = {
+  summary: {
+    attemptCount: number;
+    completedExerciseCount: number;
+    averageScoreLabel: string;
+    passRateLabel: string;
+    recentTrendLabel: string;
+  };
+  recommendation: {
+    kind: LearnerTrainingProgressState["summary"]["recommendation"]["kind"];
+    difficulty: ExerciseDifficulty;
+    difficultyLabel: string;
+    exerciseType: ExerciseType;
+    exerciseTypeLabel: string;
+    reason: string;
+    targetFaultLabel: string | null;
+  };
+  recentAttempts: Array<{
+    id: string;
+    title: string;
+    difficultyLabel: string;
+    scoreLabel: string;
+    statusLabel: string;
+    hintLabel: string;
+    faultLabel: string;
+  }>;
+  commonMistakes: Array<{
+    category: LearnerTrainingProgressMistakeSummary["category"];
+    label: string;
+    countLabel: string;
+  }>;
+  resetAction: LearnerTrainingModeAction;
+};
+
 export type LearnerTrainingModePanelModel = {
   label: typeof LEARNER_TRAINING_MODE_LABEL;
   isOpen: boolean;
@@ -227,6 +265,7 @@ export type LearnerTrainingModePanelModel = {
     >;
   } | null;
   reviewActions: LearnerTrainingModeAction[];
+  progress: LearnerTrainingProgressPanelModel | null;
   overlay: LearnerTrainingRouteOverlay;
   phase6Controls: string[];
   mobile: {
@@ -424,6 +463,7 @@ export function buildLearnerTrainingModePanelModel(input: {
   state: LearnerTrainingModeState;
   map: MapDefinition;
   viewport: "desktop" | "mobile";
+  progress?: LearnerTrainingProgressState | null;
 }): LearnerTrainingModePanelModel {
   const exercise = input.state.activeExercise;
   const objective = exercise?.objectives.find((candidate) => candidate.required) ?? exercise?.objectives[0] ?? null;
@@ -525,6 +565,7 @@ export function buildLearnerTrainingModePanelModel(input: {
         disabled: false
       }
     ],
+    progress: input.progress ? progressPanelModel(input.progress) : null,
     overlay: exercise
       ? overlayForExercise({
           exercise,
@@ -539,6 +580,108 @@ export function buildLearnerTrainingModePanelModel(input: {
       minimumTouchTargetPx: 44,
       controlsAvoidMapOverlay: true,
       hiddenPrimaryActionIds: []
+    }
+  };
+}
+
+function percentLabel(value: number | null): string {
+  return typeof value === "number" ? `${value.toFixed(1)}%` : "n/a";
+}
+
+function trendLabel(trend: LearnerTrainingProgressState["summary"]["recentTrend"]): string {
+  if (trend === "improving") {
+    return "Improving";
+  }
+
+  if (trend === "declining") {
+    return "Declining";
+  }
+
+  if (trend === "stable") {
+    return "Stable";
+  }
+
+  return "Building history";
+}
+
+function attemptStatusLabel(attempt: LearnerTrainingAttemptProgressRecord): string {
+  if (attempt.status === "blocked") {
+    return "Blocked";
+  }
+
+  if (attempt.status === "incomplete") {
+    return "Incomplete";
+  }
+
+  return attempt.passed ? "Pass" : "Needs review";
+}
+
+function attemptHintLabel(attempt: LearnerTrainingAttemptProgressRecord): string {
+  if (attempt.hintCount === 0) {
+    return "No hints";
+  }
+
+  return `${attempt.hintCount} hint${attempt.hintCount === 1 ? "" : "s"}`;
+}
+
+function attemptFaultLabel(attempt: LearnerTrainingAttemptProgressRecord): string {
+  const seriousCount = attempt.seriousFaultCount + attempt.dangerousFaultCount;
+
+  if (attempt.faults.length === 0) {
+    return "No faults";
+  }
+
+  if (seriousCount > 0) {
+    return `${seriousCount} serious/blocking`;
+  }
+
+  return `${attempt.faults.length} minor/advisory`;
+}
+
+function progressPanelModel(progress: LearnerTrainingProgressState): LearnerTrainingProgressPanelModel {
+  const recommendation = progress.summary.recommendation;
+  const targetFault = recommendation.targetFaultCategory
+    ? progress.summary.commonMistakes.find((mistake) => mistake.category === recommendation.targetFaultCategory)
+    : null;
+
+  return {
+    summary: {
+      attemptCount: progress.summary.attemptCount,
+      completedExerciseCount: progress.summary.completedExerciseCount,
+      averageScoreLabel: percentLabel(progress.summary.averageScorePercent),
+      passRateLabel: percentLabel(progress.summary.passRatePercent),
+      recentTrendLabel: trendLabel(progress.summary.recentTrend)
+    },
+    recommendation: {
+      kind: recommendation.kind,
+      difficulty: recommendation.recommendedDifficulty,
+      difficultyLabel: LEARNER_TRAINING_DIFFICULTY_LABELS[recommendation.recommendedDifficulty],
+      exerciseType: recommendation.recommendedExerciseType,
+      exerciseTypeLabel: LEARNER_TRAINING_EXERCISE_TYPE_LABELS[recommendation.recommendedExerciseType],
+      reason: recommendation.reason,
+      targetFaultLabel: targetFault?.label ?? null
+    },
+    recentAttempts: progress.summary.recentAttempts.slice(0, 3).map((attempt) => ({
+      id: attempt.id,
+      title: attempt.exerciseTitle,
+      difficultyLabel: LEARNER_TRAINING_DIFFICULTY_LABELS[attempt.difficulty],
+      scoreLabel: `${attempt.scorePercent.toFixed(1)}%`,
+      statusLabel: attemptStatusLabel(attempt),
+      hintLabel: attemptHintLabel(attempt),
+      faultLabel: attemptFaultLabel(attempt)
+    })),
+    commonMistakes: progress.summary.commonMistakes.slice(0, 3).map((mistake) => ({
+      category: mistake.category,
+      label: mistake.label,
+      countLabel: `${mistake.count} fault${mistake.count === 1 ? "" : "s"} across ${mistake.attemptCount} attempt${
+        mistake.attemptCount === 1 ? "" : "s"
+      }`
+    })),
+    resetAction: {
+      id: "reset-progress",
+      label: "Reset progress",
+      ariaLabel: "Reset learner training progress saved on this device",
+      disabled: progress.summary.attemptCount === 0
     }
   };
 }

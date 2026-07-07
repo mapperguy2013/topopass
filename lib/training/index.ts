@@ -4,3 +4,4 @@ export * from "./learnerAttemptFeedback.ts";
 export * from "./learnerProgressiveHints.ts";
 export * from "./learnerExerciseGeneration.ts";
 export * from "./learnerRouteValidation.ts";
+export * from "./learnerProgressTracking.ts";

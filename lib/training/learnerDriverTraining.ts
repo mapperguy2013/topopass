@@ -55,6 +55,8 @@ export type LearnerAttemptStatus = "not-started" | "in-progress" | "submitted" |
 
 export type ObjectiveMasteryLevel = "new" | "practising" | "developing" | "secure";
 
+export type LearnerProgressTrend = "not-enough-data" | "improving" | "stable" | "declining";
+
 export type RouteInstructionKind =
   | "start"
   | "continue"
@@ -238,6 +240,9 @@ export type LearnerProgress = {
   activeExerciseId?: string;
   completedExerciseIds: string[];
   attemptedExerciseIds: string[];
+  attemptCount: number;
+  completedAttemptCount: number;
+  hintUsageCount: number;
   objectiveMastery: {
     objectiveId: string;
     category: ExerciseObjectiveCategory;
@@ -249,6 +254,26 @@ export type LearnerProgress = {
   difficultyReadiness: Record<ExerciseDifficulty, boolean>;
   averageScorePercent?: number;
   latestAttemptId?: string;
+  recentTrend: LearnerProgressTrend;
+  recommendedNextDifficulty: ExerciseDifficulty;
+  recommendedNextExerciseType: ExerciseType;
+  commonMistakeCategories: {
+    category: DrivingFaultCategory;
+    count: number;
+    seriousOrDangerousCount: number;
+    latestAttemptId: string;
+  }[];
+  scoreHistory: {
+    attemptId: string;
+    exerciseId: string;
+    difficulty: ExerciseDifficulty;
+    exerciseType: ExerciseType;
+    scorePercent: number;
+    passed: boolean;
+    completed: boolean;
+    attemptedAt: string;
+    hintCount: number;
+  }[];
 };
 
 export type InstructorFeedback = {
@@ -309,6 +334,9 @@ export function createEmptyLearnerProgress(input: {
     updatedAt: input.updatedAt,
     completedExerciseIds: [],
     attemptedExerciseIds: [],
+    attemptCount: 0,
+    completedAttemptCount: 0,
+    hintUsageCount: 0,
     objectiveMastery: [],
     weakFaultCategories: [],
     difficultyReadiness: {
@@ -316,6 +344,11 @@ export function createEmptyLearnerProgress(input: {
       easy: false,
       intermediate: false,
       advanced: false
-    }
+    },
+    recentTrend: "not-enough-data",
+    recommendedNextDifficulty: "beginner",
+    recommendedNextExerciseType: "follow-planned-route",
+    commonMistakeCategories: [],
+    scoreHistory: []
   };
 }

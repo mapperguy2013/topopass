@@ -35,6 +35,12 @@ import {
   type TurnRestrictionVisual,
   type Vec2
 } from "@/lib/map-engine";
+import {
+  createEmptyLearnerTrainingProgress,
+  createLocalLearnerTrainingProgressStorage,
+  recordLearnerTrainingAttempt,
+  type LearnerTrainingProgressState
+} from "@/lib/training";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
 import {
   buildAdaptivePracticeQueue,
@@ -351,6 +357,7 @@ const MAX_PIPELINE_TRACE_POINTS = 1200;
 const RESTRICTION_MAP_LEGEND_ITEMS = buildRestrictionLegendItems();
 const LEARNER_RESTRICTION_MAP_LEGEND_ITEMS = buildLearnerRestrictionLegendItems();
 const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
+const LEARNER_TRAINING_PROGRESS_LEARNER_ID = "route-runner-local-learner";
 const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
 const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
@@ -4116,6 +4123,20 @@ export function RouteRunnerClient({
   const [learnerTrainingModeState, setLearnerTrainingModeState] = useState<LearnerTrainingModeState>(() =>
     createLearnerTrainingModeState()
   );
+  const learnerTrainingProgressStorage = useMemo(
+    () =>
+      createLocalLearnerTrainingProgressStorage({
+        learnerId: LEARNER_TRAINING_PROGRESS_LEARNER_ID
+      }),
+    []
+  );
+  const [learnerTrainingProgress, setLearnerTrainingProgress] = useState<LearnerTrainingProgressState>(() =>
+    createEmptyLearnerTrainingProgress({
+      learnerId: LEARNER_TRAINING_PROGRESS_LEARNER_ID,
+      updatedAt: new Date(0).toISOString()
+    })
+  );
+  const [learnerTrainingProgressMessage, setLearnerTrainingProgressMessage] = useState<string | null>(null);
   const isDevRouteRunner = mode === "dev";
   const practiceModePanelVisibility = useMemo(
     () => buildRouteRunnerPracticeModePanelVisibility({ mode }),
@@ -4154,6 +4175,13 @@ export function RouteRunnerClient({
       mediaQuery.removeListener(syncPhoneViewport);
     };
   }, [isStudentBetaRouteRunner]);
+
+  useEffect(() => {
+    const result = learnerTrainingProgressStorage.load();
+
+    setLearnerTrainingProgress(result.progress);
+    setLearnerTrainingProgressMessage(result.ok ? null : result.reason ?? "Learner training progress is unavailable.");
+  }, [learnerTrainingProgressStorage]);
 
   const visibleMapOptions = useMemo(
     () => {
@@ -4295,9 +4323,10 @@ export function RouteRunnerClient({
       buildLearnerTrainingModePanelModel({
         state: learnerTrainingModeState,
         map: activeMap,
-        viewport: isStudentBetaPhoneMap ? "mobile" : "desktop"
+        viewport: isStudentBetaPhoneMap ? "mobile" : "desktop",
+        progress: learnerTrainingProgress
       }),
-    [activeMap, isStudentBetaPhoneMap, learnerTrainingModeState]
+    [activeMap, isStudentBetaPhoneMap, learnerTrainingModeState, learnerTrainingProgress]
   );
 
   useEffect(() => {
@@ -5840,16 +5869,51 @@ export function RouteRunnerClient({
   }
 
   function handleReviewLearnerTrainingAttempt() {
-    setLearnerTrainingModeState((currentState) =>
-      reviewLearnerTrainingAttempt({
-        state: currentState,
-        map: activeMap
-      })
+    const completedAt = new Date().toISOString();
+    const reviewedState = reviewLearnerTrainingAttempt({
+      state: learnerTrainingModeState,
+      map: activeMap,
+      attemptId: `${learnerTrainingModeState.activeExercise?.id ?? "learner-training"}-${Date.now().toString(36)}`
+    });
+
+    setLearnerTrainingModeState(reviewedState);
+
+    if (!reviewedState.activeExercise || !reviewedState.review) {
+      return;
+    }
+
+    const hintsUsed = reviewedState.hints.flatMap((result) => (result.status === "generated" ? [result.hint] : []));
+    const nextProgress = recordLearnerTrainingAttempt({
+      progress: learnerTrainingProgress,
+      exercise: reviewedState.activeExercise,
+      scoring: reviewedState.review.scoring,
+      feedback: reviewedState.review.feedback,
+      hintsUsed,
+      completedAt
+    });
+    const saveResult = learnerTrainingProgressStorage.save(nextProgress);
+
+    setLearnerTrainingProgress(nextProgress);
+    setLearnerTrainingProgressMessage(
+      saveResult.ok ? "Learner training progress saved on this device." : saveResult.reason ?? "Progress was not saved."
     );
   }
 
   function handleRetryLearnerTrainingExercise() {
     setLearnerTrainingModeState((currentState) => retryLearnerTrainingExercise(currentState));
+  }
+
+  function handleResetLearnerTrainingProgress() {
+    const resetProgress = createEmptyLearnerTrainingProgress({
+      learnerId: LEARNER_TRAINING_PROGRESS_LEARNER_ID,
+      updatedAt: new Date().toISOString()
+    });
+    const result = learnerTrainingProgressStorage.clear();
+
+    setLearnerTrainingProgress(resetProgress);
+    setLearnerTrainingProgressMessage(
+      result.ok ? "Learner training progress reset on this device." : result.reason ?? "Progress could not be reset."
+    );
   }
 
   function handleExerciseChange(nextExerciseId: string) {
@@ -6927,6 +6991,103 @@ export function RouteRunnerClient({
                       {learnerTrainingModePanel.primaryActions[3].label}
                     </button>
                   </div>
+
+                  {learnerTrainingModePanel.progress ? (
+                    <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-800">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            Learner progress
+                          </p>
+                          <p className="mt-1 font-semibold text-slate-950">
+                            Next: {learnerTrainingModePanel.progress.recommendation.difficultyLabel}{" "}
+                            {learnerTrainingModePanel.progress.recommendation.exerciseTypeLabel}
+                          </p>
+                          <p className="mt-1 text-xs leading-5">
+                            {learnerTrainingModePanel.progress.recommendation.reason}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleResetLearnerTrainingProgress}
+                          disabled={learnerTrainingModePanel.progress.resetAction.disabled}
+                          aria-label={learnerTrainingModePanel.progress.resetAction.ariaLabel}
+                          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                          {learnerTrainingModePanel.progress.resetAction.label}
+                        </button>
+                      </div>
+
+                      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attempts</dt>
+                          <dd className="mt-1 font-semibold text-slate-950">
+                            {learnerTrainingModePanel.progress.summary.attemptCount}
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Average</dt>
+                          <dd className="mt-1 font-semibold text-slate-950">
+                            {learnerTrainingModePanel.progress.summary.averageScoreLabel}
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Pass rate</dt>
+                          <dd className="mt-1 font-semibold text-slate-950">
+                            {learnerTrainingModePanel.progress.summary.passRateLabel}
+                          </dd>
+                        </div>
+                        <div className="rounded-md border border-slate-200 bg-white px-3 py-2">
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trend</dt>
+                          <dd className="mt-1 font-semibold text-slate-950">
+                            {learnerTrainingModePanel.progress.summary.recentTrendLabel}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      {learnerTrainingModePanel.progress.recentAttempts.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Recent attempts</p>
+                          <ul className="mt-2 grid gap-2 sm:grid-cols-3">
+                            {learnerTrainingModePanel.progress.recentAttempts.map((attempt) => (
+                              <li key={attempt.id} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs leading-5">
+                                <p className="font-semibold text-slate-950">{attempt.title}</p>
+                                <p>{attempt.difficultyLabel}</p>
+                                <p>
+                                  {attempt.statusLabel} - {attempt.scoreLabel}
+                                </p>
+                                <p>
+                                  {attempt.hintLabel} - {attempt.faultLabel}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      {learnerTrainingModePanel.progress.commonMistakes.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Common mistakes</p>
+                          <ul className="mt-2 flex flex-wrap gap-2">
+                            {learnerTrainingModePanel.progress.commonMistakes.map((mistake) => (
+                              <li
+                                key={mistake.category}
+                                className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-950"
+                              >
+                                {mistake.label}: {mistake.countLabel}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      {learnerTrainingProgressMessage ? (
+                        <p className="mt-3 text-xs font-semibold text-slate-600" role="status">
+                          {learnerTrainingProgressMessage}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {learnerTrainingModeState.generation.status !== "idle" ? (
                     <div

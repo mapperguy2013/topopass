@@ -3,8 +3,10 @@ import test from "node:test";
 import type { MapDefinition } from "../../../lib/map-engine/index.ts";
 import { marloweDistrictMap } from "../../../lib/map-engine/fixtures/index.ts";
 import {
+  buildLearnerTrainingProgressState,
   validateLearnerRoute,
   type GeneratedLearnerExercise,
+  type LearnerTrainingAttemptProgressRecord,
   type LearnerRouteValidationSegment
 } from "../../../lib/training/index.ts";
 import {
@@ -173,6 +175,49 @@ function learnerReviewState(): { map: MapDefinition; state: ReturnType<typeof cr
   };
 }
 
+function learnerProgressAttempt(input: {
+  id: string;
+  scorePercent: number;
+  completedAt: string;
+  fault?: boolean;
+}): LearnerTrainingAttemptProgressRecord {
+  const faults = input.fault
+    ? [
+        {
+          id: `${input.id}-fault`,
+          category: "unsafe-junction-decision" as const,
+          severity: "minor" as const,
+          title: "Wrong turn recovered",
+          blocking: false
+        }
+      ]
+    : [];
+
+  return {
+    id: input.id,
+    exerciseId: `exercise-${input.id}`,
+    exerciseTitle: `Exercise ${input.id}`,
+    mapId: "learner-review-map",
+    exerciseType: "follow-planned-route",
+    difficulty: "beginner",
+    attemptedAt: input.completedAt,
+    completedAt: input.completedAt,
+    status: input.scorePercent >= 70 ? "passed" : "failed",
+    scorePercent: input.scorePercent,
+    passed: input.scorePercent >= 70,
+    completed: true,
+    hintCount: 1,
+    highestHintLevel: "nudge",
+    hintPenalty: 2,
+    seriousFaultCount: 0,
+    dangerousFaultCount: 0,
+    invalidRouteFaultCount: 0,
+    faultCategories: input.fault ? ["unsafe-junction-decision"] : [],
+    faults,
+    summary: `Attempt ${input.id}`
+  };
+}
+
 test("training mode opens from the route runner model", () => {
   const state = openLearnerTrainingMode(createLearnerTrainingModeState());
   const model = buildLearnerTrainingModePanelModel({
@@ -308,6 +353,40 @@ test("completion review action returns instructor-style feedback", () => {
   assert.ok(model.review);
   assert.equal(typeof model.review?.scorePercent, "number");
   assert.ok(model.review?.summary);
+});
+
+test("training mode progress model shows summary, recent attempts, mistakes, and reset action", () => {
+  const progress = buildLearnerTrainingProgressState({
+    learnerId: "learner-progress-ui",
+    updatedAt: "2026-07-07T12:00:00.000Z",
+    attempts: [
+      learnerProgressAttempt({
+        id: "progress-1",
+        scorePercent: 76,
+        completedAt: "2026-07-07T10:00:00.000Z",
+        fault: true
+      }),
+      learnerProgressAttempt({
+        id: "progress-2",
+        scorePercent: 81,
+        completedAt: "2026-07-07T11:00:00.000Z",
+        fault: true
+      })
+    ]
+  });
+  const model = buildLearnerTrainingModePanelModel({
+    state: openLearnerTrainingMode(createLearnerTrainingModeState()),
+    map: marloweDistrictMap,
+    viewport: "desktop",
+    progress
+  });
+
+  assert.equal(model.progress?.summary.attemptCount, 2);
+  assert.equal(model.progress?.summary.averageScoreLabel, "78.5%");
+  assert.equal(model.progress?.recentAttempts[0]?.id, "progress-2");
+  assert.equal(model.progress?.commonMistakes[0]?.label, "Junction decision");
+  assert.equal(model.progress?.recommendation.exerciseType, "practise-junction-decision-making");
+  assert.equal(model.progress?.resetAction.disabled, false);
 });
 
 test("clean learner attempt review shows planned and attempted route without fault markers", () => {
