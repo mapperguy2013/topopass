@@ -123,6 +123,12 @@ available. If a map cannot produce a route that satisfies the requested
 difficulty, the generator returns the closest valid route as degraded with
 reason codes instead of silently labelling a simple route as fully advanced.
 
+Training Mode owns the route endpoint overlay while a generated exercise or
+learner review is active. The canvas still draws the generated training start,
+destination, checkpoints, review faults, and hint markers, but it suppresses the
+original Route Runner start/destination markers and endpoint labels until the
+training overlay is closed or idle.
+
 ## Route Validation Rules
 
 `lib/training/learnerRouteValidation.ts` validates learner routes only against

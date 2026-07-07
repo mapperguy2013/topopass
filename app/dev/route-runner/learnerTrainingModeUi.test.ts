@@ -21,6 +21,7 @@ import {
   selectLearnerTrainingExerciseType,
   startLearnerTrainingExercise
 } from "./learnerTrainingModeUi.ts";
+import { buildRouteRunnerOverlayOwnership } from "./routeRunnerOverlayOwnership.ts";
 
 const plannedReviewSegments: LearnerRouteValidationSegment[] = [
   { id: "planned-ab", roadId: "road-ab", fromNodeId: "a", toNodeId: "b" },
@@ -35,6 +36,74 @@ function generatedState(seed = "training-ui-test") {
     seed
   });
 }
+
+test("normal Route Runner endpoints render when no learner training exercise is active", () => {
+  const ownership = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: { visible: false }
+  });
+
+  assert.equal(ownership.activeOverlayMode, "normal");
+  assert.equal(ownership.renderNormalRouteEndpoints, true);
+  assert.equal(ownership.renderNormalRouteEndpointLabels, true);
+  assert.equal(ownership.renderTrainingRouteEndpoints, false);
+});
+
+test("learner training endpoints suppress original Route Runner start and destination markers", () => {
+  const state = generatedState("training-endpoint-ownership");
+  const model = buildLearnerTrainingModePanelModel({
+    state,
+    map: marloweDistrictMap,
+    viewport: "desktop"
+  });
+  const roles = model.overlay.checkpoints.map((checkpoint) => checkpoint.role);
+  const ownership = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: model.overlay
+  });
+
+  assert.equal(model.overlay.visible, true);
+  assert.ok(roles.includes("start"));
+  assert.ok(roles.includes("finish"));
+  assert.equal(ownership.activeOverlayMode, "training");
+  assert.equal(ownership.renderTrainingRouteEndpoints, true);
+  assert.equal(ownership.renderNormalRouteEndpoints, false);
+  assert.equal(ownership.renderNormalRouteEndpointLabels, false);
+});
+
+test("learner training review keeps training markers authoritative over original endpoints", () => {
+  const generated = generatedState("training-review-endpoint-ownership");
+  const reviewed = reviewLearnerTrainingAttempt({
+    state: generated,
+    map: marloweDistrictMap,
+    attemptedRouteSegments: generated.activeExercise?.expectedRouteSegments ?? [],
+    attemptId: "training-review-endpoint-ownership"
+  });
+  const model = buildLearnerTrainingModePanelModel({
+    state: reviewed,
+    map: marloweDistrictMap,
+    viewport: "desktop"
+  });
+  const ownership = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: model.overlay
+  });
+
+  assert.equal(model.review?.status, "passed");
+  assert.equal(model.overlay.visible, true);
+  assert.equal(ownership.activeOverlayMode, "training");
+  assert.equal(ownership.renderNormalRouteEndpoints, false);
+  assert.equal(ownership.renderNormalRouteEndpointLabels, false);
+  assert.equal(ownership.renderTrainingRouteEndpoints, true);
+});
+
+test("closing learner training restores normal Route Runner endpoint ownership", () => {
+  const ownership = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: null
+  });
+
+  assert.equal(ownership.activeOverlayMode, "normal");
+  assert.equal(ownership.renderNormalRouteEndpoints, true);
+  assert.equal(ownership.renderNormalRouteEndpointLabels, true);
+  assert.equal(ownership.renderTrainingRouteEndpoints, false);
+});
 
 function learnerReviewMap(): MapDefinition {
   return {

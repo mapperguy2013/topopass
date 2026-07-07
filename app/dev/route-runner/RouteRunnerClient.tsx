@@ -42,6 +42,7 @@ import {
   type LearnerTrainingProgressState
 } from "@/lib/training";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
+import { buildRouteRunnerOverlayOwnership } from "./routeRunnerOverlayOwnership";
 import {
   buildAdaptivePracticeQueue,
   buildAttemptHistoryInsights,
@@ -3628,11 +3629,14 @@ function drawRouteCanvas(input: {
 
   context.lineCap = "round";
   context.lineJoin = "round";
+  const overlayOwnership = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: input.trainingOverlay
+  });
   const labelReservedBoxes = buildLabelReservationBoxes({
     map: input.map,
     viewport: input.viewport,
     currentZoom: input.currentZoom,
-    selectedExercise: input.selectedExercise,
+    selectedExercise: overlayOwnership.renderNormalRouteEndpoints ? input.selectedExercise : undefined,
     trace: input.trace,
     routeDraft: input.routeDraft,
     fastestRoutePoints: input.fastestRoutePoints,
@@ -3830,7 +3834,7 @@ function drawRouteCanvas(input: {
     input.requiredStopStatuses.map((status) => [status.nodeId, status])
   );
 
-  if (selectedExercise) {
+  if (selectedExercise && overlayOwnership.renderNormalRouteEndpoints) {
     selectedExercise.stops.forEach((stop, index) => {
       const node = resolveStopNode(stop, input.map);
 
@@ -3863,7 +3867,7 @@ function drawRouteCanvas(input: {
   drawSyntheticStopLabels({
     context,
     viewport: input.viewport,
-    labels: input.stopLabels,
+    labels: overlayOwnership.renderNormalRouteEndpointLabels ? input.stopLabels : [],
     currentZoom: input.currentZoom
   });
 
