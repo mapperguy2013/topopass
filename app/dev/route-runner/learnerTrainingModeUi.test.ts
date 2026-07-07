@@ -10,6 +10,7 @@ import {
   type LearnerRouteValidationSegment
 } from "../../../lib/training/index.ts";
 import {
+  LEARNER_TRAINING_PHASE6_CONTROL_LABELS,
   buildLearnerTrainingModePanelModel,
   createLearnerTrainingModeState,
   openLearnerTrainingMode,
@@ -335,6 +336,44 @@ test("mobile layout keeps primary training actions available", () => {
   assert.equal(model.mobile.minimumTouchTargetPx >= 44, true);
   assert.deepEqual(model.mobile.hiddenPrimaryActionIds, []);
   assert.deepEqual(actionIds, ["open-training-mode", "generate-exercise", "request-hint", "complete-review"]);
+});
+
+test("mobile learner review preserves Phase 6 controls while rendering training overlays", () => {
+  const { map, state } = learnerReviewState();
+  const hintedState = requestLearnerTrainingHint({
+    state,
+    currentInstructionId: "instruction-turn",
+    attemptId: "mobile-review-hint"
+  });
+  const reviewedState = reviewLearnerTrainingAttempt({
+    state: hintedState,
+    map,
+    attemptedRouteSegments: [
+      plannedReviewSegments[0],
+      { id: "wrong-turn-bf", roadId: "road-bf", fromNodeId: "b", toNodeId: "f" },
+      { id: "recovery-fc", roadId: "road-fc", fromNodeId: "f", toNodeId: "c" },
+      plannedReviewSegments[2]
+    ],
+    attemptId: "mobile-review-overlay-regression"
+  });
+  const model = buildLearnerTrainingModePanelModel({
+    state: reviewedState,
+    map,
+    viewport: "mobile"
+  });
+
+  assert.deepEqual(model.phase6Controls, [...LEARNER_TRAINING_PHASE6_CONTROL_LABELS]);
+  assert.deepEqual(model.mobile.hiddenPrimaryActionIds, []);
+  assert.equal(model.mobile.controlsAvoidMapOverlay, true);
+  assert.equal(model.mobile.minimumTouchTargetPx >= 44, true);
+  assert.equal(model.overlay.visible, true);
+  assert.match(model.overlay.ariaLabel, /planned route, learner route, checkpoints, and review faults/i);
+  assert.ok(model.overlay.route.points.length >= 4);
+  assert.ok((model.overlay.attemptedRoute?.points.length ?? 0) >= 4);
+  assert.ok(model.overlay.faultMarkers.some((marker) => marker.kind === "wrong-turn"));
+  assert.equal(model.overlay.hintMarkers.length, 1);
+  assert.ok(model.overlay.segmentFeedback.some((item) => item.routeSegmentId === "wrong-turn-bf"));
+  assert.ok(model.overlay.segmentFeedback.every((item) => item.points.length === 2));
 });
 
 test("completion review action returns instructor-style feedback", () => {
