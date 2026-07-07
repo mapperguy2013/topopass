@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout/AppShell";
 import { buildPageMetadata } from "@/lib/seo";
 import { buildBetaTesterEntryModel } from "@/app/beta/betaTesterEntry";
+import { buildLearnerTrainingPracticeEntryModel } from "@/app/practice/training/learnerTrainingPractice";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
@@ -112,6 +113,7 @@ function PracticeHubVisual() {
 
 export default function PracticePage() {
   const betaEntry = buildBetaTesterEntryModel();
+  const trainingEntry = buildLearnerTrainingPracticeEntryModel();
 
   return (
     <AppShell title="Practice">
@@ -189,6 +191,38 @@ export default function PracticePage() {
               </div>
             </article>
           ))}
+        </section>
+
+        <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-road">
+                {trainingEntry.title}
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-ink">
+                Learner-driver route training
+              </h3>
+              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">
+                Open Training Mode for generated route exercises, checkpoints,
+                progressive hints, scoring, feedback, and learner progress.
+              </p>
+              <p className="mt-3 max-w-4xl rounded-md bg-blue-50 p-3 text-sm leading-6 text-slate-700">
+                {trainingEntry.betaMessage}
+              </p>
+            </div>
+            <TrackedLink
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              eventName="practice_start_click"
+              eventProperties={{
+                location: "practice-hub",
+                practice: "training-mode",
+                betaStatus: trainingEntry.betaStatus
+              }}
+              href={trainingEntry.href}
+            >
+              {trainingEntry.ctaLabel}
+            </TrackedLink>
+          </div>
         </section>
 
         {betaEntry.state === "available" ? (

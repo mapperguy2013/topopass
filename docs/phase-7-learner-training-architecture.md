@@ -34,6 +34,20 @@ style tokens in learner progress records.
 Training Mode is exposed through the route-runner map interface and is modelled
 by `app/dev/route-runner/learnerTrainingModeUi.ts`.
 
+The learner-facing entry point is now `/practice/training`. The Practice page
+shows a Training Mode card that links to this route, and the page reuses
+`app/dev/route-runner/RouteRunnerClient.tsx` in student beta mode rather than
+duplicating exercise generation, route validation, scoring, hints, feedback, or
+progress logic. The development route `/dev/route-runner` remains available for
+QA and map-fixture work.
+
+`NEXT_PUBLIC_REAL_LONDON_BETA` is not required to open Training Mode. When the
+flag is disabled, `/practice/training` opens with the standard Marlowe practice
+map and explains that Real London beta routes are hidden. When the flag is
+enabled, the same Training Mode page includes the beta-safe Real London map
+catalogue. `/practice/real-london` remains the beta-specific route drawing
+practice screen for testers.
+
 The learner flow is:
 
 1. Open Training Mode.
@@ -279,6 +293,26 @@ No pixel-perfect visual regression test was added because the project does not
 currently use screenshot or pixel regression testing for this route-runner
 surface.
 
+## Manual Training Mode Check
+
+To open Training Mode locally:
+
+1. Run `npm run dev`.
+2. Visit `/practice`.
+3. Select the Training Mode card, or go directly to `/practice/training`.
+4. Open the Training Mode panel in the map surface.
+5. Confirm the Difficulty selector, Exercise type selector, Generate exercise
+   button, Hint button, review action, route overlays, checkpoints, feedback,
+   and progress summary are available.
+6. On a phone-width viewport, confirm the Practice entry card has usable touch
+   targets and the route-runner controls remain below or around the map without
+   covering important labels.
+
+To include Real London beta maps locally, start the app with
+`NEXT_PUBLIC_REAL_LONDON_BETA=1` and repeat the same flow. Without the flag, the
+Training Mode route should still work on the Marlowe practice map and should not
+show a broken Real London link.
+
 ## Validation Commands
 
 Run the focused Phase 7 tests:
@@ -286,14 +320,17 @@ Run the focused Phase 7 tests:
 ```powershell
 npm run test:training
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test app/dev/route-runner/learnerTrainingModeUi.test.ts
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test app/practice/training/learnerTrainingPractice.test.ts
 ```
 
 Run the full validation suite:
 
 ```powershell
 npm run lint
+npm run test:map
 npm test
 npm run build
+git diff --check
 ```
 
 There is no separate `typecheck` script in `package.json`; `npm run build`
