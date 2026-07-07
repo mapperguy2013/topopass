@@ -48,12 +48,15 @@ import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 import {
   marloweDistrictMap,
   marloweDistrictRouteExercises,
+  getTurnRestrictionVisuals,
   type MapDefinition
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
-import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap } from "./routeRunnerMaps.ts";
+import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap, getRouteRunnerMapViewportBounds, getRouteRunnerMapOption, realLondonOsmPilotRouteMap } from "./routeRunnerMaps.ts";
 import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondonRouteRunnerMaps.ts";
 import { kingsCrossEustonOsmRouteRunnerMapOption } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
+import { buildRoadRestrictionOverlays } from "./routeRunnerDisplay.ts";
+import { buildRestrictionMapVisualItems, filterRestrictionMapVisualItemsForViewport } from "./restrictionMapVisuals.ts";
 
 function assertClose(actual: number, expected: number, tolerance: number, message: string): void {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: expected ${expected}, got ${actual}`);
@@ -836,6 +839,115 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
     assert.ok(learnerLabels.some((label) => label.kind !== "road"), option.id);
     assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 6, option.id);
   }
+});
+
+test("Stage 161.6.26 beta default fit keeps sparse real maps readable without invented labels", () => {
+  const expectedByMapId = new Map([
+    ["osm-curated-piccadilly-circus", { roadLabels: 10, contextLabels: 1 }],
+    ["osm-curated-waterloo-bridge", { roadLabels: 10, contextLabels: 3 }],
+    ["osm-curated-one-way-system-area", { roadLabels: 9, contextLabels: 3 }],
+    ["osm-curated-quiet-residential-roads", { roadLabels: 8, contextLabels: 3 }]
+  ]);
+  const contextKinds = new Set([
+    "area",
+    "park",
+    "water",
+    "station",
+    "landmark",
+    "public_building",
+    "open_space",
+    "learner_reference",
+    "bridge"
+  ]);
+
+  for (const option of CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
+    (candidate) => candidate.fixtureUse === "routableExercise" && !candidate.lazyLoadId
+  )) {
+    const backgroundFeatures = buildSyntheticBackgroundFeatures(option.map, {
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const linearFeatures = buildSyntheticLinearFeatures(option.map, {
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const labels = buildSyntheticMapLabels(option.map, option.exercises[0], {
+      includeOsmRoadLabels: true,
+      backgroundFeatures,
+      linearFeatures,
+      sourceOverpassFixture: option.sourceOverpassFixture
+    });
+    const defaultBetaViewport = {
+      width: 1920,
+      height: 912,
+      mapBounds: getRouteRunnerMapViewportBounds(option.map, 1920, 912)
+    };
+    const visibleLabels = filterSyntheticMapLabelsForViewport({
+      labels,
+      viewport: defaultBetaViewport,
+      currentZoom: 1
+    });
+    const roadLabels = visibleLabels.filter((label) => label.kind === "road");
+    const contextLabels = visibleLabels.filter((label) => contextKinds.has(label.kind));
+    const expected = expectedByMapId.get(option.id);
+
+    assert.ok(expected, option.id);
+    assert.ok(roadLabels.length >= expected.roadLabels, `${option.id} road labels: ${roadLabels.length}`);
+    assert.ok(contextLabels.length >= expected.contextLabels, `${option.id} context labels: ${contextLabels.length}`);
+    assert.ok(roadLabels.every((label) => !/^osm-|^\\d+$/.test(label.text)), option.id);
+    assert.ok(contextLabels.every((label) => !/^osm-|^\\d+$/.test(label.text)), option.id);
+    assert.ok(backgroundFeatures.length > 0 || linearFeatures.length > 0, option.id);
+  }
+
+  const pilotOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(pilotOption);
+
+  const pilotLabels = buildSyntheticMapLabels(pilotOption.map, pilotOption.exercises[0], {
+    includeOsmRoadLabels: true,
+    sourceOverpassFixture: pilotOption.sourceOverpassFixture
+  });
+  const pilotViewport = {
+    width: 1920,
+    height: 912,
+    mapBounds: getRouteRunnerMapViewportBounds(pilotOption.map, 1920, 912)
+  };
+  const visiblePilotLabels = filterSyntheticMapLabelsForViewport({
+    labels: pilotLabels,
+    viewport: pilotViewport,
+    currentZoom: 1
+  });
+
+  assert.ok(visiblePilotLabels.filter((label) => label.kind === "road").length >= 8);
+  assert.equal(
+    visiblePilotLabels.some((label) => contextKinds.has(label.kind)),
+    false,
+    "Real London pilot has no committed context fixture data to render"
+  );
+});
+
+test("Stage 161.6.26 one-way fixture shows learner restriction symbols at default beta fit", () => {
+  const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
+    (candidate) => candidate.id === "osm-curated-one-way-system-area"
+  );
+
+  assert.ok(option);
+
+  const defaultBetaViewport = {
+    width: 1920,
+    height: 912,
+    mapBounds: getRouteRunnerMapViewportBounds(option.map, 1920, 912)
+  };
+  const items = buildRestrictionMapVisualItems({
+    roadRestrictionOverlays: buildRoadRestrictionOverlays(option.map),
+    turnRestrictionVisuals: getTurnRestrictionVisuals(option.map),
+    routeIssueOverlays: [],
+    viewport: defaultBetaViewport
+  });
+  const visibleItems = filterRestrictionMapVisualItemsForViewport(items, defaultBetaViewport, { currentZoom: 1 });
+
+  assert.ok(visibleItems.some((item) => item.kind === "one-way"), "Expected default-fit one-way arrows");
+  assert.ok(items.every((item) => item.kind === "one-way"), "This fixture should not invent turn/no-entry symbols");
+  assert.ok(visibleItems.length >= 3, `Expected several decluttered one-way arrows, got ${visibleItems.length}`);
+  assert.ok(visibleItems.length <= 24, `Restriction budget exceeded: ${visibleItems.length}`);
 });
 
 test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels readable", () => {

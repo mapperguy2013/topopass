@@ -741,21 +741,21 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       tertiary: {
         casingColor: "#fbf0cf",
         strokeColor: "#c1a361",
-        casingWidth: 11,
-        strokeWidth: 5.4
+        casingWidth: 11.4,
+        strokeWidth: 5.65
       },
       residential: {
-        casingColor: "#b5aca0",
+        casingColor: "#aaa195",
         strokeColor: "#fffefa",
-        casingWidth: 10.2,
-        strokeWidth: 5.2
+        casingWidth: 10.8,
+        strokeWidth: 5.5
       },
       service: {
-        casingColor: "#d6cec0",
-        strokeColor: "#f0e9dc",
-        casingWidth: 5.5,
-        strokeWidth: 2.1,
-        alpha: 0.66
+        casingColor: "#d0c7ba",
+        strokeColor: "#f2eadc",
+        casingWidth: 5.8,
+        strokeWidth: 2.25,
+        alpha: 0.7
       },
       pedestrian: {
         casingColor: "#d6cec0",
@@ -798,10 +798,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       lineJoin: "round",
       miterLimit: 2,
       lowZoomViewportScale: 0.5,
-      minorLowZoomWidthMultiplier: 0.9,
-      minorLowZoomAlphaMultiplier: 0.94,
-      serviceLowZoomWidthMultiplier: 0.64,
-      serviceLowZoomAlphaMultiplier: 0.52,
+      minorLowZoomWidthMultiplier: 0.96,
+      minorLowZoomAlphaMultiplier: 0.98,
+      serviceLowZoomWidthMultiplier: 0.68,
+      serviceLowZoomAlphaMultiplier: 0.58,
       restrictedLowZoomAlphaMultiplier: 0.72
     },
     junctions: {
@@ -869,27 +869,27 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.55)",
         shadowBlur: 2,
         shadowOffsetY: 0,
-        minViewportScale: 0.34,
-        minRoadScreenLength: 66,
-        maxTextToRoadRatio: 0.88,
+        minViewportScale: 0.24,
+        minRoadScreenLength: 58,
+        maxTextToRoadRatio: 0.9,
         repeatDistance: 270,
         collisionPadding: 7
       },
       minor: {
-        font: "600 10.25px Arial, sans-serif",
-        fontSize: 10.25,
-        approximateCharacterWidth: 5.6,
-        color: "rgba(45,57,74,0.8)",
+        font: "600 10.5px Arial, sans-serif",
+        fontSize: 10.5,
+        approximateCharacterWidth: 5.65,
+        color: "rgba(42,54,72,0.84)",
         haloColor: "rgba(255,252,244,0.95)",
-        haloWidth: 3.25,
+        haloWidth: 3.45,
         shadowColor: "rgba(255,255,255,0.44)",
         shadowBlur: 1.5,
         shadowOffsetY: 0,
-        minViewportScale: 0.56,
-        minRoadScreenLength: 52,
-        maxTextToRoadRatio: 0.86,
-        repeatDistance: 215,
-        collisionPadding: 6
+        minViewportScale: 0.18,
+        minRoadScreenLength: 42,
+        maxTextToRoadRatio: 0.92,
+        repeatDistance: 190,
+        collisionPadding: 5.5
       },
       restricted: {
         font: "600 10px Arial, sans-serif",
@@ -947,7 +947,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.48)",
         shadowBlur: 2,
         shadowOffsetY: 0,
-        minViewportScale: 0.42,
+        minViewportScale: 0.24,
         collisionPadding: 6
       },
       landmark: {
@@ -973,7 +973,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.32)",
         shadowBlur: 1,
         shadowOffsetY: 0,
-        minViewportScale: 0.64,
+        minViewportScale: 0.3,
         collisionPadding: 4
       },
       open_space: {
@@ -983,7 +983,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(52,88,62,0.58)",
         haloColor: "rgba(255,252,244,0.76)",
         haloWidth: 3,
-        minViewportScale: 0.52,
+        minViewportScale: 0.18,
         collisionPadding: 5
       },
       learner_reference: {
@@ -1006,7 +1006,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(52,88,62,0.62)",
         haloColor: "rgba(255,252,244,0.76)",
         haloWidth: 3,
-        minViewportScale: 0.58,
+        minViewportScale: 0.2,
         collisionPadding: 5
       },
       water: {
@@ -1016,7 +1016,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(24,78,108,0.76)",
         haloColor: "rgba(255,252,244,0.82)",
         haloWidth: 3.4,
-        minViewportScale: 0.38,
+        minViewportScale: 0.18,
         collisionPadding: 7
       },
       bridge: {
@@ -1029,7 +1029,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.34)",
         shadowBlur: 1,
         shadowOffsetY: 0,
-        minViewportScale: 0.58,
+        minViewportScale: 0.24,
         collisionPadding: 7
       },
       area: {
@@ -1039,7 +1039,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(66,79,96,0.46)",
         haloColor: "rgba(255,252,244,0.72)",
         haloWidth: 3,
-        minViewportScale: 0.44,
+        minViewportScale: 0.24,
         collisionPadding: 7
       }
     },
@@ -1063,11 +1063,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       station: 4,
       landmark: 6,
       publicBuilding: 6,
-      openSpace: 7,
+      openSpace: 5,
       learnerReference: 7,
-      park: 7,
-      water: 7,
-      bridge: 6,
+      park: 5,
+      water: 5,
+      bridge: 5,
       area: 8,
       exerciseStop: 10
     }
@@ -2089,7 +2089,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       longRoadArrowThresholdMeters: 180,
       mediumOneWayArrowSpacingMultiplier: 1.35,
       highOneWayArrowSpacingMultiplier: 1,
-      lowDetailViewportScale: 0.5,
+      lowDetailViewportScale: 0.24,
       highDetailViewportScale: 0.95,
       mediumOneWayMinRoadLengthMeters: 180,
       restrictionSymbolCollisionPadding: 8,

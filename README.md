@@ -1287,6 +1287,14 @@ users start at 300% zoom, and Reset view is device-default view-only behaviour:
 it returns phone users to 300% zoom while preserving the selected map, selected
 exercise, drawing, submitted result, and route feedback state. Desktop and
 tablet sizing keep the existing wide, viewport-bounded canvas.
+Stage 161.6.26 improves sparse real-map rendering without adding fabricated
+real-world content. Curated OSM maps now surface more existing fixture-backed
+road labels, parks/open spaces, water/station/area labels, and one-way symbols
+at the default beta fit. Local OSM roads have slightly stronger casing/contrast
+so quiet residential maps read less like empty beige space, while service and
+pedestrian context remain quieter. The Real London pilot fixture is documented
+as a known context-data gap: it has road labels but no committed park, water,
+station, landmark, or area context fixture to render.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

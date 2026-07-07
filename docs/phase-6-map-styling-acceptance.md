@@ -709,6 +709,19 @@ current device default, so on phones it resets pan/framing and zoom back to
 300% without clearing the drawn route, submitted result, selected map, selected
 exercise, or feedback drawer state.
 
+Stage 161.6.26 polishes sparse real-map rendering using existing fixture data
+only. Real OSM-derived maps may expose roads, road names, parks/open spaces,
+water, stations, bridges, area labels, and restriction symbols only when those
+features already exist in the committed OSM-derived fixture or converted map
+metadata. No real-world roads, labels, landmarks, parks, stations, rivers, or
+restrictions are fabricated. The default beta fit now admits more important
+local road labels, a small number of fixture-backed orientation labels, and
+decluttered one-way arrows where OSM one-way tags exist. Local roads receive a
+slightly stronger casing/contrast floor so quiet residential maps do not read
+as empty graph skeletons. Known gap: the original Real London pilot fixture has
+road labels but no committed context fixture data for parks, water, stations,
+landmarks, or area labels, so those context layers correctly remain absent.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,
