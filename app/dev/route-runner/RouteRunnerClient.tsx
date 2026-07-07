@@ -218,6 +218,7 @@ import {
   isMiddleButtonMapPanActive,
   isMiddleButtonMapPanPointer,
   leaveMapScrollLockState,
+  mapZoomDisplayPercent,
   routeRunnerMapZoomLimitsForViewport,
   resetMapViewport,
   ROUTE_RUNNER_MAP_ZOOM_LIMITS,
@@ -6852,7 +6853,7 @@ export function RouteRunnerClient({
                 </button>
               </div>
               <div className="pointer-events-none absolute bottom-2 right-2 z-20 rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm sm:bottom-4 sm:right-4">
-                {Math.round(mapViewportState.zoom * 100)}%
+                {mapZoomDisplayPercent(mapViewportState.zoom, activeMapZoomLimits)}%
               </div>
               {showRouteFeedbackReopenButton ? (
                 <button

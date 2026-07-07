@@ -178,6 +178,7 @@ export type TopopassContextLabelStyle = TopopassLabelStyle & {
 };
 
 export type TopopassZoomThresholds = {
+  baselineZoomFactor: number;
   defaultZoom: number;
   minZoom: number;
   maxZoom: number;
@@ -2076,6 +2077,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   },
   zoom: {
     thresholds: {
+      baselineZoomFactor: 1.5,
       defaultZoom: 1,
       minZoom: 0.75,
       maxZoom: 50,

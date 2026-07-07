@@ -29,11 +29,14 @@ import {
   createMapPinchGesture,
   createDefaultMapScrollLockState,
   createDefaultMapViewportState,
+  displayedMapZoomToInternalScale,
   enterMapScrollLockState,
   getMapPanLimitsForZoom,
+  internalMapZoomScaleToDisplayedZoom,
   isMiddleButtonMapPanActive,
   isMiddleButtonMapPanPointer,
   leaveMapScrollLockState,
+  mapZoomDisplayPercent,
   resetMapViewport,
   ROUTE_RUNNER_MAP_ZOOM_LIMITS,
   ROUTE_RUNNER_PHONE_DEFAULT_ZOOM,
@@ -41,6 +44,7 @@ import {
   ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
   ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS,
   ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX,
+  ROUTE_RUNNER_ZOOM_BASELINE_FACTOR,
   routeRunnerMapZoomLimitsForViewport,
   setMapInteractionMode,
   setMapPanMode,
@@ -139,10 +143,25 @@ test("zoom is clamped at minimum and maximum values", () => {
 test("default route-runner zoom limits allow 5000 percent maximum zoom", () => {
   const zoomed = zoomInMapView({ ...defaultViewportState, zoom: 49 }, undefined, baseViewport);
 
+  assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.baselineZoomFactor, ROUTE_RUNNER_ZOOM_BASELINE_FACTOR);
+  assert.equal(ROUTE_RUNNER_ZOOM_BASELINE_FACTOR, 1.5);
   assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.minZoom, 0.75);
   assert.equal(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom, 50);
   assert.equal(zoomed.zoom, 50);
+  assert.equal(mapZoomDisplayPercent(zoomed.zoom), 5000);
+  assert.equal(displayedMapZoomToInternalScale(ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom), 75);
   assert.equal(canZoomInMapView(zoomed), false);
+});
+
+test("Stage 161.6.27 displayed zoom is normalized against the 150 percent visual baseline", () => {
+  assert.equal(displayedMapZoomToInternalScale(1), 1.5);
+  assert.equal(displayedMapZoomToInternalScale(2), 3);
+  assert.equal(displayedMapZoomToInternalScale(3), 4.5);
+  assert.equal(internalMapZoomScaleToDisplayedZoom(1.5), 1);
+  assert.equal(internalMapZoomScaleToDisplayedZoom(3), 2);
+  assert.equal(internalMapZoomScaleToDisplayedZoom(4.5), 3);
+  assert.equal(mapZoomDisplayPercent(1), 100);
+  assert.equal(mapZoomDisplayPercent(3), 300);
 });
 
 test("Stage 161.6.25 phone beta viewport starts at 300 percent while desktop stays unchanged", () => {
@@ -161,8 +180,12 @@ test("Stage 161.6.25 phone beta viewport starts at 300 percent while desktop sta
 
   assert.equal(ROUTE_RUNNER_PHONE_MAP_ZOOM_LIMITS.defaultZoom, ROUTE_RUNNER_PHONE_DEFAULT_ZOOM);
   assert.equal(createDefaultMapViewportState(phoneLimits).zoom, 3);
+  assert.equal(mapZoomDisplayPercent(createDefaultMapViewportState(phoneLimits).zoom, phoneLimits), 300);
+  assert.equal(displayedMapZoomToInternalScale(createDefaultMapViewportState(phoneLimits).zoom, phoneLimits), 4.5);
   assert.equal(resetMapViewport(phoneLimits).zoom, 3);
   assert.equal(createDefaultMapViewportState(desktopLimits).zoom, ROUTE_RUNNER_MAP_ZOOM_LIMITS.defaultZoom);
+  assert.equal(mapZoomDisplayPercent(createDefaultMapViewportState(desktopLimits).zoom, desktopLimits), 100);
+  assert.equal(displayedMapZoomToInternalScale(createDefaultMapViewportState(desktopLimits).zoom, desktopLimits), 1.5);
   assert.equal(createDefaultMapViewportState(devLimits).zoom, ROUTE_RUNNER_MAP_ZOOM_LIMITS.defaultZoom);
 });
 
@@ -560,6 +583,17 @@ test("reset view restores default zoom, pan, and draw mode", () => {
   assert.deepEqual(resetMapViewport(testLimits), defaultViewportState);
 });
 
+test("Stage 161.6.27 reset view returns to displayed 100 percent without clearing drawing state", () => {
+  const resetViewport = resetMapViewport();
+  const visualViewport = buildZoomedMapViewport(baseViewport, resetViewport);
+
+  assert.equal(resetViewport.zoom, 1);
+  assert.equal(mapZoomDisplayPercent(resetViewport.zoom), 100);
+  assert.equal(displayedMapZoomToInternalScale(resetViewport.zoom), 1.5);
+  assertClose(visualViewport.mapBounds.maxX - visualViewport.mapBounds.minX, 200 / 1.5, "reset width uses baseline");
+  assertClose(visualViewport.mapBounds.maxY - visualViewport.mapBounds.minY, 100 / 1.5, "reset height uses baseline");
+});
+
 test("reset view does not clear the draft route", () => {
   const draft = startRouteStroke(createEmptyRouteDraft(), { x: 12, y: 34 });
   const before = structuredClone(draft);
@@ -618,8 +652,8 @@ test("high zoom preserves isotropic map scale and coordinate alignment", () => {
   const mapWidth = zoomedViewport.mapBounds.maxX - zoomedViewport.mapBounds.minX;
   const mapHeight = zoomedViewport.mapBounds.maxY - zoomedViewport.mapBounds.minY;
 
-  assert.equal(mapWidth, 4);
-  assert.equal(mapHeight, 2);
+  assertClose(mapWidth, 200 / 75, "max displayed zoom should use the internal baseline scale");
+  assertClose(mapHeight, 100 / 75, "max displayed zoom should use the internal baseline scale");
   assert.equal(mapWidth / mapHeight, baseViewport.width / baseViewport.height);
   assertPointsRoundTrip([mapPoint], zoomedViewport);
   assert.deepEqual(screenToMapPoint(screenPoint, zoomedViewport), mapPoint);

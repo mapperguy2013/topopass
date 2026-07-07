@@ -1295,6 +1295,13 @@ so quiet residential maps read less like empty beige space, while service and
 pedestrian context remain quieter. The Real London pilot fixture is documented
 as a known context-data gap: it has road labels but no committed park, water,
 station, landmark, or area context fixture to render.
+Stage 161.6.27 normalizes the learner zoom baseline: displayed 100% now uses a
+1.5x internal visual scale, matching the old 150% map size while keeping the
+badge learner-friendly. Displayed zoom remains multiplicative and capped at
+5000%; internally that cap renders at 75x the old base scale. Reset view
+returns desktop and tablet users to displayed 100% without clearing drawing or
+feedback state. Phone beta users keep the current displayed 300% default/reset
+rule, which now renders at the normalized 4.5x internal visual scale.
 Stage 161.7 applies the final Waterloo/Thames cartography correction: converted
 OSM-derived river areas use a dedicated river water token when available,
 Waterloo Thames `waterway=*` lines remain a wide calm-blue fallback corridor

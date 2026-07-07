@@ -11,6 +11,7 @@ export type MapViewportState = {
 };
 
 export type MapZoomLimits = {
+  baselineZoomFactor?: number;
   defaultZoom: number;
   minZoom: number;
   maxZoom: number;
@@ -72,6 +73,7 @@ export type MapWheelInput = {
 export const ROUTE_RUNNER_MAP_ZOOM_LIMITS: MapZoomLimits = {
   ...TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds
 };
+export const ROUTE_RUNNER_ZOOM_BASELINE_FACTOR = TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds.baselineZoomFactor;
 export const ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX = 640;
 export const ROUTE_RUNNER_PHONE_DEFAULT_ZOOM = 3;
 export const ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH = 900;
@@ -123,6 +125,34 @@ function safeWheelSensitivity(limits: MapZoomLimits): number {
   return Number.isFinite(limits.wheelSensitivity) && limits.wheelSensitivity > 0 ? limits.wheelSensitivity : 0.002;
 }
 
+function zoomBaselineFactor(limits: MapZoomLimits): number {
+  const baselineZoomFactor = limits.baselineZoomFactor ?? 1;
+
+  return Number.isFinite(baselineZoomFactor) && baselineZoomFactor > 0 ? baselineZoomFactor : 1;
+}
+
+export function displayedMapZoomToInternalScale(
+  zoom: number,
+  limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS
+): number {
+  return clampMapZoom(zoom, limits) * zoomBaselineFactor(limits);
+}
+
+export function internalMapZoomScaleToDisplayedZoom(
+  internalScale: number,
+  limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS
+): number {
+  if (!Number.isFinite(internalScale)) {
+    return limits.defaultZoom;
+  }
+
+  return clampMapZoom(internalScale / zoomBaselineFactor(limits), limits);
+}
+
+export function mapZoomDisplayPercent(zoom: number, limits: MapZoomLimits = ROUTE_RUNNER_MAP_ZOOM_LIMITS): number {
+  return Math.round(clampMapZoom(zoom, limits) * 100);
+}
+
 function multiplyMapZoom(zoom: number, ratio: number, limits: MapZoomLimits): number {
   if (!Number.isFinite(zoom) || !Number.isFinite(ratio) || ratio <= 0) {
     return clampMapZoom(zoom, limits);
@@ -169,11 +199,11 @@ export function getMapPanLimitsForZoom(
   bounds: MapPanBounds,
   limits: MapZoomLimits
 ): MapPanLimits {
-  const clampedZoom = clampMapZoom(zoom, limits);
+  const visualZoom = displayedMapZoomToInternalScale(zoom, limits);
   const width = safeAxisSize(bounds.width);
   const height = safeAxisSize(bounds.height);
 
-  if (clampedZoom <= 1 || (width === 0 && height === 0)) {
+  if (visualZoom <= 1 || (width === 0 && height === 0)) {
     return {
       maxPanX: 0,
       maxPanY: 0
@@ -181,8 +211,8 @@ export function getMapPanLimitsForZoom(
   }
 
   return {
-    maxPanX: width > 0 ? ((clampedZoom - 1) * width) / 2 + panMarginForAxis(width, limits) : 0,
-    maxPanY: height > 0 ? ((clampedZoom - 1) * height) / 2 + panMarginForAxis(height, limits) : 0
+    maxPanX: width > 0 ? ((visualZoom - 1) * width) / 2 + panMarginForAxis(width, limits) : 0,
+    maxPanY: height > 0 ? ((visualZoom - 1) * height) / 2 + panMarginForAxis(height, limits) : 0
   };
 }
 
@@ -559,8 +589,9 @@ export function buildZoomedMapViewport(
 
   const centerX = (mapBounds.minX + mapBounds.maxX) / 2;
   const centerY = (mapBounds.minY + mapBounds.maxY) / 2;
-  const halfWidth = mapWidth / 2 / zoom;
-  const halfHeight = mapHeight / 2 / zoom;
+  const visualZoom = displayedMapZoomToInternalScale(zoom, limits);
+  const halfWidth = mapWidth / 2 / visualZoom;
+  const halfHeight = mapHeight / 2 / visualZoom;
   const mapUnitsPerScreenX = (halfWidth * 2) / viewportWidth;
   const mapUnitsPerScreenY = (halfHeight * 2) / viewportHeight;
   const panMapX = clampedState.panX * mapUnitsPerScreenX;

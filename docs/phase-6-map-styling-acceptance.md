@@ -722,6 +722,19 @@ as empty graph skeletons. Known gap: the original Real London pilot fixture has
 road labels but no committed context fixture data for parks, water, stations,
 landmarks, or area labels, so those context layers correctly remain absent.
 
+Stage 161.6.27 normalizes the map zoom baseline. The route-runner stores and
+displays user-facing zoom as before, but a central `baselineZoomFactor` of 1.5
+is applied when deriving the visual map viewport. Displayed 100% therefore
+renders like the old 150% view, displayed 200% renders like the old 300% view,
+and displayed 300% renders like the old 450% view. The zoom badge remains
+normalized, the zoom controls remain exponential/multiplicative, and the
+displayed maximum remains 5000% while the internal visual scale reaches 75x.
+Reset view is still view-only: desktop and tablet users return to displayed
+100%, while phone beta users keep the existing displayed 300% default/reset
+rule. Drawing, route overlays, markers, restriction symbols, Show on map, and
+submit matching continue to use the normalized viewport conversion so screen
+points and map points stay aligned after pan, wheel zoom, pinch zoom, and reset.
+
 Stage 161.6.8.1 enforces the stronger high-zoom road-readability contract. At
 5000% (`50x`) geometry zoom, normal road strokes and casings should render at
 roughly 10x their 100% visual width through a capped semantic power curve,
