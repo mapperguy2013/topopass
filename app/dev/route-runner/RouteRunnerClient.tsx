@@ -286,6 +286,18 @@ import {
   buildRouteRunnerPracticeModePanelVisibility
 } from "./routeRunnerPracticeModePanels";
 import {
+  buildLearnerTrainingModePanelModel,
+  createLearnerTrainingModeState,
+  openLearnerTrainingMode,
+  requestLearnerTrainingHint,
+  reviewLearnerTrainingAttempt,
+  selectLearnerTrainingDifficulty,
+  selectLearnerTrainingExerciseType,
+  startLearnerTrainingExercise,
+  type LearnerTrainingModeState,
+  type LearnerTrainingRouteOverlay
+} from "./learnerTrainingModeUi";
+import {
   createRouteRunnerInitialHydrationState,
   resolveRouteRunnerExerciseSelection
 } from "./routeRunnerInitialState";
@@ -2792,6 +2804,39 @@ function drawFastestRouteOverlay(
   );
 }
 
+function drawLearnerTrainingRouteOverlay(
+  context: CanvasRenderingContext2D,
+  overlay: LearnerTrainingRouteOverlay | undefined,
+  viewport: ScreenMapViewport,
+  currentZoom?: number,
+  markerAssets?: LearnerMarkerImageAssets
+): void {
+  if (!overlay?.visible) {
+    return;
+  }
+
+  if (overlay.route.points.length >= 2) {
+    drawStyledMapPolyline(
+      context,
+      overlay.route.points,
+      viewport,
+      TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
+      cartographicCorrectRouteScaleForZoom(currentZoom ?? 1)
+    );
+  }
+
+  for (const checkpoint of overlay.checkpoints) {
+    drawExerciseStopMarker({
+      context,
+      point: mapToScreenPoint(checkpoint.point, viewport),
+      role: checkpoint.role,
+      index: checkpoint.sequence,
+      currentZoom,
+      markerAssets
+    });
+  }
+}
+
 function drawOsmExerciseDebugRouteOverlay(
   context: CanvasRenderingContext2D,
   overlay: OsmExerciseDebugOverlayModel,
@@ -3109,6 +3154,7 @@ function buildLabelReservationBoxes(input: {
   trace: DrawnRouteTrace;
   routeDraft: DrawnRouteDraft;
   fastestRoutePoints: readonly Vec2[];
+  trainingOverlay?: LearnerTrainingRouteOverlay;
   snapPreview: SnappedRouteTraceResult;
   pipelineResult: DrawnRoutePipelineResult;
   routeIssueOverlays: readonly RouteIssueOverlay[];
@@ -3131,6 +3177,45 @@ function buildLabelReservationBoxes(input: {
         TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.strokeWidth) * correctRouteScale,
     padding: labelCollisionStyle.routePadding
   });
+
+  if (input.trainingOverlay?.visible) {
+    addPolylineReservationBoxes({
+      boxes,
+      idPrefix: "training-route",
+      points: input.trainingOverlay.route.points,
+      viewport: input.viewport,
+      strokeWidth:
+        (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.casingWidth ??
+          TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.strokeWidth) * correctRouteScale,
+      padding: labelCollisionStyle.routePadding
+    });
+
+    input.trainingOverlay.checkpoints.forEach((checkpoint) => {
+      const markerStyle =
+        checkpoint.role === "start"
+          ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start
+          : checkpoint.role === "finish"
+            ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination
+            : checkpoint.sequence === 1
+              ? TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.requiredCheckpoint
+              : TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase;
+
+      boxes.push(
+        screenPointReservationBox({
+          id: `training-checkpoint-${checkpoint.sequence}`,
+          point: checkpoint.point,
+          viewport: input.viewport,
+          radius:
+            Math.max(
+              markerStyle.radius + markerStyle.haloRadiusPadding,
+              checkpoint.role === "checkpoint" ? touchTargets.checkpointHitRadius : touchTargets.markerHitRadius
+            ) *
+              markerScale +
+            TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
+        })
+      );
+    });
+  }
 
   visibleRawRouteStrokes(input.routeDraft, input.trace).forEach((stroke, index) => {
     addPolylineReservationBoxes({
@@ -3319,6 +3404,7 @@ function drawRouteCanvas(input: {
   trace: DrawnRouteTrace;
   routeDraft: DrawnRouteDraft;
   fastestRoutePoints: readonly Vec2[];
+  trainingOverlay?: LearnerTrainingRouteOverlay;
   routeReplayMarkers: readonly RouteReplayMarker[];
   snapPreview: SnappedRouteTraceResult;
   pipelineResult: DrawnRoutePipelineResult;
@@ -3351,6 +3437,7 @@ function drawRouteCanvas(input: {
     trace: input.trace,
     routeDraft: input.routeDraft,
     fastestRoutePoints: input.fastestRoutePoints,
+    trainingOverlay: input.trainingOverlay,
     snapPreview: input.snapPreview,
     pipelineResult: input.pipelineResult,
     routeIssueOverlays: input.routeIssueOverlays
@@ -3380,6 +3467,7 @@ function drawRouteCanvas(input: {
   drawOsmDebugOverlay(context, input.osmDebugOverlay, input.viewport);
 
   drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport, input.currentZoom);
+  drawLearnerTrainingRouteOverlay(context, input.trainingOverlay, input.viewport, input.currentZoom, input.markerAssets);
   drawOsmExerciseDebugOverlay(context, input.osmExerciseDebugOverlay, input.viewport);
 
   input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
@@ -3833,6 +3921,9 @@ export function RouteRunnerClient({
   const [lazyMapOptionsById, setLazyMapOptionsById] = useState<Record<string, RouteRunnerMapOption>>({});
   const [lazyMapLoadingById, setLazyMapLoadingById] = useState<Record<string, boolean>>({});
   const [lazyMapLoadErrorById, setLazyMapLoadErrorById] = useState<Record<string, string | null>>({});
+  const [learnerTrainingModeState, setLearnerTrainingModeState] = useState<LearnerTrainingModeState>(() =>
+    createLearnerTrainingModeState()
+  );
   const isDevRouteRunner = mode === "dev";
   const practiceModePanelVisibility = useMemo(
     () => buildRouteRunnerPracticeModePanelVisibility({ mode }),
@@ -4006,6 +4097,15 @@ export function RouteRunnerClient({
         selectedExerciseId: selectedExerciseId || null
       }),
     [activeExercises, selectedExerciseId]
+  );
+  const learnerTrainingModePanel = useMemo(
+    () =>
+      buildLearnerTrainingModePanelModel({
+        state: learnerTrainingModeState,
+        map: activeMap,
+        viewport: isStudentBetaPhoneMap ? "mobile" : "desktop"
+      }),
+    [activeMap, isStudentBetaPhoneMap, learnerTrainingModeState]
   );
 
   useEffect(() => {
@@ -5118,6 +5218,7 @@ export function RouteRunnerClient({
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,
       fastestRoutePoints: fastestRouteOverlay.status === "available" ? fastestRouteOverlay.points : [],
+      trainingOverlay: learnerTrainingModePanel.overlay,
       routeReplayMarkers,
       snapPreview,
       pipelineResult: drawnPipelineResult,
@@ -5136,6 +5237,7 @@ export function RouteRunnerClient({
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
+    learnerTrainingModePanel.overlay,
     learnerMarkerImageAssets,
     mapViewportState.zoom,
     osmDebugOverlay,
@@ -5503,6 +5605,57 @@ export function RouteRunnerClient({
     setAdaptiveLauncherMessage("Adaptive practice launcher reset.");
   }
 
+  function resetLearnerTrainingExerciseForMapChange() {
+    setLearnerTrainingModeState((currentState) =>
+      createLearnerTrainingModeState({
+        isOpen: currentState.isOpen,
+        selectedDifficulty: currentState.selectedDifficulty,
+        selectedExerciseType: currentState.selectedExerciseType
+      })
+    );
+  }
+
+  function handleOpenLearnerTrainingMode() {
+    setLearnerTrainingModeState((currentState) => openLearnerTrainingMode(currentState));
+  }
+
+  function handleLearnerTrainingDifficultyChange(nextDifficulty: LearnerTrainingModeState["selectedDifficulty"]) {
+    setLearnerTrainingModeState((currentState) => selectLearnerTrainingDifficulty(currentState, nextDifficulty));
+  }
+
+  function handleLearnerTrainingExerciseTypeChange(nextExerciseType: LearnerTrainingModeState["selectedExerciseType"]) {
+    setLearnerTrainingModeState((currentState) => selectLearnerTrainingExerciseType(currentState, nextExerciseType));
+  }
+
+  function handleGenerateLearnerTrainingExercise() {
+    setLearnerTrainingModeState((currentState) =>
+      startLearnerTrainingExercise({
+        state: currentState,
+        map: activeMap,
+        seed: [
+          "route-runner-training-ui",
+          activeMap.id,
+          currentState.selectedDifficulty,
+          currentState.selectedExerciseType
+        ].join(":")
+      })
+    );
+    setFastestRouteRevealState(hideFastestRouteReveal());
+  }
+
+  function handleRequestLearnerTrainingHint() {
+    setLearnerTrainingModeState((currentState) => requestLearnerTrainingHint({ state: currentState }));
+  }
+
+  function handleReviewLearnerTrainingAttempt() {
+    setLearnerTrainingModeState((currentState) =>
+      reviewLearnerTrainingAttempt({
+        state: currentState,
+        map: activeMap
+      })
+    );
+  }
+
   function handleExerciseChange(nextExerciseId: string) {
     const nextResolvedExerciseId = resolveRouteRunnerExerciseSelection({
       exercises: activeExercises,
@@ -5567,6 +5720,7 @@ export function RouteRunnerClient({
     setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
     setMapViewportState(resetMapViewport(activeMapZoomLimits));
     setFastestRouteRevealState(hideFastestRouteReveal());
+    resetLearnerTrainingExerciseForMapChange();
     clearDrawnAttempt();
   }
 
@@ -6485,6 +6639,212 @@ export function RouteRunnerClient({
                 </div>
               </div>
             ) : null}
+
+            <div className="mt-4 rounded-md border border-blue-200 bg-white p-3 text-sm text-slate-700">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Training Mode</p>
+                  <h2 className="mt-1 font-semibold text-slate-950">
+                    {learnerTrainingModePanel.routeSummary?.title ?? "Learner training"}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenLearnerTrainingMode}
+                  disabled={learnerTrainingModePanel.isOpen}
+                  aria-label={learnerTrainingModePanel.primaryActions[0].ariaLabel}
+                  className="min-h-11 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 shadow-sm hover:bg-blue-100 disabled:cursor-default disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-500"
+                >
+                  {learnerTrainingModePanel.primaryActions[0].label}
+                </button>
+              </div>
+
+              {learnerTrainingModePanel.isOpen ? (
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="block text-sm font-semibold text-slate-900" htmlFor="learner-training-difficulty">
+                      Difficulty
+                      <select
+                        id="learner-training-difficulty"
+                        value={learnerTrainingModeState.selectedDifficulty}
+                        onChange={(event) =>
+                          handleLearnerTrainingDifficultyChange(
+                            event.target.value as LearnerTrainingModeState["selectedDifficulty"]
+                          )
+                        }
+                        className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      >
+                        {learnerTrainingModePanel.difficultyOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="block text-sm font-semibold text-slate-900" htmlFor="learner-training-exercise-type">
+                      Exercise type
+                      <select
+                        id="learner-training-exercise-type"
+                        value={learnerTrainingModeState.selectedExerciseType}
+                        onChange={(event) =>
+                          handleLearnerTrainingExerciseTypeChange(
+                            event.target.value as LearnerTrainingModeState["selectedExerciseType"]
+                          )
+                        }
+                        className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                      >
+                        {learnerTrainingModePanel.exerciseTypeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    <button
+                      type="button"
+                      onClick={handleGenerateLearnerTrainingExercise}
+                      aria-label={learnerTrainingModePanel.primaryActions[1].ariaLabel}
+                      className="min-h-11 rounded-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                    >
+                      {learnerTrainingModePanel.primaryActions[1].label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRequestLearnerTrainingHint}
+                      disabled={learnerTrainingModePanel.primaryActions[2].disabled}
+                      aria-label={learnerTrainingModePanel.primaryActions[2].ariaLabel}
+                      className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      {learnerTrainingModePanel.primaryActions[2].label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReviewLearnerTrainingAttempt}
+                      disabled={learnerTrainingModePanel.primaryActions[3].disabled}
+                      aria-label={learnerTrainingModePanel.primaryActions[3].ariaLabel}
+                      className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      {learnerTrainingModePanel.primaryActions[3].label}
+                    </button>
+                  </div>
+
+                  {learnerTrainingModeState.generation.status !== "idle" ? (
+                    <div
+                      className={`mt-3 rounded-md border p-3 text-xs leading-5 ${
+                        learnerTrainingModeState.generation.status === "failed"
+                          ? "border-red-200 bg-red-50 text-red-950"
+                          : learnerTrainingModeState.generation.status === "degraded"
+                            ? "border-amber-200 bg-amber-50 text-amber-950"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-950"
+                      }`}
+                      role={learnerTrainingModeState.generation.status === "failed" ? "alert" : "status"}
+                    >
+                      <p className="font-semibold">
+                        {learnerTrainingModeState.generation.status === "failed"
+                          ? "Exercise not available"
+                          : learnerTrainingModeState.generation.status === "degraded"
+                            ? "Exercise generated with warnings"
+                            : "Exercise generated"}
+                      </p>
+                      {learnerTrainingModeState.generation.explanation ? (
+                        <p className="mt-1">{learnerTrainingModeState.generation.explanation}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {learnerTrainingModePanel.routeSummary ? (
+                    <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-blue-100 bg-white px-2 py-0.5 text-xs font-semibold text-blue-700">
+                          {learnerTrainingModePanel.routeSummary.difficulty}
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700">
+                          {formatDistance(learnerTrainingModePanel.routeSummary.distanceMeters)}
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700">
+                          {learnerTrainingModePanel.routeSummary.estimatedMinutes ?? "n/a"} min
+                        </span>
+                        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold text-slate-700">
+                          {learnerTrainingModePanel.routeSummary.segmentCount} segments
+                        </span>
+                      </div>
+
+                      {learnerTrainingModePanel.currentObjective ? (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current objective</p>
+                          <p className="mt-1 font-semibold text-slate-950">
+                            {learnerTrainingModePanel.currentObjective.title}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {learnerTrainingModePanel.currentInstruction ? (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current instruction</p>
+                          <p className="mt-1 text-slate-800">{learnerTrainingModePanel.currentInstruction.text}</p>
+                        </div>
+                      ) : null}
+
+                      {learnerTrainingModePanel.overlay.checkpoints.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Checkpoints</p>
+                          <ol className="mt-1 list-decimal space-y-1 pl-5 text-xs leading-5 text-slate-700">
+                            {learnerTrainingModePanel.overlay.checkpoints.map((checkpoint) => (
+                              <li key={checkpoint.id}>
+                                <span className="font-semibold capitalize">{checkpoint.role}</span>: {checkpoint.label}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ) : null}
+
+                      {learnerTrainingModePanel.validation ? (
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
+                          <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-slate-700">
+                            Validation: {learnerTrainingModePanel.validation.status}
+                          </span>
+                          {learnerTrainingModePanel.validation.warningCount > 0 ? (
+                            <span className="rounded-full border border-amber-200 bg-white px-2 py-0.5 text-amber-900">
+                              {learnerTrainingModePanel.validation.warningCount} warnings
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {learnerTrainingModePanel.hint ? (
+                    <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950" role="status">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold">{learnerTrainingModePanel.hint.title}</p>
+                        <span className="rounded-full border border-sky-300 bg-white px-2 py-0.5 text-xs font-semibold">
+                          Hint {learnerTrainingModePanel.hint.requestNumber}
+                        </span>
+                      </div>
+                      <p className="mt-1">{learnerTrainingModePanel.hint.text}</p>
+                    </div>
+                  ) : null}
+
+                  {learnerTrainingModePanel.review ? (
+                    <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm leading-6 text-emerald-950" role="status">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold">
+                          {learnerTrainingModePanel.review.passed ? "Passed" : "Needs review"}
+                        </p>
+                        <span className="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-semibold">
+                          {Math.round(learnerTrainingModePanel.review.scorePercent)}%
+                        </span>
+                      </div>
+                      <p className="mt-1">{learnerTrainingModePanel.review.summary}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
             {!isStudentBetaRouteRunner && realLondonPilotPlaythroughPanel.shouldShowPanel ? (
               <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">

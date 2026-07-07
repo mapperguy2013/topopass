@@ -27,6 +27,7 @@ export const ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS = [
 export const ROUTE_RUNNER_BETA_CORE_PANEL_LABELS = [
   "Real London Practice - Beta",
   "Practice Exercises",
+  "Training Mode",
   "Route instructions",
   "Practice map",
   "Route feedback",
