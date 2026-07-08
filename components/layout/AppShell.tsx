@@ -5,6 +5,7 @@ type AppShellProps = {
   title: string;
   children: React.ReactNode;
   frameClassName?: string;
+  framePaddingClassName?: string;
   mainClassName?: string;
 };
 
@@ -12,13 +13,14 @@ export function AppShell({
   title,
   children,
   frameClassName = "max-w-[1500px]",
+  framePaddingClassName = "px-4 py-6 sm:px-6 lg:px-8",
   mainClassName = ""
 }: AppShellProps) {
   return (
     <div className="min-h-screen bg-surface">
       <Navbar />
       <div
-        className={`mx-auto flex ${frameClassName} gap-6 px-4 py-6 sm:px-6 lg:px-8`}
+        className={`mx-auto flex ${frameClassName} gap-6 ${framePaddingClassName}`}
         data-app-shell-frame
       >
         <div data-app-sidebar>

@@ -100,6 +100,21 @@ export type RouteRunnerMobileQaMapArea = {
   height: number;
   bounded: boolean;
   visible: boolean;
+  viewportWidthRatio: number;
+  horizontalPadding: number;
+  isotropicProjection: boolean;
+};
+
+export type RouteRunnerMobileQaFeedbackMode = {
+  compactBannerVisibleAfterSubmit: boolean;
+  bannerStatuses: readonly ["pass", "fail", "blocked"];
+  detailsCollapsedByDefault: boolean;
+  detailsMaxViewportHeightRatio: number;
+  detailsCanExpandAndCollapse: boolean;
+  mapUsableWhenDetailsCollapsed: boolean;
+  showOnMapCollapsesDetails: boolean;
+  shortestRouteActionKeepsMapVisible: boolean;
+  desktopDrawerPreserved: boolean;
 };
 
 export type RouteRunnerMobileQaReport = {
@@ -113,6 +128,9 @@ export type RouteRunnerMobileQaReport = {
   viewportHeight: number;
   viewportCategory: RouteRunnerMobileViewportCategory;
   mapArea: RouteRunnerMobileQaMapArea;
+  outerHorizontalPadding: number;
+  practiceCardWidthRatio: number;
+  feedbackMode: RouteRunnerMobileQaFeedbackMode;
   controlIds: RouteRunnerMobileQaControlId[];
   panelRows: RouteRunnerMobileQaPanel[];
   selectedExerciseVisible: boolean;
@@ -138,6 +156,9 @@ const MOBILE_VIEWPORT_MAX_WIDTH = 640;
 const TABLET_VIEWPORT_MAX_WIDTH = 1024;
 const MOBILE_MIN_MAP_WIDTH = 280;
 const MOBILE_MIN_MAP_HEIGHT = 240;
+const MOBILE_PRACTICE_HORIZONTAL_PADDING = 16;
+const TABLET_PRACTICE_HORIZONTAL_PADDING = 48;
+const DESKTOP_PRACTICE_HORIZONTAL_PADDING = 64;
 const ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH = 1920;
 const ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT = 912;
 const ROUTE_RUNNER_PHONE_MAP_MIN_HEIGHT = 720;
@@ -216,6 +237,10 @@ export function buildRouteRunnerMobileQaReport(
   const viewportCategory = categorizeRouteRunnerViewport(viewportWidth);
   const selectedExercise = selectRouteRunnerExercise(input.mapOption, input.selectedExerciseId);
   const mapArea = buildRouteRunnerMobileQaMapArea(input.mapOption, viewportWidth, viewportHeight, viewportCategory);
+  const outerHorizontalPadding = routeRunnerPracticeHorizontalPadding(viewportCategory);
+  const practiceCardWidthRatio =
+    viewportWidth > 0 ? normalizeDimension((viewportWidth - outerHorizontalPadding) / viewportWidth) : 0;
+  const feedbackMode = buildMobileQaFeedbackMode(viewportCategory);
   const touchDrawingAvailable = canStartDrawingWithMapPointer({ button: 0, pointerType: "touch" });
   const defaultViewportState = createDefaultMapViewportState();
   const zoomControlsReachable = canZoomInMapView(defaultViewportState) && canZoomOutMapView(defaultViewportState);
@@ -251,6 +276,9 @@ export function buildRouteRunnerMobileQaReport(
     viewportHeight,
     viewportCategory,
     mapArea,
+    outerHorizontalPadding,
+    practiceCardWidthRatio,
+    feedbackMode,
     controlIds: CONTROL_ORDER.filter((controlId) => controlIsAvailable(controlId, input.controlAvailability)),
     panelRows,
     selectedExerciseVisible,
@@ -318,7 +346,7 @@ function buildRouteRunnerMobileQaMapArea(
   viewportHeight: number,
   viewportCategory: RouteRunnerMobileViewportCategory
 ): RouteRunnerMobileQaMapArea {
-  const horizontalPadding = viewportCategory === "mobile" ? 32 : viewportCategory === "tablet" ? 48 : 64;
+  const horizontalPadding = routeRunnerPracticeHorizontalPadding(viewportCategory);
   const width = Math.min(ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH, Math.max(0, viewportWidth - horizontalPadding));
   const viewportBoundedDesktopHeight = Math.max(360, viewportHeight - 80);
   const desktopAspectHeight = width / (ROUTE_RUNNER_DESKTOP_CANVAS_WIDTH / ROUTE_RUNNER_DESKTOP_CANVAS_HEIGHT);
@@ -336,7 +364,42 @@ function buildRouteRunnerMobileQaMapArea(
     width: normalizeDimension(width),
     height,
     bounded,
-    visible: width >= MOBILE_MIN_MAP_WIDTH && height >= MOBILE_MIN_MAP_HEIGHT
+    visible: width >= MOBILE_MIN_MAP_WIDTH && height >= MOBILE_MIN_MAP_HEIGHT,
+    viewportWidthRatio: viewportWidth > 0 ? normalizeDimension(width / viewportWidth) : 0,
+    horizontalPadding,
+    isotropicProjection:
+      Number.isFinite(zoomedViewport.mapBounds.maxX - zoomedViewport.mapBounds.minX) &&
+      Number.isFinite(zoomedViewport.mapBounds.maxY - zoomedViewport.mapBounds.minY)
+  };
+}
+
+function routeRunnerPracticeHorizontalPadding(viewportCategory: RouteRunnerMobileViewportCategory): number {
+  if (viewportCategory === "mobile") {
+    return MOBILE_PRACTICE_HORIZONTAL_PADDING;
+  }
+
+  if (viewportCategory === "tablet") {
+    return TABLET_PRACTICE_HORIZONTAL_PADDING;
+  }
+
+  return DESKTOP_PRACTICE_HORIZONTAL_PADDING;
+}
+
+function buildMobileQaFeedbackMode(
+  viewportCategory: RouteRunnerMobileViewportCategory
+): RouteRunnerMobileQaFeedbackMode {
+  const isMobile = viewportCategory === "mobile";
+
+  return {
+    compactBannerVisibleAfterSubmit: isMobile,
+    bannerStatuses: ["pass", "fail", "blocked"],
+    detailsCollapsedByDefault: isMobile,
+    detailsMaxViewportHeightRatio: isMobile ? 0.55 : 1,
+    detailsCanExpandAndCollapse: isMobile,
+    mapUsableWhenDetailsCollapsed: isMobile,
+    showOnMapCollapsesDetails: isMobile,
+    shortestRouteActionKeepsMapVisible: isMobile,
+    desktopDrawerPreserved: viewportCategory !== "mobile"
   };
 }
 

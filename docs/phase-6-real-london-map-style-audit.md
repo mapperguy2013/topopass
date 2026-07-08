@@ -438,6 +438,29 @@ legal expected route. Known invalid dev exercises, including the Marlowe
 no-entry focus route, remain in the development fixture for legality testing
 but are filtered out of the learner-facing beta exercise selector.
 
+## Stage 161.6.29 Mobile Full-Width Practice Layout and Non-Blocking Feedback
+
+Stage 161.6.29 narrows `/practice/real-london` phone gutters to make the beta
+practice cards and map feel close to full-width without changing desktop/tablet
+layout, scoring, route matching, legality checks, exercise generation, or map
+data. The mobile shell uses reduced outer padding, the route header and map
+cards use compact phone padding, and the map keeps the existing no-stretch
+aspect-ratio rule while using the available viewport width.
+
+Post-submit mobile feedback now starts as a compact result banner instead of a
+blocking full-height overlay. The banner gives a quick green, red, or amber
+result state with score or review status and a short reason. Detailed feedback
+is still available through a View details toggle, but it expands inline below
+the map with a limited height and can be collapsed without clearing the drawn
+route, score, result, issue markers, or shortest-route comparison.
+
+The map remains usable after Submit. Show on map and shortest-route actions keep
+the route overlays visible and collapse the mobile details panel so learners can
+return to the map immediately. Desktop keeps the separate right-side feedback
+drawer behaviour. Dev QA overlays, manual route input, raw fixture identifiers,
+OSM IDs, and internal diagnostics remain hidden from the learner-facing beta
+mobile page.
+
 ## Stage 161.6.21 Concept-Matched Beta Practice UI
 
 Stage 161.6.21 refines the learner-facing beta practice shell without changing

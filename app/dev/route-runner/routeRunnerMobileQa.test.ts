@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { marloweDistrictMap } from "../../../lib/map-engine/index.ts";
 import {
@@ -35,6 +36,11 @@ test("Mobile Route Runner QA keeps Marlowe default route-runner layout passing",
   assert.equal(report.mapId, marloweDistrictMap.id);
   assert.equal(report.mapArea.visible, true);
   assert.equal(report.mapArea.bounded, true);
+  assert.equal(report.mapArea.horizontalPadding, 16);
+  assert.ok(report.mapArea.viewportWidthRatio >= 0.95);
+  assert.equal(report.mapArea.isotropicProjection, true);
+  assert.ok(report.practiceCardWidthRatio >= 0.95);
+  assert.equal(report.outerHorizontalPadding, 16);
   assert.equal(report.selectedExerciseVisible, true);
   assert.equal(report.touchDrawingAvailable, true);
   assert.equal(report.zoomControlsReachable, true);
@@ -44,6 +50,76 @@ test("Mobile Route Runner QA keeps Marlowe default route-runner layout passing",
     report.panelRows.map((panel) => panel.id),
     ["main-controls", "selected-exercise", "drawing-controls", "zoom-controls", "map-area", "version-metadata"]
   );
+});
+
+test("Stage 161.6.29 mobile practice layout uses reduced gutters and near full-width map", () => {
+  const option = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(option);
+
+  const report = buildRouteRunnerMobileQaReport({
+    mapOption: option,
+    ...MOBILE_VIEWPORT
+  });
+
+  assert.equal(report.viewportCategory, "mobile");
+  assert.equal(report.outerHorizontalPadding, 16);
+  assert.equal(report.mapArea.horizontalPadding, 16);
+  assert.ok(report.practiceCardWidthRatio >= 0.95);
+  assert.ok(report.mapArea.viewportWidthRatio >= 0.95);
+  assert.equal(report.horizontalOverflowRisk, false);
+  assert.equal(report.mapArea.bounded, true);
+  assert.equal(report.mapArea.isotropicProjection, true);
+});
+
+test("Stage 161.6.29 mobile feedback is compact and non-blocking by default", () => {
+  const option = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(option);
+
+  const report = buildRouteRunnerMobileQaReport({
+    mapOption: option,
+    ...MOBILE_VIEWPORT
+  });
+
+  assert.equal(report.feedbackMode.compactBannerVisibleAfterSubmit, true);
+  assert.deepEqual(report.feedbackMode.bannerStatuses, ["pass", "fail", "blocked"]);
+  assert.equal(report.feedbackMode.detailsCollapsedByDefault, true);
+  assert.ok(report.feedbackMode.detailsMaxViewportHeightRatio <= 0.55);
+  assert.equal(report.feedbackMode.detailsCanExpandAndCollapse, true);
+  assert.equal(report.feedbackMode.mapUsableWhenDetailsCollapsed, true);
+  assert.equal(report.feedbackMode.showOnMapCollapsesDetails, true);
+  assert.equal(report.feedbackMode.shortestRouteActionKeepsMapVisible, true);
+});
+
+test("Stage 161.6.29 desktop feedback drawer remains the non-mobile behaviour", () => {
+  const option = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(option);
+
+  const report = buildRouteRunnerMobileQaReport({
+    mapOption: option,
+    viewportWidth: 1280,
+    viewportHeight: 900
+  });
+
+  assert.equal(report.viewportCategory, "desktop");
+  assert.equal(report.feedbackMode.compactBannerVisibleAfterSubmit, false);
+  assert.equal(report.feedbackMode.detailsCollapsedByDefault, false);
+  assert.equal(report.feedbackMode.desktopDrawerPreserved, true);
+});
+
+test("Stage 161.6.29 RouteRunner renders mobile feedback banner and collapsible details without beta QA panels", () => {
+  const source = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.ok(source.includes("showMobileRouteFeedbackBanner"));
+  assert.ok(source.includes("Route result"));
+  assert.ok(source.includes("View details"));
+  assert.ok(source.includes("Hide details"));
+  assert.ok(source.includes("max-h-[55dvh]"));
+  assert.ok(source.includes("setRouteFeedbackDrawerOpen(!isStudentBetaPhoneMap)"));
+  assert.ok(source.includes("visibleOsmDebugOverlayAvailable"));
+  assert.ok(source.includes("!routeRunnerPanelVisibility.isRealLondonBetaPractice"));
 });
 
 test("Mobile Route Runner QA keeps tiny and medium OSM maps compatible", () => {

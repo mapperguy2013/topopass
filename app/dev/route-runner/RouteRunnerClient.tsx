@@ -712,6 +712,35 @@ function learnerFeedbackBadgeClass(status: RouteAttemptReview["status"]): string
   return "border-slate-200 bg-slate-50 text-slate-700";
 }
 
+function learnerFeedbackBannerClass(status: RouteAttemptReview["status"]): string {
+  if (status === "pass") {
+    return "border-green-200 bg-green-50 text-green-950";
+  }
+
+  if (status === "fail") {
+    return "border-red-200 bg-red-50 text-red-950";
+  }
+
+  if (status === "blocked") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-800";
+}
+
+function learnerFeedbackCompactScoreLabel(review: RouteAttemptReview): string | null {
+  const score = review.scoreLabel.replace(/\s+\((?:pass|fail)\)$/i, "").trim();
+
+  return score && score.toLowerCase() !== "not scored" ? score : null;
+}
+
+function learnerFeedbackBannerTitle(review: RouteAttemptReview): string {
+  const status = learnerFeedbackStatusLabel(review.status);
+  const score = learnerFeedbackCompactScoreLabel(review);
+
+  return score ? `${status} - ${score}` : status;
+}
+
 function reviewItemMatches(item: RouteAttemptReviewItem, text: string): boolean {
   return `${item.label} ${item.detail ?? ""}`.toLowerCase().includes(text.toLowerCase());
 }
@@ -4729,10 +4758,11 @@ export function RouteRunnerClient({
   const showLearnerAttemptReviewDetails = !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt;
   const showAttemptFeedbackPanel =
     !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt || hasBlockedCurrentDrawnSubmit;
+  const showMobileRouteFeedbackBanner = isStudentBetaPhoneMap && showAttemptFeedbackPanel;
   const shouldRenderAttemptFeedbackPanel =
     showAttemptFeedbackPanel && (!isStudentBetaRouteRunner || routeFeedbackDrawerOpen);
   const showRouteFeedbackReopenButton =
-    isStudentBetaRouteRunner && showAttemptFeedbackPanel && !routeFeedbackDrawerOpen;
+    isStudentBetaRouteRunner && showAttemptFeedbackPanel && !routeFeedbackDrawerOpen && !isStudentBetaPhoneMap;
   const learnerDrawnDisplayText = getLearnerDrawnPipelineStatusText({
     status: drawnDisplayStatus,
     submitted: hasSubmittedCurrentDrawnAttempt,
@@ -4891,6 +4921,7 @@ export function RouteRunnerClient({
     () => buildLearnerFeedbackIssueSections(drawnAttemptReview),
     [drawnAttemptReview]
   );
+  const learnerFeedbackBannerTitleText = learnerFeedbackBannerTitle(drawnAttemptReview);
   const learnerFeedbackSummary = learnerFeedbackSummarySentence(drawnAttemptReview);
   const learnerFeedbackWhatHappenedText = learnerFeedbackWhatHappened(drawnAttemptReview);
   const compactRestrictionOverlayPanel = useMemo(
@@ -5667,6 +5698,9 @@ export function RouteRunnerClient({
 
   function toggleFastestRouteOverlay() {
     setFastestRouteRevealState((currentState) => toggleFastestRouteReveal(currentState));
+    if (isStudentBetaPhoneMap) {
+      setRouteFeedbackDrawerOpen(false);
+    }
   }
 
   function zoomInRouteMap() {
@@ -5724,7 +5758,7 @@ export function RouteRunnerClient({
       devMessage: outcome.devMessage
     });
     if (isStudentBetaRouteRunner) {
-      setRouteFeedbackDrawerOpen(true);
+      setRouteFeedbackDrawerOpen(!isStudentBetaPhoneMap);
     }
 
     if (outcome.submitted && drawnPipelineResult.exerciseResult) {
@@ -5998,6 +6032,9 @@ export function RouteRunnerClient({
 
   function toggleRestrictionReviewFocus(item: RestrictionFocusReviewItem) {
     setSelectedRestrictionReviewItemId((currentId) => (currentId === item.id ? null : item.id));
+    if (isStudentBetaPhoneMap) {
+      setRouteFeedbackDrawerOpen(false);
+    }
   }
 
   function handlePointerDown(event: PointerEvent<HTMLCanvasElement>) {
@@ -6418,12 +6455,12 @@ export function RouteRunnerClient({
       <section
         className={
           isStudentBetaRouteRunner
-            ? "rounded-xl border border-slate-200 bg-white/95 shadow-sm"
+            ? "rounded-lg border border-slate-200 bg-white/95 shadow-sm sm:rounded-xl"
             : "rounded-lg border border-slate-200 bg-white shadow-sm"
         }
       >
         <div
-          className={`flex flex-col gap-3 border-b border-slate-100 px-4 py-3 xl:flex-row xl:items-center xl:justify-between ${
+          className={`flex flex-col gap-3 border-b border-slate-100 px-3 py-3 xl:flex-row xl:items-center xl:justify-between ${
             isStudentBetaRouteRunner ? "sm:px-6" : ""
           }`}
         >
@@ -6485,7 +6522,7 @@ export function RouteRunnerClient({
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 px-4 py-2 text-xs text-slate-600 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 text-xs text-slate-600 sm:px-6">
           <span className={`rounded-full px-3 py-1 font-semibold ${pipelineStatusClass(drawnDisplayStatus)}`}>
             {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
           </span>
@@ -6542,7 +6579,7 @@ export function RouteRunnerClient({
             <summary
               className={
                 isStudentBetaRouteRunner
-                  ? "flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-950 marker:hidden"
+                  ? "flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-950 marker:hidden sm:px-4"
                   : "hidden"
               }
             >
@@ -6567,7 +6604,7 @@ export function RouteRunnerClient({
             <div
               className={
                 isStudentBetaRouteRunner
-                  ? "border-t border-slate-100 p-3"
+                  ? "border-t border-slate-100 p-2 sm:p-3"
                   : "p-4"
               }
             >
@@ -8454,12 +8491,52 @@ export function RouteRunnerClient({
             ) : null}
           </section>
 
+          {showMobileRouteFeedbackBanner ? (
+            <section
+              aria-label="Route result summary"
+              aria-live="polite"
+              className={`order-3 rounded-lg border p-3 shadow-sm ${learnerFeedbackBannerClass(
+                drawnAttemptReview.status
+              )}`}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Route result</p>
+                  <h2 className="mt-1 text-base font-semibold">{learnerFeedbackBannerTitleText}</h2>
+                  <p className="mt-1 text-sm leading-5">{learnerFeedbackWhatHappenedText}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {shortestLegalRouteComparisonAvailable ? (
+                    <button
+                      type="button"
+                      onClick={toggleFastestRouteOverlay}
+                      aria-pressed={shortestLegalRouteComparisonVisible}
+                      className="min-h-11 rounded-md border border-current/20 bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-current/20"
+                    >
+                      {shortestLegalRouteComparisonVisible ? "Hide shortest route" : "Show shortest route"}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setRouteFeedbackDrawerOpen((currentValue) => !currentValue)}
+                    aria-expanded={routeFeedbackDrawerOpen}
+                    className="min-h-11 rounded-md border border-current/20 bg-white/90 px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-current/20"
+                  >
+                    {routeFeedbackDrawerOpen ? "Hide details" : "View details"}
+                  </button>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
           {shouldRenderAttemptFeedbackPanel ? (
             <section
-              aria-label={isStudentBetaRouteRunner ? "Route feedback drawer" : "Attempt review"}
+              aria-label={isStudentBetaRouteRunner ? "Route feedback details" : "Attempt review"}
               className={
                 isStudentBetaRouteRunner
-                  ? "fixed inset-x-2 bottom-2 z-50 max-h-[78dvh] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:w-[min(26rem,calc(100vw-2rem))] lg:max-h-none"
+                  ? isStudentBetaPhoneMap
+                    ? "order-3 max-h-[55dvh] overflow-auto rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                    : "fixed inset-x-2 bottom-2 z-50 max-h-[78dvh] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:w-[min(26rem,calc(100vw-2rem))] lg:max-h-none"
                   : "order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
               }
             >
@@ -8488,7 +8565,7 @@ export function RouteRunnerClient({
                       onClick={() => setRouteFeedbackDrawerOpen(false)}
                       className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
-                      Close
+                      {isStudentBetaPhoneMap ? "Hide details" : "Close"}
                     </button>
                   ) : null}
                 </div>
