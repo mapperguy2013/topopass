@@ -61,6 +61,17 @@ export type TrainingRouteAuthorMode =
   | "add-checkpoint"
   | "set-destination";
 
+export type TrainingRouteAuthorMapWheelInput = {
+  targetInsideMap: boolean;
+  deltaX: number;
+  deltaY: number;
+};
+
+export type TrainingRouteAuthorPointerIsolationInput = {
+  targetInsideMap: boolean;
+  activeMode: TrainingRouteAuthorMode;
+};
+
 export type TrainingRouteAuthorToolbarActionId =
   | TrainingRouteAuthorMode
   | "undo"
@@ -204,6 +215,26 @@ const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
   "hintSequence",
   "scoringEmphasis"
 ]);
+
+function hasUsableScrollDelta(delta: number): boolean {
+  return Number.isFinite(delta) && delta !== 0;
+}
+
+export function shouldIsolateTrainingRouteAuthorMapWheel(input: TrainingRouteAuthorMapWheelInput): boolean {
+  return input.targetInsideMap && (hasUsableScrollDelta(input.deltaX) || hasUsableScrollDelta(input.deltaY));
+}
+
+export function dominantTrainingRouteAuthorWheelDelta(input: Pick<TrainingRouteAuthorMapWheelInput, "deltaX" | "deltaY">): number {
+  if (!hasUsableScrollDelta(input.deltaX) && !hasUsableScrollDelta(input.deltaY)) {
+    return 0;
+  }
+
+  return Math.abs(input.deltaY) >= Math.abs(input.deltaX) ? input.deltaY : input.deltaX;
+}
+
+export function shouldIsolateTrainingRouteAuthorPointer(input: TrainingRouteAuthorPointerIsolationInput): boolean {
+  return input.targetInsideMap;
+}
 
 function stopNodeId(stop: RouteStop, map: MapDefinition): string | null {
   if (stop.type === "node") {

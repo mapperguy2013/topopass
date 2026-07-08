@@ -13,11 +13,14 @@ import {
   compareTrainingRouteAuthorShortestRoute,
   createEmptyTrainingRouteAuthorState,
   createSampleTrainingRouteAuthorState,
+  dominantTrainingRouteAuthorWheelDelta,
   finishTrainingRouteAuthorStroke,
   getTrainingRouteAuthorMap,
   setTrainingRouteAuthorDestination,
   setTrainingRouteAuthorMode,
   setTrainingRouteAuthorStart,
+  shouldIsolateTrainingRouteAuthorMapWheel,
+  shouldIsolateTrainingRouteAuthorPointer,
   startTrainingRouteAuthorStroke,
   updateTrainingRouteAuthorMetadataField,
   validateTrainingRouteAuthorState
@@ -158,6 +161,45 @@ test("curated training route author toolbar exposes the route creation workflow"
   assert.equal(model.toolbarActions.find((action) => action.id === "compare-shortest-route")?.disabled, true);
   assert.equal(model.toolbarActions.find((action) => action.id === "export-json")?.disabled, true);
   assert.match(clientSource, /role="toolbar"/);
+});
+
+test("curated training route author wheel events isolate map zoom from page scroll", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.equal(shouldIsolateTrainingRouteAuthorMapWheel({ targetInsideMap: true, deltaX: 0, deltaY: 120 }), true);
+  assert.equal(shouldIsolateTrainingRouteAuthorMapWheel({ targetInsideMap: true, deltaX: 48, deltaY: 0 }), true);
+  assert.equal(shouldIsolateTrainingRouteAuthorMapWheel({ targetInsideMap: false, deltaX: 0, deltaY: 120 }), false);
+  assert.equal(shouldIsolateTrainingRouteAuthorMapWheel({ targetInsideMap: true, deltaX: 0, deltaY: 0 }), false);
+  assert.equal(dominantTrainingRouteAuthorWheelDelta({ deltaX: 40, deltaY: 10 }), 40);
+  assert.match(clientSource, /addEventListener\("wheel", handleNativeWheel, \{ passive: false \}\)/);
+  assert.match(clientSource, /event\.preventDefault\(\)/);
+  assert.match(clientSource, /event\.stopPropagation\(\)/);
+  assert.doesNotMatch(clientSource, /onWheel=\{handleMapWheel\}/);
+});
+
+test("curated training route author pointer modes isolate map drags without trapping page scroll elsewhere", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  for (const activeMode of ["pan", "draw-route", "set-start", "add-checkpoint", "set-destination"] as const) {
+    assert.equal(shouldIsolateTrainingRouteAuthorPointer({ targetInsideMap: true, activeMode }), true);
+    assert.equal(shouldIsolateTrainingRouteAuthorPointer({ targetInsideMap: false, activeMode }), false);
+  }
+
+  assert.match(clientSource, /kind: "select"/);
+  assert.match(clientSource, /setPointerCapture\?\.\(event\.pointerId\)/);
+  assert.match(clientSource, /releasePointerCapture\?\.\(event\.pointerId\)/);
+  assert.match(clientSource, /touch-none select-none overscroll-contain/);
+  assert.match(clientSource, /ref=\{mapSvgRef\}/);
+});
+
+test("curated training route author keeps map controls clickable outside the isolated viewport", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.match(clientSource, /role="toolbar"/);
+  assert.match(clientSource, /onClick=\{\(\) => handleToolbarAction\(action\)\}/);
+  assert.match(clientSource, /onChange=\{\(event\) => setShowRestrictions\(event\.target\.checked\)\}/);
+  assert.match(clientSource, /svgElement\.addEventListener\("wheel"/);
+  assert.doesNotMatch(clientSource, /document\.addEventListener\("wheel"/);
 });
 
 test("curated training route author hides unrelated route-runner panels by default", () => {

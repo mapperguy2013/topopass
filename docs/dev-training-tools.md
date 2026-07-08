@@ -37,6 +37,8 @@ Stage 18.7 keeps `/dev/training-route` focused on route authoring instead of emb
 
 Stage 18.8 removes the static placeholder export. `/dev/training-route` now starts empty, renders the Real London road and label data, and updates route state from map interaction. The `Load sample route` button is the only way to seed a fixture route for testing; normal export readiness depends on the route currently authored in the workspace.
 
+Stage 18.9 isolates map gestures from page scrolling. Mouse wheel and trackpad scroll over the authoring map are handled by the map viewport only, touch drawing and panning do not drag the page, and normal page scroll still works outside the map.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
@@ -115,16 +117,21 @@ Run the app locally and check:
 2. `/dev/route-runner` opens the existing map workspace and still shows Phase 6 map labels, overlays, route review, and Training Mode test controls.
 3. `/dev/training-route` opens with no default route exported and shows the map authoring workspace before metadata, validation, shortest-route comparison, and export JSON.
 4. Pan and wheel-zoom the map.
-5. Choose `Set start` and click the map; confirm the start summary changes to selected.
-6. Choose `Draw route`, trace roads, and confirm the route summary changes to drawn and matched.
-7. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments.
-8. Choose `Set destination` and click the map; confirm the destination summary changes to selected.
-9. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
-10. Complete required metadata and confirm `Copy JSON` enables only when the readiness checklist is complete.
-11. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, metadata, validation summary, and shortest-route comparison.
-12. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
-13. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-14. `/practice/training` remains the learner-facing Training Mode route.
+5. Confirm mouse wheel over the map zooms the map without scrolling the page.
+6. Confirm dragging in `Pan` mode moves the map without scrolling the page.
+7. Confirm drawing a route does not scroll the page.
+8. Confirm mobile/touch drawing and panning do not fight the page scroll.
+9. Confirm page scroll still works normally when the gesture starts outside the map.
+10. Choose `Set start` and click the map; confirm the start summary changes to selected.
+11. Choose `Draw route`, trace roads, and confirm the route summary changes to drawn and matched.
+12. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments.
+13. Choose `Set destination` and click the map; confirm the destination summary changes to selected.
+14. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
+15. Complete required metadata and confirm `Copy JSON` enables only when the readiness checklist is complete.
+16. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, metadata, validation summary, and shortest-route comparison.
+17. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
+18. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+19. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 
