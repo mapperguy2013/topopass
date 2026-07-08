@@ -10,6 +10,43 @@ import type {
 
 export type CuratedTrainingRouteStatus = "draft" | "beta" | "approved";
 
+export type CuratedShortestRouteComparisonVerdict =
+  | "shortest-or-near-shortest"
+  | "acceptable-training-variation"
+  | "detour-warning"
+  | "major-detour-warning"
+  | "unknown";
+
+export type CuratedShortestRouteComparisonStatus = "available" | "unknown" | "not-applicable";
+
+export type CuratedShortestRouteComparisonDetail = {
+  comparisonStatus: CuratedShortestRouteComparisonStatus;
+  verdict: CuratedShortestRouteComparisonVerdict;
+  explanation: string;
+  authoredLengthMeters: number | null;
+  shortestLengthMeters: number | null;
+  lengthDeltaMeters: number | null;
+  percentageLonger: number | null;
+  authoredSegmentCount: number | null;
+  shortestSegmentCount: number | null;
+  segmentCountDelta: number | null;
+  authoredTurnCount: number | null;
+  shortestTurnCount: number | null;
+  turnCountDelta: number | null;
+  authoredDecisionPointCount: number | null;
+  shortestDecisionPointCount: number | null;
+  decisionPointDelta: number | null;
+  shortestRouteSegmentIds: string[];
+};
+
+export type CuratedShortestRouteComparison = {
+  directComparison: CuratedShortestRouteComparisonDetail;
+  checkpointConstrainedComparison: CuratedShortestRouteComparisonDetail;
+  routeChoiceJustification: string;
+  requiresRouteChoiceJustification: boolean;
+  guidance: string[];
+};
+
 export type CuratedTrainingRouteMetadata = {
   routeId: string;
   title: string;
@@ -23,6 +60,7 @@ export type CuratedTrainingRouteMetadata = {
   hintSequence: string[];
   scoringEmphasis: string[];
   instructorFeedbackNotes: string;
+  routeChoiceJustification: string;
   status: CuratedTrainingRouteStatus;
 };
 
@@ -61,5 +99,6 @@ export type CuratedTrainingRouteExport = {
     "status" | "valid" | "blockingErrors" | "advisoryWarnings" | "affectedRouteSegmentIds" | "ruleCodes" | "explanation"
   >;
   complexitySummary: CuratedTrainingRouteComplexitySummary;
+  shortestRouteComparison: CuratedShortestRouteComparison;
   validationSegments: LearnerRouteValidationSegment[];
 };

@@ -1,10 +1,13 @@
 import {
   buildMapGraph,
+  findShortestLegalRoute,
   findShortestLegalRouteThroughStops,
   type MapDefinition,
   type MapGraph,
   type RouteExercise,
   type RouteStop,
+  type ShortestLegalRouteResult,
+  type ShortestLegalRouteThroughStopsResult,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
 import {
@@ -15,6 +18,8 @@ import {
   type CuratedTrainingRouteComplexitySummary,
   type CuratedTrainingRouteExport,
   type CuratedTrainingRouteMetadata,
+  type CuratedShortestRouteComparison,
+  type CuratedShortestRouteComparisonDetail,
   type CuratedTrainingRouteStatus,
   type CuratedTrainingRouteStop
 } from "../../../lib/training/curatedTrainingRoutes.ts";
@@ -28,6 +33,8 @@ import {
   realLondonOsmPilotRouteExercises,
   realLondonOsmPilotRouteMap
 } from "../route-runner/routeRunnerMaps.ts";
+
+export type { CuratedShortestRouteComparisonDetail } from "../../../lib/training/curatedTrainingRoutes.ts";
 
 export const DEV_TRAINING_ROUTE_AUTHOR_PATH = "/dev/training-route";
 
@@ -54,6 +61,7 @@ export type TrainingRouteAuthorModel = {
   metadataFields: TrainingRouteAuthorField[];
   validation: LearnerRouteValidationResult;
   complexitySummary: CuratedTrainingRouteComplexitySummary;
+  shortestRouteComparison: CuratedShortestRouteComparison;
   exportData: CuratedTrainingRouteExport;
   exportJson: string;
   approvalWarning: TrainingRouteAuthorApprovalWarning | null;
@@ -115,6 +123,22 @@ function validationSegmentsFromRoute(input: {
       fromNodeId: edge.fromNodeId,
       toNodeId: edge.toNodeId
     }));
+}
+
+function routeValidationMetrics(input: {
+  map: MapDefinition;
+  graph: MapGraph;
+  edgeIds: readonly string[];
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+}): LearnerRouteValidationResult {
+  return validateLearnerRoute({
+    map: input.map,
+    routeSegments: validationSegmentsFromRoute({
+      graph: input.graph,
+      edgeIds: input.edgeIds
+    }),
+    difficulty: input.difficulty
+  });
 }
 
 function inferDifficultyFromMetrics(
@@ -181,6 +205,8 @@ function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetad
     scoringEmphasis: ["legal route validity", "checkpoint order", "route efficiency"],
     instructorFeedbackNotes:
       "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
+    routeChoiceJustification:
+      "This draft follows the selected exercise stops. Add a specific instructor note if the route is intentionally longer than the shortest legal option.",
     status: "beta"
   };
 }
@@ -227,6 +253,12 @@ function buildMetadataFields(metadata: CuratedTrainingRouteMetadata): TrainingRo
       value: metadata.instructorFeedbackNotes
     },
     {
+      id: "routeChoiceJustification",
+      label: "Route choice justification",
+      input: "textarea",
+      value: metadata.routeChoiceJustification
+    },
+    {
       id: "status",
       label: "Approved/beta status",
       input: "select",
@@ -261,9 +293,224 @@ function approvalWarning(input: {
   return null;
 }
 
+function unknownComparison(explanation: string): CuratedShortestRouteComparisonDetail {
+  return {
+    comparisonStatus: "unknown",
+    verdict: "unknown",
+    explanation,
+    authoredLengthMeters: null,
+    shortestLengthMeters: null,
+    lengthDeltaMeters: null,
+    percentageLonger: null,
+    authoredSegmentCount: null,
+    shortestSegmentCount: null,
+    segmentCountDelta: null,
+    authoredTurnCount: null,
+    shortestTurnCount: null,
+    turnCountDelta: null,
+    authoredDecisionPointCount: null,
+    shortestDecisionPointCount: null,
+    decisionPointDelta: null,
+    shortestRouteSegmentIds: []
+  };
+}
+
+function notApplicableComparison(explanation: string): CuratedShortestRouteComparisonDetail {
+  return {
+    ...unknownComparison(explanation),
+    comparisonStatus: "not-applicable"
+  };
+}
+
+export function classifyShortestRouteComparison(input: {
+  authoredLengthMeters: number;
+  shortestLengthMeters: number;
+  authoredSegmentCount: number;
+  shortestSegmentCount: number;
+  authoredTurnCount: number;
+  shortestTurnCount: number;
+  authoredDecisionPointCount: number;
+  shortestDecisionPointCount: number;
+  shortestRouteSegmentIds?: readonly string[];
+}): CuratedShortestRouteComparisonDetail {
+  if (!Number.isFinite(input.authoredLengthMeters) || !Number.isFinite(input.shortestLengthMeters)) {
+    return unknownComparison("Route length data is incomplete, so shortest-route efficiency is advisory only.");
+  }
+
+  if (input.shortestLengthMeters <= 0) {
+    return unknownComparison("The shortest route length is zero or unavailable, so route efficiency cannot be compared.");
+  }
+
+  const lengthDeltaMeters = input.authoredLengthMeters - input.shortestLengthMeters;
+  const percentageLonger = (lengthDeltaMeters / input.shortestLengthMeters) * 100;
+  const roundedPercentage = Math.round(percentageLonger * 10) / 10;
+  let verdict: CuratedShortestRouteComparisonDetail["verdict"] = "shortest-or-near-shortest";
+
+  if (percentageLonger >= 50) {
+    verdict = "major-detour-warning";
+  } else if (percentageLonger >= 25) {
+    verdict = "detour-warning";
+  } else if (percentageLonger > 10) {
+    verdict = "acceptable-training-variation";
+  }
+
+  const verdictText: Record<Exclude<CuratedShortestRouteComparisonDetail["verdict"], "unknown">, string> = {
+    "shortest-or-near-shortest": "near-shortest",
+    "acceptable-training-variation": "an acceptable training variation",
+    "detour-warning": "a detour warning",
+    "major-detour-warning": "a major detour warning"
+  };
+
+  return {
+    comparisonStatus: "available",
+    verdict,
+    explanation: `The authored route is ${roundedPercentage}% longer than the shortest legal route, which is ${verdictText[verdict]}.`,
+    authoredLengthMeters: Math.round(input.authoredLengthMeters),
+    shortestLengthMeters: Math.round(input.shortestLengthMeters),
+    lengthDeltaMeters: Math.round(lengthDeltaMeters),
+    percentageLonger: roundedPercentage,
+    authoredSegmentCount: input.authoredSegmentCount,
+    shortestSegmentCount: input.shortestSegmentCount,
+    segmentCountDelta: input.authoredSegmentCount - input.shortestSegmentCount,
+    authoredTurnCount: input.authoredTurnCount,
+    shortestTurnCount: input.shortestTurnCount,
+    turnCountDelta: input.authoredTurnCount - input.shortestTurnCount,
+    authoredDecisionPointCount: input.authoredDecisionPointCount,
+    shortestDecisionPointCount: input.shortestDecisionPointCount,
+    decisionPointDelta: input.authoredDecisionPointCount - input.shortestDecisionPointCount,
+    shortestRouteSegmentIds: [...(input.shortestRouteSegmentIds ?? [])]
+  };
+}
+
+function directShortestResult(input: {
+  graph: MapGraph;
+  stopNodeIds: readonly string[];
+  restrictions: MapDefinition["restrictions"];
+}): ShortestLegalRouteResult {
+  const startNodeId = input.stopNodeIds[0];
+  const endNodeId = input.stopNodeIds[input.stopNodeIds.length - 1];
+
+  if (!startNodeId || !endNodeId) {
+    return {
+      found: false,
+      startNodeId: startNodeId ?? "unknown-start",
+      endNodeId: endNodeId ?? "unknown-destination",
+      reason: "INVALID_START_NODE"
+    };
+  }
+
+  return findShortestLegalRoute({
+    graph: input.graph,
+    startNodeId,
+    endNodeId,
+    restrictions: input.restrictions
+  });
+}
+
+function comparisonFromShortestRoute(input: {
+  map: MapDefinition;
+  graph: MapGraph;
+  authoredValidation: LearnerRouteValidationResult;
+  authoredRouteIsValid: boolean;
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+  shortestRoute: ShortestLegalRouteResult | ShortestLegalRouteThroughStopsResult;
+  missingRouteExplanation: string;
+}): CuratedShortestRouteComparisonDetail {
+  if (!input.authoredRouteIsValid) {
+    return unknownComparison("The authored route is invalid or incomplete, so shortest-route comparison is advisory only.");
+  }
+
+  if (!input.shortestRoute.found) {
+    return unknownComparison(input.missingRouteExplanation);
+  }
+
+  const shortestValidation = routeValidationMetrics({
+    map: input.map,
+    graph: input.graph,
+    edgeIds: input.shortestRoute.edgeIds,
+    difficulty: input.difficulty
+  });
+
+  return classifyShortestRouteComparison({
+    authoredLengthMeters: input.authoredValidation.metrics.routeDistanceMeters,
+    shortestLengthMeters: input.shortestRoute.distanceMeters,
+    authoredSegmentCount: input.authoredValidation.metrics.segmentCount,
+    shortestSegmentCount: shortestValidation.metrics.segmentCount,
+    authoredTurnCount: input.authoredValidation.metrics.turnCount,
+    shortestTurnCount: shortestValidation.metrics.turnCount,
+    authoredDecisionPointCount: input.authoredValidation.metrics.junctionDecisionCount,
+    shortestDecisionPointCount: shortestValidation.metrics.junctionDecisionCount,
+    shortestRouteSegmentIds: input.shortestRoute.edgeIds
+  });
+}
+
+function buildShortestRouteComparison(input: {
+  map: MapDefinition;
+  graph: MapGraph;
+  stopNodeIds: readonly string[];
+  authoredValidation: LearnerRouteValidationResult;
+  authoredRouteIsValid: boolean;
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+  routeChoiceJustification: string;
+}): CuratedShortestRouteComparison {
+  const directRoute = directShortestResult({
+    graph: input.graph,
+    stopNodeIds: input.stopNodeIds,
+    restrictions: input.map.restrictions
+  });
+  const checkpointRoute =
+    input.stopNodeIds.length > 2
+      ? findShortestLegalRouteThroughStops({
+          graph: input.graph,
+          stopNodeIds: [...input.stopNodeIds],
+          restrictions: input.map.restrictions
+        })
+      : null;
+  const directComparison = comparisonFromShortestRoute({
+    map: input.map,
+    graph: input.graph,
+    authoredValidation: input.authoredValidation,
+    authoredRouteIsValid: input.authoredRouteIsValid,
+    difficulty: input.difficulty,
+    shortestRoute: directRoute,
+    missingRouteExplanation: "No direct legal shortest route can be proven from the available map graph."
+  });
+  const checkpointConstrainedComparison = checkpointRoute
+    ? comparisonFromShortestRoute({
+        map: input.map,
+        graph: input.graph,
+        authoredValidation: input.authoredValidation,
+        authoredRouteIsValid: input.authoredRouteIsValid,
+        difficulty: input.difficulty,
+        shortestRoute: checkpointRoute,
+        missingRouteExplanation: "No checkpoint-constrained legal shortest route can be proven from the available map graph."
+      })
+    : notApplicableComparison("Checkpoint-constrained comparison is not needed because this route has no intermediate checkpoints.");
+  const requiresRouteChoiceJustification =
+    directComparison.verdict === "detour-warning" ||
+    directComparison.verdict === "major-detour-warning" ||
+    checkpointConstrainedComparison.verdict === "detour-warning" ||
+    checkpointConstrainedComparison.verdict === "major-detour-warning";
+
+  return {
+    directComparison,
+    checkpointConstrainedComparison,
+    routeChoiceJustification: input.routeChoiceJustification,
+    requiresRouteChoiceJustification,
+    guidance: [
+      "A training route does not need to be shortest if the objective justifies the route choice.",
+      "Beginner routes should usually stay close to shortest unless they are teaching checkpoint navigation.",
+      "Advanced routes may be longer when they deliberately practise complex junction or recovery decisions.",
+      "Major detours should include an instructor route-choice note before beta or approved status."
+    ]
+  };
+}
+
 export function buildTrainingRouteAuthorModel(input?: {
   exercise?: RouteExercise;
   statusOverride?: CuratedTrainingRouteStatus;
+  authoredRouteSegmentIds?: readonly string[];
+  routeChoiceJustification?: string;
 }): TrainingRouteAuthorModel {
   const sourceExercise = input?.exercise ?? DEFAULT_ROUTE_EXERCISE;
 
@@ -274,20 +521,22 @@ export function buildTrainingRouteAuthorModel(input?: {
   const sourceMap = realLondonOsmPilotRouteMap;
   const graph = buildMapGraph(sourceMap);
   const stopNodeIds = selectedStopNodeIds(sourceExercise, sourceMap);
-  const shortestRoute = findShortestLegalRouteThroughStops({
+  const checkpointShortestRoute = findShortestLegalRouteThroughStops({
     graph,
     stopNodeIds,
     restrictions: sourceMap.restrictions
   });
-  const routeSegments = shortestRoute.found
+  const candidateRouteSegmentIds = input?.authoredRouteSegmentIds ?? (checkpointShortestRoute.found ? checkpointShortestRoute.edgeIds : []);
+  const routeSegments = candidateRouteSegmentIds.length > 0
     ? validationSegmentsFromRoute({
         graph,
-        edgeIds: shortestRoute.edgeIds
+        edgeIds: candidateRouteSegmentIds
       })
     : [];
   const baseMetadata = metadataForExercise(sourceExercise);
   const metadata: CuratedTrainingRouteMetadata = {
     ...baseMetadata,
+    routeChoiceJustification: input?.routeChoiceJustification ?? baseMetadata.routeChoiceJustification,
     status: input?.statusOverride ?? baseMetadata.status
   };
   const validation = validateLearnerRoute({
@@ -296,6 +545,15 @@ export function buildTrainingRouteAuthorModel(input?: {
     difficulty: metadata.difficulty
   });
   const estimatedDifficulty = inferDifficultyFromMetrics(validation, metadata.difficulty);
+  const shortestRouteComparison = buildShortestRouteComparison({
+    map: sourceMap,
+    graph,
+    stopNodeIds,
+    authoredValidation: validation,
+    authoredRouteIsValid: validation.valid && routeSegments.length > 0,
+    difficulty: metadata.difficulty,
+    routeChoiceJustification: metadata.routeChoiceJustification
+  });
   const complexitySummary: CuratedTrainingRouteComplexitySummary = {
     approximateRouteLengthMeters: Math.round(validation.metrics.routeDistanceMeters),
     segmentCount: validation.metrics.segmentCount,
@@ -309,7 +567,9 @@ export function buildTrainingRouteAuthorModel(input?: {
       estimatedDifficulty
     })
   };
-  const nodeIds = shortestRoute.found ? shortestRoute.nodeIds : stopNodeIds;
+  const nodeIds = routeSegments.length > 0
+    ? [routeSegments[0].fromNodeId, ...routeSegments.map((segment) => segment.toNodeId)]
+    : stopNodeIds;
   const routeGeometry = nodeIds
     .map((nodeId) => pointForNode(sourceMap, nodeId))
     .filter((point): point is Vec2 => Boolean(point));
@@ -335,7 +595,7 @@ export function buildTrainingRouteAuthorModel(input?: {
     }),
     checkpoints,
     routeSegmentIds: routeSegments.map((segment) => segment.id),
-    roadIds: shortestRoute.found ? [...new Set(shortestRoute.roadIds)] : [],
+    roadIds: [...new Set(routeSegments.map((segment) => segment.roadId))],
     nodeIds,
     routeGeometry,
     validationSummary: {
@@ -348,6 +608,7 @@ export function buildTrainingRouteAuthorModel(input?: {
       explanation: validation.explanation
     },
     complexitySummary,
+    shortestRouteComparison,
     validationSegments: routeSegments
   };
 
@@ -362,6 +623,7 @@ export function buildTrainingRouteAuthorModel(input?: {
     metadataFields: buildMetadataFields(metadata),
     validation,
     complexitySummary,
+    shortestRouteComparison,
     exportData,
     exportJson: `${JSON.stringify(exportData, null, 2)}\n`,
     approvalWarning: approvalWarning({ status: metadata.status, validation }),

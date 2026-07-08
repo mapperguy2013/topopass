@@ -6,6 +6,7 @@ import { RouteRunnerClient } from "../route-runner/RouteRunnerClient";
 import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
   buildTrainingRouteAuthorModel,
+  type CuratedShortestRouteComparisonDetail,
   type TrainingRouteAuthorField
 } from "./trainingRouteAuthor";
 
@@ -42,6 +43,59 @@ function renderField(field: TrainingRouteAuthorField) {
   }
 
   return <input className={baseClass} defaultValue={field.value} id={field.id} name={field.id} />;
+}
+
+function renderComparison(label: string, comparison: CuratedShortestRouteComparisonDetail) {
+  const verdictClass =
+    comparison.verdict === "major-detour-warning" || comparison.verdict === "detour-warning"
+      ? "border-amber-200 bg-amber-50 text-amber-950"
+      : comparison.verdict === "unknown"
+        ? "border-slate-200 bg-slate-50 text-slate-700"
+        : "border-green-200 bg-green-50 text-green-900";
+
+  return (
+    <div className={`rounded-lg border p-3 ${verdictClass}`}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide">{label}</p>
+          <p className="mt-2 text-sm leading-6">{comparison.explanation}</p>
+        </div>
+        <span className="w-fit rounded-full border border-current px-3 py-1 text-xs font-semibold uppercase tracking-wide">
+          {comparison.verdict}
+        </span>
+      </div>
+      <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="font-semibold">Authored length</dt>
+          <dd>{comparison.authoredLengthMeters === null ? "unknown" : `${comparison.authoredLengthMeters} m`}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">Shortest length</dt>
+          <dd>{comparison.shortestLengthMeters === null ? "unknown" : `${comparison.shortestLengthMeters} m`}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">Length delta</dt>
+          <dd>{comparison.lengthDeltaMeters === null ? "unknown" : `${comparison.lengthDeltaMeters} m`}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">Percentage longer</dt>
+          <dd>{comparison.percentageLonger === null ? "unknown" : `${comparison.percentageLonger}%`}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">Segment delta</dt>
+          <dd>{comparison.segmentCountDelta === null ? "unknown" : comparison.segmentCountDelta}</dd>
+        </div>
+        <div>
+          <dt className="font-semibold">Turn delta</dt>
+          <dd>{comparison.turnCountDelta === null ? "unknown" : comparison.turnCountDelta}</dd>
+        </div>
+      </dl>
+      <p className="mt-3 break-words font-mono text-xs">
+        Shortest route segments:{" "}
+        {comparison.shortestRouteSegmentIds.length > 0 ? comparison.shortestRouteSegmentIds.join(", ") : "none"}
+      </p>
+    </div>
+  );
 }
 
 export default function DevTrainingRouteAuthorPage() {
@@ -95,7 +149,8 @@ export default function DevTrainingRouteAuthorPage() {
               </form>
               <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
                 Invalid routes must stay draft or beta. Approval should happen only after validation is clean and an
-                instructor has reviewed any advisory warnings.
+                instructor has reviewed any advisory warnings. Major detours should include a route choice
+                justification before beta or approved status.
               </p>
             </section>
           </div>
@@ -168,6 +223,49 @@ export default function DevTrainingRouteAuthorPage() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-ink">Shortest route comparison</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    Compare the authored route with the shortest legal route that can be proven from available map
+                    graph, one-way, turn restriction, and access metadata.
+                  </p>
+                </div>
+                <label className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">
+                  <input
+                    aria-label="Show shortest route comparison"
+                    className="size-4"
+                    defaultChecked
+                    readOnly
+                    type="checkbox"
+                  />
+                  Show shortest route comparison
+                </label>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                {renderComparison("Direct shortest route", model.shortestRouteComparison.directComparison)}
+                {renderComparison(
+                  "Checkpoint-constrained shortest route",
+                  model.shortestRouteComparison.checkpointConstrainedComparison
+                )}
+              </div>
+
+              {model.shortestRouteComparison.requiresRouteChoiceJustification ? (
+                <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+                  This route is significantly longer than the proven shortest route. Add a route choice justification
+                  before exporting as beta or approved.
+                </p>
+              ) : null}
+
+              <ul className="mt-4 list-disc space-y-1 rounded-lg bg-slate-50 p-3 pl-8 text-sm leading-6 text-slate-700">
+                {model.shortestRouteComparison.guidance.map((guidance) => (
+                  <li key={guidance}>{guidance}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="text-xl font-bold text-ink">Route complexity summary</h2>
               <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-lg bg-slate-50 p-3">
@@ -210,7 +308,7 @@ export default function DevTrainingRouteAuthorPage() {
               <h2 className="text-xl font-bold text-ink">Export panel</h2>
               <p className="mt-2 text-sm leading-6 text-slate-700">
                 Copy this JSON into a future file under data/training-routes/. Browser file writing is intentionally
-                not required.
+                not required. The export includes the shortest-route comparison and route choice justification.
               </p>
               <textarea
                 aria-label="Curated route JSON export"
@@ -228,7 +326,8 @@ export default function DevTrainingRouteAuthorPage() {
               <h2 className="text-xl font-bold text-ink">Real London map preview</h2>
               <p className="mt-2 text-sm leading-6 text-slate-700">
                 Use the existing Route Runner drawing and preview tools to inspect the route before exporting curated
-                metadata. This does not alter learner-facing Training Mode defaults.
+                metadata. Use the shortest route reveal in this dev preview alongside the comparison panel when
+                checking detours. This does not alter learner-facing Training Mode defaults.
               </p>
             </div>
           </div>

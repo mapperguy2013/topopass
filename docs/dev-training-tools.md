@@ -32,6 +32,8 @@ The authoring page reuses:
 
 Author fields include route id, title, area, difficulty, exercise type, description, objective, skills practised, expected learner mistakes, hint sequence, scoring emphasis, instructor feedback notes, and draft/beta/approved status.
 
+Stage 18.6 adds a `Route choice justification` field. Use it when the authored route is intentionally longer than the shortest legal route that the project can prove from current map data.
+
 ## Validation Workflow
 
 Use the validation panel before copying an export:
@@ -43,6 +45,28 @@ Use the validation panel before copying an export:
 5. Approve only after validation is clean and instructor review has resolved advisory warnings.
 
 The validation panel uses only restrictions present in the project data. Unknown legal restrictions remain advisory or unverified; they are not invented.
+
+## Shortest Route Check
+
+The Training Route Author includes a shortest-route comparison panel. It compares the authored route against:
+
+- the direct shortest legal route from start to destination
+- the checkpoint-constrained shortest legal route, when intermediate checkpoints exist
+
+The check reuses the existing map graph, legal shortest-route traversal, one-way handling, prohibited turn handling, restricted/non-drivable filtering, and learner route validation. It does not invent legal restrictions. If the graph or restriction data cannot prove a route, the result is shown as `unknown` or advisory rather than invalid.
+
+The percentage longer value means:
+
+- `0-10%` longer - shortest or near-shortest
+- `10-25%` longer - acceptable training variation
+- `25-50%` longer - detour warning
+- `50%+` longer - major detour warning
+
+A route does not need to be shortest when the learning objective justifies it. Beginner routes should usually stay near-shortest unless the exercise teaches checkpoint navigation. Intermediate and advanced routes can be longer when they deliberately practise complex junction planning, legal route choice, missed-turn recovery, or dense-network decisions.
+
+For detour warnings and major detour warnings, write a route choice justification before marking the route beta or approved. A good note explains the training reason, for example:
+
+> This route intentionally avoids the shortest turn to practise checkpoint navigation and two additional junction decisions.
 
 ## Export Workflow
 
@@ -56,9 +80,11 @@ The exported contract includes:
 - route segment ids and road ids
 - validation summary
 - complexity summary
+- shortest route comparison, including direct and checkpoint-constrained results
+- route choice justification
 - validation segments for later replay
 
-Stage 18.5 does not switch learner Training Mode to curated routes. Stage 19 can load these exports and instantiate exercises through the existing Phase 7 generation, validation, scoring, hint, feedback, and progress modules.
+Stage 18.5 and Stage 18.6 do not switch learner Training Mode to curated routes. Stage 19 can load these exports and instantiate exercises through the existing Phase 7 generation, validation, scoring, hint, feedback, and progress modules.
 
 ## Manual QA
 
@@ -66,7 +92,7 @@ Run the app locally and check:
 
 1. `/dev` lists Route Runner and Training Route Author.
 2. `/dev/route-runner` opens the existing map workspace and still shows Phase 6 map labels, overlays, route review, and Training Mode test controls.
-3. `/dev/training-route` shows metadata fields, validation, export JSON, and the Real London map preview.
+3. `/dev/training-route` shows metadata fields, validation, shortest-route comparison, export JSON, and the Real London map preview.
 4. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
 5. `/practice/training` remains the learner-facing Training Mode route.
 

@@ -5,6 +5,7 @@ import type { RouteExercise } from "../../../lib/map-engine/index.ts";
 import { buildDevToolsHomeModel } from "../devTools.ts";
 import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
+  classifyShortestRouteComparison,
   buildTrainingRouteAuthorModel
 } from "../training-route/trainingRouteAuthor.ts";
 import {
@@ -104,6 +105,8 @@ test("curated training route author page renders authoring, validation, preview,
   assert.match(pageSource, /Route metadata/);
   assert.match(pageSource, /Validation panel/);
   assert.match(pageSource, /Route complexity summary/);
+  assert.match(pageSource, /Shortest route comparison/);
+  assert.match(pageSource, /Show shortest route comparison/);
   assert.match(pageSource, /Export panel/);
   assert.match(pageSource, /Curated route JSON export/);
   assert.match(pageSource, /RouteRunnerClient/);
@@ -135,8 +138,11 @@ test("curated training route author exports Stage 19 route contract metadata", (
     "hintSequence",
     "scoringEmphasis",
     "instructorFeedbackNotes",
+    "routeChoiceJustification",
     "status"
   ]);
+  assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
+  assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
 });
 
 test("curated route author blocks approved status for invalid route candidates", () => {
@@ -156,8 +162,97 @@ test("curated route author blocks approved status for invalid route candidates",
   });
 
   assert.equal(model.validation.valid, false);
+  assert.equal(model.shortestRouteComparison.directComparison.comparisonStatus, "unknown");
   assert.equal(model.approvalWarning?.blocking, true);
   assert.match(model.approvalWarning?.message ?? "", /Invalid routes cannot be marked approved/);
+});
+
+test("curated route author returns near-shortest when authored route matches shortest metrics", () => {
+  const comparison = classifyShortestRouteComparison({
+    authoredLengthMeters: 1000,
+    shortestLengthMeters: 1000,
+    authoredSegmentCount: 4,
+    shortestSegmentCount: 4,
+    authoredTurnCount: 2,
+    shortestTurnCount: 2,
+    authoredDecisionPointCount: 2,
+    shortestDecisionPointCount: 2,
+    shortestRouteSegmentIds: ["edge-a", "edge-b"]
+  });
+
+  assert.equal(comparison.comparisonStatus, "available");
+  assert.equal(comparison.verdict, "shortest-or-near-shortest");
+  assert.equal(comparison.percentageLonger, 0);
+  assert.deepEqual(comparison.shortestRouteSegmentIds, ["edge-a", "edge-b"]);
+});
+
+test("curated route author returns detour warning when authored route is much longer", () => {
+  const comparison = classifyShortestRouteComparison({
+    authoredLengthMeters: 1550,
+    shortestLengthMeters: 1000,
+    authoredSegmentCount: 9,
+    shortestSegmentCount: 4,
+    authoredTurnCount: 6,
+    shortestTurnCount: 2,
+    authoredDecisionPointCount: 7,
+    shortestDecisionPointCount: 2
+  });
+
+  assert.equal(comparison.comparisonStatus, "available");
+  assert.equal(comparison.verdict, "major-detour-warning");
+  assert.equal(comparison.percentageLonger, 55);
+  assert.equal(comparison.segmentCountDelta, 5);
+  assert.equal(comparison.turnCountDelta, 4);
+});
+
+test("curated route author handles incomplete shortest-route data safely", () => {
+  const comparison = classifyShortestRouteComparison({
+    authoredLengthMeters: 1000,
+    shortestLengthMeters: 0,
+    authoredSegmentCount: 4,
+    shortestSegmentCount: 0,
+    authoredTurnCount: 2,
+    shortestTurnCount: 0,
+    authoredDecisionPointCount: 2,
+    shortestDecisionPointCount: 0
+  });
+
+  assert.equal(comparison.comparisonStatus, "unknown");
+  assert.equal(comparison.verdict, "unknown");
+  assert.equal(comparison.percentageLonger, null);
+});
+
+test("curated route author includes checkpoint-aware comparison or a graceful unsupported state", () => {
+  const model = buildTrainingRouteAuthorModel();
+
+  assert.ok(
+    ["available", "unknown", "not-applicable"].includes(
+      model.shortestRouteComparison.checkpointConstrainedComparison.comparisonStatus
+    )
+  );
+  assert.ok(model.exportJson.includes('"checkpointConstrainedComparison"'));
+});
+
+test("significantly longer curated routes require route choice justification before approval", () => {
+  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel({
+    authoredRouteSegmentIds: [],
+    routeChoiceJustification: ""
+  });
+  const comparison = classifyShortestRouteComparison({
+    authoredLengthMeters: 1500,
+    shortestLengthMeters: 1000,
+    authoredSegmentCount: 8,
+    shortestSegmentCount: 4,
+    authoredTurnCount: 5,
+    shortestTurnCount: 2,
+    authoredDecisionPointCount: 6,
+    shortestDecisionPointCount: 2
+  });
+
+  assert.equal(comparison.verdict, "major-detour-warning");
+  assert.equal(model.exportData.shortestRouteComparison.routeChoiceJustification.length, 0);
+  assert.match(pageSource, /route choice justification/i);
 });
 
 test("learner navigation does not expose dev training authoring tools", () => {
