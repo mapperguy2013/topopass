@@ -50,6 +50,7 @@ export default function LearnerTrainingPracticePage() {
           initialMapOptionId={model.initialMapOptionId}
           mapOptions={model.mapOptions}
           mode={model.routeRunnerMode}
+          trainingModeOnly
         />
       </div>
     </AppShell>

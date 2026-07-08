@@ -42,11 +42,18 @@ export type LearnerTrainingPracticePageModel = {
   betaStatus: LearnerTrainingPracticeEntryModel["betaStatus"];
   usesExistingRouteRunnerClient: true;
   keepsDevRouteAvailable: true;
+  dedicatedTrainingPage: true;
+  routeRunnerTrainingModeOnly: true;
+  trainingModeDefaultOpen: true;
+  realLondonPracticeKeepsTrainingLinkOnly: true;
   trainingSurface: {
     label: typeof LEARNER_TRAINING_MODE_LABEL;
     difficultySelectorLabel: "Difficulty";
     exerciseTypeSelectorLabel: "Exercise type";
     generateActionLabel: "Generate exercise";
+    hintActionLabel: "Get hint";
+    reviewActionLabel: "Complete and review";
+    mapPanDefault: true;
   };
   mobile: {
     entryPointMinTouchTargetPx: 44;
@@ -96,11 +103,18 @@ export function buildLearnerTrainingPracticePageModel(input: {
     betaStatus: betaEnabled ? "enabled" : "disabled",
     usesExistingRouteRunnerClient: true,
     keepsDevRouteAvailable: true,
+    dedicatedTrainingPage: true,
+    routeRunnerTrainingModeOnly: true,
+    trainingModeDefaultOpen: true,
+    realLondonPracticeKeepsTrainingLinkOnly: true,
     trainingSurface: {
       label: LEARNER_TRAINING_MODE_LABEL,
       difficultySelectorLabel: "Difficulty",
       exerciseTypeSelectorLabel: "Exercise type",
-      generateActionLabel: "Generate exercise"
+      generateActionLabel: "Generate exercise",
+      hintActionLabel: "Get hint",
+      reviewActionLabel: "Complete and review",
+      mapPanDefault: true
     },
     mobile: {
       entryPointMinTouchTargetPx: 44,

@@ -8,6 +8,10 @@ import {
   REAL_LONDON_BETA_MAP_OPTIONS,
   buildRealLondonBetaPracticeScreenModel
 } from "./realLondonBetaPracticeScreen";
+import {
+  LEARNER_TRAINING_PRACTICE_CARD_CTA,
+  LEARNER_TRAINING_PRACTICE_PATH
+} from "../training/learnerTrainingPractice";
 
 export const metadata = buildPageMetadata({
   title: "Real London Practice Beta",
@@ -58,12 +62,32 @@ export default async function RealLondonBetaPracticePage({
   return (
     <AppShell title="Real London Practice" frameClassName="max-w-[1900px]">
       <div className="space-y-4 sm:space-y-5">
+        <section className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-road">Learner Training</p>
+              <h1 className="mt-2 text-xl font-bold text-ink">Training Mode has its own page</h1>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">
+                Generate routes, get hints, complete exercises, and receive instructor-style feedback in the dedicated
+                learner training workspace.
+              </p>
+            </div>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              href={LEARNER_TRAINING_PRACTICE_PATH}
+            >
+              {LEARNER_TRAINING_PRACTICE_CARD_CTA}
+            </Link>
+          </div>
+        </section>
+
         <RouteRunnerClient
           allowDevQaToggle={false}
           initialExerciseId={model.selectedExercise?.id}
           initialMapOptionId={model.mapId}
           mapOptions={REAL_LONDON_BETA_MAP_OPTIONS}
           mode={model.routeRunnerMode}
+          showTrainingModePanel={false}
         />
 
         <RealLondonBetaFeedbackForm

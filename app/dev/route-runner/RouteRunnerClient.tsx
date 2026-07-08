@@ -434,6 +434,8 @@ export type RouteRunnerClientProps = {
   mapOptions?: readonly RouteRunnerMapOption[];
   mode?: RouteRunnerClientMode;
   allowDevQaToggle?: boolean;
+  trainingModeOnly?: boolean;
+  showTrainingModePanel?: boolean;
 };
 
 function emptySnapPreview(): SnappedRouteTraceResult {
@@ -4030,7 +4032,9 @@ export function RouteRunnerClient({
   initialExerciseId,
   mapOptions = [],
   mode = "dev",
-  allowDevQaToggle = mode === "dev"
+  allowDevQaToggle = mode === "dev",
+  trainingModeOnly = false,
+  showTrainingModePanel = true
 }: RouteRunnerClientProps = {}) {
   const initialHydrationState = createRouteRunnerInitialHydrationState({
     initialMapOptionId,
@@ -4038,6 +4042,8 @@ export function RouteRunnerClient({
     mapOptions
   });
   const isStudentBetaRouteRunner = mode === "student-beta";
+  const isTrainingModeOnly = isStudentBetaRouteRunner && trainingModeOnly;
+  const shouldRenderTrainingModePanel = showTrainingModePanel || isTrainingModeOnly;
   const [isStudentBetaPhoneViewport, setIsStudentBetaPhoneViewport] = useState(false);
   const isStudentBetaPhoneMap = isStudentBetaRouteRunner && isStudentBetaPhoneViewport;
   const canvasWidth = isStudentBetaPhoneMap
@@ -4090,7 +4096,9 @@ export function RouteRunnerClient({
   const [fastestRouteRevealState, setFastestRouteRevealState] = useState<FastestRouteRevealState>(() =>
     createHiddenFastestRouteRevealState()
   );
-  const [mapViewportState, setMapViewportState] = useState<MapViewportState>(() => createDefaultMapViewportState());
+  const [mapViewportState, setMapViewportState] = useState<MapViewportState>(() =>
+    isTrainingModeOnly ? setMapInteractionMode(createDefaultMapViewportState(), "pan") : createDefaultMapViewportState()
+  );
   const mapViewportStateRef = useRef<MapViewportState>(mapViewportState);
   const [isPanningMap, setIsPanningMap] = useState(false);
   const [routeReplayState, setRouteReplayState] = useState<RouteReplayState>(() => createRouteReplayState());
@@ -4125,7 +4133,7 @@ export function RouteRunnerClient({
   const [lazyMapLoadingById, setLazyMapLoadingById] = useState<Record<string, boolean>>({});
   const [lazyMapLoadErrorById, setLazyMapLoadErrorById] = useState<Record<string, string | null>>({});
   const [learnerTrainingModeState, setLearnerTrainingModeState] = useState<LearnerTrainingModeState>(() =>
-    createLearnerTrainingModeState()
+    isTrainingModeOnly ? openLearnerTrainingMode(createLearnerTrainingModeState()) : createLearnerTrainingModeState()
   );
   const learnerTrainingProgressStorage = useMemo(
     () =>
@@ -6464,14 +6472,16 @@ export function RouteRunnerClient({
                   </button>
                 </>
               ) : null}
-              <button
-                type="button"
-                onClick={submitDrawnAttempt}
-                disabled={drawnSubmitDisabled}
-                className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-              >
-                {isStudentBetaRouteRunner ? "Submit" : "Submit Attempt"}
-              </button>
+              {!isTrainingModeOnly ? (
+                <button
+                  type="button"
+                  onClick={submitDrawnAttempt}
+                  disabled={drawnSubmitDisabled}
+                  className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {isStudentBetaRouteRunner ? "Submit" : "Submit Attempt"}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -6522,7 +6532,7 @@ export function RouteRunnerClient({
           }`}
         >
           <details
-            open={!isStudentBetaRouteRunner}
+            open={!isStudentBetaRouteRunner || isTrainingModeOnly}
             className={
               isStudentBetaRouteRunner
                 ? "group rounded-lg border border-slate-200 bg-white/95 shadow-sm"
@@ -6537,7 +6547,9 @@ export function RouteRunnerClient({
               }
             >
               <span className="grid min-w-0 flex-1 gap-0.5">
-                <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">Map and route</span>
+                <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                  {isTrainingModeOnly ? "Training setup" : "Map and route"}
+                </span>
                 <span className="truncate text-sm font-semibold text-slate-950">
                   {learnerPracticeMapSummaryLabel(selectedMapOption)}
                 </span>
@@ -6546,7 +6558,7 @@ export function RouteRunnerClient({
                 ) : null}
               </span>
               <span className="inline-flex min-h-9 shrink-0 items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-800 shadow-sm group-open:hidden">
-                Change map or route
+                {isTrainingModeOnly ? "Change map" : "Change map or route"}
               </span>
               <span className="hidden min-h-9 shrink-0 items-center rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 group-open:inline-flex">
                 Hide
@@ -6561,12 +6573,18 @@ export function RouteRunnerClient({
             >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Practice Exercises</p>
-                <h2 className="mt-1 text-base font-semibold text-slate-950">{practiceExercisesPanel.title}</h2>
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                  {isTrainingModeOnly ? "Training map" : "Practice Exercises"}
+                </p>
+                <h2 className="mt-1 text-base font-semibold text-slate-950">
+                  {isTrainingModeOnly ? "Learner training setup" : practiceExercisesPanel.title}
+                </h2>
               </div>
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                {exercisePositionLabel}
-              </span>
+              {!isTrainingModeOnly ? (
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                  {exercisePositionLabel}
+                </span>
+              ) : null}
             </div>
             {isStudentBetaRouteRunner ? (
               <>
@@ -6681,60 +6699,64 @@ export function RouteRunnerClient({
                 existing TOPOPASS map engine. No live OSM data or external routing service is used.
               </p>
             ) : null}
-            <label htmlFor="route-exercise" className="mt-4 block text-sm font-semibold text-slate-900">
-              Route exercise
-            </label>
-            <select
-              id="route-exercise"
-              value={selectedExerciseId}
-              onChange={(event) => handleExerciseChange(event.target.value)}
-              disabled={selectedMapOptionIsLoading || !selectedMapIsScoreable || practiceExercisesPanel.exerciseRows.length === 0}
-              className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-            >
-              {selectedMapOptionIsLoading ? (
-                <option value="">{selectedMapLoadingLabel}</option>
-              ) : practiceExercisesPanel.exerciseRows.length === 0 ? (
-                <option value="">No scored exercise for this map</option>
-              ) : (
-                practiceExercisesPanel.exerciseRows.map((row) => {
-                  const exercise = activeExercises.find((candidate) => candidate.id === row.id);
-                  const availability = exercise ? exerciseAvailabilityById[exercise.id] : null;
+            {!isTrainingModeOnly ? (
+              <>
+                <label htmlFor="route-exercise" className="mt-4 block text-sm font-semibold text-slate-900">
+                  Route exercise
+                </label>
+                <select
+                  id="route-exercise"
+                  value={selectedExerciseId}
+                  onChange={(event) => handleExerciseChange(event.target.value)}
+                  disabled={selectedMapOptionIsLoading || !selectedMapIsScoreable || practiceExercisesPanel.exerciseRows.length === 0}
+                  className="mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  {selectedMapOptionIsLoading ? (
+                    <option value="">{selectedMapLoadingLabel}</option>
+                  ) : practiceExercisesPanel.exerciseRows.length === 0 ? (
+                    <option value="">No scored exercise for this map</option>
+                  ) : (
+                    practiceExercisesPanel.exerciseRows.map((row) => {
+                      const exercise = activeExercises.find((candidate) => candidate.id === row.id);
+                      const availability = exercise ? exerciseAvailabilityById[exercise.id] : null;
 
-                  return (
-                    <option key={row.id} value={row.id}>
-                      {exercise && availability
-                        ? formatExerciseAvailabilityOptionLabel(exercise, availability)
-                        : `${row.title} (${row.id})`}
-                    </option>
-                  );
-                })
-              )}
-            </select>
+                      return (
+                        <option key={row.id} value={row.id}>
+                          {exercise && availability
+                            ? formatExerciseAvailabilityOptionLabel(exercise, availability)
+                            : `${row.title} (${row.id})`}
+                        </option>
+                      );
+                    })
+                  )}
+                </select>
 
-            {!selectedMapIsScoreable ? (
-              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-950">
-                This map is available for preview only. Scored exercises are not available yet.
-              </p>
-            ) : null}
-
-            {selectedExerciseAvailability && !selectedExerciseAvailability.isValid ? (
-              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-                <p className="font-semibold">{selectedExerciseAvailability.reason}</p>
-                <p className="mt-1 leading-5">
-                  This route is available for fixture debugging, but it is not treated as a normal scored practice
-                  question until the required stops are legally reachable.
-                </p>
-                {selectedExerciseAvailability.errors.length > 0 ? (
-                  <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
-                    {selectedExerciseAvailability.errors.map((availabilityError) => (
-                      <li key={availabilityError}>{availabilityError}</li>
-                    ))}
-                  </ul>
+                {!selectedMapIsScoreable ? (
+                  <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs leading-5 text-amber-950">
+                    This map is available for preview only. Scored exercises are not available yet.
+                  </p>
                 ) : null}
-              </div>
+
+                {selectedExerciseAvailability && !selectedExerciseAvailability.isValid ? (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                    <p className="font-semibold">{selectedExerciseAvailability.reason}</p>
+                    <p className="mt-1 leading-5">
+                      This route is available for fixture debugging, but it is not treated as a normal scored practice
+                      question until the required stops are legally reachable.
+                    </p>
+                    {selectedExerciseAvailability.errors.length > 0 ? (
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
+                        {selectedExerciseAvailability.errors.map((availabilityError) => (
+                          <li key={availabilityError}>{availabilityError}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
             ) : null}
 
-            {selectedExercise ? (
+            {selectedExercise && !isTrainingModeOnly ? (
               <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <h2 className="font-semibold text-slate-950">{selectedExerciseDisplay?.title ?? selectedExercise.title}</h2>
@@ -6904,6 +6926,7 @@ export function RouteRunnerClient({
               </div>
             ) : null}
 
+            {shouldRenderTrainingModePanel ? (
             <div className="mt-4 rounded-md border border-blue-200 bg-white p-3 text-sm text-slate-700">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -7334,6 +7357,7 @@ export function RouteRunnerClient({
                 </div>
               ) : null}
             </div>
+            ) : null}
 
             {!isStudentBetaRouteRunner && realLondonPilotPlaythroughPanel.shouldShowPanel ? (
               <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
@@ -7578,47 +7602,55 @@ export function RouteRunnerClient({
             >
               <div className="pointer-events-none absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1.5 sm:right-4 sm:top-4 sm:max-w-[calc(100%-2rem)] sm:gap-2">
                 <div className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm">
-                  <button
-                    type="button"
-                    onClick={() => setRouteMapInteractionMode("draw")}
-                    aria-pressed={mapInteractionMode === "draw"}
-                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-                      mapInteractionMode === "draw"
-                        ? "bg-blue-700 text-white"
-                        : "bg-white/95 text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    Draw
-                  </button>
+                  {!isTrainingModeOnly ? (
+                    <button
+                      type="button"
+                      onClick={() => setRouteMapInteractionMode("draw")}
+                      aria-pressed={mapInteractionMode === "draw"}
+                      className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                        mapInteractionMode === "draw"
+                          ? "bg-blue-700 text-white"
+                          : "bg-white/95 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      Draw
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => setRouteMapInteractionMode("pan")}
                     aria-pressed={mapInteractionMode === "pan"}
-                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap border-l border-slate-300 px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      !isTrainingModeOnly ? "border-l border-slate-300" : ""
+                    } ${
                       mapInteractionMode === "pan"
                         ? "bg-blue-700 text-white"
                         : "bg-white/95 text-slate-700 hover:bg-slate-50"
                     }`}
                   >
-                    Pan
+                    {isTrainingModeOnly ? "Pan map" : "Pan"}
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={undoLastDrawnStroke}
-                  disabled={!hasUndoableDrawnStroke}
-                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                >
-                  Undo
-                </button>
-                <button
-                  type="button"
-                  onClick={clearDrawnAttempt}
-                  disabled={drawnTrace.points.length === 0 && !isDrawing}
-                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                >
-                  {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
-                </button>
+                {!isTrainingModeOnly ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={undoLastDrawnStroke}
+                      disabled={!hasUndoableDrawnStroke}
+                      className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      Undo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearDrawnAttempt}
+                      disabled={drawnTrace.points.length === 0 && !isDrawing}
+                      className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    >
+                      {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
+                    </button>
+                  </>
+                ) : null}
                 {!isStudentBetaRouteRunner ? (
                   <button
                     type="button"

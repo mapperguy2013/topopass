@@ -41,12 +41,18 @@ test("Stage 15 learner training route reuses RouteRunnerClient with standard map
   assert.equal(model.routeRunnerMode, "student-beta");
   assert.equal(model.usesExistingRouteRunnerClient, true);
   assert.equal(model.keepsDevRouteAvailable, true);
+  assert.equal(model.dedicatedTrainingPage, true);
+  assert.equal(model.routeRunnerTrainingModeOnly, true);
+  assert.equal(model.trainingModeDefaultOpen, true);
   assert.equal(model.betaStatus, "disabled");
   assert.equal(model.mapOptions.length, 1);
   assert.equal(model.mapOptions[0].map.id, model.initialMapOptionId);
   assert.equal(model.trainingSurface.difficultySelectorLabel, "Difficulty");
   assert.equal(model.trainingSurface.exerciseTypeSelectorLabel, "Exercise type");
   assert.equal(model.trainingSurface.generateActionLabel, "Generate exercise");
+  assert.equal(model.trainingSurface.hintActionLabel, "Get hint");
+  assert.equal(model.trainingSurface.reviewActionLabel, "Complete and review");
+  assert.equal(model.trainingSurface.mapPanDefault, true);
 });
 
 test("Stage 15 learner training route includes beta map choices when enabled", () => {
@@ -76,11 +82,40 @@ test("Stage 15 Training Mode page does not duplicate Phase 7 engines", () => {
   assert.ok(source.includes("RouteRunnerClient"));
   assert.ok(source.includes("allowDevQaToggle={false}"));
   assert.ok(source.includes("mode={model.routeRunnerMode}"));
+  assert.ok(source.includes("trainingModeOnly"));
   assert.equal(source.includes("generateLearnerExercise"), false);
   assert.equal(source.includes("validateLearnerRoute"), false);
   assert.equal(source.includes("scoreLearnerAttempt"), false);
   assert.equal(source.includes("generateLearnerHint"), false);
   assert.equal(source.includes("generateLearnerAttemptFeedback"), false);
+});
+
+test("Stage 18 dedicated Training Mode page focuses the existing RouteRunnerClient surface", () => {
+  const routeRunnerSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+  const pageSource = readFileSync("app/practice/training/page.tsx", "utf8");
+
+  assert.ok(pageSource.includes("trainingModeOnly"));
+  assert.ok(routeRunnerSource.includes("isTrainingModeOnly"));
+  assert.ok(routeRunnerSource.includes("openLearnerTrainingMode(createLearnerTrainingModeState())"));
+  assert.ok(routeRunnerSource.includes("showTrainingModePanel || isTrainingModeOnly"));
+  assert.ok(routeRunnerSource.includes("Learner training setup"));
+  assert.ok(routeRunnerSource.includes("Pan map"));
+  assert.ok(routeRunnerSource.includes("selectedExercise && !isTrainingModeOnly"));
+});
+
+test("Stage 18 Real London Practice links to dedicated Training Mode instead of embedding the full panel", () => {
+  const source = readFileSync("app/practice/real-london/page.tsx", "utf8");
+
+  assert.ok(source.includes("LEARNER_TRAINING_PRACTICE_PATH"));
+  assert.ok(source.includes("Generate routes, get hints, complete exercises"));
+  assert.ok(source.includes("showTrainingModePanel={false}"));
+});
+
+test("Stage 18 Practice sidebar includes Training Mode in the Practice section", () => {
+  const source = readFileSync("components/layout/Sidebar.tsx", "utf8");
+
+  assert.ok(source.includes('href: "/practice/training"'));
+  assert.ok(source.includes('label: "Training Mode"'));
 });
 
 test("Stage 15 existing dev route runner remains available", () => {
@@ -103,6 +138,7 @@ test("Stage 15 Real London practice route still works when beta is enabled", () 
   assert.equal(model.pagePath, "/practice/real-london");
   assert.equal(model.routeRunnerMode, "student-beta");
   assert.equal(model.mapInteraction.usesExistingRouteRunnerLogic, true);
+  assert.equal(buildLearnerTrainingPracticePageModel({ betaEnabled: true }).realLondonPracticeKeepsTrainingLinkOnly, true);
 });
 
 test("Stage 15 learner-facing Training Mode entry carries mobile usability metadata", () => {

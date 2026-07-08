@@ -13,6 +13,7 @@ const linkGroups = [
     links: [
       { href: "/practice/topographical", label: "Topographical" },
       { href: "/practice/seru", label: "SERU" },
+      { href: "/practice/training", label: "Training Mode" },
       { href: "/mock-test", label: "Mock Test" }
     ]
   },
