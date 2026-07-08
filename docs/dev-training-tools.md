@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -26,13 +26,30 @@ The page title is `Dev Route Runner` and it links back to `/dev`. No learner-fac
 The authoring page reuses:
 
 - the existing Real London map data
-- the existing RouteRunnerClient map and drawing preview surface
 - the learner route validation engine
 - Phase 7 exercise difficulty and exercise type models
 
 Author fields include route id, title, area, difficulty, exercise type, description, objective, skills practised, expected learner mistakes, hint sequence, scoring emphasis, instructor feedback notes, and draft/beta/approved status.
 
 Stage 18.6 adds a `Route choice justification` field. Use it when the authored route is intentionally longer than the shortest legal route that the project can prove from current map data.
+
+Stage 18.7 keeps `/dev/training-route` focused on route authoring instead of embedding the full Route Runner debug surface. The first working section is the map authoring workspace with toolbar actions for pan, set start, draw route, add checkpoint, set destination, undo, removing checkpoints, clearing route data, resetting view, validation, shortest-route comparison, and export.
+
+## Authoring Workflow
+
+Use `/dev/training-route` for curated route creation:
+
+1. Set the start point on the map.
+2. Draw the learner route in driving order.
+3. Add numbered checkpoints if the learner must visit them.
+4. Set the destination.
+5. Review the route state summary for missing start, destination, route, checkpoints, length, segments, turns, decisions, validation, comparison, and export readiness.
+6. Complete metadata after the route shape is clear.
+7. Validate the route.
+8. Compare against the shortest valid route.
+9. Export JSON only after the readiness checklist is complete.
+
+Use `/dev/route-runner` for full diagnostics, QA tables, manual route input, attempt review, adaptive practice diagnostics, and Route Runner regression testing. The authoring page links to `/dev/route-runner` from an advanced diagnostics section instead of showing those panels by default.
 
 ## Validation Workflow
 
@@ -70,7 +87,9 @@ For detour warnings and major detour warnings, write a route choice justificatio
 
 ## Export Workflow
 
-The export panel shows copyable JSON for future files under `data/training-routes/`.
+The export panel appears last. It shows copyable JSON for future files under `data/training-routes/` and an export readiness checklist.
+
+Export should remain blocked until start, destination, route geometry, required metadata, validation, and shortest-route comparison are ready. The exported JSON uses the currently authored route shown in the authoring workspace.
 
 The exported contract includes:
 
@@ -92,7 +111,7 @@ Run the app locally and check:
 
 1. `/dev` lists Route Runner and Training Route Author.
 2. `/dev/route-runner` opens the existing map workspace and still shows Phase 6 map labels, overlays, route review, and Training Mode test controls.
-3. `/dev/training-route` shows metadata fields, validation, shortest-route comparison, export JSON, and the Real London map preview.
+3. `/dev/training-route` shows the map authoring workspace before metadata, validation, shortest-route comparison, and export JSON.
 4. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
 5. `/practice/training` remains the learner-facing Training Mode route.
 

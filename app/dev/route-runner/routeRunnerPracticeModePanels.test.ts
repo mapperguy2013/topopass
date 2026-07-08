@@ -99,17 +99,56 @@ test("dev route-runner keeps existing RouteRunnerClient workspace available", ()
 
 test("curated training route author page renders authoring, validation, preview, and export surfaces", () => {
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const mapIndex = pageSource.indexOf("Map authoring workspace");
+  const metadataIndex = pageSource.indexOf("Route metadata");
+  const exportIndex = pageSource.indexOf("Export panel");
 
   assert.match(pageSource, /Curated Training Route Author/);
   assert.match(pageSource, /buildTrainingRouteAuthorModel/);
+  assert.match(pageSource, /Map authoring workspace/);
+  assert.ok(mapIndex > -1);
+  assert.ok(metadataIndex > mapIndex);
+  assert.ok(exportIndex > metadataIndex);
   assert.match(pageSource, /Route metadata/);
   assert.match(pageSource, /Validation panel/);
-  assert.match(pageSource, /Route complexity summary/);
   assert.match(pageSource, /Shortest route comparison/);
-  assert.match(pageSource, /Show shortest route comparison/);
   assert.match(pageSource, /Export panel/);
   assert.match(pageSource, /Curated route JSON export/);
-  assert.match(pageSource, /RouteRunnerClient/);
+  assert.doesNotMatch(pageSource, /RouteRunnerClient/);
+});
+
+test("curated training route author toolbar exposes the route creation workflow", () => {
+  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel();
+  const labels = model.toolbarActions.map((action) => action.label);
+
+  assert.deepEqual(labels, [
+    "Pan",
+    "Set start",
+    "Draw route",
+    "Add checkpoint",
+    "Set destination",
+    "Undo",
+    "Remove last checkpoint",
+    "Clear route",
+    "Clear checkpoints",
+    "Reset view",
+    "Validate route",
+    "Compare shortest route",
+    "Export JSON"
+  ]);
+  assert.match(pageSource, /role="toolbar"/);
+});
+
+test("curated training route author hides unrelated route-runner panels by default", () => {
+  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+
+  assert.doesNotMatch(pageSource, /Training Mode/);
+  assert.doesNotMatch(pageSource, /Practice Exercises/);
+  assert.doesNotMatch(pageSource, /Adaptive Practice/);
+  assert.doesNotMatch(pageSource, /Manual route input/);
+  assert.doesNotMatch(pageSource, /Attempt Review/);
+  assert.match(pageSource, /Advanced diagnostics/);
 });
 
 test("curated training route author exports Stage 19 route contract metadata", () => {
@@ -122,9 +161,13 @@ test("curated training route author exports Stage 19 route contract metadata", (
   assert.ok(model.exportData.metadata.routeId.length > 0);
   assert.ok(model.exportData.start.nodeId.length > 0);
   assert.ok(model.exportData.destination.nodeId.length > 0);
+  assert.ok(Array.isArray(model.exportData.checkpoints));
   assert.ok(model.exportData.routeSegmentIds.length > 0);
   assert.ok(model.exportData.complexitySummary.segmentCount > 0);
   assert.ok(model.exportJson.includes('"validationSummary"'));
+  assert.ok(model.exportJson.includes('"complexitySummary"'));
+  assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
+  assert.ok(model.exportReadiness.ready);
   assert.deepEqual(fieldIds, [
     "routeId",
     "title",
@@ -142,7 +185,6 @@ test("curated training route author exports Stage 19 route contract metadata", (
     "status"
   ]);
   assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
-  assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
 });
 
 test("curated route author blocks approved status for invalid route candidates", () => {
@@ -253,6 +295,30 @@ test("significantly longer curated routes require route choice justification bef
   assert.equal(comparison.verdict, "major-detour-warning");
   assert.equal(model.exportData.shortestRouteComparison.routeChoiceJustification.length, 0);
   assert.match(pageSource, /route choice justification/i);
+});
+
+test("curated route author export is blocked until required route data exists", () => {
+  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel({
+    authoredRouteSegmentIds: []
+  });
+
+  assert.equal(model.exportReadiness.ready, false);
+  assert.ok(model.exportReadiness.checklist.some((item) => item.label === "Route drawn" && !item.complete));
+  assert.match(pageSource, /disabled=\{!model\.exportReadiness\.ready\}/);
+});
+
+test("curated route author exposes difficulty mismatch warnings in validation", () => {
+  const baseModel = buildTrainingRouteAuthorModel();
+  const model = buildTrainingRouteAuthorModel({
+    authoredRouteSegmentIds: baseModel.exportData.routeSegmentIds.slice(0, 2),
+    difficultyOverride: "advanced"
+  });
+  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+
+  assert.ok(model.complexitySummary.warnings.some((warning) => warning.includes("difficulty")));
+  assert.match(pageSource, /Difficulty and complexity checks/);
+  assert.match(pageSource, /difficulty mismatch warning/);
 });
 
 test("learner navigation does not expose dev training authoring tools", () => {
