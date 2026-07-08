@@ -1,12 +1,26 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import type { RouteExercise } from "../../../lib/map-engine/index.ts";
 import { buildDevToolsHomeModel } from "../devTools.ts";
 import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
+  addTrainingRouteAuthorCheckpoint,
+  appendTrainingRouteAuthorStrokePoint,
   classifyShortestRouteComparison,
-  buildTrainingRouteAuthorModel
+  buildTrainingRouteAuthorModel,
+  clearTrainingRouteAuthorCheckpoints,
+  clearTrainingRouteAuthorRoute,
+  compareTrainingRouteAuthorShortestRoute,
+  createEmptyTrainingRouteAuthorState,
+  createSampleTrainingRouteAuthorState,
+  finishTrainingRouteAuthorStroke,
+  getTrainingRouteAuthorMap,
+  setTrainingRouteAuthorDestination,
+  setTrainingRouteAuthorMode,
+  setTrainingRouteAuthorStart,
+  startTrainingRouteAuthorStroke,
+  updateTrainingRouteAuthorMetadataField,
+  validateTrainingRouteAuthorState
 } from "../training-route/trainingRouteAuthor.ts";
 import {
   ROUTE_RUNNER_BETA_CORE_PANEL_LABELS,
@@ -97,28 +111,31 @@ test("dev route-runner keeps existing RouteRunnerClient workspace available", ()
   assert.match(pageSource, /href="\/dev"/);
 });
 
-test("curated training route author page renders authoring, validation, preview, and export surfaces", () => {
+test("curated training route author page renders the interactive authoring client", () => {
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
-  const mapIndex = pageSource.indexOf("Map authoring workspace");
-  const metadataIndex = pageSource.indexOf("Route metadata");
-  const exportIndex = pageSource.indexOf("Export panel");
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const mapIndex = clientSource.indexOf("Map authoring workspace");
+  const metadataIndex = clientSource.indexOf("Route metadata");
+  const exportIndex = clientSource.indexOf("Export panel");
 
   assert.match(pageSource, /Curated Training Route Author/);
-  assert.match(pageSource, /buildTrainingRouteAuthorModel/);
-  assert.match(pageSource, /Map authoring workspace/);
+  assert.match(pageSource, /TrainingRouteAuthorClient/);
+  assert.match(clientSource, /buildTrainingRouteAuthorModel/);
+  assert.match(clientSource, /Interactive Real London training route authoring map/);
+  assert.match(clientSource, /Map authoring workspace/);
   assert.ok(mapIndex > -1);
   assert.ok(metadataIndex > mapIndex);
   assert.ok(exportIndex > metadataIndex);
-  assert.match(pageSource, /Route metadata/);
-  assert.match(pageSource, /Validation panel/);
-  assert.match(pageSource, /Shortest route comparison/);
-  assert.match(pageSource, /Export panel/);
-  assert.match(pageSource, /Curated route JSON export/);
-  assert.doesNotMatch(pageSource, /RouteRunnerClient/);
+  assert.match(clientSource, /Route metadata/);
+  assert.match(clientSource, /Validation panel/);
+  assert.match(clientSource, /Shortest route comparison/);
+  assert.match(clientSource, /Export panel/);
+  assert.match(clientSource, /Curated route JSON export/);
+  assert.doesNotMatch(clientSource, /RouteRunnerClient/);
 });
 
 test("curated training route author toolbar exposes the route creation workflow", () => {
-  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
   const model = buildTrainingRouteAuthorModel();
   const labels = model.toolbarActions.map((action) => action.label);
 
@@ -137,22 +154,41 @@ test("curated training route author toolbar exposes the route creation workflow"
     "Compare shortest route",
     "Export JSON"
   ]);
-  assert.match(pageSource, /role="toolbar"/);
+  assert.equal(model.toolbarActions.find((action) => action.id === "validate-route")?.disabled, true);
+  assert.equal(model.toolbarActions.find((action) => action.id === "compare-shortest-route")?.disabled, true);
+  assert.equal(model.toolbarActions.find((action) => action.id === "export-json")?.disabled, true);
+  assert.match(clientSource, /role="toolbar"/);
 });
 
 test("curated training route author hides unrelated route-runner panels by default", () => {
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const combinedSource = `${pageSource}\n${clientSource}`;
 
-  assert.doesNotMatch(pageSource, /Training Mode/);
-  assert.doesNotMatch(pageSource, /Practice Exercises/);
-  assert.doesNotMatch(pageSource, /Adaptive Practice/);
-  assert.doesNotMatch(pageSource, /Manual route input/);
-  assert.doesNotMatch(pageSource, /Attempt Review/);
-  assert.match(pageSource, /Advanced diagnostics/);
+  assert.doesNotMatch(combinedSource, /Training Mode/);
+  assert.doesNotMatch(combinedSource, /Practice Exercises/);
+  assert.doesNotMatch(combinedSource, /Adaptive Practice/);
+  assert.doesNotMatch(combinedSource, /Manual route input/);
+  assert.doesNotMatch(combinedSource, /Attempt Review/);
+  assert.match(combinedSource, /Advanced diagnostics/);
 });
 
-test("curated training route author exports Stage 19 route contract metadata", () => {
+test("curated training route author starts empty and does not export fake route data", () => {
   const model = buildTrainingRouteAuthorModel();
+
+  assert.equal(model.exportReadiness.ready, false);
+  assert.equal(model.validationRunStatus, "not-run");
+  assert.equal(model.comparisonRunStatus, "not-run");
+  assert.equal(model.exportData.routeSegmentIds.length, 0);
+  assert.equal(model.exportData.nodeIds.length, 0);
+  assert.equal(model.sampleLoaded, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Set start")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Draw route")?.complete, false);
+});
+
+test("curated training route author sample can produce Stage 19 route contract metadata", () => {
+  const state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
+  const model = buildTrainingRouteAuthorModel({ state });
   const fieldIds = model.metadataFields.map((field) => field.id);
 
   assert.equal(model.path, DEV_TRAINING_ROUTE_AUTHOR_PATH);
@@ -187,26 +223,17 @@ test("curated training route author exports Stage 19 route contract metadata", (
   assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
 });
 
-test("curated route author blocks approved status for invalid route candidates", () => {
-  const invalidExercise: RouteExercise = {
-    id: "invalid-curated-route",
-    title: "Invalid curated route",
-    mapId: "osm-real-london-pilot",
-    difficulty: "medium",
-    stops: [
-      { type: "node", nodeId: "missing-start" },
-      { type: "node", nodeId: "missing-finish" }
-    ]
-  };
+test("curated route author blocks approved status until validation is clean", () => {
+  const state = updateTrainingRouteAuthorMetadataField(createEmptyTrainingRouteAuthorState(), "status", "approved");
   const model = buildTrainingRouteAuthorModel({
-    exercise: invalidExercise,
+    state,
     statusOverride: "approved"
   });
 
   assert.equal(model.validation.valid, false);
   assert.equal(model.shortestRouteComparison.directComparison.comparisonStatus, "unknown");
   assert.equal(model.approvalWarning?.blocking, true);
-  assert.match(model.approvalWarning?.message ?? "", /Invalid routes cannot be marked approved/);
+  assert.match(model.approvalWarning?.message ?? "", /Approved routes must be validated/);
 });
 
 test("curated route author returns near-shortest when authored route matches shortest metrics", () => {
@@ -265,7 +292,8 @@ test("curated route author handles incomplete shortest-route data safely", () =>
 });
 
 test("curated route author includes checkpoint-aware comparison or a graceful unsupported state", () => {
-  const model = buildTrainingRouteAuthorModel();
+  const state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
+  const model = buildTrainingRouteAuthorModel({ state });
 
   assert.ok(
     ["available", "unknown", "not-applicable"].includes(
@@ -276,9 +304,9 @@ test("curated route author includes checkpoint-aware comparison or a graceful un
 });
 
 test("significantly longer curated routes require route choice justification before approval", () => {
-  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
+  const state = updateTrainingRouteAuthorMetadataField(createSampleTrainingRouteAuthorState(), "routeChoiceJustification", "");
   const model = buildTrainingRouteAuthorModel({
-    authoredRouteSegmentIds: [],
+    state,
     routeChoiceJustification: ""
   });
   const comparison = classifyShortestRouteComparison({
@@ -294,31 +322,107 @@ test("significantly longer curated routes require route choice justification bef
 
   assert.equal(comparison.verdict, "major-detour-warning");
   assert.equal(model.exportData.shortestRouteComparison.routeChoiceJustification.length, 0);
-  assert.match(pageSource, /route choice justification/i);
+  assert.ok(model.metadataFields.some((field) => field.id === "routeChoiceJustification"));
 });
 
 test("curated route author export is blocked until required route data exists", () => {
-  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
-  const model = buildTrainingRouteAuthorModel({
-    authoredRouteSegmentIds: []
-  });
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel();
 
   assert.equal(model.exportReadiness.ready, false);
-  assert.ok(model.exportReadiness.checklist.some((item) => item.label === "Route drawn" && !item.complete));
-  assert.match(pageSource, /disabled=\{!model\.exportReadiness\.ready\}/);
+  assert.ok(model.exportReadiness.checklist.some((item) => item.label === "Route drawn and matched" && !item.complete));
+  assert.match(clientSource, /disabled=\{!model\.exportReadiness\.ready\}/);
 });
 
 test("curated route author exposes difficulty mismatch warnings in validation", () => {
-  const baseModel = buildTrainingRouteAuthorModel();
+  const state = createSampleTrainingRouteAuthorState();
   const model = buildTrainingRouteAuthorModel({
-    authoredRouteSegmentIds: baseModel.exportData.routeSegmentIds.slice(0, 2),
+    state,
     difficultyOverride: "advanced"
   });
-  const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
 
-  assert.ok(model.complexitySummary.warnings.some((warning) => warning.includes("difficulty")));
-  assert.match(pageSource, /Difficulty and complexity checks/);
-  assert.match(pageSource, /difficulty mismatch warning/);
+  assert.ok(
+    model.complexitySummary.warnings.some(
+      (warning) => warning.includes("Advanced curated routes") || warning.includes("difficulty")
+    )
+  );
+});
+
+test("curated route author buttons and map interactions update real author state", () => {
+  const map = getTrainingRouteAuthorMap();
+  const startNode = map.nodes[0];
+  const checkpointNode = map.nodes[1];
+  const destinationNode = map.nodes[2];
+  let state = createEmptyTrainingRouteAuthorState();
+
+  state = setTrainingRouteAuthorMode(state, "set-start");
+  state = setTrainingRouteAuthorStart(state, startNode.id);
+  state = setTrainingRouteAuthorMode(state, "add-checkpoint");
+  state = addTrainingRouteAuthorCheckpoint(state, checkpointNode.id);
+  state = setTrainingRouteAuthorMode(state, "set-destination");
+  state = setTrainingRouteAuthorDestination(state, destinationNode.id);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.activeMode, "set-destination");
+  assert.equal(model.routeStatusItems.find((item) => item.label === "Start")?.value, "selected");
+  assert.equal(model.routeStatusItems.find((item) => item.label === "Destination")?.value, "selected");
+  assert.equal(model.routeStatusItems.find((item) => item.label === "Checkpoints")?.value, "1");
+});
+
+test("curated route author draw route mode creates matched route state from map points", () => {
+  const sample = createSampleTrainingRouteAuthorState();
+  const sampleStroke = sample.routeDraft.strokes[0]?.points ?? [];
+  let state = createEmptyTrainingRouteAuthorState();
+
+  assert.ok(sampleStroke.length >= 2);
+  state = setTrainingRouteAuthorStart(state, sample.startNodeId ?? "");
+  state = setTrainingRouteAuthorDestination(state, sample.destinationNodeId ?? "");
+  state = setTrainingRouteAuthorMode(state, "draw-route");
+  state = startTrainingRouteAuthorStroke(state, sampleStroke[0]);
+  for (const point of sampleStroke.slice(1, -1)) {
+    state = appendTrainingRouteAuthorStrokePoint(state, point);
+  }
+  state = finishTrainingRouteAuthorStroke(state, sampleStroke[sampleStroke.length - 1]);
+
+  assert.equal(state.routeMatchStatus, "matched");
+  assert.ok(state.validationSegments.length > 0);
+  assert.ok(state.routeNodeIds.length > 1);
+});
+
+test("curated route author clear actions isolate route and checkpoints", () => {
+  const sample = createSampleTrainingRouteAuthorState();
+  const routeCleared = clearTrainingRouteAuthorRoute(sample);
+  const checkpointsCleared = clearTrainingRouteAuthorCheckpoints(sample);
+
+  assert.equal(routeCleared.validationSegments.length, 0);
+  assert.equal(routeCleared.checkpointNodeIds.length, sample.checkpointNodeIds.length);
+  assert.equal(checkpointsCleared.checkpointNodeIds.length, 0);
+  assert.ok(checkpointsCleared.validationSegments.length > 0);
+});
+
+test("curated route author validates, compares, and exports current authored metadata", () => {
+  let state = createSampleTrainingRouteAuthorState();
+
+  state = updateTrainingRouteAuthorMetadataField(state, "title", "Edited interactive route title");
+  state = validateTrainingRouteAuthorState(state);
+  state = compareTrainingRouteAuthorShortestRoute(state);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.validationRunStatus === "valid" || model.validationRunStatus === "warning", true);
+  assert.equal(model.comparisonRunStatus, "available");
+  assert.equal(model.exportReadiness.ready, true);
+  assert.equal(model.exportData.metadata.title, "Edited interactive route title");
+  assert.ok(model.exportData.routeGeometry.length > 1);
+});
+
+test("curated route author marker sizing avoids oversized placeholder markers", () => {
+  const model = buildTrainingRouteAuthorModel({ state: createSampleTrainingRouteAuthorState() });
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.ok(model.mapModel.markerRadiusPixels <= 12);
+  assert.doesNotMatch(clientSource, /r="34"/);
 });
 
 test("learner navigation does not expose dev training authoring tools", () => {

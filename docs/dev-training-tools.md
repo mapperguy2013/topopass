@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -35,14 +35,16 @@ Stage 18.6 adds a `Route choice justification` field. Use it when the authored r
 
 Stage 18.7 keeps `/dev/training-route` focused on route authoring instead of embedding the full Route Runner debug surface. The first working section is the map authoring workspace with toolbar actions for pan, set start, draw route, add checkpoint, set destination, undo, removing checkpoints, clearing route data, resetting view, validation, shortest-route comparison, and export.
 
+Stage 18.8 removes the static placeholder export. `/dev/training-route` now starts empty, renders the Real London road and label data, and updates route state from map interaction. The `Load sample route` button is the only way to seed a fixture route for testing; normal export readiness depends on the route currently authored in the workspace.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
 
-1. Set the start point on the map.
-2. Draw the learner route in driving order.
-3. Add numbered checkpoints if the learner must visit them.
-4. Set the destination.
+1. Set the start point on the map by choosing `Set start` and clicking a valid road/node.
+2. Draw the learner route in driving order with `Draw route`; the tool snaps and matches the trace to Real London road segments.
+3. Add numbered checkpoints with `Add checkpoint` if the learner must visit them.
+4. Set the destination by choosing `Set destination` and clicking the final valid road/node.
 5. Review the route state summary for missing start, destination, route, checkpoints, length, segments, turns, decisions, validation, comparison, and export readiness.
 6. Complete metadata after the route shape is clear.
 7. Validate the route.
@@ -89,7 +91,7 @@ For detour warnings and major detour warnings, write a route choice justificatio
 
 The export panel appears last. It shows copyable JSON for future files under `data/training-routes/` and an export readiness checklist.
 
-Export should remain blocked until start, destination, route geometry, required metadata, validation, and shortest-route comparison are ready. The exported JSON uses the currently authored route shown in the authoring workspace.
+Export should remain blocked until start, destination, matched route geometry, required metadata, validation, and shortest-route comparison are ready. The exported JSON uses the currently authored route shown in the authoring workspace and does not silently use a preselected fixture.
 
 The exported contract includes:
 
@@ -111,9 +113,18 @@ Run the app locally and check:
 
 1. `/dev` lists Route Runner and Training Route Author.
 2. `/dev/route-runner` opens the existing map workspace and still shows Phase 6 map labels, overlays, route review, and Training Mode test controls.
-3. `/dev/training-route` shows the map authoring workspace before metadata, validation, shortest-route comparison, and export JSON.
-4. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-5. `/practice/training` remains the learner-facing Training Mode route.
+3. `/dev/training-route` opens with no default route exported and shows the map authoring workspace before metadata, validation, shortest-route comparison, and export JSON.
+4. Pan and wheel-zoom the map.
+5. Choose `Set start` and click the map; confirm the start summary changes to selected.
+6. Choose `Draw route`, trace roads, and confirm the route summary changes to drawn and matched.
+7. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments.
+8. Choose `Set destination` and click the map; confirm the destination summary changes to selected.
+9. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
+10. Complete required metadata and confirm `Copy JSON` enables only when the readiness checklist is complete.
+11. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, metadata, validation summary, and shortest-route comparison.
+12. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
+13. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+14. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 

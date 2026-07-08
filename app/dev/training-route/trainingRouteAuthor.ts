@@ -1,9 +1,22 @@
 import {
+  appendRouteDraftPoint,
   buildMapGraph,
+  buildRoadSpatialIndex,
+  createEmptyRouteDraft,
+  findCandidateRoadsForPoint,
   findShortestLegalRoute,
   findShortestLegalRouteThroughStops,
+  finishRouteStroke,
+  matchSnappedRouteToSelection,
+  routeDraftToDrawnRouteTrace,
+  snapDrawnRouteToRoads,
+  startRouteStroke,
+  undoLastRouteStroke,
+  validateDrawnRouteGesture,
+  type DrawnRouteDraft,
   type MapDefinition,
   type MapGraph,
+  type MapNode,
   type RouteExercise,
   type RouteStop,
   type ShortestLegalRouteResult,
@@ -37,6 +50,27 @@ import {
 export type { CuratedShortestRouteComparisonDetail } from "../../../lib/training/curatedTrainingRoutes.ts";
 
 export const DEV_TRAINING_ROUTE_AUTHOR_PATH = "/dev/training-route";
+export const TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH = 1120;
+export const TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT = 760;
+export const TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE = 24;
+
+export type TrainingRouteAuthorMode =
+  | "pan"
+  | "set-start"
+  | "draw-route"
+  | "add-checkpoint"
+  | "set-destination";
+
+export type TrainingRouteAuthorToolbarActionId =
+  | TrainingRouteAuthorMode
+  | "undo"
+  | "remove-last-checkpoint"
+  | "clear-route"
+  | "clear-checkpoints"
+  | "reset-view"
+  | "validate-route"
+  | "compare-shortest-route"
+  | "export-json";
 
 export type TrainingRouteAuthorField = {
   id: keyof CuratedTrainingRouteMetadata;
@@ -52,23 +86,11 @@ export type TrainingRouteAuthorApprovalWarning = {
 };
 
 export type TrainingRouteAuthorToolbarAction = {
-  id:
-    | "pan"
-    | "set-start"
-    | "draw-route"
-    | "add-checkpoint"
-    | "set-destination"
-    | "undo"
-    | "remove-last-checkpoint"
-    | "clear-route"
-    | "clear-checkpoints"
-    | "reset-view"
-    | "validate-route"
-    | "compare-shortest-route"
-    | "export-json";
+  id: TrainingRouteAuthorToolbarActionId;
   label: string;
   primary?: boolean;
   disabled?: boolean;
+  pressed?: boolean;
 };
 
 export type TrainingRouteAuthorStep = {
@@ -76,6 +98,7 @@ export type TrainingRouteAuthorStep = {
   label: string;
   complete: boolean;
   current: boolean;
+  optional?: boolean;
   instruction: string;
 };
 
@@ -93,12 +116,14 @@ export type TrainingRouteAuthorMapMarker = {
 };
 
 export type TrainingRouteAuthorMapModel = {
-  viewBox: string;
   authoredRoutePoints: Vec2[];
+  matchedRoutePoints: Vec2[];
+  snappedRoutePoints: Vec2[];
   shortestRoutePoints: Vec2[];
   markers: TrainingRouteAuthorMapMarker[];
   showShortestRouteComparison: boolean;
   validationIssueSegmentIds: string[];
+  markerRadiusPixels: number;
 };
 
 export type TrainingRouteAuthorExportReadiness = {
@@ -110,6 +135,31 @@ export type TrainingRouteAuthorExportReadiness = {
   }>;
 };
 
+export type TrainingRouteAuthorRouteMatchStatus =
+  | "empty"
+  | "insufficient"
+  | "matched"
+  | "snapping-failed"
+  | "matching-failed";
+
+export type TrainingRouteAuthorState = {
+  activeMode: TrainingRouteAuthorMode;
+  metadata: CuratedTrainingRouteMetadata;
+  startNodeId: string | null;
+  destinationNodeId: string | null;
+  checkpointNodeIds: string[];
+  routeDraft: DrawnRouteDraft;
+  routeMatchStatus: TrainingRouteAuthorRouteMatchStatus;
+  routeMatchMessage: string;
+  routeNodeIds: string[];
+  roadIds: string[];
+  validationSegments: LearnerRouteValidationSegment[];
+  snappedRoutePoints: Vec2[];
+  validationHasRun: boolean;
+  comparisonHasRun: boolean;
+  sampleLoaded: boolean;
+};
+
 export type TrainingRouteAuthorModel = {
   path: typeof DEV_TRAINING_ROUTE_AUTHOR_PATH;
   title: "Curated Training Route Author";
@@ -117,12 +167,16 @@ export type TrainingRouteAuthorModel = {
   sourceMapId: string;
   sourceMapName: string;
   sourceExerciseId: string;
+  sampleLoaded: boolean;
+  activeMode: TrainingRouteAuthorMode;
   toolbarActions: TrainingRouteAuthorToolbarAction[];
   authoringSteps: TrainingRouteAuthorStep[];
   routeStatusItems: TrainingRouteAuthorStatusItem[];
   mapModel: TrainingRouteAuthorMapModel;
   exportReadiness: TrainingRouteAuthorExportReadiness;
   metadataFields: TrainingRouteAuthorField[];
+  validationRunStatus: "not-run" | LearnerRouteValidationResult["status"];
+  comparisonRunStatus: "not-run" | CuratedShortestRouteComparisonDetail["comparisonStatus"];
   validation: LearnerRouteValidationResult;
   complexitySummary: CuratedTrainingRouteComplexitySummary;
   shortestRouteComparison: CuratedShortestRouteComparison;
@@ -130,11 +184,26 @@ export type TrainingRouteAuthorModel = {
   exportJson: string;
   approvalWarning: TrainingRouteAuthorApprovalWarning | null;
   authoringWorkflow: string[];
+  routeMatchStatus: TrainingRouteAuthorRouteMatchStatus;
+  routeMatchMessage: string;
 };
 
 const DEFAULT_ROUTE_EXERCISE =
   realLondonOsmPilotRouteExercises.find((exercise) => exercise.stops.length >= 2) ??
   realLondonOsmPilotRouteExercises[0];
+
+const EMPTY_VALIDATION = validateLearnerRoute({
+  map: realLondonOsmPilotRouteMap,
+  routeSegments: [],
+  difficulty: "beginner"
+});
+
+const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
+  "skillsPractised",
+  "expectedLearnerMistakes",
+  "hintSequence",
+  "scoringEmphasis"
+]);
 
 function stopNodeId(stop: RouteStop, map: MapDefinition): string | null {
   if (stop.type === "node") {
@@ -146,125 +215,61 @@ function stopNodeId(stop: RouteStop, map: MapDefinition): string | null {
   return landmark?.nearestNodeId ?? null;
 }
 
-function stopLabel(stop: RouteStop, fallback: string): string {
-  return stop.label?.trim() || fallback;
-}
-
 function pointForNode(map: MapDefinition, nodeId: string | null): Vec2 | undefined {
   const node = nodeId ? map.nodes.find((candidate) => candidate.id === nodeId) : null;
 
   return node ? { x: node.x, y: node.y } : undefined;
 }
 
-function pointsForNodeIds(map: MapDefinition, nodeIds: readonly string[]): Vec2[] {
-  return nodeIds.map((nodeId) => pointForNode(map, nodeId)).filter((point): point is Vec2 => Boolean(point));
-}
+function nodeLabel(map: MapDefinition, nodeId: string, fallback: string): string {
+  const node = map.nodes.find((candidate) => candidate.id === nodeId);
 
-function curatedStop(input: {
-  map: MapDefinition;
-  stop: RouteStop;
-  fallbackLabel: string;
-}): CuratedTrainingRouteStop {
-  const nodeId = stopNodeId(input.stop, input.map) ?? "unknown-node";
-
-  return {
-    nodeId,
-    label: stopLabel(input.stop, input.fallbackLabel),
-    point: pointForNode(input.map, nodeId)
-  };
+  return node?.label?.trim() || fallback;
 }
 
 function selectedStopNodeIds(exercise: RouteExercise, map: MapDefinition): string[] {
   return exercise.stops.map((stop) => stopNodeId(stop, map)).filter((nodeId): nodeId is string => Boolean(nodeId));
 }
 
-function calculateViewBox(points: readonly Vec2[]): string {
-  if (points.length === 0) {
-    return "0 0 1000 700";
-  }
-
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const width = Math.max(120, maxX - minX);
-  const height = Math.max(120, maxY - minY);
-  const padding = Math.max(width, height) * 0.18;
-
-  return `${Math.round(minX - padding)} ${Math.round(minY - padding)} ${Math.round(width + padding * 2)} ${Math.round(height + padding * 2)}`;
+function pointsForNodeIds(map: MapDefinition, nodeIds: readonly string[]): Vec2[] {
+  return nodeIds.map((nodeId) => pointForNode(map, nodeId)).filter((point): point is Vec2 => Boolean(point));
 }
 
-function validationSegmentsFromRoute(input: {
-  graph: MapGraph;
-  edgeIds: readonly string[];
-}): LearnerRouteValidationSegment[] {
-  return input.edgeIds
-    .map((edgeId) => input.graph.edgesById[edgeId])
-    .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge))
-    .map((edge) => ({
-      id: edge.id,
-      roadId: edge.roadId,
-      fromNodeId: edge.fromNodeId,
-      toNodeId: edge.toNodeId
-    }));
-}
-
-function routeValidationMetrics(input: {
+function curatedStopForNode(input: {
   map: MapDefinition;
-  graph: MapGraph;
-  edgeIds: readonly string[];
-  difficulty: Exclude<ExerciseDifficulty, "easy">;
-}): LearnerRouteValidationResult {
-  return validateLearnerRoute({
-    map: input.map,
-    routeSegments: validationSegmentsFromRoute({
-      graph: input.graph,
-      edgeIds: input.edgeIds
-    }),
-    difficulty: input.difficulty
-  });
+  nodeId: string | null;
+  fallbackLabel: string;
+}): CuratedTrainingRouteStop {
+  const nodeId = input.nodeId ?? "unselected";
+
+  return {
+    nodeId,
+    label: input.nodeId ? nodeLabel(input.map, input.nodeId, input.fallbackLabel) : input.fallbackLabel,
+    point: pointForNode(input.map, input.nodeId)
+  };
 }
 
-function inferDifficultyFromMetrics(
-  validation: LearnerRouteValidationResult,
-  selectedDifficulty: ExerciseDifficulty
-): ExerciseDifficulty {
-  if (validation.metrics.segmentCount > 14 || validation.metrics.junctionDecisionCount > 9) {
-    return "advanced";
-  }
-
-  if (validation.metrics.segmentCount > 8 || validation.metrics.turnCount > 5) {
-    return "intermediate";
-  }
-
-  return selectedDifficulty === "advanced" ? "intermediate" : selectedDifficulty;
-}
-
-function complexityWarnings(input: {
-  validation: LearnerRouteValidationResult;
-  selectedDifficulty: Exclude<ExerciseDifficulty, "easy">;
-  estimatedDifficulty: ExerciseDifficulty;
-}): string[] {
-  const warnings = input.validation.advisoryWarnings.map((warning) => warning.explanation);
-
-  if (input.selectedDifficulty === "advanced" && input.validation.metrics.segmentCount < 6) {
-    warnings.push("Advanced curated routes should normally include more than a very short simple segment sequence.");
-  }
-
-  if (
-    input.selectedDifficulty === "beginner" &&
-    (input.validation.metrics.segmentCount > 5 || input.validation.metrics.junctionDecisionCount > 3)
-  ) {
-    warnings.push("Beginner curated routes should avoid excessive segment and decision-point complexity.");
-  }
-
-  if (input.estimatedDifficulty !== input.selectedDifficulty) {
-    warnings.push(`Route metrics currently estimate ${input.estimatedDifficulty} difficulty.`);
-  }
-
-  return [...new Set(warnings)];
+function metadataForNewRoute(): CuratedTrainingRouteMetadata {
+  return {
+    routeId: "curated-training-route-draft",
+    title: "Untitled curated training route",
+    area: "Real London",
+    difficulty: "beginner",
+    exerciseType: "follow-planned-route",
+    description: "Curated learner-driver route authored from the Real London map.",
+    objective: "Complete the authored route legally while following the selected checkpoints.",
+    skillsPractised: ["route planning", "legal route choice", "junction observation"],
+    expectedLearnerMistakes: ["wrong turn", "missed checkpoint", "unnecessary detour"],
+    hintSequence: [
+      "Check the next junction before committing.",
+      "Confirm whether the next road is legal for your direction."
+    ],
+    scoringEmphasis: ["legal route validity", "checkpoint order", "route efficiency"],
+    instructorFeedbackNotes:
+      "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
+    routeChoiceJustification: "",
+    status: "draft"
+  };
 }
 
 function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetadata {
@@ -292,7 +297,7 @@ function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetad
     instructorFeedbackNotes:
       "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
     routeChoiceJustification:
-      "This draft follows the selected exercise stops. Add a specific instructor note if the route is intentionally longer than the shortest legal option.",
+      "This sample follows the selected exercise stops. Replace this note if the authored route is intentionally longer than the shortest legal option.",
     status: "beta"
   };
 }
@@ -354,12 +359,108 @@ function buildMetadataFields(metadata: CuratedTrainingRouteMetadata): TrainingRo
   ];
 }
 
+function validationSegmentsFromRoadsAndNodes(input: {
+  graph: MapGraph;
+  roadIds: readonly string[];
+  nodeIds: readonly string[];
+}): LearnerRouteValidationSegment[] {
+  return input.roadIds.flatMap((roadId, index): LearnerRouteValidationSegment[] => {
+    const fromNodeId = input.nodeIds[index];
+    const toNodeId = input.nodeIds[index + 1];
+    const road = input.graph.roadsById[roadId];
+
+    if (!fromNodeId || !toNodeId || !road) {
+      return [];
+    }
+
+    const edge = input.graph.edges.find(
+      (candidate) =>
+        candidate.roadId === roadId &&
+        candidate.fromNodeId === fromNodeId &&
+        candidate.toNodeId === toNodeId
+    );
+
+    return [
+      {
+        id: edge?.id ?? `${roadId}:${fromNodeId}->${toNodeId}`,
+        roadId,
+        fromNodeId,
+        toNodeId
+      }
+    ];
+  });
+}
+
+function validationMetrics(input: {
+  map: MapDefinition;
+  routeSegments: readonly LearnerRouteValidationSegment[];
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+}): LearnerRouteValidationResult {
+  return validateLearnerRoute({
+    map: input.map,
+    routeSegments: input.routeSegments,
+    difficulty: input.difficulty
+  });
+}
+
+function inferDifficultyFromMetrics(
+  validation: LearnerRouteValidationResult,
+  selectedDifficulty: ExerciseDifficulty
+): ExerciseDifficulty {
+  if (validation.metrics.segmentCount > 14 || validation.metrics.junctionDecisionCount > 9) {
+    return "advanced";
+  }
+
+  if (validation.metrics.segmentCount > 8 || validation.metrics.turnCount > 5) {
+    return "intermediate";
+  }
+
+  return selectedDifficulty === "advanced" ? "intermediate" : selectedDifficulty;
+}
+
+function complexityWarnings(input: {
+  validation: LearnerRouteValidationResult;
+  selectedDifficulty: Exclude<ExerciseDifficulty, "easy">;
+  estimatedDifficulty: ExerciseDifficulty;
+}): string[] {
+  const warnings = input.validation.advisoryWarnings.map((warning) => warning.explanation);
+
+  if (input.validation.metrics.segmentCount === 0) {
+    return [];
+  }
+
+  if (input.selectedDifficulty === "advanced" && input.validation.metrics.segmentCount < 6) {
+    warnings.push("Advanced curated routes should normally include more than a very short simple segment sequence.");
+  }
+
+  if (
+    input.selectedDifficulty === "beginner" &&
+    (input.validation.metrics.segmentCount > 5 || input.validation.metrics.junctionDecisionCount > 3)
+  ) {
+    warnings.push("Beginner curated routes should avoid excessive segment and decision-point complexity.");
+  }
+
+  if (input.estimatedDifficulty !== input.selectedDifficulty) {
+    warnings.push(`Route metrics currently estimate ${input.estimatedDifficulty} difficulty.`);
+  }
+
+  return [...new Set(warnings)];
+}
+
 function approvalWarning(input: {
   status: CuratedTrainingRouteStatus;
   validation: LearnerRouteValidationResult;
+  validationHasRun: boolean;
 }): TrainingRouteAuthorApprovalWarning | null {
   if (input.status !== "approved") {
     return null;
+  }
+
+  if (!input.validationHasRun) {
+    return {
+      blocking: true,
+      message: "Approved routes must be validated before export."
+    };
   }
 
   if (!input.validation.valid) {
@@ -510,10 +611,14 @@ function comparisonFromShortestRoute(input: {
     return unknownComparison(input.missingRouteExplanation);
   }
 
-  const shortestValidation = routeValidationMetrics({
-    map: input.map,
+  const shortestSegments = validationSegmentsFromRoadsAndNodes({
     graph: input.graph,
-    edgeIds: input.shortestRoute.edgeIds,
+    roadIds: input.shortestRoute.roadIds,
+    nodeIds: input.shortestRoute.nodeIds
+  });
+  const shortestValidation = validationMetrics({
+    map: input.map,
+    routeSegments: shortestSegments,
     difficulty: input.difficulty
   });
 
@@ -538,7 +643,22 @@ function buildShortestRouteComparison(input: {
   authoredRouteIsValid: boolean;
   difficulty: Exclude<ExerciseDifficulty, "easy">;
   routeChoiceJustification: string;
+  comparisonHasRun: boolean;
 }): CuratedShortestRouteComparison {
+  if (!input.comparisonHasRun) {
+    const comparison = unknownComparison("Shortest route comparison has not been run for the current authored route.");
+
+    return {
+      directComparison: comparison,
+      checkpointConstrainedComparison: notApplicableComparison("Checkpoint-constrained comparison has not been run."),
+      routeChoiceJustification: input.routeChoiceJustification,
+      requiresRouteChoiceJustification: false,
+      guidance: [
+        "Select start, draw a route, set destination, then run the shortest-route comparison before export."
+      ]
+    };
+  }
+
   const directRoute = directShortestResult({
     graph: input.graph,
     stopNodeIds: input.stopNodeIds,
@@ -596,7 +716,12 @@ function shortestRoutePoints(input: {
   map: MapDefinition;
   graph: MapGraph;
   stopNodeIds: readonly string[];
+  comparisonHasRun: boolean;
 }): Vec2[] {
+  if (!input.comparisonHasRun) {
+    return [];
+  }
+
   const directRoute = directShortestResult({
     graph: input.graph,
     stopNodeIds: input.stopNodeIds,
@@ -606,30 +731,417 @@ function shortestRoutePoints(input: {
   return directRoute.found ? pointsForNodeIds(input.map, directRoute.nodeIds) : [];
 }
 
-function buildToolbarActions(exportReady: boolean): TrainingRouteAuthorToolbarAction[] {
+function invalidateReviewState(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  return {
+    ...state,
+    validationHasRun: false,
+    comparisonHasRun: false
+  };
+}
+
+function refreshRouteMatch(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  const trace = routeDraftToDrawnRouteTrace(state.routeDraft);
+
+  if (trace.points.length === 0) {
+    return {
+      ...invalidateReviewState(state),
+      routeMatchStatus: "empty",
+      routeMatchMessage: "No route has been drawn.",
+      routeNodeIds: [],
+      roadIds: [],
+      validationSegments: [],
+      snappedRoutePoints: []
+    };
+  }
+
+  const gestureValidation = validateDrawnRouteGesture(trace, {
+    minimumRawPointCount: 3,
+    minimumTotalDistance: 10
+  });
+
+  if (!gestureValidation.isMeaningful) {
+    return {
+      ...invalidateReviewState(state),
+      routeMatchStatus: "insufficient",
+      routeMatchMessage:
+        gestureValidation.failureReason === "not_enough_movement"
+          ? "The drawn route is too short to snap to roads."
+          : "Draw at least three route points before matching.",
+      routeNodeIds: [],
+      roadIds: [],
+      validationSegments: [],
+      snappedRoutePoints: []
+    };
+  }
+
+  const map = realLondonOsmPilotRouteMap;
+  const graph = buildMapGraph(map);
+  const snappedRoute = snapDrawnRouteToRoads({
+    map,
+    points: trace.points,
+    snapTolerance: TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
+    maxCandidatesPerPoint: 5
+  });
+
+  if (!snappedRoute.isValidTrace || snappedRoute.hasOffRoadPoints) {
+    return {
+      ...invalidateReviewState(state),
+      routeMatchStatus: "snapping-failed",
+      routeMatchMessage: snappedRoute.diagnostics[0]?.message ?? "The drawn route could not be snapped to Real London roads.",
+      routeNodeIds: [],
+      roadIds: [],
+      validationSegments: [],
+      snappedRoutePoints: snappedRoute.snappedPoints.map((point) => point.snappedPoint)
+    };
+  }
+
+  const matchResult = matchSnappedRouteToSelection({
+    map,
+    snappedRoute,
+    options: {
+      minimumSnappedPoints: 2
+    }
+  });
+
+  if (matchResult.status !== "matched" || !matchResult.isReadyForRunRouteExercise) {
+    return {
+      ...invalidateReviewState(state),
+      routeMatchStatus: "matching-failed",
+      routeMatchMessage: matchResult.diagnostics[0]?.message ?? "The snapped road sequence is not a connected route.",
+      routeNodeIds: matchResult.nodeIds,
+      roadIds: matchResult.orderedRoadIds,
+      validationSegments: [],
+      snappedRoutePoints: snappedRoute.snappedPoints.map((point) => point.snappedPoint)
+    };
+  }
+
+  return {
+    ...invalidateReviewState(state),
+    routeMatchStatus: "matched",
+    routeMatchMessage: `Matched ${matchResult.orderedRoadIds.length} road segment(s) from the current drawing.`,
+    routeNodeIds: matchResult.nodeIds,
+    roadIds: matchResult.orderedRoadIds,
+    validationSegments: validationSegmentsFromRoadsAndNodes({
+      graph,
+      roadIds: matchResult.orderedRoadIds,
+      nodeIds: matchResult.nodeIds
+    }),
+    snappedRoutePoints: snappedRoute.snappedPoints.map((point) => point.snappedPoint)
+  };
+}
+
+export function createEmptyTrainingRouteAuthorState(): TrainingRouteAuthorState {
+  return {
+    activeMode: "pan",
+    metadata: metadataForNewRoute(),
+    startNodeId: null,
+    destinationNodeId: null,
+    checkpointNodeIds: [],
+    routeDraft: createEmptyRouteDraft(),
+    routeMatchStatus: "empty",
+    routeMatchMessage: "No route has been drawn.",
+    routeNodeIds: [],
+    roadIds: [],
+    validationSegments: [],
+    snappedRoutePoints: [],
+    validationHasRun: false,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function createSampleTrainingRouteAuthorState(): TrainingRouteAuthorState {
+  if (!DEFAULT_ROUTE_EXERCISE) {
+    return createEmptyTrainingRouteAuthorState();
+  }
+
+  const map = realLondonOsmPilotRouteMap;
+  const graph = buildMapGraph(map);
+  const stopNodeIds = selectedStopNodeIds(DEFAULT_ROUTE_EXERCISE, map);
+  const shortestRoute = findShortestLegalRouteThroughStops({
+    graph,
+    stopNodeIds,
+    restrictions: map.restrictions
+  });
+  const nodeIds = shortestRoute.found ? shortestRoute.nodeIds : stopNodeIds;
+  const roadIds = shortestRoute.found ? shortestRoute.roadIds : [];
+  const routePoints = pointsForNodeIds(map, nodeIds);
+  const state: TrainingRouteAuthorState = {
+    ...createEmptyTrainingRouteAuthorState(),
+    metadata: metadataForExercise(DEFAULT_ROUTE_EXERCISE),
+    startNodeId: stopNodeIds[0] ?? null,
+    destinationNodeId: stopNodeIds.at(-1) ?? null,
+    checkpointNodeIds: stopNodeIds.slice(1, -1),
+    routeDraft: createEmptyRouteDraft(routePoints.length > 0 ? [routePoints] : []),
+    routeMatchStatus: roadIds.length > 0 ? "matched" : "empty",
+    routeMatchMessage:
+      roadIds.length > 0
+        ? "Loaded sample route from the Real London pilot exercise. Edit before export."
+        : "Sample route could not be matched.",
+    routeNodeIds: nodeIds,
+    roadIds,
+    validationSegments: validationSegmentsFromRoadsAndNodes({ graph, roadIds, nodeIds }),
+    snappedRoutePoints: routePoints,
+    sampleLoaded: true
+  };
+
+  return state;
+}
+
+export function getTrainingRouteAuthorMap(): MapDefinition {
+  return realLondonOsmPilotRouteMap;
+}
+
+export function resolveNearestTrainingRouteAuthorNode(point: Vec2, tolerance = 80): MapNode | null {
+  const map = realLondonOsmPilotRouteMap;
+  const graph = buildMapGraph(map);
+  const candidates = findCandidateRoadsForPoint({
+    point,
+    index: buildRoadSpatialIndex(map),
+    tolerance,
+    maxCandidates: 1
+  });
+  const road = candidates[0] ? graph.roadsById[candidates[0].roadId] : null;
+
+  if (!road) {
+    return null;
+  }
+
+  const from = graph.nodesById[road.fromNodeId];
+  const to = graph.nodesById[road.toNodeId];
+
+  if (!from || !to) {
+    return null;
+  }
+
+  const fromDistance = Math.hypot(point.x - from.x, point.y - from.y);
+  const toDistance = Math.hypot(point.x - to.x, point.y - to.y);
+
+  return fromDistance <= toDistance ? from : to;
+}
+
+export function setTrainingRouteAuthorMode(
+  state: TrainingRouteAuthorState,
+  activeMode: TrainingRouteAuthorMode
+): TrainingRouteAuthorState {
+  return {
+    ...state,
+    activeMode,
+    routeDraft:
+      state.routeDraft.activeStrokeIndex === null ? state.routeDraft : finishRouteStroke(state.routeDraft)
+  };
+}
+
+export function setTrainingRouteAuthorStart(
+  state: TrainingRouteAuthorState,
+  nodeId: string
+): TrainingRouteAuthorState {
+  return {
+    ...state,
+    startNodeId: nodeId,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function setTrainingRouteAuthorDestination(
+  state: TrainingRouteAuthorState,
+  nodeId: string
+): TrainingRouteAuthorState {
+  return {
+    ...state,
+    destinationNodeId: nodeId,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function addTrainingRouteAuthorCheckpoint(
+  state: TrainingRouteAuthorState,
+  nodeId: string
+): TrainingRouteAuthorState {
+  return {
+    ...state,
+    checkpointNodeIds: [...state.checkpointNodeIds, nodeId],
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function removeLastTrainingRouteAuthorCheckpoint(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  return {
+    ...state,
+    checkpointNodeIds: state.checkpointNodeIds.slice(0, -1),
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function clearTrainingRouteAuthorCheckpoints(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  return {
+    ...state,
+    checkpointNodeIds: [],
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function startTrainingRouteAuthorStroke(
+  state: TrainingRouteAuthorState,
+  point: Vec2
+): TrainingRouteAuthorState {
+  return {
+    ...state,
+    routeDraft: startRouteStroke(state.routeDraft, point),
+    sampleLoaded: false
+  };
+}
+
+export function appendTrainingRouteAuthorStrokePoint(
+  state: TrainingRouteAuthorState,
+  point: Vec2
+): TrainingRouteAuthorState {
+  return {
+    ...state,
+    routeDraft: appendRouteDraftPoint(state.routeDraft, point, 3),
+    sampleLoaded: false
+  };
+}
+
+export function finishTrainingRouteAuthorStroke(
+  state: TrainingRouteAuthorState,
+  point?: Vec2
+): TrainingRouteAuthorState {
+  const draft = finishRouteStroke(point ? appendRouteDraftPoint(state.routeDraft, point, 3) : state.routeDraft);
+
+  return refreshRouteMatch({
+    ...state,
+    routeDraft: draft,
+    sampleLoaded: false
+  });
+}
+
+export function undoTrainingRouteAuthorAction(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  if (state.routeDraft.strokes.length > 0) {
+    return refreshRouteMatch({
+      ...state,
+      routeDraft: undoLastRouteStroke(state.routeDraft),
+      sampleLoaded: false
+    });
+  }
+
+  if (state.checkpointNodeIds.length > 0) {
+    return removeLastTrainingRouteAuthorCheckpoint(state);
+  }
+
+  if (state.destinationNodeId) {
+    return {
+      ...state,
+      destinationNodeId: null,
+      comparisonHasRun: false,
+      sampleLoaded: false
+    };
+  }
+
+  return {
+    ...state,
+    startNodeId: null,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+}
+
+export function clearTrainingRouteAuthorRoute(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  return refreshRouteMatch({
+    ...state,
+    routeDraft: createEmptyRouteDraft(),
+    sampleLoaded: false
+  });
+}
+
+export function validateTrainingRouteAuthorState(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  return {
+    ...state,
+    validationHasRun: Boolean(state.startNodeId && state.destinationNodeId && state.validationSegments.length > 0)
+  };
+}
+
+export function compareTrainingRouteAuthorShortestRoute(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
+  return {
+    ...state,
+    comparisonHasRun: Boolean(state.startNodeId && state.destinationNodeId && state.validationSegments.length > 0)
+  };
+}
+
+export function updateTrainingRouteAuthorMetadataField(
+  state: TrainingRouteAuthorState,
+  fieldId: keyof CuratedTrainingRouteMetadata,
+  value: string
+): TrainingRouteAuthorState {
+  const metadata = { ...state.metadata };
+
+  if (ARRAY_METADATA_FIELDS.has(fieldId)) {
+    (metadata[fieldId] as string[]) = value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  } else if (fieldId === "difficulty") {
+    metadata.difficulty = value as CuratedTrainingRouteMetadata["difficulty"];
+    return {
+      ...state,
+      metadata,
+      validationHasRun: false,
+      comparisonHasRun: false
+    };
+  } else if (fieldId === "exerciseType") {
+    metadata.exerciseType = value as CuratedTrainingRouteMetadata["exerciseType"];
+  } else if (fieldId === "status") {
+    metadata.status = value as CuratedTrainingRouteMetadata["status"];
+  } else {
+    (metadata[fieldId] as string) = value;
+  }
+
+  return {
+    ...state,
+    metadata
+  };
+}
+
+function buildToolbarActions(input: {
+  activeMode: TrainingRouteAuthorMode;
+  canUndo: boolean;
+  canRemoveCheckpoint: boolean;
+  canClearRoute: boolean;
+  canClearCheckpoints: boolean;
+  canValidate: boolean;
+  canCompare: boolean;
+  exportReady: boolean;
+}): TrainingRouteAuthorToolbarAction[] {
   return [
-    { id: "pan", label: "Pan" },
-    { id: "set-start", label: "Set start", primary: true },
-    { id: "draw-route", label: "Draw route", primary: true },
-    { id: "add-checkpoint", label: "Add checkpoint" },
-    { id: "set-destination", label: "Set destination", primary: true },
-    { id: "undo", label: "Undo" },
-    { id: "remove-last-checkpoint", label: "Remove last checkpoint" },
-    { id: "clear-route", label: "Clear route" },
-    { id: "clear-checkpoints", label: "Clear checkpoints" },
+    { id: "pan", label: "Pan", pressed: input.activeMode === "pan" },
+    { id: "set-start", label: "Set start", primary: true, pressed: input.activeMode === "set-start" },
+    { id: "draw-route", label: "Draw route", primary: true, pressed: input.activeMode === "draw-route" },
+    { id: "add-checkpoint", label: "Add checkpoint", pressed: input.activeMode === "add-checkpoint" },
+    { id: "set-destination", label: "Set destination", primary: true, pressed: input.activeMode === "set-destination" },
+    { id: "undo", label: "Undo", disabled: !input.canUndo },
+    { id: "remove-last-checkpoint", label: "Remove last checkpoint", disabled: !input.canRemoveCheckpoint },
+    { id: "clear-route", label: "Clear route", disabled: !input.canClearRoute },
+    { id: "clear-checkpoints", label: "Clear checkpoints", disabled: !input.canClearCheckpoints },
     { id: "reset-view", label: "Reset view" },
-    { id: "validate-route", label: "Validate route", primary: true },
-    { id: "compare-shortest-route", label: "Compare shortest route", primary: true },
-    { id: "export-json", label: "Export JSON", primary: true, disabled: !exportReady }
+    { id: "validate-route", label: "Validate route", primary: true, disabled: !input.canValidate },
+    { id: "compare-shortest-route", label: "Compare shortest route", primary: true, disabled: !input.canCompare },
+    { id: "export-json", label: "Export JSON", primary: true, disabled: !input.exportReady }
   ];
 }
 
 function buildAuthoringSteps(input: {
   hasStart: boolean;
   hasRoute: boolean;
+  checkpointCount: number;
   hasDestination: boolean;
+  validationHasRun: boolean;
   validationStatus: LearnerRouteValidationResult["status"];
-  comparisonStatus: CuratedShortestRouteComparisonDetail["comparisonStatus"];
+  comparisonHasRun: boolean;
   exportReady: boolean;
 }): TrainingRouteAuthorStep[] {
   const steps = [
@@ -637,37 +1149,38 @@ function buildAuthoringSteps(input: {
       index: 1,
       label: "Set start",
       complete: input.hasStart,
-      instruction: "Click Set start, then click the map near the intended starting road."
+      instruction: "Click Set start, then click a valid road/node on the Real London map."
     },
     {
       index: 2,
       label: "Draw route",
       complete: input.hasRoute,
-      instruction: "Now draw the learner route in the order the learner should drive."
+      instruction: "Switch to Draw route and trace the intended learner route on the roads."
     },
     {
       index: 3,
       label: "Add checkpoints if needed",
-      complete: true,
-      instruction: "Add checkpoints in the order learners must visit them."
+      complete: false,
+      optional: true,
+      instruction: `${input.checkpointCount} checkpoint(s) selected. Add checkpoints only when the exercise needs them.`
     },
     {
       index: 4,
       label: "Set destination",
       complete: input.hasDestination,
-      instruction: "Set the destination marker at the intended final road segment."
+      instruction: "Click Set destination, then click the final road/node for the route."
     },
     {
       index: 5,
       label: "Validate",
-      complete: input.validationStatus !== "invalid",
-      instruction: "Validate before export and fix blocking errors first."
+      complete: input.validationHasRun && input.validationStatus !== "invalid",
+      instruction: "Validate after start, destination, and a matched drawn route exist."
     },
     {
       index: 6,
       label: "Compare shortest route",
-      complete: input.comparisonStatus === "available",
-      instruction: "Compare with the shortest legal route and justify any major detour."
+      complete: input.comparisonHasRun,
+      instruction: "Compare with the shortest legal route between the selected route points."
     },
     {
       index: 7,
@@ -676,7 +1189,7 @@ function buildAuthoringSteps(input: {
       instruction: "Export only when route data, metadata, validation, and comparison are ready."
     }
   ];
-  const currentIndex = steps.findIndex((step) => !step.complete);
+  const currentIndex = steps.findIndex((step) => !step.complete && !step.optional);
 
   return steps.map((step, index) => ({
     ...step,
@@ -690,7 +1203,9 @@ function buildExportReadiness(input: {
   hasDestination: boolean;
   hasRoute: boolean;
   validation: LearnerRouteValidationResult;
-  comparison: CuratedShortestRouteComparison;
+  validationHasRun: boolean;
+  comparisonHasRun: boolean;
+  approvalWarning: TrainingRouteAuthorApprovalWarning | null;
 }): TrainingRouteAuthorExportReadiness {
   const hasRequiredMetadata = Boolean(
     input.metadata.routeId.trim() &&
@@ -701,18 +1216,16 @@ function buildExportReadiness(input: {
   const checklist = [
     { label: "Start selected", complete: input.hasStart },
     { label: "Destination selected", complete: input.hasDestination },
-    { label: "Route drawn", complete: input.hasRoute },
+    { label: "Route drawn and matched", complete: input.hasRoute },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
-    { label: "Validation has run without blocking errors", complete: input.validation.valid },
-    {
-      label: "Shortest-route comparison available or safely advisory",
-      complete: input.comparison.directComparison.comparisonStatus !== "unknown" || input.validation.valid
-    }
+    { label: "Validation has run without blocking errors", complete: input.validationHasRun && input.validation.valid },
+    { label: "Shortest-route comparison has run", complete: input.comparisonHasRun },
+    { label: "Approved status is allowed", complete: !input.approvalWarning?.blocking }
   ];
 
   return {
     ready: checklist.every((item) => item.complete),
-    suggestedFilename: `${input.metadata.routeId || "curated-training-route"}.json`,
+    suggestedFilename: `${input.metadata.routeId.trim() || "curated-training-route"}.json`,
     checklist
   };
 }
@@ -722,11 +1235,14 @@ function buildRouteStatusItems(input: {
   hasDestination: boolean;
   checkpointCount: number;
   hasRoute: boolean;
+  validationHasRun: boolean;
   validation: LearnerRouteValidationResult;
-  complexitySummary: CuratedTrainingRouteComplexitySummary;
+  comparisonHasRun: boolean;
   comparison: CuratedShortestRouteComparison;
   exportReady: boolean;
 }): TrainingRouteAuthorStatusItem[] {
+  const comparisonValue = input.comparisonHasRun ? input.comparison.directComparison.verdict : "not run";
+
   return [
     { label: "Start", value: input.hasStart ? "selected" : "missing", state: input.hasStart ? "complete" : "missing" },
     {
@@ -735,93 +1251,82 @@ function buildRouteStatusItems(input: {
       state: input.hasDestination ? "complete" : "missing"
     },
     {
+      label: "Route",
+      value: input.hasRoute ? "drawn and matched" : "missing",
+      state: input.hasRoute ? "complete" : "missing"
+    },
+    {
       label: "Checkpoints",
       value: `${input.checkpointCount}`,
       state: input.checkpointCount > 0 ? "complete" : "ready"
     },
-    { label: "Route", value: input.hasRoute ? "drawn" : "missing", state: input.hasRoute ? "complete" : "missing" },
-    {
-      label: "Approx length",
-      value: `${input.complexitySummary.approximateRouteLengthMeters} m`,
-      state: input.hasRoute ? "complete" : "missing"
-    },
-    { label: "Segments", value: `${input.complexitySummary.segmentCount}`, state: input.hasRoute ? "complete" : "missing" },
-    { label: "Turns", value: `${input.complexitySummary.turnCount}`, state: input.hasRoute ? "complete" : "missing" },
-    {
-      label: "Decision points",
-      value: `${input.complexitySummary.decisionPointCount}`,
-      state: input.hasRoute ? "complete" : "missing"
-    },
     {
       label: "Validation",
-      value: input.validation.status,
-      state: input.validation.valid ? "complete" : input.validation.status === "warning" ? "warning" : "missing"
+      value: input.validationHasRun ? input.validation.status : "not run",
+      state: input.validationHasRun
+        ? input.validation.valid
+          ? "complete"
+          : input.validation.status === "warning"
+            ? "warning"
+            : "missing"
+        : "missing"
     },
     {
       label: "Shortest comparison",
-      value: input.comparison.directComparison.comparisonStatus,
-      state: input.comparison.directComparison.comparisonStatus === "available" ? "complete" : "warning"
+      value: comparisonValue,
+      state: input.comparisonHasRun
+        ? input.comparison.directComparison.verdict.includes("warning")
+          ? "warning"
+          : "complete"
+        : "missing"
     },
-    { label: "Export", value: input.exportReady ? "ready" : "blocked", state: input.exportReady ? "ready" : "missing" }
+    { label: "Export", value: input.exportReady ? "ready" : "not ready", state: input.exportReady ? "ready" : "missing" }
   ];
 }
 
 export function buildTrainingRouteAuthorModel(input?: {
-  exercise?: RouteExercise;
+  state?: TrainingRouteAuthorState;
   statusOverride?: CuratedTrainingRouteStatus;
-  authoredRouteSegmentIds?: readonly string[];
   routeChoiceJustification?: string;
   difficultyOverride?: Exclude<ExerciseDifficulty, "easy">;
 }): TrainingRouteAuthorModel {
-  const sourceExercise = input?.exercise ?? DEFAULT_ROUTE_EXERCISE;
-
-  if (!sourceExercise) {
-    throw new Error("Training Route Author requires at least one Real London route exercise.");
-  }
-
   const sourceMap = realLondonOsmPilotRouteMap;
   const graph = buildMapGraph(sourceMap);
-  const stopNodeIds = selectedStopNodeIds(sourceExercise, sourceMap);
-  const checkpointShortestRoute = findShortestLegalRouteThroughStops({
-    graph,
-    stopNodeIds,
-    restrictions: sourceMap.restrictions
-  });
-  const candidateRouteSegmentIds = input?.authoredRouteSegmentIds ?? (checkpointShortestRoute.found ? checkpointShortestRoute.edgeIds : []);
-  const routeSegments = candidateRouteSegmentIds.length > 0
-    ? validationSegmentsFromRoute({
-        graph,
-        edgeIds: candidateRouteSegmentIds
-      })
-    : [];
-  const baseMetadata = metadataForExercise(sourceExercise);
+  const baseState = input?.state ?? createEmptyTrainingRouteAuthorState();
   const metadata: CuratedTrainingRouteMetadata = {
-    ...baseMetadata,
-    difficulty: input?.difficultyOverride ?? baseMetadata.difficulty,
-    routeChoiceJustification: input?.routeChoiceJustification ?? baseMetadata.routeChoiceJustification,
-    status: input?.statusOverride ?? baseMetadata.status
+    ...baseState.metadata,
+    difficulty: input?.difficultyOverride ?? baseState.metadata.difficulty,
+    routeChoiceJustification: input?.routeChoiceJustification ?? baseState.metadata.routeChoiceJustification,
+    status: input?.statusOverride ?? baseState.metadata.status
   };
-  const validation = validateLearnerRoute({
+  const validation = validationMetrics({
     map: sourceMap,
-    routeSegments,
+    routeSegments: baseState.validationSegments,
     difficulty: metadata.difficulty
   });
-  const estimatedDifficulty = inferDifficultyFromMetrics(validation, metadata.difficulty);
+  const validationForDisplay = baseState.validationHasRun ? validation : EMPTY_VALIDATION;
+  const selectedStopNodeIds = [
+    baseState.startNodeId,
+    ...baseState.checkpointNodeIds,
+    baseState.destinationNodeId
+  ].filter((nodeId): nodeId is string => Boolean(nodeId));
   const shortestRouteComparison = buildShortestRouteComparison({
     map: sourceMap,
     graph,
-    stopNodeIds,
+    stopNodeIds: selectedStopNodeIds,
     authoredValidation: validation,
-    authoredRouteIsValid: validation.valid && routeSegments.length > 0,
+    authoredRouteIsValid: validation.valid && baseState.validationSegments.length > 0,
     difficulty: metadata.difficulty,
-    routeChoiceJustification: metadata.routeChoiceJustification
+    routeChoiceJustification: metadata.routeChoiceJustification,
+    comparisonHasRun: baseState.comparisonHasRun
   });
+  const estimatedDifficulty = inferDifficultyFromMetrics(validation, metadata.difficulty);
   const complexitySummary: CuratedTrainingRouteComplexitySummary = {
     approximateRouteLengthMeters: Math.round(validation.metrics.routeDistanceMeters),
     segmentCount: validation.metrics.segmentCount,
     turnCount: validation.metrics.turnCount,
     decisionPointCount: validation.metrics.junctionDecisionCount,
-    checkpointCount: Math.max(0, sourceExercise.stops.length - 2),
+    checkpointCount: baseState.checkpointNodeIds.length,
     estimatedDifficulty,
     warnings: complexityWarnings({
       validation,
@@ -829,147 +1334,172 @@ export function buildTrainingRouteAuthorModel(input?: {
       estimatedDifficulty
     })
   };
-  const nodeIds = routeSegments.length > 0
-    ? [routeSegments[0].fromNodeId, ...routeSegments.map((segment) => segment.toNodeId)]
-    : stopNodeIds;
-  const routeGeometry = nodeIds
-    .map((nodeId) => pointForNode(sourceMap, nodeId))
-    .filter((point): point is Vec2 => Boolean(point));
-  const checkpoints = sourceExercise.stops.slice(1, -1).map((stop, index) =>
-    curatedStop({
-      map: sourceMap,
-      stop,
-      fallbackLabel: `Checkpoint ${index + 1}`
-    })
-  );
-  const hasStart = Boolean(sourceExercise.stops[0] && stopNodeId(sourceExercise.stops[0], sourceMap));
-  const hasDestination = Boolean(
-    sourceExercise.stops[sourceExercise.stops.length - 1] &&
-      stopNodeId(sourceExercise.stops[sourceExercise.stops.length - 1], sourceMap)
-  );
-  const hasRoute = routeSegments.length > 0;
+  const hasStart = Boolean(baseState.startNodeId);
+  const hasDestination = Boolean(baseState.destinationNodeId);
+  const hasRoute = baseState.validationSegments.length > 0 && baseState.routeMatchStatus === "matched";
+  const approval = approvalWarning({
+    status: metadata.status,
+    validation,
+    validationHasRun: baseState.validationHasRun
+  });
   const exportReadiness = buildExportReadiness({
     metadata,
     hasStart,
     hasDestination,
     hasRoute,
     validation,
-    comparison: shortestRouteComparison
+    validationHasRun: baseState.validationHasRun,
+    comparisonHasRun: baseState.comparisonHasRun,
+    approvalWarning: approval
   });
-  const markerPoints = [
-    curatedStop({ map: sourceMap, stop: sourceExercise.stops[0], fallbackLabel: "START" }),
-    ...checkpoints,
-    curatedStop({
-      map: sourceMap,
-      stop: sourceExercise.stops[sourceExercise.stops.length - 1],
-      fallbackLabel: "DESTINATION"
-    })
-  ];
-  const markers: TrainingRouteAuthorMapMarker[] = markerPoints.flatMap((stop, index): TrainingRouteAuthorMapMarker[] => {
-    if (!stop.point) {
-      return [];
-    }
-
-    if (index === 0) {
-      return [{ id: "start", label: "START", kind: "start", point: stop.point }];
-    }
-
-    if (index === markerPoints.length - 1) {
-      return [{ id: "destination", label: "DESTINATION", kind: "destination", point: stop.point }];
-    }
-
-    return [{ id: `checkpoint-${index}`, label: `${index}`, kind: "checkpoint", point: stop.point }];
-  });
+  const routeGeometry = pointsForNodeIds(sourceMap, baseState.routeNodeIds);
+  const rawRoutePoints = routeDraftToDrawnRouteTrace(baseState.routeDraft).points;
+  const markers: TrainingRouteAuthorMapMarker[] = [
+    ...(baseState.startNodeId
+      ? [
+          {
+            id: "start",
+            label: "START",
+            kind: "start" as const,
+            point: pointForNode(sourceMap, baseState.startNodeId)
+          }
+        ]
+      : []),
+    ...baseState.checkpointNodeIds.map((nodeId, index) => ({
+      id: `checkpoint-${index + 1}`,
+      label: `${index + 1}`,
+      kind: "checkpoint" as const,
+      point: pointForNode(sourceMap, nodeId)
+    })),
+    ...(baseState.destinationNodeId
+      ? [
+          {
+            id: "destination",
+            label: "DEST",
+            kind: "destination" as const,
+            point: pointForNode(sourceMap, baseState.destinationNodeId)
+          }
+        ]
+      : [])
+  ].filter((marker): marker is TrainingRouteAuthorMapMarker => Boolean(marker.point));
   const shortestPoints = shortestRoutePoints({
     map: sourceMap,
     graph,
-    stopNodeIds
+    stopNodeIds: selectedStopNodeIds,
+    comparisonHasRun: baseState.comparisonHasRun
   });
-  const allMapPoints = [...routeGeometry, ...shortestPoints, ...markers.map((marker) => marker.point)];
   const mapModel: TrainingRouteAuthorMapModel = {
-    viewBox: calculateViewBox(allMapPoints),
-    authoredRoutePoints: routeGeometry,
+    authoredRoutePoints: rawRoutePoints,
+    matchedRoutePoints: routeGeometry,
+    snappedRoutePoints: baseState.snappedRoutePoints,
     shortestRoutePoints: shortestPoints,
     markers,
-    showShortestRouteComparison: true,
-    validationIssueSegmentIds: validation.affectedRouteSegmentIds
+    showShortestRouteComparison: baseState.comparisonHasRun,
+    validationIssueSegmentIds: baseState.validationHasRun ? validation.affectedRouteSegmentIds : [],
+    markerRadiusPixels: 9
   };
   const routeStatusItems = buildRouteStatusItems({
     hasStart,
     hasDestination,
-    checkpointCount: checkpoints.length,
+    checkpointCount: baseState.checkpointNodeIds.length,
     hasRoute,
-    validation,
-    complexitySummary,
+    validationHasRun: baseState.validationHasRun,
+    validation: validationForDisplay,
+    comparisonHasRun: baseState.comparisonHasRun,
     comparison: shortestRouteComparison,
     exportReady: exportReadiness.ready
   });
   const authoringSteps = buildAuthoringSteps({
     hasStart,
     hasRoute,
+    checkpointCount: baseState.checkpointNodeIds.length,
     hasDestination,
+    validationHasRun: baseState.validationHasRun,
     validationStatus: validation.status,
-    comparisonStatus: shortestRouteComparison.directComparison.comparisonStatus,
+    comparisonHasRun: baseState.comparisonHasRun,
     exportReady: exportReadiness.ready
   });
+  const checkpoints = baseState.checkpointNodeIds.map((nodeId, index) =>
+    curatedStopForNode({
+      map: sourceMap,
+      nodeId,
+      fallbackLabel: `Checkpoint ${index + 1}`
+    })
+  );
   const exportData: CuratedTrainingRouteExport = {
     schemaVersion: 1,
     metadata,
     mapId: sourceMap.id,
     mapVersion: sourceMap.mapVersion ?? sourceMap.version,
-    sourceRouteExerciseId: sourceExercise.id,
-    sourceRouteExerciseVersion: sourceExercise.exerciseVersion,
-    start: curatedStop({ map: sourceMap, stop: sourceExercise.stops[0], fallbackLabel: "Start" }),
-    destination: curatedStop({
-      map: sourceMap,
-      stop: sourceExercise.stops[sourceExercise.stops.length - 1],
-      fallbackLabel: "Destination"
-    }),
+    sourceRouteExerciseId: baseState.sampleLoaded ? DEFAULT_ROUTE_EXERCISE?.id : undefined,
+    sourceRouteExerciseVersion: baseState.sampleLoaded ? DEFAULT_ROUTE_EXERCISE?.exerciseVersion : undefined,
+    start: curatedStopForNode({ map: sourceMap, nodeId: baseState.startNodeId, fallbackLabel: "Start" }),
+    destination: curatedStopForNode({ map: sourceMap, nodeId: baseState.destinationNodeId, fallbackLabel: "Destination" }),
     checkpoints,
-    routeSegmentIds: routeSegments.map((segment) => segment.id),
-    roadIds: [...new Set(routeSegments.map((segment) => segment.roadId))],
-    nodeIds,
+    routeSegmentIds: baseState.validationSegments.map((segment) => segment.id),
+    roadIds: [...new Set(baseState.validationSegments.map((segment) => segment.roadId))],
+    nodeIds: baseState.routeNodeIds,
     routeGeometry,
     validationSummary: {
-      status: validation.status,
-      valid: validation.valid,
-      blockingErrors: validation.blockingErrors,
-      advisoryWarnings: validation.advisoryWarnings,
-      affectedRouteSegmentIds: validation.affectedRouteSegmentIds,
-      ruleCodes: validation.ruleCodes,
-      explanation: validation.explanation
+      status: baseState.validationHasRun ? validation.status : "invalid",
+      valid: baseState.validationHasRun ? validation.valid : false,
+      blockingErrors: baseState.validationHasRun ? validation.blockingErrors : [],
+      advisoryWarnings: baseState.validationHasRun ? validation.advisoryWarnings : [],
+      affectedRouteSegmentIds: baseState.validationHasRun ? validation.affectedRouteSegmentIds : [],
+      ruleCodes: baseState.validationHasRun ? validation.ruleCodes : [],
+      explanation: baseState.validationHasRun
+        ? validation.explanation
+        : "Validation has not been run for the current authored route."
     },
     complexitySummary,
     shortestRouteComparison,
-    validationSegments: routeSegments
+    validationSegments: baseState.validationSegments
   };
 
   return {
     path: DEV_TRAINING_ROUTE_AUTHOR_PATH,
     title: "Curated Training Route Author",
     devOnlyNotice:
-      "Dev/admin only. Create, validate, compare, and export curated learner-driver training routes.",
+      "Dev/admin only. Create, validate, compare, and export curated learner-driver training routes from real map interaction.",
     sourceMapId: sourceMap.id,
     sourceMapName: sourceMap.name,
-    sourceExerciseId: sourceExercise.id,
-    toolbarActions: buildToolbarActions(exportReadiness.ready),
+    sourceExerciseId: baseState.sampleLoaded && DEFAULT_ROUTE_EXERCISE ? DEFAULT_ROUTE_EXERCISE.id : "none",
+    sampleLoaded: baseState.sampleLoaded,
+    activeMode: baseState.activeMode,
+    toolbarActions: buildToolbarActions({
+      activeMode: baseState.activeMode,
+      canUndo: baseState.routeDraft.strokes.length > 0 || baseState.checkpointNodeIds.length > 0 || Boolean(baseState.destinationNodeId) || Boolean(baseState.startNodeId),
+      canRemoveCheckpoint: baseState.checkpointNodeIds.length > 0,
+      canClearRoute: baseState.routeDraft.strokes.length > 0,
+      canClearCheckpoints: baseState.checkpointNodeIds.length > 0,
+      canValidate: hasStart && hasDestination && hasRoute,
+      canCompare: hasStart && hasDestination && hasRoute,
+      exportReady: exportReadiness.ready
+    }),
     authoringSteps,
     routeStatusItems,
     mapModel,
     exportReadiness,
     metadataFields: buildMetadataFields(metadata),
-    validation,
+    validationRunStatus: baseState.validationHasRun ? validation.status : "not-run",
+    comparisonRunStatus: baseState.comparisonHasRun
+      ? shortestRouteComparison.directComparison.comparisonStatus
+      : "not-run",
+    validation: validationForDisplay,
     complexitySummary,
     shortestRouteComparison,
     exportData,
     exportJson: `${JSON.stringify(exportData, null, 2)}\n`,
-    approvalWarning: approvalWarning({ status: metadata.status, validation }),
+    approvalWarning: approval,
+    routeMatchStatus: baseState.routeMatchStatus,
+    routeMatchMessage: baseState.routeMatchMessage,
     authoringWorkflow: [
-      "Open the Real London map and select a scoreable route exercise.",
-      "Use the route drawing tools to preview the intended learner path.",
-      "Fill in metadata, objectives, hints, scoring emphasis, and instructor notes.",
-      "Review validation errors, warnings, affected segments, and complexity metrics.",
-      "Export JSON and commit it later under data/training-routes/ during Stage 19."
+      "Open the Real London map.",
+      "Set a start point by clicking a valid road/node.",
+      "Draw the intended learner route on the roads.",
+      "Add optional ordered checkpoints.",
+      "Set the destination.",
+      "Validate, compare with the shortest legal route, then export JSON."
     ]
   };
 }
