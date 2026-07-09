@@ -51,6 +51,7 @@ import {
   startTrainingRouteAuthorStroke,
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+  TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   trainingRouteAuthorMapPointForClientPoint,
   trainingRouteAuthorWheelZoomFactor,
   undoTrainingRouteAuthorAction,
@@ -666,6 +667,30 @@ function renderClickDiagnosticOverlay(
       ) : null}
     </g>
   );
+}
+
+function renderAuthorLegendSwatch(itemId: (typeof TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS)[number]["id"]) {
+  if (itemId === "one-way-arrows") {
+    return (
+      <span className="relative inline-flex h-3 w-7 items-center" aria-hidden="true">
+        <span className="h-0.5 w-6 rounded-full bg-blue-700" />
+        <span className="-ml-1 text-[10px] font-black leading-none text-blue-700">{">"}</span>
+      </span>
+    );
+  }
+
+  const swatchClass =
+    itemId === "raw-drawing"
+      ? "bg-orange-500"
+      : itemId === "matched-route" || itemId === "checkpoint"
+        ? "bg-purple-600"
+        : itemId === "shortest-overlay"
+          ? "bg-sky-600"
+          : itemId === "start"
+            ? "bg-green-600"
+            : "bg-red-600";
+
+  return <span className={`size-3 shrink-0 rounded-full ${swatchClass}`} aria-hidden="true" />;
 }
 
 function renderComparison(label: string, comparison: CuratedShortestRouteComparisonDetail) {
@@ -1542,24 +1567,25 @@ export function TrainingRouteAuthorClient() {
                 )}
               </div>
             ) : null}
-            <svg
-              aria-label="Interactive Real London training route authoring map"
-              className={`block aspect-[1120/760] w-full touch-none select-none overscroll-contain ${
-                model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
-              }`}
-              onAuxClick={handleMapAuxClick}
-              onContextMenu={handleMapContextMenu}
-              onMouseDown={handleMapMouseDown}
-              onPointerCancel={handleMapPointerEnd}
-              onPointerDown={handleMapPointerDown}
-              onPointerLeave={handleMapPointerEnd}
-              onPointerMove={handleMapPointerMove}
-              onPointerUp={handleMapPointerEnd}
-              ref={mapSvgRef}
-              role="img"
-              style={{ backgroundColor: TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor }}
-              viewBox={`${viewBounds.minX} ${viewBounds.minY} ${boundsWidth(viewBounds)} ${boundsHeight(viewBounds)}`}
-            >
+            <div className="relative">
+              <svg
+                aria-label="Interactive Real London training route authoring map"
+                className={`block aspect-[1120/760] w-full touch-none select-none overscroll-contain ${
+                  model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
+                }`}
+                onAuxClick={handleMapAuxClick}
+                onContextMenu={handleMapContextMenu}
+                onMouseDown={handleMapMouseDown}
+                onPointerCancel={handleMapPointerEnd}
+                onPointerDown={handleMapPointerDown}
+                onPointerLeave={handleMapPointerEnd}
+                onPointerMove={handleMapPointerMove}
+                onPointerUp={handleMapPointerEnd}
+                ref={mapSvgRef}
+                role="img"
+                style={{ backgroundColor: TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor }}
+                viewBox={`${viewBounds.minX} ${viewBounds.minY} ${boundsWidth(viewBounds)} ${boundsHeight(viewBounds)}`}
+              >
               <rect
                 fill={TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor}
                 height={boundsHeight(viewBounds)}
@@ -1646,15 +1672,31 @@ export function TrainingRouteAuthorClient() {
                 renderAuthorMarkerLabel(marker, viewport, currentZoom, mapUnitsPerPixel)
               )}
               {showClickDiagnostics ? renderClickDiagnosticOverlay(clickDiagnostic, mapUnitsPerPixel) : null}
-            </svg>
-            <div className="flex flex-wrap gap-3 border-t border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700">
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-orange-500" />Raw drawing</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-purple-600" />Matched route</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-sky-600" />Shortest overlay</span>
-              <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 rounded-full bg-blue-700" />One-way arrows</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-green-600" />START</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-red-600" />DESTINATION</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-purple-600" />Checkpoint</span>
+              </svg>
+              <div className="pointer-events-none absolute bottom-2 left-2 z-20 max-w-[min(19rem,calc(100%-5.75rem))] sm:bottom-4 sm:left-4 sm:max-w-[min(24rem,calc(100%-7rem))]">
+                <details className="pointer-events-auto max-w-full rounded-lg border border-slate-200 bg-white/95 text-xs text-slate-800 shadow-md">
+                  <summary className="min-h-11 cursor-pointer select-none px-3 py-3 font-semibold text-slate-900 sm:min-h-0 sm:py-2">
+                    Map legend
+                  </summary>
+                  <div
+                    className="grid max-h-48 gap-1 overflow-y-auto border-t border-slate-100 p-2 sm:grid-cols-2"
+                    style={{
+                      maxHeight: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.mobileReadability.legendMaxHeightPx
+                    }}
+                  >
+                    {TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS.map((item) => (
+                      <span
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-800"
+                        key={item.id}
+                        title={item.description}
+                      >
+                        {renderAuthorLegendSwatch(item.id)}
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              </div>
             </div>
           </div>
 

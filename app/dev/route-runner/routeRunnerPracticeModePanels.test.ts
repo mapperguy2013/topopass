@@ -8,6 +8,7 @@ import {
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
   TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
   TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
+  TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   canContinueTrainingRouteAuthorDrawPointer,
@@ -15,6 +16,7 @@ import {
   canStartTrainingRouteAuthorPointer,
   classifyShortestRouteComparison,
   buildTrainingRouteAuthorModel,
+  buildTrainingRouteAuthorMapLegendModel,
   clearTrainingRouteAuthorCheckpoints,
   clearTrainingRouteAuthorRoute,
   compareTrainingRouteAuthorShortestRoute,
@@ -175,6 +177,39 @@ test("curated training route author map viewport uses the author canvas aspect r
   assert.match(clientSource, /touch-none select-none overscroll-contain/);
   assert.doesNotMatch(clientSource, /h-\[420px\]/);
   assert.doesNotMatch(clientSource, /sm:h-\[560px\]/);
+});
+
+test("curated training route author map legend is collapsed inside the map viewport", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const routeRunnerSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+  const collapsedLegend = buildTrainingRouteAuthorMapLegendModel();
+  const expandedLegend = buildTrainingRouteAuthorMapLegendModel({ expanded: true });
+
+  assert.equal(collapsedLegend.controlLabel, "Map legend");
+  assert.equal(collapsedLegend.presentation, "compact-collapsible-layer-control");
+  assert.equal(collapsedLegend.placement, "map-viewport-bottom-left");
+  assert.equal(collapsedLegend.collapsedByDefault, true);
+  assert.deepEqual(collapsedLegend.items, []);
+  assert.deepEqual(
+    expandedLegend.items.map((item) => item.label),
+    TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS.map((item) => item.label)
+  );
+  assert.ok(expandedLegend.items.some((item) => item.label === "Raw drawing"));
+  assert.ok(expandedLegend.items.some((item) => item.label === "Matched route"));
+  assert.ok(expandedLegend.items.some((item) => item.label === "Shortest overlay"));
+  assert.match(clientSource, /<details className="pointer-events-auto max-w-full rounded-lg/);
+  assert.match(clientSource, /Map legend/);
+  assert.match(clientSource, /absolute bottom-2 left-2/);
+  assert.match(clientSource, /TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS\.map/);
+  assert.match(clientSource, /pointer-events-none absolute bottom-2 left-2/);
+  assert.match(clientSource, /role="toolbar"/);
+  assert.doesNotMatch(
+    clientSource,
+    /flex flex-wrap gap-3 border-t border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700/
+  );
+  assert.match(routeRunnerSource, /<details className="pointer-events-auto max-w-full rounded-lg/);
+  assert.match(routeRunnerSource, /Map legend/);
+  assert.match(routeRunnerSource, /LEARNER_RESTRICTION_MAP_LEGEND_ITEMS/);
 });
 
 test("curated training route author toolbar exposes the route creation workflow", () => {

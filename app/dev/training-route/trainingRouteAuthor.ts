@@ -222,6 +222,27 @@ export type TrainingRouteAuthorMapModel = {
   markerRadiusPixels: number;
 };
 
+export type TrainingRouteAuthorMapLegendItem = {
+  id:
+    | "raw-drawing"
+    | "matched-route"
+    | "shortest-overlay"
+    | "one-way-arrows"
+    | "start"
+    | "destination"
+    | "checkpoint";
+  label: string;
+  description: string;
+};
+
+export type TrainingRouteAuthorMapLegendModel = {
+  controlLabel: "Map legend";
+  presentation: "compact-collapsible-layer-control";
+  placement: "map-viewport-bottom-left";
+  collapsedByDefault: true;
+  items: TrainingRouteAuthorMapLegendItem[];
+};
+
 export type TrainingRouteAuthorAreaOption = {
   areaId: string;
   areaName: string;
@@ -370,6 +391,56 @@ const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
 ]);
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTON = 1;
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTONS_MASK = 4;
+
+export const TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS: TrainingRouteAuthorMapLegendItem[] = [
+  {
+    id: "raw-drawing",
+    label: "Raw drawing",
+    description: "Orange line shows the route shape currently drawn by the author."
+  },
+  {
+    id: "matched-route",
+    label: "Matched route",
+    description: "Purple line shows the snapped route matched to drivable road segments."
+  },
+  {
+    id: "shortest-overlay",
+    label: "Shortest overlay",
+    description: "Blue line shows the shortest legal comparison route when the check has run."
+  },
+  {
+    id: "one-way-arrows",
+    label: "One-way arrows",
+    description: "Blue arrows show the available one-way travel direction from map metadata."
+  },
+  {
+    id: "start",
+    label: "START",
+    description: "Green marker identifies the authored learner route start."
+  },
+  {
+    id: "destination",
+    label: "DESTINATION",
+    description: "Red marker identifies the authored learner route destination."
+  },
+  {
+    id: "checkpoint",
+    label: "Checkpoint",
+    description: "Numbered marker identifies an ordered learner checkpoint."
+  }
+];
+
+export function buildTrainingRouteAuthorMapLegendModel(input: {
+  expanded?: boolean;
+} = {}): TrainingRouteAuthorMapLegendModel {
+  return {
+    controlLabel: "Map legend",
+    presentation: "compact-collapsible-layer-control",
+    placement: "map-viewport-bottom-left",
+    collapsedByDefault: true,
+    items: input.expanded ? [...TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS] : []
+  };
+}
 
 function routeRunnerMapOptionToTrainingRouteAuthorAreaOption(
   option: RouteRunnerMapOption
