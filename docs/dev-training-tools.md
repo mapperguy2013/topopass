@@ -45,6 +45,8 @@ Stage 18.11 fixes authoring map input precision. Wheel zoom now keeps the map po
 
 Stage 18.12 adds dev-only draft saving for curated training routes. The authoring page can now save JSON drafts to `data/training-routes/drafts/`, save stricter validated drafts, download JSON locally, copy JSON to the clipboard, and recover browser-local autosaves after a reload. The dev save endpoint is disabled in production and only writes sanitized `.json` filenames under the drafts directory.
 
+Stage 18.12 map-control follow-up aligns `/dev/training-route` with the beta practice map controls. Wheel zoom stays cursor-centred, middle mouse drag temporarily pans without changing the selected authoring mode, middle/right clicks cannot place markers or draw route points, and page scroll remains isolated while the pointer is inside the map.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
@@ -163,12 +165,16 @@ Run the app locally and check:
 24. Confirm checkpoint markers match the Training Mode/practice map style and remain readable.
 25. Confirm authored, matched, shortest-route, and validation overlays remain visually distinct over the Real London map.
 26. Confirm wheel zoom over the map zooms towards the cursor and the map point under the cursor stays stable.
-27. Confirm middle-click does not place start, destination, or checkpoints and does not draw a route.
-28. Confirm right-click does not place or draw on the map.
-29. Confirm left-click still places start, destination, checkpoints, and begins drawing in the matching authoring modes.
-30. Confirm touch drawing and panning still work on mobile.
-31. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-32. `/practice/training` remains the learner-facing Training Mode route.
+27. Confirm middle mouse drag pans the map in `Pan`, `Set start`, `Draw route`, `Add checkpoint`, and `Set destination` modes.
+28. Confirm releasing the middle mouse button leaves the selected authoring mode unchanged.
+29. Confirm middle-click does not place start, destination, or checkpoints and does not draw a route.
+30. Confirm browser middle-click autoscroll does not activate inside the map.
+31. Confirm right-click does not place or draw on the map.
+32. Confirm left-click still places start, destination, checkpoints, and begins drawing in the matching authoring modes.
+33. Confirm page scroll does not move while panning or drawing inside the map.
+34. Confirm touch drawing and panning still work on mobile.
+35. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+36. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 

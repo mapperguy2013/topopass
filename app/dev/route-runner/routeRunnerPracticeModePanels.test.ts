@@ -7,6 +7,7 @@ import {
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   canContinueTrainingRouteAuthorDrawPointer,
+  canContinueTrainingRouteAuthorPanPointer,
   canStartTrainingRouteAuthorPointer,
   classifyShortestRouteComparison,
   buildTrainingRouteAuthorModel,
@@ -18,6 +19,8 @@ import {
   dominantTrainingRouteAuthorWheelDelta,
   finishTrainingRouteAuthorStroke,
   getTrainingRouteAuthorMap,
+  isTrainingRouteAuthorMiddlePanActive,
+  isTrainingRouteAuthorMiddlePanPointer,
   setTrainingRouteAuthorDestination,
   setTrainingRouteAuthorMode,
   setTrainingRouteAuthorStart,
@@ -325,11 +328,31 @@ test("curated training route author accepts only left mouse or primary touch for
     assert.equal(shouldIsolateTrainingRouteAuthorPointer({ targetInsideMap: true, activeMode }), true);
   }
 
-  assert.match(clientSource, /canStartTrainingRouteAuthorPointer\(pointerButtonInput\(event\)\)/);
+  assert.match(clientSource, /canStartTrainingRouteAuthorPointer\(pointerInput\)/);
   assert.match(clientSource, /dragStateRef\.current = null/);
   assert.match(clientSource, /onMouseDown=\{handleMapMouseDown\}/);
   assert.match(clientSource, /onAuxClick=\{handleMapAuxClick\}/);
   assert.match(clientSource, /onContextMenu=\{handleMapContextMenu\}/);
+});
+
+test("curated training route author middle mouse temporarily pans without changing authoring mode", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const middleInput = { button: 1, buttons: 4, pointerType: "mouse", isPrimary: true };
+  const leftInput = { button: 0, buttons: 1, pointerType: "mouse", isPrimary: true };
+
+  for (const activeMode of ["set-start", "set-destination", "add-checkpoint", "draw-route", "pan"] as const) {
+    assert.equal(shouldIsolateTrainingRouteAuthorPointer({ targetInsideMap: true, activeMode }), true);
+    assert.equal(isTrainingRouteAuthorMiddlePanPointer(middleInput), true);
+    assert.equal(canStartTrainingRouteAuthorPointer(middleInput), false);
+    assert.equal(canContinueTrainingRouteAuthorPanPointer(middleInput, "middle"), true);
+    assert.equal(canContinueTrainingRouteAuthorPanPointer(leftInput, "middle"), false);
+    assert.equal(canContinueTrainingRouteAuthorPanPointer(leftInput, "primary"), true);
+  }
+
+  assert.match(clientSource, /isTrainingRouteAuthorMiddlePanPointer\(pointerInput\)/);
+  assert.match(clientSource, /source: "middle"/);
+  assert.match(clientSource, /canContinueTrainingRouteAuthorPanPointer\(pointerButtonInput\(event\), dragState\.source\)/);
+  assert.doesNotMatch(clientSource, /setTrainingRouteAuthorMode\(currentState, "pan"\)/);
 });
 
 test("curated training route author blocks auxiliary clicks from placement and drawing modes", () => {
@@ -338,7 +361,10 @@ test("curated training route author blocks auxiliary clicks from placement and d
   assert.equal(shouldPreventTrainingRouteAuthorAuxiliaryClick({ button: 1, pointerType: "mouse" }), true);
   assert.equal(shouldPreventTrainingRouteAuthorAuxiliaryClick({ button: 2, pointerType: "mouse" }), true);
   assert.equal(shouldPreventTrainingRouteAuthorAuxiliaryClick({ button: 0, pointerType: "mouse" }), false);
+  assert.equal(isTrainingRouteAuthorMiddlePanActive({ buttons: 4, pointerType: "mouse" }), true);
+  assert.equal(isTrainingRouteAuthorMiddlePanActive({ buttons: 1, pointerType: "mouse" }), false);
   assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 0, buttons: 1, pointerType: "mouse", isPrimary: true }), true);
+  assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 1, buttons: 4, pointerType: "mouse", isPrimary: true }), false);
   assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 0, buttons: 0, pointerType: "mouse", isPrimary: true }), false);
   assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 0, buttons: 1, pointerType: "touch", isPrimary: true }), true);
   assert.match(clientSource, /shouldPreventTrainingRouteAuthorAuxiliaryClick/);

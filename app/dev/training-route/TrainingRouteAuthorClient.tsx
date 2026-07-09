@@ -29,6 +29,7 @@ import {
   appendTrainingRouteAuthorStrokePoint,
   buildTrainingRouteAuthorModel,
   canContinueTrainingRouteAuthorDrawPointer,
+  canContinueTrainingRouteAuthorPanPointer,
   canStartTrainingRouteAuthorPointer,
   clearTrainingRouteAuthorCheckpoints,
   clearTrainingRouteAuthorRoute,
@@ -38,6 +39,7 @@ import {
   dominantTrainingRouteAuthorWheelDelta,
   finishTrainingRouteAuthorStroke,
   getTrainingRouteAuthorMap,
+  isTrainingRouteAuthorMiddlePanPointer,
   removeLastTrainingRouteAuthorCheckpoint,
   resolveNearestTrainingRouteAuthorNode,
   setTrainingRouteAuthorDestination,
@@ -70,6 +72,7 @@ type DragState =
       pointerId: number;
       clientX: number;
       clientY: number;
+      source: "primary" | "middle";
     }
   | {
       kind: "draw";
@@ -877,8 +880,21 @@ export function TrainingRouteAuthorClient() {
 
   function handleMapPointerDown(event: PointerEvent<SVGSVGElement>) {
     isolateMapPointerEvent(event);
+    const pointerInput = pointerButtonInput(event);
 
-    if (!canStartTrainingRouteAuthorPointer(pointerButtonInput(event))) {
+    if (isTrainingRouteAuthorMiddlePanPointer(pointerInput)) {
+      dragStateRef.current = {
+        kind: "pan",
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        source: "middle"
+      };
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      return;
+    }
+
+    if (!canStartTrainingRouteAuthorPointer(pointerInput)) {
       dragStateRef.current = null;
       return;
     }
@@ -894,7 +910,8 @@ export function TrainingRouteAuthorClient() {
         kind: "pan",
         pointerId: event.pointerId,
         clientX: event.clientX,
-        clientY: event.clientY
+        clientY: event.clientY,
+        source: "primary"
       };
       event.currentTarget.setPointerCapture?.(event.pointerId);
       return;
@@ -944,17 +961,21 @@ export function TrainingRouteAuthorClient() {
       return;
     }
 
-    if (!canContinueTrainingRouteAuthorDrawPointer(pointerButtonInput(event))) {
-      return;
-    }
-
     if (dragState.kind === "pan") {
+      if (!canContinueTrainingRouteAuthorPanPointer(pointerButtonInput(event), dragState.source)) {
+        return;
+      }
+
       panBy(event.clientX - dragState.clientX, event.clientY - dragState.clientY);
       dragStateRef.current = {
         ...dragState,
         clientX: event.clientX,
         clientY: event.clientY
       };
+      return;
+    }
+
+    if (!canContinueTrainingRouteAuthorDrawPointer(pointerButtonInput(event))) {
       return;
     }
 

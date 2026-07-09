@@ -258,6 +258,8 @@ const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
   "hintSequence",
   "scoringEmphasis"
 ]);
+const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTON = 1;
+const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTONS_MASK = 4;
 
 function hasUsableScrollDelta(delta: number): boolean {
   return Number.isFinite(delta) && delta !== 0;
@@ -367,12 +369,36 @@ export function canStartTrainingRouteAuthorPointer(input: TrainingRouteAuthorPoi
   return !isMouseLikeTrainingRouteAuthorPointer(input) || input.button === 0;
 }
 
+export function isTrainingRouteAuthorMiddlePanPointer(input: TrainingRouteAuthorPointerButtonInput): boolean {
+  return isMouseLikeTrainingRouteAuthorPointer(input) && input.button === TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTON;
+}
+
+export function isTrainingRouteAuthorMiddlePanActive(
+  input: Pick<TrainingRouteAuthorPointerButtonInput, "buttons" | "pointerType">
+): boolean {
+  return (
+    isMouseLikeTrainingRouteAuthorPointer(input) &&
+    Boolean((input.buttons ?? 0) & TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTONS_MASK)
+  );
+}
+
 export function canContinueTrainingRouteAuthorDrawPointer(input: TrainingRouteAuthorPointerButtonInput): boolean {
   if (input.isPrimary === false) {
     return false;
   }
 
   return !isMouseLikeTrainingRouteAuthorPointer(input) || Boolean((input.buttons ?? 0) & 1);
+}
+
+export function canContinueTrainingRouteAuthorPanPointer(
+  input: TrainingRouteAuthorPointerButtonInput,
+  panSource: "primary" | "middle"
+): boolean {
+  if (panSource === "middle") {
+    return isTrainingRouteAuthorMiddlePanActive(input);
+  }
+
+  return canContinueTrainingRouteAuthorDrawPointer(input);
 }
 
 export function shouldPreventTrainingRouteAuthorAuxiliaryClick(input: TrainingRouteAuthorPointerButtonInput): boolean {
