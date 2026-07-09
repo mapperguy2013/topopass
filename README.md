@@ -84,6 +84,13 @@ The app should continue to work without Supabase credentials for current local
 learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
 
+Phase 7 learner Training Mode now has its first curated beta route pack. The
+pack lives under `data/training-routes/complete/`, currently contains 13
+Real London pilot learner routes, and is documented in
+`docs/phase-7-curated-route-pack.md`. Training Mode uses complete beta/approved
+curated routes first; automatic generation remains an explicitly labelled
+experimental fallback.
+
 ## Completed Phase 1: Prototype Foundation
 
 Phase 1 established the core product shape and working prototype flows:

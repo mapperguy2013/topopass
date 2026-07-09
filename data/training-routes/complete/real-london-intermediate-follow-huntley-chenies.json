@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-intermediate-follow-huntley-chenies",
+  "title": "Huntley Street checkpoint navigation",
+  "area": "Real London Pilot",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London Pilot",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "intermediate",
+  "exerciseType": "follow-planned-route",
+  "status": "beta",
+  "saveMode": "complete-route",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-intermediate-follow-huntley-chenies",
+    "title": "Huntley Street checkpoint navigation",
+    "area": "Real London Pilot",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London Pilot",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "intermediate",
+    "exerciseType": "follow-planned-route",
+    "description": "Intermediate route from Huntley Street through Chenies Street checkpoint to Ridgmount Gardens.",
+    "objective": "Visit the Chenies Street checkpoint in order before finishing at Ridgmount Gardens.",
+    "skillsPractised": [
+      "checkpoint navigation",
+      "junction observation",
+      "route adherence"
+    ],
+    "expectedLearnerMistakes": [
+      "missed checkpoint",
+      "wrong checkpoint order",
+      "wrong turn"
+    ],
+    "hintSequence": [
+      "Check the planned checkpoint before leaving Huntley Street.",
+      "Keep Chenies Street as the next required stop.",
+      "After the checkpoint, re-orient toward Ridgmount Gardens."
+    ],
+    "scoringEmphasis": [
+      "required checkpoint order",
+      "route adherence",
+      "completion"
+    ],
+    "instructorFeedbackNotes": "Prioritise whether the checkpoint was visited before the destination.",
+    "routeChoiceJustification": "Checkpoint practice intentionally constrains the route through Chenies Street.",
+    "status": "beta"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "sourceRouteExerciseId": "osm-real-pilot-checkpoint-route",
+  "sourceRouteExerciseVersion": "1.0.0",
+  "start": {
+    "id": "start-00",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-14725979",
+    "label": "Huntley Street south",
+    "point": {
+      "x": -74.500569,
+      "y": -114.223538
+    },
+    "roadId": "osm-way-1033680852-segment-0",
+    "routeSegmentId": "osm-way-1033680852-segment-0:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Start at Huntley Street south."
+    }
+  },
+  "destination": {
+    "id": "destination-02",
+    "kind": "destination",
+    "order": 2,
+    "nodeId": "osm-node-108030",
+    "label": "Ridgmount Gardens",
+    "point": {
+      "x": 104.523436,
+      "y": 45.164774
+    },
+    "roadId": "osm-way-887715782-segment-0",
+    "routeSegmentId": "osm-way-887715782-segment-0:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Finish at Ridgmount Gardens."
+    }
+  },
+  "checkpoints": [
+    {
+      "id": "checkpoint-01",
+      "kind": "checkpoint",
+      "order": 1,
+      "nodeId": "osm-node-108025",
+      "label": "Chenies Street checkpoint",
+      "point": {
+        "x": 55.754367,
+        "y": 78.226411
+      },
+      "roadId": "osm-way-1033680851-segment-0",
+      "routeSegmentId": "osm-way-1033680851-segment-0:forward",
+      "required": true,
+      "display": {
+        "markerLabel": "1",
+        "markerRole": "checkpoint",
+        "description": "Checkpoint 1: Chenies Street checkpoint."
+      }
+    }
+  ],
+  "checkpointRequirements": {
+    "required": true,
+    "ordered": true,
+    "checkpointCount": 1,
+    "requiredNodeIds": [
+      "osm-node-108025"
+    ],
+    "instruction": "Visit every numbered checkpoint in order before the destination."
+  },
+  "routeSegmentIds": [
+    "osm-way-1033680852-segment-0:forward",
+    "osm-way-17929796-segment-0:forward",
+    "osm-way-17929796-segment-1:forward",
+    "osm-way-884848161-segment-0:forward",
+    "osm-way-884848161-segment-1:forward",
+    "osm-way-884848160-segment-0:forward",
+    "osm-way-884848160-segment-1:forward",
+    "osm-way-1033680851-segment-0:forward",
+    "osm-way-887715782-segment-0:forward"
+  ],
+  "roadIds": [
+    "osm-way-1033680852-segment-0",
+    "osm-way-17929796-segment-0",
+    "osm-way-17929796-segment-1",
+    "osm-way-884848161-segment-0",
+    "osm-way-884848161-segment-1",
+    "osm-way-884848160-segment-0",
+    "osm-way-884848160-segment-1",
+    "osm-way-1033680851-segment-0",
+    "osm-way-887715782-segment-0"
+  ],
+  "nodeIds": [
+    "osm-node-14725979",
+    "osm-node-9523164007",
+    "osm-node-12365105176",
+    "osm-node-8228475102",
+    "osm-node-6340237360",
+    "osm-node-8228475103",
+    "osm-node-12365105163",
+    "osm-node-9523164006",
+    "osm-node-108025",
+    "osm-node-108030"
+  ],
+  "routeGeometry": [
+    {
+      "x": -74.500569,
+      "y": -114.223538
+    },
+    {
+      "x": -70.303824,
+      "y": -108.194313
+    },
+    {
+      "x": -69.157234,
+      "y": -106.49468
+    },
+    {
+      "x": -64.748982,
+      "y": -100.053971
+    },
+    {
+      "x": -24.095104,
+      "y": -40.710234
+    },
+    {
+      "x": 43.130737,
+      "y": 59.584531
+    },
+    {
+      "x": 50.522351,
+      "y": 71.088114
+    },
+    {
+      "x": 50.978761,
+      "y": 71.803733
+    },
+    {
+      "x": 55.754367,
+      "y": 78.226411
+    },
+    {
+      "x": 104.523436,
+      "y": 45.164774
+    }
+  ],
+  "validationSummary": {
+    "status": "valid",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [],
+    "affectedRouteSegmentIds": [],
+    "ruleCodes": [],
+    "explanation": "Route passes available legal and practical checks."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 181,
+    "segmentCount": 9,
+    "turnCount": 8,
+    "decisionPointCount": 0,
+    "checkpointCount": 1,
+    "estimatedDifficulty": "intermediate",
+    "warnings": []
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 181,
+      "shortestLengthMeters": 181,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 9,
+      "shortestSegmentCount": 9,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 8,
+      "shortestTurnCount": 8,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-1033680852-segment-0:forward",
+        "osm-way-17929796-segment-0:forward",
+        "osm-way-17929796-segment-1:forward",
+        "osm-way-884848161-segment-0:forward",
+        "osm-way-884848161-segment-1:forward",
+        "osm-way-884848160-segment-0:forward",
+        "osm-way-884848160-segment-1:forward",
+        "osm-way-1033680851-segment-0:forward",
+        "osm-way-887715782-segment-0:forward"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 181,
+      "shortestLengthMeters": 181,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 9,
+      "shortestSegmentCount": 9,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 8,
+      "shortestTurnCount": 8,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-1033680852-segment-0:forward",
+        "osm-way-17929796-segment-0:forward",
+        "osm-way-17929796-segment-1:forward",
+        "osm-way-884848161-segment-0:forward",
+        "osm-way-884848161-segment-1:forward",
+        "osm-way-884848160-segment-0:forward",
+        "osm-way-884848160-segment-1:forward",
+        "osm-way-1033680851-segment-0:forward",
+        "osm-way-887715782-segment-0:forward"
+      ]
+    },
+    "routeChoiceJustification": "Checkpoint practice intentionally constrains the route through Chenies Street.",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "Beginner curated routes should usually stay close to the shortest legal route.",
+      "Checkpoint routes should be judged against the checkpoint-constrained comparison.",
+      "Legal route-choice routes may be longer only when map metadata supports the restriction or one-way constraint."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-1033680852-segment-0:forward",
+      "roadId": "osm-way-1033680852-segment-0",
+      "fromNodeId": "osm-node-14725979",
+      "toNodeId": "osm-node-9523164007"
+    },
+    {
+      "id": "osm-way-17929796-segment-0:forward",
+      "roadId": "osm-way-17929796-segment-0",
+      "fromNodeId": "osm-node-9523164007",
+      "toNodeId": "osm-node-12365105176"
+    },
+    {
+      "id": "osm-way-17929796-segment-1:forward",
+      "roadId": "osm-way-17929796-segment-1",
+      "fromNodeId": "osm-node-12365105176",
+      "toNodeId": "osm-node-8228475102"
+    },
+    {
+      "id": "osm-way-884848161-segment-0:forward",
+      "roadId": "osm-way-884848161-segment-0",
+      "fromNodeId": "osm-node-8228475102",
+      "toNodeId": "osm-node-6340237360"
+    },
+    {
+      "id": "osm-way-884848161-segment-1:forward",
+      "roadId": "osm-way-884848161-segment-1",
+      "fromNodeId": "osm-node-6340237360",
+      "toNodeId": "osm-node-8228475103"
+    },
+    {
+      "id": "osm-way-884848160-segment-0:forward",
+      "roadId": "osm-way-884848160-segment-0",
+      "fromNodeId": "osm-node-8228475103",
+      "toNodeId": "osm-node-12365105163"
+    },
+    {
+      "id": "osm-way-884848160-segment-1:forward",
+      "roadId": "osm-way-884848160-segment-1",
+      "fromNodeId": "osm-node-12365105163",
+      "toNodeId": "osm-node-9523164006"
+    },
+    {
+      "id": "osm-way-1033680851-segment-0:forward",
+      "roadId": "osm-way-1033680851-segment-0",
+      "fromNodeId": "osm-node-9523164006",
+      "toNodeId": "osm-node-108025"
+    },
+    {
+      "id": "osm-way-887715782-segment-0:forward",
+      "roadId": "osm-way-887715782-segment-0",
+      "fromNodeId": "osm-node-108025",
+      "toNodeId": "osm-node-108030"
+    }
+  ],
+  "instructorQaNote": "Moderate checkpoint route with ordered-stop pressure but a compact footprint.",
+  "learnerCard": {
+    "area": "Real London Pilot",
+    "approximateLengthMeters": 181,
+    "segmentCount": 9,
+    "turnCount": 8,
+    "decisionPointCount": 0,
+    "checkpointCount": 1,
+    "skillsPractised": [
+      "checkpoint navigation",
+      "junction observation",
+      "route adherence"
+    ],
+    "statusLabel": "Beta"
+  },
+  "routePack": {
+    "packId": "real-london-pilot-route-pack-1",
+    "packVersion": "2026.07",
+    "sourceExerciseDifficulty": "medium",
+    "sourceRouteType": "checkpoint",
+    "manualQaNote": "Moderate checkpoint route with ordered-stop pressure but a compact footprint.",
+    "knownLimitations": [
+      "Legal restrictions are only enforced where present in committed map metadata.",
+      "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turn count."
+    ]
+  }
+}

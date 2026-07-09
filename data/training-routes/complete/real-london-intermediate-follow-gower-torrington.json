@@ -1,0 +1,334 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-intermediate-follow-gower-torrington",
+  "title": "Gower Street to Torrington Place route discipline",
+  "area": "Real London Pilot",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London Pilot",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "intermediate",
+  "exerciseType": "follow-planned-route",
+  "status": "beta",
+  "saveMode": "complete-route",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-intermediate-follow-gower-torrington",
+    "title": "Gower Street to Torrington Place route discipline",
+    "area": "Real London Pilot",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London Pilot",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "intermediate",
+    "exerciseType": "follow-planned-route",
+    "description": "Intermediate route-following practice from Gower Street into Torrington Place.",
+    "objective": "Maintain the planned route through several short map segments without unnecessary backtracking.",
+    "skillsPractised": [
+      "route discipline",
+      "road-name confirmation",
+      "efficient completion"
+    ],
+    "expectedLearnerMistakes": [
+      "wrong turn",
+      "missed destination",
+      "unnecessary backtracking"
+    ],
+    "hintSequence": [
+      "Keep checking the route line rather than counting tiny OSM segments.",
+      "Confirm the destination side before the final movement.",
+      "Avoid reversing unless the planned route requires it."
+    ],
+    "scoringEmphasis": [
+      "route adherence",
+      "efficiency",
+      "completion"
+    ],
+    "instructorFeedbackNotes": "Explain detours in learner terms rather than raw graph segment counts.",
+    "routeChoiceJustification": "Intermediate route is close to shortest but has more map-segment detail than beginner routes.",
+    "status": "beta"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "sourceRouteExerciseId": "osm-real-pilot-gower-to-torrington",
+  "sourceRouteExerciseVersion": "1.0.0",
+  "start": {
+    "id": "start-00",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-108033",
+    "label": "Gower Street south",
+    "point": {
+      "x": 171.793804,
+      "y": -1.475977
+    },
+    "roadId": "osm-way-851719165-segment-1",
+    "routeSegmentId": "osm-way-851719165-segment-1:reverse",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Start at Gower Street south."
+    }
+  },
+  "destination": {
+    "id": "destination-01",
+    "kind": "destination",
+    "order": 1,
+    "nodeId": "osm-node-108034",
+    "label": "Torrington Place east",
+    "point": {
+      "x": 42.40716,
+      "y": -190.904221
+    },
+    "roadId": "osm-way-587315169-segment-0",
+    "routeSegmentId": "osm-way-587315169-segment-0:reverse",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Finish at Torrington Place east."
+    }
+  },
+  "checkpoints": [],
+  "checkpointRequirements": {
+    "required": false,
+    "ordered": true,
+    "checkpointCount": 0,
+    "requiredNodeIds": [],
+    "instruction": "No intermediate checkpoints are required for this route."
+  },
+  "routeSegmentIds": [
+    "osm-way-851719165-segment-1:reverse",
+    "osm-way-851719165-segment-0:reverse",
+    "osm-way-884555179-segment-0:reverse",
+    "osm-way-694563844-segment-0:reverse",
+    "osm-way-694563847-segment-0:reverse",
+    "osm-way-884555186-segment-0:reverse",
+    "osm-way-884555189-segment-0:reverse",
+    "osm-way-587315169-segment-1:reverse",
+    "osm-way-587315169-segment-0:reverse"
+  ],
+  "roadIds": [
+    "osm-way-851719165-segment-1",
+    "osm-way-851719165-segment-0",
+    "osm-way-884555179-segment-0",
+    "osm-way-694563844-segment-0",
+    "osm-way-694563847-segment-0",
+    "osm-way-884555186-segment-0",
+    "osm-way-884555189-segment-0",
+    "osm-way-587315169-segment-1",
+    "osm-way-587315169-segment-0"
+  ],
+  "nodeIds": [
+    "osm-node-108033",
+    "osm-node-3645263667",
+    "osm-node-7346757315",
+    "osm-node-6521832707",
+    "osm-node-6521887911",
+    "osm-node-6521887917",
+    "osm-node-8225133401",
+    "osm-node-8226000077",
+    "osm-node-1448854133",
+    "osm-node-108034"
+  ],
+  "routeGeometry": [
+    {
+      "x": 171.793804,
+      "y": -1.475977
+    },
+    {
+      "x": 163.723141,
+      "y": -12.997554
+    },
+    {
+      "x": 163.389183,
+      "y": -13.534274
+    },
+    {
+      "x": 157.645097,
+      "y": -21.781873
+    },
+    {
+      "x": 144.620716,
+      "y": -41.12172
+    },
+    {
+      "x": 66.641413,
+      "y": -156.517694
+    },
+    {
+      "x": 57.390763,
+      "y": -169.434988
+    },
+    {
+      "x": 52.370254,
+      "y": -176.448265
+    },
+    {
+      "x": 51.535358,
+      "y": -177.59329
+    },
+    {
+      "x": 42.40716,
+      "y": -190.904221
+    }
+  ],
+  "validationSummary": {
+    "status": "valid",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [],
+    "affectedRouteSegmentIds": [],
+    "ruleCodes": [],
+    "explanation": "Route passes available legal and practical checks."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 143,
+    "segmentCount": 9,
+    "turnCount": 8,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "estimatedDifficulty": "intermediate",
+    "warnings": []
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 143,
+      "shortestLengthMeters": 143,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 9,
+      "shortestSegmentCount": 9,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 8,
+      "shortestTurnCount": 8,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-851719165-segment-1:reverse",
+        "osm-way-851719165-segment-0:reverse",
+        "osm-way-884555179-segment-0:reverse",
+        "osm-way-694563844-segment-0:reverse",
+        "osm-way-694563847-segment-0:reverse",
+        "osm-way-884555186-segment-0:reverse",
+        "osm-way-884555189-segment-0:reverse",
+        "osm-way-587315169-segment-1:reverse",
+        "osm-way-587315169-segment-0:reverse"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "not-applicable",
+      "verdict": "unknown",
+      "explanation": "Checkpoint-constrained comparison is not needed because this route has no intermediate checkpoints.",
+      "authoredLengthMeters": null,
+      "shortestLengthMeters": null,
+      "lengthDeltaMeters": null,
+      "percentageLonger": null,
+      "authoredSegmentCount": null,
+      "shortestSegmentCount": null,
+      "segmentCountDelta": null,
+      "authoredTurnCount": null,
+      "shortestTurnCount": null,
+      "turnCountDelta": null,
+      "authoredDecisionPointCount": null,
+      "shortestDecisionPointCount": null,
+      "decisionPointDelta": null,
+      "shortestRouteSegmentIds": []
+    },
+    "routeChoiceJustification": "Intermediate route is close to shortest but has more map-segment detail than beginner routes.",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "Beginner curated routes should usually stay close to the shortest legal route.",
+      "Checkpoint routes should be judged against the checkpoint-constrained comparison.",
+      "Legal route-choice routes may be longer only when map metadata supports the restriction or one-way constraint."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-851719165-segment-1:reverse",
+      "roadId": "osm-way-851719165-segment-1",
+      "fromNodeId": "osm-node-108033",
+      "toNodeId": "osm-node-3645263667"
+    },
+    {
+      "id": "osm-way-851719165-segment-0:reverse",
+      "roadId": "osm-way-851719165-segment-0",
+      "fromNodeId": "osm-node-3645263667",
+      "toNodeId": "osm-node-7346757315"
+    },
+    {
+      "id": "osm-way-884555179-segment-0:reverse",
+      "roadId": "osm-way-884555179-segment-0",
+      "fromNodeId": "osm-node-7346757315",
+      "toNodeId": "osm-node-6521832707"
+    },
+    {
+      "id": "osm-way-694563844-segment-0:reverse",
+      "roadId": "osm-way-694563844-segment-0",
+      "fromNodeId": "osm-node-6521832707",
+      "toNodeId": "osm-node-6521887911"
+    },
+    {
+      "id": "osm-way-694563847-segment-0:reverse",
+      "roadId": "osm-way-694563847-segment-0",
+      "fromNodeId": "osm-node-6521887911",
+      "toNodeId": "osm-node-6521887917"
+    },
+    {
+      "id": "osm-way-884555186-segment-0:reverse",
+      "roadId": "osm-way-884555186-segment-0",
+      "fromNodeId": "osm-node-6521887917",
+      "toNodeId": "osm-node-8225133401"
+    },
+    {
+      "id": "osm-way-884555189-segment-0:reverse",
+      "roadId": "osm-way-884555189-segment-0",
+      "fromNodeId": "osm-node-8225133401",
+      "toNodeId": "osm-node-8226000077"
+    },
+    {
+      "id": "osm-way-587315169-segment-1:reverse",
+      "roadId": "osm-way-587315169-segment-1",
+      "fromNodeId": "osm-node-8226000077",
+      "toNodeId": "osm-node-1448854133"
+    },
+    {
+      "id": "osm-way-587315169-segment-0:reverse",
+      "roadId": "osm-way-587315169-segment-0",
+      "fromNodeId": "osm-node-1448854133",
+      "toNodeId": "osm-node-108034"
+    }
+  ],
+  "instructorQaNote": "Moderate route-following task with more graph detail than beginner routes.",
+  "learnerCard": {
+    "area": "Real London Pilot",
+    "approximateLengthMeters": 143,
+    "segmentCount": 9,
+    "turnCount": 8,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "skillsPractised": [
+      "route discipline",
+      "road-name confirmation",
+      "efficient completion"
+    ],
+    "statusLabel": "Beta"
+  },
+  "routePack": {
+    "packId": "real-london-pilot-route-pack-1",
+    "packVersion": "2026.07",
+    "sourceExerciseDifficulty": "medium",
+    "sourceRouteType": "direct",
+    "manualQaNote": "Moderate route-following task with more graph detail than beginner routes.",
+    "knownLimitations": [
+      "Legal restrictions are only enforced where present in committed map metadata.",
+      "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turn count."
+    ]
+  }
+}

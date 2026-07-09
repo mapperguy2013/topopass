@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { MapDefinition } from "../../../lib/map-engine/index.ts";
 import { marloweDistrictMap } from "../../../lib/map-engine/fixtures/index.ts";
+import { realLondonOsmPilotRouteMap } from "./routeRunnerMaps.ts";
 import {
+  CURATED_LEARNER_ROUTE_PACK,
   buildLearnerTrainingProgressState,
   validateLearnerRoute,
   type GeneratedLearnerExercise,
@@ -373,6 +375,104 @@ test("exercise generation produces a startable route model", () => {
   assert.ok(model.generationOptions.length > 0);
   assert.equal(model.generationOptions.filter((option) => option.selected).length, 1);
   assert.equal(model.primaryActions.find((action) => action.id === "generate-exercise")?.label, "Try another route");
+});
+
+test("curated learner route cards render and curated generation starts a route", () => {
+  const baseState = openLearnerTrainingMode(createLearnerTrainingModeState());
+  const setupModel = buildLearnerTrainingModePanelModel({
+    state: baseState,
+    map: realLondonOsmPilotRouteMap,
+    viewport: "desktop",
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK
+  });
+  const started = startLearnerTrainingExercise({
+    state: baseState,
+    map: realLondonOsmPilotRouteMap,
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+    seed: "curated-ui-start"
+  });
+  const startedModel = buildLearnerTrainingModePanelModel({
+    state: started,
+    map: realLondonOsmPilotRouteMap,
+    viewport: "desktop",
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK
+  });
+
+  assert.equal(setupModel.curatedRouteAvailability.status, "available");
+  assert.equal(setupModel.curatedRouteCards.length, 3);
+  assert.equal(started.generation.routeSource, "curated-route-pack");
+  assert.ok(started.generation.curatedRouteId);
+  assert.equal(started.activeExercise?.tags?.includes("curated-training-route"), true);
+  assert.equal(startedModel.curatedRouteCards.filter((card) => card.selected).length, 1);
+  assert.equal(startedModel.generationOptions.length, 0);
+  assert.equal(startedModel.validation?.blockingErrorCount, 0);
+});
+
+test("curated generation avoids recent route ids when alternatives exist", () => {
+  const baseState = openLearnerTrainingMode(createLearnerTrainingModeState());
+  const first = startLearnerTrainingExercise({
+    state: baseState,
+    map: realLondonOsmPilotRouteMap,
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+    seed: "curated-ui-repeat"
+  });
+  const second = startLearnerTrainingExercise({
+    state: first,
+    map: realLondonOsmPilotRouteMap,
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+    seed: "curated-ui-repeat"
+  });
+
+  assert.ok(first.generation.curatedRouteId);
+  assert.ok(second.generation.curatedRouteId);
+  assert.notEqual(second.generation.curatedRouteId, first.generation.curatedRouteId);
+  assert.ok(second.generation.recentCuratedRouteIds.includes(first.generation.curatedRouteId ?? ""));
+  assert.ok(second.generation.recentCuratedRouteIds.includes(second.generation.curatedRouteId ?? ""));
+});
+
+test("missing curated route shows clear fallback without silent generation", () => {
+  const state = selectLearnerTrainingExerciseType(
+    selectLearnerTrainingDifficulty(openLearnerTrainingMode(createLearnerTrainingModeState()), "advanced"),
+    "practise-roundabouts"
+  );
+  const generated = startLearnerTrainingExercise({
+    state,
+    map: realLondonOsmPilotRouteMap,
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+    seed: "curated-ui-missing"
+  });
+  const model = buildLearnerTrainingModePanelModel({
+    state: generated,
+    map: realLondonOsmPilotRouteMap,
+    viewport: "mobile",
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK
+  });
+
+  assert.equal(generated.activeExercise, null);
+  assert.equal(generated.generation.status, "failed");
+  assert.equal(generated.generation.reasonCodes.includes("no-curated-route-available"), true);
+  assert.match(generated.generation.explanation ?? "", /No approved curated route is available/);
+  assert.equal(model.curatedRouteAvailability.status, "unavailable");
+  assert.equal(model.experimentalFallbackAction?.label, "Try experimental generated route");
+  assert.equal(model.overlay.visible, false);
+});
+
+test("experimental generated fallback is explicit when curated routes are missing", () => {
+  const state = selectLearnerTrainingExerciseType(
+    selectLearnerTrainingDifficulty(openLearnerTrainingMode(createLearnerTrainingModeState()), "advanced"),
+    "practise-roundabouts"
+  );
+  const generated = startLearnerTrainingExercise({
+    state,
+    map: realLondonOsmPilotRouteMap,
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+    allowExperimentalGenerationFallback: true,
+    preferExperimentalGeneration: true,
+    seed: "curated-ui-experimental"
+  });
+
+  assert.match(generated.generation.status, /generated|degraded|failed/);
+  assert.equal(generated.generation.routeSource, "experimental-generator");
 });
 
 test("exercise generation cache reuses seeded results and records cache state", () => {

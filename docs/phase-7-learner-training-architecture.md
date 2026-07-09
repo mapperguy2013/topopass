@@ -67,6 +67,33 @@ targets, mobile layout constraints, touch target minimums, and overlay
 readability metadata. The route-runner client can consume those fields without
 recalculating the training domain state during map rendering.
 
+## Curated Learner Route Pack
+
+Stage 20 adds the first curated learner-facing route pack. Complete route JSON
+exports live in `data/training-routes/complete/` and are loaded by
+`lib/training/curatedLearnerRoutePack.ts`.
+
+The first pack contains 13 beta routes on the Real London pilot map:
+
+- 3 beginner routes
+- 5 intermediate routes
+- 5 advanced routes
+- 3 checkpoint routes
+
+Training Mode now prefers complete `beta` or `approved` curated routes for the
+active map, selected difficulty, and selected exercise type. Draft and review
+routes are excluded. Generate / Next route avoids the last three curated route
+ids where alternatives exist. If no curated route exists for a selection, the UI
+shows `No approved curated route is available for this selection yet.` and offers
+only a clearly labelled `Try experimental generated route` fallback.
+
+Automatic generation remains available for dev/helper/experimental use, but it
+is not the silent main learner-facing path.
+
+See `docs/phase-7-curated-route-pack.md` for the route count summary,
+difficulty standards, checkpoint rules, filtering behaviour, manual QA checklist,
+known limitations, and suggested next route areas.
+
 ## Exercise Generation
 
 `lib/training/learnerExerciseGeneration.ts` generates deterministic route

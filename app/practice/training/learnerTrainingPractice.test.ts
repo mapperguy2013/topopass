@@ -103,6 +103,19 @@ test("Stage 18 dedicated Training Mode page focuses the existing RouteRunnerClie
   assert.ok(routeRunnerSource.includes("selectedExercise && !isTrainingModeOnly"));
 });
 
+test("Stage 20 Training Mode uses curated learner routes before experimental generation", () => {
+  const routeRunnerSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+  const trainingModeSource = readFileSync("app/dev/route-runner/learnerTrainingModeUi.ts", "utf8");
+
+  assert.ok(routeRunnerSource.includes("CURATED_LEARNER_ROUTE_PACK"));
+  assert.ok(routeRunnerSource.includes("curatedRoutes: CURATED_LEARNER_ROUTE_PACK"));
+  assert.ok(routeRunnerSource.includes("handleGenerateExperimentalLearnerTrainingExercise"));
+  assert.ok(routeRunnerSource.includes("curatedRouteCards"));
+  assert.ok(trainingModeSource.includes("selectCuratedTrainingRoute"));
+  assert.ok(trainingModeSource.includes("NO_CURATED_ROUTE_AVAILABLE_MESSAGE"));
+  assert.ok(trainingModeSource.includes("EXPERIMENTAL_GENERATED_ROUTE_LABEL"));
+});
+
 test("Stage 18 Real London Practice links to dedicated Training Mode instead of embedding the full panel", () => {
   const source = readFileSync("app/practice/real-london/page.tsx", "utf8");
 

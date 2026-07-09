@@ -1,0 +1,636 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-advanced-follow-south-crescent-ridgmount",
+  "title": "South Crescent multi-stop navigation",
+  "area": "Real London Pilot",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London Pilot",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "advanced",
+  "exerciseType": "follow-planned-route",
+  "status": "beta",
+  "saveMode": "complete-route",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-advanced-follow-south-crescent-ridgmount",
+    "title": "South Crescent multi-stop navigation",
+    "area": "Real London Pilot",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London Pilot",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "advanced",
+    "exerciseType": "follow-planned-route",
+    "description": "Advanced multi-stop route through South Crescent and Ridgmount Street before Ridgmount Gardens.",
+    "objective": "Visit every required stop in order and recover cleanly if a checkpoint is missed.",
+    "skillsPractised": [
+      "multi-stop planning",
+      "checkpoint order",
+      "recovery"
+    ],
+    "expectedLearnerMistakes": [
+      "missed checkpoint",
+      "wrong checkpoint order",
+      "wrong turn"
+    ],
+    "hintSequence": [
+      "Track the next required stop, not only the final destination.",
+      "Confirm South Crescent before moving on to Ridgmount Street.",
+      "If a stop is missed, recover to the checkpoint order before finishing."
+    ],
+    "scoringEmphasis": [
+      "required checkpoint order",
+      "route adherence",
+      "recovery"
+    ],
+    "instructorFeedbackNotes": "Feedback should separate checkpoint-order errors from ordinary wrong turns.",
+    "routeChoiceJustification": "Advanced multi-stop route deliberately uses ordered checkpoints.",
+    "status": "beta"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "sourceRouteExerciseId": "osm-real-pilot-south-crescent-ridgmount-multistop",
+  "sourceRouteExerciseVersion": "1.0.0",
+  "start": {
+    "id": "start-00",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-25472045",
+    "label": "Store Street",
+    "point": {
+      "x": 57.31284,
+      "y": 353.341257
+    },
+    "roadId": "osm-way-1091739572-segment-0",
+    "routeSegmentId": "osm-way-1091739572-segment-0:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Start at Store Street."
+    }
+  },
+  "destination": {
+    "id": "destination-03",
+    "kind": "destination",
+    "order": 3,
+    "nodeId": "osm-node-108030",
+    "label": "Ridgmount Gardens",
+    "point": {
+      "x": 104.523436,
+      "y": 45.164774
+    },
+    "roadId": "osm-way-2644237-segment-4",
+    "routeSegmentId": "osm-way-2644237-segment-4:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Finish at Ridgmount Gardens."
+    }
+  },
+  "checkpoints": [
+    {
+      "id": "checkpoint-01",
+      "kind": "checkpoint",
+      "order": 1,
+      "nodeId": "osm-node-25472056",
+      "label": "South Crescent",
+      "point": {
+        "x": 125.807723,
+        "y": 320.459636
+      },
+      "roadId": "osm-way-4253380-segment-9",
+      "routeSegmentId": "osm-way-4253380-segment-9:forward",
+      "required": true,
+      "display": {
+        "markerLabel": "1",
+        "markerRole": "checkpoint",
+        "description": "Checkpoint 1: South Crescent."
+      }
+    },
+    {
+      "id": "checkpoint-02",
+      "kind": "checkpoint",
+      "order": 2,
+      "nodeId": "osm-node-10845640242",
+      "label": "Ridgmount Street",
+      "point": {
+        "x": 230.804266,
+        "y": 232.709067
+      },
+      "roadId": "osm-way-590298787-segment-4",
+      "routeSegmentId": "osm-way-590298787-segment-4:forward",
+      "required": true,
+      "display": {
+        "markerLabel": "2",
+        "markerRole": "checkpoint",
+        "description": "Checkpoint 2: Ridgmount Street."
+      }
+    }
+  ],
+  "checkpointRequirements": {
+    "required": true,
+    "ordered": true,
+    "checkpointCount": 2,
+    "requiredNodeIds": [
+      "osm-node-25472056",
+      "osm-node-10845640242"
+    ],
+    "instruction": "Visit every numbered checkpoint in order before the destination."
+  },
+  "routeSegmentIds": [
+    "osm-way-1091739572-segment-0:forward",
+    "osm-way-1091739572-segment-1:forward",
+    "osm-way-4253380-segment-0:forward",
+    "osm-way-4253380-segment-1:forward",
+    "osm-way-4253380-segment-2:forward",
+    "osm-way-4253380-segment-3:forward",
+    "osm-way-4253380-segment-4:forward",
+    "osm-way-4253380-segment-5:forward",
+    "osm-way-4253380-segment-6:forward",
+    "osm-way-4253380-segment-7:forward",
+    "osm-way-4253380-segment-8:forward",
+    "osm-way-4253380-segment-9:forward",
+    "osm-way-1091739573-segment-0:forward",
+    "osm-way-1091739573-segment-1:forward",
+    "osm-way-590298787-segment-3:forward",
+    "osm-way-590298787-segment-4:forward",
+    "osm-way-2644237-segment-0:forward",
+    "osm-way-2644237-segment-1:forward",
+    "osm-way-2644237-segment-2:forward",
+    "osm-way-2644237-segment-3:forward",
+    "osm-way-2644237-segment-4:forward"
+  ],
+  "roadIds": [
+    "osm-way-1091739572-segment-0",
+    "osm-way-1091739572-segment-1",
+    "osm-way-4253380-segment-0",
+    "osm-way-4253380-segment-1",
+    "osm-way-4253380-segment-2",
+    "osm-way-4253380-segment-3",
+    "osm-way-4253380-segment-4",
+    "osm-way-4253380-segment-5",
+    "osm-way-4253380-segment-6",
+    "osm-way-4253380-segment-7",
+    "osm-way-4253380-segment-8",
+    "osm-way-4253380-segment-9",
+    "osm-way-1091739573-segment-0",
+    "osm-way-1091739573-segment-1",
+    "osm-way-590298787-segment-3",
+    "osm-way-590298787-segment-4",
+    "osm-way-2644237-segment-0",
+    "osm-way-2644237-segment-1",
+    "osm-way-2644237-segment-2",
+    "osm-way-2644237-segment-3",
+    "osm-way-2644237-segment-4"
+  ],
+  "nodeIds": [
+    "osm-node-25472045",
+    "osm-node-9523048187",
+    "osm-node-25472049",
+    "osm-node-1448835615",
+    "osm-node-25472050",
+    "osm-node-25472051",
+    "osm-node-25472052",
+    "osm-node-25472053",
+    "osm-node-4222961755",
+    "osm-node-25472054",
+    "osm-node-25472055",
+    "osm-node-1448835614",
+    "osm-node-25472056",
+    "osm-node-9523048188",
+    "osm-node-25472057",
+    "osm-node-4222962185",
+    "osm-node-10845640242",
+    "osm-node-108028",
+    "osm-node-881889766",
+    "osm-node-10723007069",
+    "osm-node-1448896332",
+    "osm-node-108030"
+  ],
+  "routeGeometry": [
+    {
+      "x": 57.31284,
+      "y": 353.341257
+    },
+    {
+      "x": 65.238788,
+      "y": 359.352246
+    },
+    {
+      "x": 66.730469,
+      "y": 360.300408
+    },
+    {
+      "x": 75.023771,
+      "y": 363.896265
+    },
+    {
+      "x": 79.777113,
+      "y": 365.059104
+    },
+    {
+      "x": 87.235519,
+      "y": 364.862316
+    },
+    {
+      "x": 99.63651,
+      "y": 363.234341
+    },
+    {
+      "x": 109.187723,
+      "y": 358.332525
+    },
+    {
+      "x": 115.276899,
+      "y": 353.913732
+    },
+    {
+      "x": 120.052505,
+      "y": 348.510995
+    },
+    {
+      "x": 124.327173,
+      "y": 340.58578
+    },
+    {
+      "x": 126.386584,
+      "y": 332.893126
+    },
+    {
+      "x": 125.807723,
+      "y": 320.459636
+    },
+    {
+      "x": 124.861507,
+      "y": 318.634863
+    },
+    {
+      "x": 120.820609,
+      "y": 310.119251
+    },
+    {
+      "x": 153.726651,
+      "y": 286.737052
+    },
+    {
+      "x": 230.804266,
+      "y": 232.709067
+    },
+    {
+      "x": 224.804146,
+      "y": 223.853452
+    },
+    {
+      "x": 175.322632,
+      "y": 150.431987
+    },
+    {
+      "x": 132.364441,
+      "y": 87.243198
+    },
+    {
+      "x": 109.020743,
+      "y": 52.929262
+    },
+    {
+      "x": 104.523436,
+      "y": 45.164774
+    }
+  ],
+  "validationSummary": {
+    "status": "warning",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [
+      {
+        "code": "excessive-route-complexity",
+        "severity": "warning",
+        "routeSegmentIds": [
+          "osm-way-1091739572-segment-0:forward",
+          "osm-way-1091739572-segment-1:forward",
+          "osm-way-1091739573-segment-0:forward",
+          "osm-way-1091739573-segment-1:forward",
+          "osm-way-2644237-segment-0:forward",
+          "osm-way-2644237-segment-1:forward",
+          "osm-way-2644237-segment-2:forward",
+          "osm-way-2644237-segment-3:forward",
+          "osm-way-2644237-segment-4:forward",
+          "osm-way-4253380-segment-0:forward",
+          "osm-way-4253380-segment-1:forward",
+          "osm-way-4253380-segment-2:forward",
+          "osm-way-4253380-segment-3:forward",
+          "osm-way-4253380-segment-4:forward",
+          "osm-way-4253380-segment-5:forward",
+          "osm-way-4253380-segment-6:forward",
+          "osm-way-4253380-segment-7:forward",
+          "osm-way-4253380-segment-8:forward",
+          "osm-way-4253380-segment-9:forward",
+          "osm-way-590298787-segment-3:forward",
+          "osm-way-590298787-segment-4:forward"
+        ],
+        "roadIds": [
+          "osm-way-1091739572-segment-0",
+          "osm-way-1091739572-segment-1",
+          "osm-way-1091739573-segment-0",
+          "osm-way-1091739573-segment-1",
+          "osm-way-2644237-segment-0",
+          "osm-way-2644237-segment-1",
+          "osm-way-2644237-segment-2",
+          "osm-way-2644237-segment-3",
+          "osm-way-2644237-segment-4",
+          "osm-way-4253380-segment-0",
+          "osm-way-4253380-segment-1",
+          "osm-way-4253380-segment-2",
+          "osm-way-4253380-segment-3",
+          "osm-way-4253380-segment-4",
+          "osm-way-4253380-segment-5",
+          "osm-way-4253380-segment-6",
+          "osm-way-4253380-segment-7",
+          "osm-way-4253380-segment-8",
+          "osm-way-4253380-segment-9",
+          "osm-way-590298787-segment-3",
+          "osm-way-590298787-segment-4"
+        ],
+        "nodeIds": [],
+        "explanation": "This route is more complex than expected for advanced practice: 21 segments, 20 turns, and 2 complex junction decisions."
+      }
+    ],
+    "affectedRouteSegmentIds": [
+      "osm-way-1091739572-segment-0:forward",
+      "osm-way-1091739572-segment-1:forward",
+      "osm-way-1091739573-segment-0:forward",
+      "osm-way-1091739573-segment-1:forward",
+      "osm-way-2644237-segment-0:forward",
+      "osm-way-2644237-segment-1:forward",
+      "osm-way-2644237-segment-2:forward",
+      "osm-way-2644237-segment-3:forward",
+      "osm-way-2644237-segment-4:forward",
+      "osm-way-4253380-segment-0:forward",
+      "osm-way-4253380-segment-1:forward",
+      "osm-way-4253380-segment-2:forward",
+      "osm-way-4253380-segment-3:forward",
+      "osm-way-4253380-segment-4:forward",
+      "osm-way-4253380-segment-5:forward",
+      "osm-way-4253380-segment-6:forward",
+      "osm-way-4253380-segment-7:forward",
+      "osm-way-4253380-segment-8:forward",
+      "osm-way-4253380-segment-9:forward",
+      "osm-way-590298787-segment-3:forward",
+      "osm-way-590298787-segment-4:forward"
+    ],
+    "ruleCodes": [
+      "excessive-route-complexity"
+    ],
+    "explanation": "Route is usable with 1 advisory warning(s). This route is more complex than expected for advanced practice: 21 segments, 20 turns, and 2 complex junction decisions."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 294,
+    "segmentCount": 21,
+    "turnCount": 20,
+    "decisionPointCount": 2,
+    "checkpointCount": 2,
+    "estimatedDifficulty": "advanced",
+    "warnings": [
+      "This route is more complex than expected for advanced practice: 21 segments, 20 turns, and 2 complex junction decisions."
+    ]
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 8% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 294,
+      "shortestLengthMeters": 272,
+      "lengthDeltaMeters": 22,
+      "percentageLonger": 8,
+      "authoredSegmentCount": 21,
+      "shortestSegmentCount": 12,
+      "segmentCountDelta": 9,
+      "authoredTurnCount": 20,
+      "shortestTurnCount": 11,
+      "turnCountDelta": 9,
+      "authoredDecisionPointCount": 2,
+      "shortestDecisionPointCount": 2,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-1033664846-segment-0:forward",
+        "osm-way-678745735-segment-0:forward",
+        "osm-way-590298787-segment-0:forward",
+        "osm-way-590298787-segment-1:forward",
+        "osm-way-590298787-segment-2:forward",
+        "osm-way-590298787-segment-3:forward",
+        "osm-way-590298787-segment-4:forward",
+        "osm-way-2644237-segment-0:forward",
+        "osm-way-2644237-segment-1:forward",
+        "osm-way-2644237-segment-2:forward",
+        "osm-way-2644237-segment-3:forward",
+        "osm-way-2644237-segment-4:forward"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 294,
+      "shortestLengthMeters": 294,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 21,
+      "shortestSegmentCount": 21,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 20,
+      "shortestTurnCount": 20,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 2,
+      "shortestDecisionPointCount": 2,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-1091739572-segment-0:forward",
+        "osm-way-1091739572-segment-1:forward",
+        "osm-way-4253380-segment-0:forward",
+        "osm-way-4253380-segment-1:forward",
+        "osm-way-4253380-segment-2:forward",
+        "osm-way-4253380-segment-3:forward",
+        "osm-way-4253380-segment-4:forward",
+        "osm-way-4253380-segment-5:forward",
+        "osm-way-4253380-segment-6:forward",
+        "osm-way-4253380-segment-7:forward",
+        "osm-way-4253380-segment-8:forward",
+        "osm-way-4253380-segment-9:forward",
+        "osm-way-1091739573-segment-0:forward",
+        "osm-way-1091739573-segment-1:forward",
+        "osm-way-590298787-segment-3:forward",
+        "osm-way-590298787-segment-4:forward",
+        "osm-way-2644237-segment-0:forward",
+        "osm-way-2644237-segment-1:forward",
+        "osm-way-2644237-segment-2:forward",
+        "osm-way-2644237-segment-3:forward",
+        "osm-way-2644237-segment-4:forward"
+      ]
+    },
+    "routeChoiceJustification": "Advanced multi-stop route deliberately uses ordered checkpoints.",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "Beginner curated routes should usually stay close to the shortest legal route.",
+      "Checkpoint routes should be judged against the checkpoint-constrained comparison.",
+      "Legal route-choice routes may be longer only when map metadata supports the restriction or one-way constraint."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-1091739572-segment-0:forward",
+      "roadId": "osm-way-1091739572-segment-0",
+      "fromNodeId": "osm-node-25472045",
+      "toNodeId": "osm-node-9523048187"
+    },
+    {
+      "id": "osm-way-1091739572-segment-1:forward",
+      "roadId": "osm-way-1091739572-segment-1",
+      "fromNodeId": "osm-node-9523048187",
+      "toNodeId": "osm-node-25472049"
+    },
+    {
+      "id": "osm-way-4253380-segment-0:forward",
+      "roadId": "osm-way-4253380-segment-0",
+      "fromNodeId": "osm-node-25472049",
+      "toNodeId": "osm-node-1448835615"
+    },
+    {
+      "id": "osm-way-4253380-segment-1:forward",
+      "roadId": "osm-way-4253380-segment-1",
+      "fromNodeId": "osm-node-1448835615",
+      "toNodeId": "osm-node-25472050"
+    },
+    {
+      "id": "osm-way-4253380-segment-2:forward",
+      "roadId": "osm-way-4253380-segment-2",
+      "fromNodeId": "osm-node-25472050",
+      "toNodeId": "osm-node-25472051"
+    },
+    {
+      "id": "osm-way-4253380-segment-3:forward",
+      "roadId": "osm-way-4253380-segment-3",
+      "fromNodeId": "osm-node-25472051",
+      "toNodeId": "osm-node-25472052"
+    },
+    {
+      "id": "osm-way-4253380-segment-4:forward",
+      "roadId": "osm-way-4253380-segment-4",
+      "fromNodeId": "osm-node-25472052",
+      "toNodeId": "osm-node-25472053"
+    },
+    {
+      "id": "osm-way-4253380-segment-5:forward",
+      "roadId": "osm-way-4253380-segment-5",
+      "fromNodeId": "osm-node-25472053",
+      "toNodeId": "osm-node-4222961755"
+    },
+    {
+      "id": "osm-way-4253380-segment-6:forward",
+      "roadId": "osm-way-4253380-segment-6",
+      "fromNodeId": "osm-node-4222961755",
+      "toNodeId": "osm-node-25472054"
+    },
+    {
+      "id": "osm-way-4253380-segment-7:forward",
+      "roadId": "osm-way-4253380-segment-7",
+      "fromNodeId": "osm-node-25472054",
+      "toNodeId": "osm-node-25472055"
+    },
+    {
+      "id": "osm-way-4253380-segment-8:forward",
+      "roadId": "osm-way-4253380-segment-8",
+      "fromNodeId": "osm-node-25472055",
+      "toNodeId": "osm-node-1448835614"
+    },
+    {
+      "id": "osm-way-4253380-segment-9:forward",
+      "roadId": "osm-way-4253380-segment-9",
+      "fromNodeId": "osm-node-1448835614",
+      "toNodeId": "osm-node-25472056"
+    },
+    {
+      "id": "osm-way-1091739573-segment-0:forward",
+      "roadId": "osm-way-1091739573-segment-0",
+      "fromNodeId": "osm-node-25472056",
+      "toNodeId": "osm-node-9523048188"
+    },
+    {
+      "id": "osm-way-1091739573-segment-1:forward",
+      "roadId": "osm-way-1091739573-segment-1",
+      "fromNodeId": "osm-node-9523048188",
+      "toNodeId": "osm-node-25472057"
+    },
+    {
+      "id": "osm-way-590298787-segment-3:forward",
+      "roadId": "osm-way-590298787-segment-3",
+      "fromNodeId": "osm-node-25472057",
+      "toNodeId": "osm-node-4222962185"
+    },
+    {
+      "id": "osm-way-590298787-segment-4:forward",
+      "roadId": "osm-way-590298787-segment-4",
+      "fromNodeId": "osm-node-4222962185",
+      "toNodeId": "osm-node-10845640242"
+    },
+    {
+      "id": "osm-way-2644237-segment-0:forward",
+      "roadId": "osm-way-2644237-segment-0",
+      "fromNodeId": "osm-node-10845640242",
+      "toNodeId": "osm-node-108028"
+    },
+    {
+      "id": "osm-way-2644237-segment-1:forward",
+      "roadId": "osm-way-2644237-segment-1",
+      "fromNodeId": "osm-node-108028",
+      "toNodeId": "osm-node-881889766"
+    },
+    {
+      "id": "osm-way-2644237-segment-2:forward",
+      "roadId": "osm-way-2644237-segment-2",
+      "fromNodeId": "osm-node-881889766",
+      "toNodeId": "osm-node-10723007069"
+    },
+    {
+      "id": "osm-way-2644237-segment-3:forward",
+      "roadId": "osm-way-2644237-segment-3",
+      "fromNodeId": "osm-node-10723007069",
+      "toNodeId": "osm-node-1448896332"
+    },
+    {
+      "id": "osm-way-2644237-segment-4:forward",
+      "roadId": "osm-way-2644237-segment-4",
+      "fromNodeId": "osm-node-1448896332",
+      "toNodeId": "osm-node-108030"
+    }
+  ],
+  "instructorQaNote": "Advanced multi-stop route with ordered checkpoints and recovery risk.",
+  "learnerCard": {
+    "area": "Real London Pilot",
+    "approximateLengthMeters": 294,
+    "segmentCount": 21,
+    "turnCount": 20,
+    "decisionPointCount": 2,
+    "checkpointCount": 2,
+    "skillsPractised": [
+      "multi-stop planning",
+      "checkpoint order",
+      "recovery"
+    ],
+    "statusLabel": "Beta"
+  },
+  "routePack": {
+    "packId": "real-london-pilot-route-pack-1",
+    "packVersion": "2026.07",
+    "sourceExerciseDifficulty": "hard",
+    "sourceRouteType": "multi-stop",
+    "manualQaNote": "Advanced multi-stop route with ordered checkpoints and recovery risk.",
+    "knownLimitations": [
+      "Legal restrictions are only enforced where present in committed map metadata.",
+      "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turn count."
+    ]
+  }
+}

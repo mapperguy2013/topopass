@@ -2,9 +2,16 @@ import type { MapDefinition, RouteStop, Vec2 } from "../../../lib/map-engine/ind
 import {
   EXERCISE_DIFFICULTIES,
   EXERCISE_TYPES,
+  EXPERIMENTAL_GENERATED_ROUTE_LABEL,
+  NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
+  buildCuratedTrainingRouteCards,
+  curatedTrainingRouteToGeneratedLearnerExercise,
   generateLearnerAttemptFeedback,
   generateLearnerExercise,
   generateLearnerHint,
+  selectCuratedTrainingRoute,
+  type CuratedTrainingRouteCardModel,
+  type CuratedTrainingRouteExport,
   scoreLearnerAttempt,
   type DrivingFaultCategory,
   type DrivingFaultSeverity,
@@ -63,6 +70,9 @@ export type LearnerTrainingModeGeneration = {
   attemptLimit: number | null;
   routeSignature: string | null;
   recentRouteSignatures: string[];
+  routeSource: "idle" | "curated-route-pack" | "experimental-generator";
+  curatedRouteId: string | null;
+  recentCuratedRouteIds: string[];
   generationRequestCount: number;
 };
 
@@ -89,6 +99,7 @@ export type LearnerTrainingModeActionId =
   | "complete-review"
   | "retry-exercise"
   | "next-exercise"
+  | "experimental-generate-exercise"
   | "reset-progress";
 
 export type LearnerTrainingModeAction = {
@@ -238,6 +249,13 @@ export type LearnerTrainingModePanelModel = {
     complexityScore: number;
     skillTags: string[];
   }>;
+  curatedRouteCards: CuratedTrainingRouteCardModel[];
+  curatedRouteAvailability: {
+    status: "not-configured" | "available" | "unavailable";
+    message: string | null;
+    experimentalFallbackLabel: typeof EXPERIMENTAL_GENERATED_ROUTE_LABEL;
+  };
+  experimentalFallbackAction: LearnerTrainingModeAction | null;
   validation: {
     status: GeneratedLearnerExercise["validation"]["status"];
     explanation: string;
@@ -396,6 +414,9 @@ function idleGenerationState(): LearnerTrainingModeGeneration {
     attemptLimit: null,
     routeSignature: null,
     recentRouteSignatures: [],
+    routeSource: "idle",
+    curatedRouteId: null,
+    recentCuratedRouteIds: [],
     generationRequestCount: 0
   };
 }
@@ -485,6 +506,65 @@ function generationStateFromResult(input: {
     attemptLimit: input.attemptLimit,
     routeSignature,
     recentRouteSignatures,
+    routeSource: "experimental-generator",
+    curatedRouteId: null,
+    recentCuratedRouteIds: input.previousGeneration.recentCuratedRouteIds,
+    generationRequestCount: input.previousGeneration.generationRequestCount + 1
+  };
+}
+
+function generationStateFromCuratedRoute(input: {
+  exercise: GeneratedLearnerExercise;
+  route: CuratedTrainingRouteExport;
+  previousGeneration: LearnerTrainingModeGeneration;
+  availableRouteCount: number;
+  repeatedRecentRoute: boolean;
+}): LearnerTrainingModeGeneration {
+  const routeSignature = input.exercise.generationMetadata.routeSignature;
+  const recentRouteSignatures = [
+    routeSignature,
+    ...input.previousGeneration.recentRouteSignatures.filter((signature) => signature !== routeSignature)
+  ].slice(0, 6);
+  const recentCuratedRouteIds = [
+    input.route.routeId,
+    ...input.previousGeneration.recentCuratedRouteIds.filter((routeId) => routeId !== input.route.routeId)
+  ].slice(0, 6);
+
+  return {
+    status: "generated",
+    explanation:
+      input.availableRouteCount > 1
+        ? "Curated learner route selected from the beta route pack."
+        : input.repeatedRecentRoute
+          ? "Only one curated route matches this selection, so it may repeat."
+          : "Curated learner route selected from the beta route pack.",
+    reasonCodes: ["curated-route-selected"],
+    cacheStatus: "disabled",
+    attemptLimit: input.availableRouteCount,
+    routeSignature,
+    recentRouteSignatures,
+    routeSource: "curated-route-pack",
+    curatedRouteId: input.route.routeId,
+    recentCuratedRouteIds,
+    generationRequestCount: input.previousGeneration.generationRequestCount + 1
+  };
+}
+
+function generationStateFromNoCuratedRoute(input: {
+  previousGeneration: LearnerTrainingModeGeneration;
+  message: string;
+}): LearnerTrainingModeGeneration {
+  return {
+    status: "failed",
+    explanation: input.message,
+    reasonCodes: ["no-curated-route-available"],
+    cacheStatus: "disabled",
+    attemptLimit: 0,
+    routeSignature: null,
+    recentRouteSignatures: input.previousGeneration.recentRouteSignatures,
+    routeSource: "curated-route-pack",
+    curatedRouteId: null,
+    recentCuratedRouteIds: input.previousGeneration.recentCuratedRouteIds,
     generationRequestCount: input.previousGeneration.generationRequestCount + 1
   };
 }
@@ -499,6 +579,9 @@ export function startLearnerTrainingExercise(input: {
   seed?: string | number;
   maxAttempts?: number;
   generationCache?: LearnerTrainingExerciseGenerationCache | null;
+  curatedRoutes?: readonly CuratedTrainingRouteExport[];
+  allowExperimentalGenerationFallback?: boolean;
+  preferExperimentalGeneration?: boolean;
 }): LearnerTrainingModeState {
   const seed = input.seed ?? [
     "route-runner-training-ui",
@@ -507,6 +590,51 @@ export function startLearnerTrainingExercise(input: {
     input.state.selectedExerciseType,
     input.state.generation.generationRequestCount + 1
   ].join(":");
+
+  if (input.curatedRoutes && !input.preferExperimentalGeneration) {
+    const selection = selectCuratedTrainingRoute({
+      routes: input.curatedRoutes,
+      mapId: input.map.id,
+      difficulty: input.state.selectedDifficulty,
+      exerciseType: input.state.selectedExerciseType,
+      recentRouteIds: input.state.generation.recentCuratedRouteIds,
+      seed: `${seed}:${input.state.generation.generationRequestCount + 1}`
+    });
+
+    if (selection.route) {
+      const exercise = curatedTrainingRouteToGeneratedLearnerExercise(selection.route);
+
+      return {
+        ...input.state,
+        isOpen: true,
+        activeExercise: exercise,
+        hints: [],
+        review: null,
+        generation: generationStateFromCuratedRoute({
+          exercise,
+          route: selection.route,
+          previousGeneration: input.state.generation,
+          availableRouteCount: selection.availableRoutes.length,
+          repeatedRecentRoute: selection.repeatedRecentRoute
+        })
+      };
+    }
+
+    if (input.allowExperimentalGenerationFallback !== true) {
+      return {
+        ...input.state,
+        isOpen: true,
+        activeExercise: null,
+        hints: [],
+        review: null,
+        generation: generationStateFromNoCuratedRoute({
+          previousGeneration: input.state.generation,
+          message: selection.message ?? NO_CURATED_ROUTE_AVAILABLE_MESSAGE
+        })
+      };
+    }
+  }
+
   const cache = input.generationCache === undefined ? defaultLearnerTrainingGenerationCache : input.generationCache;
   const cacheKey = learnerTrainingGenerationCacheKey({
     state: input.state,
@@ -644,6 +772,7 @@ export function buildLearnerTrainingModePanelModel(input: {
   map: MapDefinition;
   viewport: "desktop" | "mobile";
   progress?: LearnerTrainingProgressState | null;
+  curatedRoutes?: readonly CuratedTrainingRouteExport[];
 }): LearnerTrainingModePanelModel {
   const exercise = input.state.activeExercise;
   const objective = exercise?.objectives.find((candidate) => candidate.required) ?? exercise?.objectives[0] ?? null;
@@ -673,6 +802,41 @@ export function buildLearnerTrainingModePanelModel(input: {
         routeSignature: exercise.generationMetadata.routeSignature
       }
     : null;
+  const curatedRouteCards = input.curatedRoutes
+    ? buildCuratedTrainingRouteCards({
+        routes: input.curatedRoutes,
+        mapId: input.map.id,
+        difficulty: input.state.selectedDifficulty,
+        exerciseType: input.state.selectedExerciseType,
+        activeRouteId: input.state.generation.curatedRouteId
+      })
+    : [];
+  const curatedRouteAvailability: LearnerTrainingModePanelModel["curatedRouteAvailability"] = input.curatedRoutes
+    ? curatedRouteCards.length > 0
+      ? {
+          status: "available",
+          message: null,
+          experimentalFallbackLabel: EXPERIMENTAL_GENERATED_ROUTE_LABEL
+        }
+      : {
+          status: "unavailable",
+          message: NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
+          experimentalFallbackLabel: EXPERIMENTAL_GENERATED_ROUTE_LABEL
+        }
+    : {
+        status: "not-configured",
+        message: null,
+        experimentalFallbackLabel: EXPERIMENTAL_GENERATED_ROUTE_LABEL
+      };
+  const experimentalFallbackAction: LearnerTrainingModeAction | null =
+    input.curatedRoutes && curatedRouteCards.length === 0
+      ? {
+          id: "experimental-generate-exercise",
+          label: EXPERIMENTAL_GENERATED_ROUTE_LABEL,
+          ariaLabel: "Try an experimental generated learner route instead of a curated route",
+          disabled: false
+        }
+      : null;
 
   return {
     label: LEARNER_TRAINING_MODE_LABEL,
@@ -743,6 +907,9 @@ export function buildLearnerTrainingModePanelModel(input: {
           skillTags: [...option.skillTags]
         }))
       : [],
+    curatedRouteCards,
+    curatedRouteAvailability,
+    experimentalFallbackAction,
     validation: exercise
       ? {
           status: exercise.validation.status,

@@ -1,0 +1,428 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-intermediate-junction-whitfield-goodge",
+  "title": "Whitfield Street junction planning",
+  "area": "Real London Pilot",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London Pilot",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "intermediate",
+  "exerciseType": "practise-junction-decision-making",
+  "status": "beta",
+  "saveMode": "complete-route",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-intermediate-junction-whitfield-goodge",
+    "title": "Whitfield Street junction planning",
+    "area": "Real London Pilot",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London Pilot",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "intermediate",
+    "exerciseType": "practise-junction-decision-making",
+    "description": "Intermediate junction-planning route from Whitfield Street to Goodge Street.",
+    "objective": "Plan the road changes early and avoid committing to the wrong side street.",
+    "skillsPractised": [
+      "junction planning",
+      "road-name checking",
+      "wrong-turn recovery"
+    ],
+    "expectedLearnerMistakes": [
+      "wrong turn",
+      "late lane planning",
+      "unnecessary detour"
+    ],
+    "hintSequence": [
+      "Look for the next road name before reaching the junction.",
+      "Choose the road that keeps you moving toward Goodge Street.",
+      "If you miss the turn, recover without adding extra loops."
+    ],
+    "scoringEmphasis": [
+      "junction handling",
+      "route adherence",
+      "efficient recovery"
+    ],
+    "instructorFeedbackNotes": "Feedback should distinguish a wrong turn from a safe recovery after the wrong turn.",
+    "routeChoiceJustification": "Intermediate route stays close to the shortest legal path while adding decision load.",
+    "status": "beta"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "sourceRouteExerciseId": "osm-real-pilot-turn-choice",
+  "sourceRouteExerciseVersion": "1.0.0",
+  "start": {
+    "id": "start-00",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-9791489",
+    "label": "Whitfield Street",
+    "point": {
+      "x": -261.283543,
+      "y": 155.584392
+    },
+    "roadId": "osm-way-1306225868-segment-0",
+    "routeSegmentId": "osm-way-1306225868-segment-0:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Start at Whitfield Street."
+    }
+  },
+  "destination": {
+    "id": "destination-01",
+    "kind": "destination",
+    "order": 1,
+    "nodeId": "osm-node-107320",
+    "label": "Goodge Street at Tottenham Court Road",
+    "point": {
+      "x": -88.883047,
+      "y": 229.327833
+    },
+    "roadId": "osm-way-699802882-segment-2",
+    "routeSegmentId": "osm-way-699802882-segment-2:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Finish at Goodge Street at Tottenham Court Road."
+    }
+  },
+  "checkpoints": [],
+  "checkpointRequirements": {
+    "required": false,
+    "ordered": true,
+    "checkpointCount": 0,
+    "requiredNodeIds": [],
+    "instruction": "No intermediate checkpoints are required for this route."
+  },
+  "routeSegmentIds": [
+    "osm-way-1306225868-segment-0:forward",
+    "osm-way-1306225868-segment-1:forward",
+    "osm-way-1306225868-segment-2:forward",
+    "osm-way-1306225869-segment-0:forward",
+    "osm-way-1306225869-segment-1:forward",
+    "osm-way-1306225871-segment-0:forward",
+    "osm-way-24865179-segment-3:forward",
+    "osm-way-84697110-segment-0:forward",
+    "osm-way-1040322992-segment-0:forward",
+    "osm-way-699802882-segment-0:forward",
+    "osm-way-699802882-segment-1:forward",
+    "osm-way-699802882-segment-2:forward"
+  ],
+  "roadIds": [
+    "osm-way-1306225868-segment-0",
+    "osm-way-1306225868-segment-1",
+    "osm-way-1306225868-segment-2",
+    "osm-way-1306225869-segment-0",
+    "osm-way-1306225869-segment-1",
+    "osm-way-1306225871-segment-0",
+    "osm-way-24865179-segment-3",
+    "osm-way-84697110-segment-0",
+    "osm-way-1040322992-segment-0",
+    "osm-way-699802882-segment-0",
+    "osm-way-699802882-segment-1",
+    "osm-way-699802882-segment-2"
+  ],
+  "nodeIds": [
+    "osm-node-9791489",
+    "osm-node-12373737531",
+    "osm-node-25501007",
+    "osm-node-12097616158",
+    "osm-node-12373725677",
+    "osm-node-12097616157",
+    "osm-node-9791487",
+    "osm-node-983839058",
+    "osm-node-6571452366",
+    "osm-node-5612180571",
+    "osm-node-8474252670",
+    "osm-node-1448894892",
+    "osm-node-107320"
+  ],
+  "routeGeometry": [
+    {
+      "x": -261.283543,
+      "y": 155.584392
+    },
+    {
+      "x": -257.776979,
+      "y": 160.969367
+    },
+    {
+      "x": -230.158613,
+      "y": 202.313695
+    },
+    {
+      "x": -192.699605,
+      "y": 257.647857
+    },
+    {
+      "x": -179.942391,
+      "y": 276.503964
+    },
+    {
+      "x": -179.051835,
+      "y": 277.809936
+    },
+    {
+      "x": -175.222444,
+      "y": 283.463181
+    },
+    {
+      "x": -163.133148,
+      "y": 275.287443
+    },
+    {
+      "x": -124.694528,
+      "y": 251.386331
+    },
+    {
+      "x": -115.599725,
+      "y": 245.697284
+    },
+    {
+      "x": -108.519806,
+      "y": 241.31421
+    },
+    {
+      "x": -100.627254,
+      "y": 236.430211
+    },
+    {
+      "x": -88.883047,
+      "y": 229.327833
+    }
+  ],
+  "validationSummary": {
+    "status": "warning",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [
+      {
+        "code": "excessive-route-complexity",
+        "severity": "warning",
+        "routeSegmentIds": [
+          "osm-way-1040322992-segment-0:forward",
+          "osm-way-1306225868-segment-0:forward",
+          "osm-way-1306225868-segment-1:forward",
+          "osm-way-1306225868-segment-2:forward",
+          "osm-way-1306225869-segment-0:forward",
+          "osm-way-1306225869-segment-1:forward",
+          "osm-way-1306225871-segment-0:forward",
+          "osm-way-24865179-segment-3:forward",
+          "osm-way-699802882-segment-0:forward",
+          "osm-way-699802882-segment-1:forward",
+          "osm-way-699802882-segment-2:forward",
+          "osm-way-84697110-segment-0:forward"
+        ],
+        "roadIds": [
+          "osm-way-1040322992-segment-0",
+          "osm-way-1306225868-segment-0",
+          "osm-way-1306225868-segment-1",
+          "osm-way-1306225868-segment-2",
+          "osm-way-1306225869-segment-0",
+          "osm-way-1306225869-segment-1",
+          "osm-way-1306225871-segment-0",
+          "osm-way-24865179-segment-3",
+          "osm-way-699802882-segment-0",
+          "osm-way-699802882-segment-1",
+          "osm-way-699802882-segment-2",
+          "osm-way-84697110-segment-0"
+        ],
+        "nodeIds": [],
+        "explanation": "This route is more complex than expected for intermediate practice: 12 segments, 11 turns, and 0 complex junction decisions."
+      }
+    ],
+    "affectedRouteSegmentIds": [
+      "osm-way-1040322992-segment-0:forward",
+      "osm-way-1306225868-segment-0:forward",
+      "osm-way-1306225868-segment-1:forward",
+      "osm-way-1306225868-segment-2:forward",
+      "osm-way-1306225869-segment-0:forward",
+      "osm-way-1306225869-segment-1:forward",
+      "osm-way-1306225871-segment-0:forward",
+      "osm-way-24865179-segment-3:forward",
+      "osm-way-699802882-segment-0:forward",
+      "osm-way-699802882-segment-1:forward",
+      "osm-way-699802882-segment-2:forward",
+      "osm-way-84697110-segment-0:forward"
+    ],
+    "ruleCodes": [
+      "excessive-route-complexity"
+    ],
+    "explanation": "Route is usable with 1 advisory warning(s). This route is more complex than expected for intermediate practice: 12 segments, 11 turns, and 0 complex junction decisions."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 159,
+    "segmentCount": 12,
+    "turnCount": 11,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "estimatedDifficulty": "intermediate",
+    "warnings": [
+      "This route is more complex than expected for intermediate practice: 12 segments, 11 turns, and 0 complex junction decisions."
+    ]
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 159,
+      "shortestLengthMeters": 159,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 12,
+      "shortestSegmentCount": 12,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 11,
+      "shortestTurnCount": 11,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-1306225868-segment-0:forward",
+        "osm-way-1306225868-segment-1:forward",
+        "osm-way-1306225868-segment-2:forward",
+        "osm-way-1306225869-segment-0:forward",
+        "osm-way-1306225869-segment-1:forward",
+        "osm-way-1306225871-segment-0:forward",
+        "osm-way-24865179-segment-3:forward",
+        "osm-way-84697110-segment-0:forward",
+        "osm-way-1040322992-segment-0:forward",
+        "osm-way-699802882-segment-0:forward",
+        "osm-way-699802882-segment-1:forward",
+        "osm-way-699802882-segment-2:forward"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "not-applicable",
+      "verdict": "unknown",
+      "explanation": "Checkpoint-constrained comparison is not needed because this route has no intermediate checkpoints.",
+      "authoredLengthMeters": null,
+      "shortestLengthMeters": null,
+      "lengthDeltaMeters": null,
+      "percentageLonger": null,
+      "authoredSegmentCount": null,
+      "shortestSegmentCount": null,
+      "segmentCountDelta": null,
+      "authoredTurnCount": null,
+      "shortestTurnCount": null,
+      "turnCountDelta": null,
+      "authoredDecisionPointCount": null,
+      "shortestDecisionPointCount": null,
+      "decisionPointDelta": null,
+      "shortestRouteSegmentIds": []
+    },
+    "routeChoiceJustification": "Intermediate route stays close to the shortest legal path while adding decision load.",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "Beginner curated routes should usually stay close to the shortest legal route.",
+      "Checkpoint routes should be judged against the checkpoint-constrained comparison.",
+      "Legal route-choice routes may be longer only when map metadata supports the restriction or one-way constraint."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-1306225868-segment-0:forward",
+      "roadId": "osm-way-1306225868-segment-0",
+      "fromNodeId": "osm-node-9791489",
+      "toNodeId": "osm-node-12373737531"
+    },
+    {
+      "id": "osm-way-1306225868-segment-1:forward",
+      "roadId": "osm-way-1306225868-segment-1",
+      "fromNodeId": "osm-node-12373737531",
+      "toNodeId": "osm-node-25501007"
+    },
+    {
+      "id": "osm-way-1306225868-segment-2:forward",
+      "roadId": "osm-way-1306225868-segment-2",
+      "fromNodeId": "osm-node-25501007",
+      "toNodeId": "osm-node-12097616158"
+    },
+    {
+      "id": "osm-way-1306225869-segment-0:forward",
+      "roadId": "osm-way-1306225869-segment-0",
+      "fromNodeId": "osm-node-12097616158",
+      "toNodeId": "osm-node-12373725677"
+    },
+    {
+      "id": "osm-way-1306225869-segment-1:forward",
+      "roadId": "osm-way-1306225869-segment-1",
+      "fromNodeId": "osm-node-12373725677",
+      "toNodeId": "osm-node-12097616157"
+    },
+    {
+      "id": "osm-way-1306225871-segment-0:forward",
+      "roadId": "osm-way-1306225871-segment-0",
+      "fromNodeId": "osm-node-12097616157",
+      "toNodeId": "osm-node-9791487"
+    },
+    {
+      "id": "osm-way-24865179-segment-3:forward",
+      "roadId": "osm-way-24865179-segment-3",
+      "fromNodeId": "osm-node-9791487",
+      "toNodeId": "osm-node-983839058"
+    },
+    {
+      "id": "osm-way-84697110-segment-0:forward",
+      "roadId": "osm-way-84697110-segment-0",
+      "fromNodeId": "osm-node-983839058",
+      "toNodeId": "osm-node-6571452366"
+    },
+    {
+      "id": "osm-way-1040322992-segment-0:forward",
+      "roadId": "osm-way-1040322992-segment-0",
+      "fromNodeId": "osm-node-6571452366",
+      "toNodeId": "osm-node-5612180571"
+    },
+    {
+      "id": "osm-way-699802882-segment-0:forward",
+      "roadId": "osm-way-699802882-segment-0",
+      "fromNodeId": "osm-node-5612180571",
+      "toNodeId": "osm-node-8474252670"
+    },
+    {
+      "id": "osm-way-699802882-segment-1:forward",
+      "roadId": "osm-way-699802882-segment-1",
+      "fromNodeId": "osm-node-8474252670",
+      "toNodeId": "osm-node-1448894892"
+    },
+    {
+      "id": "osm-way-699802882-segment-2:forward",
+      "roadId": "osm-way-699802882-segment-2",
+      "fromNodeId": "osm-node-1448894892",
+      "toNodeId": "osm-node-107320"
+    }
+  ],
+  "instructorQaNote": "Moderate route with road changes and junction planning without advanced density.",
+  "learnerCard": {
+    "area": "Real London Pilot",
+    "approximateLengthMeters": 159,
+    "segmentCount": 12,
+    "turnCount": 11,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "skillsPractised": [
+      "junction planning",
+      "road-name checking",
+      "wrong-turn recovery"
+    ],
+    "statusLabel": "Beta"
+  },
+  "routePack": {
+    "packId": "real-london-pilot-route-pack-1",
+    "packVersion": "2026.07",
+    "sourceExerciseDifficulty": "medium",
+    "sourceRouteType": "direct",
+    "manualQaNote": "Moderate route with road changes and junction planning without advanced density.",
+    "knownLimitations": [
+      "Legal restrictions are only enforced where present in committed map metadata.",
+      "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turn count."
+    ]
+  }
+}

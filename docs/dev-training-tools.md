@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. Stage 19.1 makes checkpoints ordered required stops for curated authoring when route metadata requires them. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. Stage 19.1 makes checkpoints ordered required stops for curated authoring when route metadata requires them. Stage 20 adds the first complete beta curated learner route pack under `data/training-routes/complete/`. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -165,7 +165,24 @@ The exported contract includes:
 - route choice justification
 - validation segments for later replay
 
-Stage 18.5 through Stage 18.15 do not switch learner Training Mode to curated routes. Stage 19 can load complete, beta, or approved exports and instantiate exercises through the existing Phase 7 generation, validation, scoring, hint, feedback, and progress modules.
+Stage 20 learner Training Mode loads complete beta or approved curated exports first. The automatic generator remains available only as a clearly labelled experimental fallback when no curated route exists for the current map, difficulty, and exercise type.
+
+## First Curated Route Pack
+
+The first learner-facing route pack is documented in `docs/phase-7-curated-route-pack.md`.
+
+Current pack status:
+
+- Pack id: `real-london-pilot-route-pack-1`
+- Storage: `data/training-routes/complete/`
+- Source map: `osm-real-london-pilot`
+- Learner-facing routes: 13 beta routes
+- Beginner routes: 3
+- Intermediate routes: 5
+- Advanced routes: 5
+- Checkpoint routes: 3
+
+Training Mode filters routes by active map id, difficulty, exercise type, complete lifecycle stage, and `beta` or `approved` status. Draft and review exports must not appear to learners. If no curated route matches, the learner sees `No approved curated route is available for this selection yet.` and can choose `Try experimental generated route` only as an explicit fallback.
 
 ## Manual QA
 

@@ -1,0 +1,236 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-beginner-follow-store-street",
+  "title": "Store Street short legal connector",
+  "area": "Real London Pilot",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London Pilot",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "beginner",
+  "exerciseType": "follow-planned-route",
+  "status": "beta",
+  "saveMode": "complete-route",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-beginner-follow-store-street",
+    "title": "Store Street short legal connector",
+    "area": "Real London Pilot",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London Pilot",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "beginner",
+    "exerciseType": "follow-planned-route",
+    "description": "Very short Store Street connector used for first-start confidence and endpoint accuracy.",
+    "objective": "Start accurately, follow the short legal connector, and stop at the destination marker.",
+    "skillsPractised": [
+      "start accuracy",
+      "destination accuracy",
+      "short-route control"
+    ],
+    "expectedLearnerMistakes": [
+      "wrong start",
+      "wrong destination",
+      "unnecessary detour"
+    ],
+    "hintSequence": [
+      "This route is short, so prioritise placing the start correctly.",
+      "Check the destination marker before moving away.",
+      "Use only the connector shown by the planned route."
+    ],
+    "scoringEmphasis": [
+      "wrong start",
+      "wrong destination",
+      "route adherence"
+    ],
+    "instructorFeedbackNotes": "Use this as a confidence route; feedback should be precise about endpoint placement.",
+    "routeChoiceJustification": "Short beginner route is deliberately minimal for first-start and stop accuracy.",
+    "status": "beta"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "sourceRouteExerciseId": "osm-real-pilot-store-street-short-hop",
+  "sourceRouteExerciseVersion": "1.0.0",
+  "start": {
+    "id": "start-00",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-25472045",
+    "label": "Store Street east",
+    "point": {
+      "x": 57.31284,
+      "y": 353.341257
+    },
+    "roadId": "osm-way-1033664846-segment-0",
+    "routeSegmentId": "osm-way-1033664846-segment-0:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Start at Store Street east."
+    }
+  },
+  "destination": {
+    "id": "destination-01",
+    "kind": "destination",
+    "order": 1,
+    "nodeId": "osm-node-333670394",
+    "label": "Store Street west",
+    "point": {
+      "x": 86.066664,
+      "y": 334.234869
+    },
+    "roadId": "osm-way-678745735-segment-0",
+    "routeSegmentId": "osm-way-678745735-segment-0:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Finish at Store Street west."
+    }
+  },
+  "checkpoints": [],
+  "checkpointRequirements": {
+    "required": false,
+    "ordered": true,
+    "checkpointCount": 0,
+    "requiredNodeIds": [],
+    "instruction": "No intermediate checkpoints are required for this route."
+  },
+  "routeSegmentIds": [
+    "osm-way-1033664846-segment-0:forward",
+    "osm-way-678745735-segment-0:forward"
+  ],
+  "roadIds": [
+    "osm-way-1033664846-segment-0",
+    "osm-way-678745735-segment-0"
+  ],
+  "nodeIds": [
+    "osm-node-25472045",
+    "osm-node-9523048185",
+    "osm-node-333670394"
+  ],
+  "routeGeometry": [
+    {
+      "x": 57.31284,
+      "y": 353.341257
+    },
+    {
+      "x": 64.17012,
+      "y": 348.636224
+    },
+    {
+      "x": 86.066664,
+      "y": 334.234869
+    }
+  ],
+  "validationSummary": {
+    "status": "valid",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [],
+    "affectedRouteSegmentIds": [],
+    "ruleCodes": [],
+    "explanation": "Route passes available legal and practical checks."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 21,
+    "segmentCount": 2,
+    "turnCount": 1,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "estimatedDifficulty": "beginner",
+    "warnings": []
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 21,
+      "shortestLengthMeters": 21,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 2,
+      "shortestSegmentCount": 2,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 1,
+      "shortestTurnCount": 1,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-1033664846-segment-0:forward",
+        "osm-way-678745735-segment-0:forward"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "not-applicable",
+      "verdict": "unknown",
+      "explanation": "Checkpoint-constrained comparison is not needed because this route has no intermediate checkpoints.",
+      "authoredLengthMeters": null,
+      "shortestLengthMeters": null,
+      "lengthDeltaMeters": null,
+      "percentageLonger": null,
+      "authoredSegmentCount": null,
+      "shortestSegmentCount": null,
+      "segmentCountDelta": null,
+      "authoredTurnCount": null,
+      "shortestTurnCount": null,
+      "turnCountDelta": null,
+      "authoredDecisionPointCount": null,
+      "shortestDecisionPointCount": null,
+      "decisionPointDelta": null,
+      "shortestRouteSegmentIds": []
+    },
+    "routeChoiceJustification": "Short beginner route is deliberately minimal for first-start and stop accuracy.",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "Beginner curated routes should usually stay close to the shortest legal route.",
+      "Checkpoint routes should be judged against the checkpoint-constrained comparison.",
+      "Legal route-choice routes may be longer only when map metadata supports the restriction or one-way constraint."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-1033664846-segment-0:forward",
+      "roadId": "osm-way-1033664846-segment-0",
+      "fromNodeId": "osm-node-25472045",
+      "toNodeId": "osm-node-9523048185"
+    },
+    {
+      "id": "osm-way-678745735-segment-0:forward",
+      "roadId": "osm-way-678745735-segment-0",
+      "fromNodeId": "osm-node-9523048185",
+      "toNodeId": "osm-node-333670394"
+    }
+  ],
+  "instructorQaNote": "Tiny, controlled route for start/destination accuracy before longer beginner practice.",
+  "learnerCard": {
+    "area": "Real London Pilot",
+    "approximateLengthMeters": 21,
+    "segmentCount": 2,
+    "turnCount": 1,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "skillsPractised": [
+      "start accuracy",
+      "destination accuracy",
+      "short-route control"
+    ],
+    "statusLabel": "Beta"
+  },
+  "routePack": {
+    "packId": "real-london-pilot-route-pack-1",
+    "packVersion": "2026.07",
+    "sourceExerciseDifficulty": "easy",
+    "sourceRouteType": "direct",
+    "manualQaNote": "Tiny, controlled route for start/destination accuracy before longer beginner practice.",
+    "knownLimitations": [
+      "Legal restrictions are only enforced where present in committed map metadata.",
+      "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turn count."
+    ]
+  }
+}

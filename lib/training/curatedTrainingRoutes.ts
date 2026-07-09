@@ -153,6 +153,25 @@ export type CuratedTrainingRouteExport = {
   complexitySummary: CuratedTrainingRouteComplexitySummary;
   shortestRouteComparison: CuratedShortestRouteComparison;
   validationSegments: LearnerRouteValidationSegment[];
+  instructorQaNote?: string;
+  learnerCard?: {
+    area: string;
+    approximateLengthMeters: number;
+    segmentCount: number;
+    turnCount: number;
+    decisionPointCount: number;
+    checkpointCount: number;
+    skillsPractised: string[];
+    statusLabel: string;
+  };
+  routePack?: {
+    packId: string;
+    packVersion: string;
+    sourceExerciseDifficulty?: string;
+    sourceRouteType?: string;
+    manualQaNote: string;
+    knownLimitations: string[];
+  };
 };
 
 function curatedStopToRouteStop(stop: CuratedTrainingRouteStop): RouteStop {
@@ -340,7 +359,13 @@ export function curatedTrainingRouteToGeneratedLearnerExercise(
     routeLegs: routeLegsFromCuratedRoute(route),
     routeInstructions: routeInstructionsFromCuratedRoute(route),
     estimatedMinutes: validationMetricsFromCuratedRoute(route).estimatedTimeMinutes,
-    tags: ["curated-training-route", route.areaId, route.status],
+    tags: [
+      "curated-training-route",
+      route.areaId,
+      route.status,
+      ...route.metadata.skillsPractised.map((skill) => `skill:${skill}`),
+      ...route.metadata.scoringEmphasis.map((emphasis) => `score:${emphasis}`)
+    ],
     published: route.status === "beta" || route.status === "approved",
     routeGeometry: [...route.routeGeometry],
     checkpoints: orderedCuratedStops(route).map(curatedStopToRouteStop),

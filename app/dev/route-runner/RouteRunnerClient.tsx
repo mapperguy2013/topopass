@@ -36,6 +36,7 @@ import {
   type Vec2
 } from "@/lib/map-engine";
 import {
+  CURATED_LEARNER_ROUTE_PACK,
   createEmptyLearnerTrainingProgress,
   createLocalLearnerTrainingProgressStorage,
   recordLearnerTrainingAttempt,
@@ -4365,7 +4366,8 @@ export function RouteRunnerClient({
         state: learnerTrainingModeState,
         map: activeMap,
         viewport: isStudentBetaPhoneMap ? "mobile" : "desktop",
-        progress: learnerTrainingProgress
+        progress: learnerTrainingProgress,
+        curatedRoutes: CURATED_LEARNER_ROUTE_PACK
       }),
     [activeMap, isStudentBetaPhoneMap, learnerTrainingModeState, learnerTrainingProgress]
   );
@@ -5899,8 +5901,28 @@ export function RouteRunnerClient({
       startLearnerTrainingExercise({
         state: currentState,
         map: activeMap,
+        curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
         seed: [
           "route-runner-training-ui",
+          activeMap.id,
+          currentState.selectedDifficulty,
+          currentState.selectedExerciseType
+        ].join(":")
+      })
+    );
+    setFastestRouteRevealState(hideFastestRouteReveal());
+  }
+
+  function handleGenerateExperimentalLearnerTrainingExercise() {
+    setLearnerTrainingModeState((currentState) =>
+      startLearnerTrainingExercise({
+        state: currentState,
+        map: activeMap,
+        curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+        allowExperimentalGenerationFallback: true,
+        preferExperimentalGeneration: true,
+        seed: [
+          "route-runner-training-ui-experimental",
           activeMap.id,
           currentState.selectedDifficulty,
           currentState.selectedExerciseType
@@ -7055,6 +7077,90 @@ export function RouteRunnerClient({
                       {learnerTrainingModePanel.primaryActions[3].label}
                     </button>
                   </div>
+
+                  {learnerTrainingModePanel.curatedRouteCards.length > 0 ? (
+                    <div className="mt-4 rounded-md border border-blue-100 bg-blue-50 p-3">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                            Curated learner routes
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-blue-950">
+                            Generate selects from these beta route-pack options before any experimental generation.
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-semibold text-blue-800">
+                          {learnerTrainingModePanel.curatedRouteCards.length} available
+                        </span>
+                      </div>
+                      <ul className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                        {learnerTrainingModePanel.curatedRouteCards.map((routeCard) => (
+                          <li
+                            key={routeCard.routeId}
+                            className={`rounded-md border bg-white px-3 py-3 text-xs leading-5 shadow-sm ${
+                              routeCard.selected ? "border-blue-400 ring-2 ring-blue-100" : "border-blue-100"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <p className="font-semibold text-slate-950">{routeCard.title}</p>
+                                <p className="mt-1 text-slate-600">{routeCard.area}</p>
+                              </div>
+                              <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 font-semibold text-blue-700">
+                                {routeCard.statusLabel}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-slate-700">{routeCard.description}</p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {routeCard.approximateLengthLabel}
+                              </span>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {routeCard.turnCount} turns
+                              </span>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {routeCard.segmentCount} segments
+                              </span>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {routeCard.decisionPointCount} decisions
+                              </span>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {routeCard.checkpointCount} checkpoints
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {routeCard.skillsPractised.slice(0, 3).map((skill) => (
+                                <span
+                                  key={`${routeCard.routeId}-${skill}`}
+                                  className="rounded-full border border-emerald-100 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-900"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : learnerTrainingModePanel.curatedRouteAvailability.status === "unavailable" ? (
+                    <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                      <p className="font-semibold">{learnerTrainingModePanel.curatedRouteAvailability.message}</p>
+                      <p className="mt-1 text-xs leading-5">
+                        Change difficulty or exercise type, or use the experimental generator while this route pack grows.
+                      </p>
+                      {learnerTrainingModePanel.experimentalFallbackAction ? (
+                        <button
+                          type="button"
+                          onClick={handleGenerateExperimentalLearnerTrainingExercise}
+                          disabled={learnerTrainingModePanel.experimentalFallbackAction.disabled}
+                          aria-label={learnerTrainingModePanel.experimentalFallbackAction.ariaLabel}
+                          className="mt-3 min-h-11 rounded-md border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-950 shadow-sm hover:bg-amber-100 disabled:cursor-not-allowed disabled:bg-amber-100 disabled:text-amber-500"
+                        >
+                          {learnerTrainingModePanel.experimentalFallbackAction.label}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {learnerTrainingModePanel.progress ? (
                     <div className="mt-4 rounded-md border border-slate-100 bg-slate-50 p-3 text-sm text-slate-800">
