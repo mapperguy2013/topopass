@@ -1561,6 +1561,41 @@ export function TrainingRouteAuthorClient() {
             </div>
           ))}
         </dl>
+        <div
+          className="mt-4 rounded-lg border border-slate-200 bg-white p-3"
+          data-testid="training-author-checkpoint-state"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-ink">Ordered checkpoints</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                {model.exportData.checkpointRequirements.required
+                  ? "This route requires numbered checkpoints before the destination."
+                  : "Checkpoints are optional unless the selected objective makes them required."}
+              </p>
+            </div>
+            <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+              {model.exportData.checkpointRequirements.checkpointCount} checkpoint(s)
+            </span>
+          </div>
+          <ol className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2 xl:grid-cols-4">
+            <li className="rounded-md border border-green-100 bg-green-50 p-2">
+              <span className="font-bold text-green-800">Start</span>
+              <span className="ml-2 font-mono text-xs">{model.exportData.start.nodeId}</span>
+            </li>
+            {model.exportData.checkpoints.map((checkpoint) => (
+              <li className="rounded-md border border-amber-100 bg-amber-50 p-2" key={checkpoint.id ?? checkpoint.nodeId}>
+                <span className="font-bold text-amber-900">{checkpoint.label}</span>
+                <span className="ml-2 font-mono text-xs">{checkpoint.nodeId}</span>
+              </li>
+            ))}
+            <li className="rounded-md border border-red-100 bg-red-50 p-2">
+              <span className="font-bold text-red-800">Destination</span>
+              <span className="ml-2 font-mono text-xs">{model.exportData.destination.nodeId}</span>
+            </li>
+          </ol>
+          <p className="mt-3 text-xs leading-5 text-slate-500">{model.exportData.checkpointRequirements.instruction}</p>
+        </div>
       </section>
     );
   }
@@ -1740,6 +1775,37 @@ export function TrainingRouteAuthorClient() {
             Autosave recovery: {autosaveNotice}
           </p>
         ) : null}
+        <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3" data-testid="training-author-checkpoint-export">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-ink">Checkpoint export</h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                Required: {model.exportData.checkpointRequirements.required ? "Yes" : "No"}; ordered:
+                {model.exportData.checkpointRequirements.ordered ? " Yes" : " No"}.
+              </p>
+            </div>
+            <span className="w-fit rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+              {model.exportData.checkpointRequirements.requiredNodeIds.length} required stop node(s)
+            </span>
+          </div>
+          {model.exportData.checkpoints.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-700">No intermediate checkpoints selected.</p>
+          ) : (
+            <dl className="mt-3 grid gap-2 text-xs text-slate-700 md:grid-cols-2 xl:grid-cols-3">
+              {model.exportData.checkpoints.map((checkpoint) => (
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-2" key={checkpoint.id ?? checkpoint.nodeId}>
+                  <dt className="font-bold text-slate-900">
+                    {checkpoint.display?.markerLabel ?? checkpoint.label} - {checkpoint.label}
+                  </dt>
+                  <dd className="mt-1 break-all font-mono">{checkpoint.nodeId}</dd>
+                  <dd className="mt-1">
+                    Segment: <span className="font-mono">{checkpoint.routeSegmentId ?? "unmatched"}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
         <div className="mt-4 grid gap-3 xl:grid-cols-3">
           {model.saveTargets.map((target) => (
             <section className="rounded-lg border border-slate-200 bg-white p-3" key={target.mode}>

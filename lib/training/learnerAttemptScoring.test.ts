@@ -109,7 +109,7 @@ function objectives(): ExerciseObjective[] {
       category: "checkpoint-ordering",
       required: true,
       successCriteria: ["Visit all checkpoints in order."],
-      linkedFaultCategories: ["missed-checkpoint", "wrong-start", "wrong-destination"]
+      linkedFaultCategories: ["missed-checkpoint", "wrong-checkpoint-order", "wrong-start", "wrong-destination"]
     },
     {
       id: "objective-legality",
@@ -213,6 +213,37 @@ test("learner attempt scoring fails a missed checkpoint", () => {
   assert.equal(result.status, "failed");
   assert.equal(result.completed, true);
   assert.ok(result.seriousFaults.some((fault) => fault.category === "missed-checkpoint"));
+  assert.equal(
+    result.objectiveScores.find((objective) => objective.objectiveId === "objective-checkpoints")?.achieved,
+    false
+  );
+});
+
+test("learner attempt scoring fails checkpoints visited out of order", () => {
+  const baseExercise = exercise();
+  const result = scoreLearnerAttempt({
+    map: scoringMap(),
+    exercise: {
+      ...baseExercise,
+      checkpoints: [
+        { type: "node", nodeId: "a", label: "Start" },
+        { type: "node", nodeId: "c", label: "Checkpoint 1" },
+        { type: "node", nodeId: "e", label: "Checkpoint 2" },
+        { type: "node", nodeId: "d", label: "Destination" }
+      ]
+    },
+    attemptedRouteSegments: [
+      segment("attempt-1", "road-a-b", "a", "b"),
+      segment("attempt-2", "road-b-e", "b", "e"),
+      segment("attempt-3", "road-e-c", "e", "c"),
+      segment("attempt-4", "road-c-d", "c", "d")
+    ],
+    attemptId: "wrong-checkpoint-order"
+  });
+
+  assert.equal(result.status, "failed");
+  assert.equal(result.completed, true);
+  assert.ok(result.seriousFaults.some((fault) => fault.category === "wrong-checkpoint-order"));
   assert.equal(
     result.objectiveScores.find((objective) => objective.objectiveId === "objective-checkpoints")?.achieved,
     false

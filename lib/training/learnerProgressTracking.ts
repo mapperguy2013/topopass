@@ -139,13 +139,15 @@ const seriousFaultCategories = new Set<DrivingFaultCategory>([
   "prohibited-turn",
   "restricted-road",
   "wrong-start",
-  "wrong-destination"
+  "wrong-destination",
+  "wrong-checkpoint-order"
 ]);
 
 export const LEARNER_TRAINING_FAULT_CATEGORY_LABELS: Record<DrivingFaultCategory, string> = {
   "wrong-start": "Wrong start",
   "wrong-destination": "Wrong destination",
   "missed-checkpoint": "Missed checkpoint",
+  "wrong-checkpoint-order": "Wrong checkpoint order",
   "no-entry": "No entry",
   "one-way-direction": "One-way direction",
   "prohibited-turn": "Prohibited turn",
@@ -241,7 +243,12 @@ function exerciseTypeForFaultCategory(category: DrivingFaultCategory): ExerciseT
     return "practise-roundabouts";
   }
 
-  if (category === "missed-checkpoint" || category === "wrong-start" || category === "wrong-destination") {
+  if (
+    category === "missed-checkpoint" ||
+    category === "wrong-checkpoint-order" ||
+    category === "wrong-start" ||
+    category === "wrong-destination"
+  ) {
     return "follow-planned-route";
   }
 

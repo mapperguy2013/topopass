@@ -47,6 +47,7 @@ import {
   validateTrainingRouteAuthorState,
   zoomTrainingRouteAuthorBoundsAroundScreenPoint
 } from "../training-route/trainingRouteAuthor.ts";
+import { curatedTrainingRouteToGeneratedLearnerExercise } from "../../../lib/training/curatedTrainingRoutes.ts";
 import {
   ROUTE_RUNNER_BETA_CORE_PANEL_LABELS,
   ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS,
@@ -963,6 +964,117 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.match(areaField?.helpText ?? "", /Map id: osm-real-london-pilot/);
   assert.match(areaField?.helpText ?? "", /Source fixture: realLondonPilotOverpass\.json/);
   assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
+});
+
+test("curated route author exports ordered checkpoint metadata and can instantiate a learner exercise", () => {
+  const sample = createSampleTrainingRouteAuthorState();
+  const intermediateNodeIds = [...new Set(sample.routeNodeIds.slice(1, -1))];
+  let state = sample.checkpointNodeIds.length > 0 || !intermediateNodeIds[0]
+    ? sample
+    : addTrainingRouteAuthorCheckpoint(sample, intermediateNodeIds[0]);
+
+  state = updateTrainingRouteAuthorMetadataField(
+    state,
+    "scoringEmphasis",
+    "legal route validity\nrequired checkpoint order\nroute efficiency"
+  );
+  state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(state));
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const checkpoint = model.exportData.checkpoints[0];
+  const generatedExercise = curatedTrainingRouteToGeneratedLearnerExercise(model.exportData);
+
+  assert.ok(checkpoint);
+  assert.equal(model.exportData.checkpointRequirements.required, true);
+  assert.equal(model.exportData.checkpointRequirements.ordered, true);
+  assert.equal(model.exportData.checkpointRequirements.checkpointCount, model.exportData.checkpoints.length);
+  assert.deepEqual(model.exportData.checkpointRequirements.requiredNodeIds, [
+    model.exportData.start.nodeId,
+    ...model.exportData.checkpoints.map((candidate) => candidate.nodeId),
+    model.exportData.destination.nodeId
+  ]);
+  assert.equal(checkpoint.kind, "checkpoint");
+  assert.equal(checkpoint.order, 1);
+  assert.equal(checkpoint.required, true);
+  assert.equal(checkpoint.id, "checkpoint-1");
+  assert.equal(checkpoint.display?.markerRole, "checkpoint");
+  assert.equal(checkpoint.display?.markerLabel, "1");
+  assert.ok(checkpoint.routeSegmentId || checkpoint.roadId);
+  assert.equal(generatedExercise.id, model.exportData.routeId);
+  assert.equal(generatedExercise.checkpoints.length, model.exportData.checkpoints.length + 2);
+  assert.ok(generatedExercise.objectives.some((objective) => objective.category === "checkpoint-ordering"));
+  assert.ok(generatedExercise.routeInstructions.some((instruction) => instruction.kind === "checkpoint"));
+});
+
+test("curated route author validation blocks checkpoints missed by the matched route", () => {
+  const sample = createSampleTrainingRouteAuthorState();
+  const map = getTrainingRouteAuthorMap();
+  const missingCheckpointNode = map.nodes.find((node) => !sample.routeNodeIds.includes(node.id));
+
+  assert.ok(missingCheckpointNode);
+
+  const state = validateTrainingRouteAuthorState({
+    ...sample,
+    checkpointNodeIds: [missingCheckpointNode.id],
+    metadata: {
+      ...sample.metadata,
+      scoringEmphasis: ["legal route validity", "required checkpoint order", "route efficiency"]
+    },
+    validationHasRun: false,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  });
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.validationRunStatus, "invalid");
+  assert.ok(model.validation.blockingErrors.some((issue) => issue.code === "author-checkpoint-missed"));
+  assert.ok(model.validation.affectedRouteSegmentIds.length >= 0);
+  assert.equal(model.exportReadiness.ready, false);
+});
+
+test("curated route author validation blocks checkpoints visited out of order", () => {
+  const sample = createSampleTrainingRouteAuthorState();
+  const intermediateNodeIds = [...new Set(sample.routeNodeIds.slice(1, -1))];
+
+  assert.ok(intermediateNodeIds.length >= 2);
+
+  const state = validateTrainingRouteAuthorState({
+    ...sample,
+    checkpointNodeIds: [intermediateNodeIds[1], intermediateNodeIds[0]],
+    metadata: {
+      ...sample.metadata,
+      scoringEmphasis: ["legal route validity", "required checkpoint order", "route efficiency"]
+    },
+    validationHasRun: false,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  });
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.validationRunStatus, "invalid");
+  assert.ok(model.validation.blockingErrors.some((issue) => issue.code === "author-checkpoint-out-of-order"));
+  assert.ok(model.saveTargets.find((target) => target.mode === "complete-route")?.ready === false);
+});
+
+test("curated route author requires checkpoints only when metadata says the exercise needs them", () => {
+  let state = createEmptyTrainingRouteAuthorState();
+
+  state = updateTrainingRouteAuthorMetadataField(
+    state,
+    "scoringEmphasis",
+    "legal route validity\nrequired checkpoint order\nroute efficiency"
+  );
+  state = validateTrainingRouteAuthorState(state);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+  const checkpointStep = model.authoringSteps.find((step) => step.label === "Add checkpoints if needed");
+
+  assert.equal(model.exportData.checkpointRequirements.required, true);
+  assert.ok(model.validation.blockingErrors.some((issue) => issue.code === "author-checkpoint-missing"));
+  assert.equal(model.exportReadiness.checklist.find((item) => item.label === "Required checkpoints selected")?.complete, false);
+  assert.equal(completeRoute?.checklist.find((item) => item.label === "Required checkpoints selected")?.complete, false);
+  assert.equal(checkpointStep?.complete, false);
 });
 
 test("curated route author blocks approved status until validation is clean", () => {

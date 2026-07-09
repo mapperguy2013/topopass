@@ -141,7 +141,7 @@ function objectives(): ExerciseObjective[] {
       category: "checkpoint-ordering",
       required: true,
       successCriteria: ["Visit all checkpoints in order."],
-      linkedFaultCategories: ["missed-checkpoint", "wrong-start", "wrong-destination"]
+      linkedFaultCategories: ["missed-checkpoint", "wrong-checkpoint-order", "wrong-start", "wrong-destination"]
     }
   ];
 }

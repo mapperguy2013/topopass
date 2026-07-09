@@ -216,7 +216,7 @@ const scoringEmphasisLabels: Record<LearnerScenarioScoringEmphasis, string> = {
 const faultCategoriesByScoringEmphasis: Record<LearnerScenarioScoringEmphasis, DrivingFaultCategory[]> = {
   "route-adherence": ["wrong-start", "wrong-destination", "route-drawing", "unsafe-junction-decision"],
   "legal-validity": ["no-entry", "one-way-direction", "prohibited-turn", "restricted-road"],
-  "checkpoint-ordering": ["missed-checkpoint", "wrong-start", "wrong-destination"],
+  "checkpoint-ordering": ["missed-checkpoint", "wrong-checkpoint-order", "wrong-start", "wrong-destination"],
   "junction-planning": ["unsafe-junction-decision", "map-reading"],
   "roundabout-handling": ["roundabout-decision"],
   recovery: ["unsafe-junction-decision", "route-efficiency"],

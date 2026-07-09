@@ -99,7 +99,7 @@ function objectives(): ExerciseObjective[] {
       category: "checkpoint-ordering",
       required: true,
       successCriteria: ["Reach the midpoint checkpoint before the destination."],
-      linkedFaultCategories: ["missed-checkpoint"]
+      linkedFaultCategories: ["missed-checkpoint", "wrong-checkpoint-order"]
     }
   ];
 }
@@ -296,6 +296,41 @@ test("final hint reveals the correct action and only then exposes blocked-road c
     assert.match(final.hint.text, /road-b-c/);
     assert.match(final.hint.text, /road-b-d/);
     assert.doesNotMatch(early.hint.text, /road-b-d/);
+  }
+});
+
+test("checkpoint objective hints name the next required checkpoint", () => {
+  const hint = generateLearnerHint({
+    exercise: exercise("advanced"),
+    objectiveId: "objective-checkpoints",
+    currentCheckpointIndex: 0,
+    previousMistakes: [
+      {
+        id: "fault-1",
+        attemptId: "attempt-1",
+        category: "wrong-checkpoint-order",
+        severity: "serious",
+        title: "Checkpoint visited out of order",
+        source: "system"
+      }
+    ]
+  });
+  const reveal = generateLearnerHint({
+    exercise: exercise("advanced"),
+    objectiveId: "objective-checkpoints",
+    currentCheckpointIndex: 0,
+    previousHintLevels: ["nudge", "guided", "guided", "worked-example"]
+  });
+
+  assert.equal(hint.status, "generated");
+  assert.equal(reveal.status, "generated");
+
+  if (hint.status === "generated" && reveal.status === "generated") {
+    assert.equal(hint.hint.checkpointLabel, "Midpoint checkpoint");
+    assert.match(hint.hint.text, /checkpoint/i);
+    assert.match(hint.hint.text, /confirm the next checkpoint/i);
+    assert.match(reveal.hint.text, /Midpoint checkpoint/);
+    assert.equal(reveal.hint.revealsAnswer, true);
   }
 });
 

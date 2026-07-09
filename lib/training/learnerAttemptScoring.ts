@@ -318,6 +318,18 @@ const validationRuleFaults: Record<
     severity: "serious",
     title: "Authoring checkpoint missing",
     blocking: true
+  },
+  "author-checkpoint-missed": {
+    category: "missed-checkpoint",
+    severity: "serious",
+    title: "Authored checkpoint not on route",
+    blocking: true
+  },
+  "author-checkpoint-out-of-order": {
+    category: "wrong-checkpoint-order",
+    severity: "serious",
+    title: "Authored checkpoint out of order",
+    blocking: true
   }
 };
 
@@ -576,6 +588,16 @@ function visitIndexAfter(visitedNodeIds: readonly string[], nodeId: string, afte
   return -1;
 }
 
+function visitIndexAtOrBefore(visitedNodeIds: readonly string[], nodeId: string, beforeOrAtIndex: number): number {
+  for (let index = 0; index <= beforeOrAtIndex && index < visitedNodeIds.length; index += 1) {
+    if (visitedNodeIds[index] === nodeId) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 function analyseCheckpoints(input: {
   exercise: ScorableLearnerExercise | GeneratedLearnerExercise;
   attemptedSegments: readonly LearnerRouteValidationSegment[];
@@ -594,6 +616,22 @@ function analyseCheckpoints(input: {
     if (visitIndex >= 0) {
       completedCheckpointCount += 1;
       previousVisitIndex = visitIndex;
+      continue;
+    }
+
+    const outOfOrderVisitIndex = visitIndexAtOrBefore(visitedNodeIds, requiredNodeId, previousVisitIndex);
+
+    if (outOfOrderVisitIndex >= 0 && index > 0 && index < requiredNodeIds.length - 1) {
+      faults.push(
+        input.makeFault({
+          category: "wrong-checkpoint-order",
+          severity: "serious",
+          title: "Checkpoint visited out of order",
+          detail: `The attempt visited checkpoint node ${requiredNodeId} before completing the earlier required checkpoint sequence.`,
+          relatedNodeIds: [requiredNodeId],
+          blocking: false
+        })
+      );
       continue;
     }
 
@@ -797,7 +835,12 @@ function objectiveScore(input: {
     }
 
     if (input.objective.category === "checkpoint-ordering") {
-      return fault.category === "missed-checkpoint" || fault.category === "wrong-start" || fault.category === "wrong-destination";
+      return (
+        fault.category === "missed-checkpoint" ||
+        fault.category === "wrong-checkpoint-order" ||
+        fault.category === "wrong-start" ||
+        fault.category === "wrong-destination"
+      );
     }
 
     if (input.objective.category === "route-efficiency") {

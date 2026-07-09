@@ -1178,7 +1178,7 @@ function checkpointReviewStatus(input: {
 
   const missedNodeIds = new Set(
     input.review.scoring.faults
-      .filter((fault) => fault.category === "missed-checkpoint")
+      .filter((fault) => fault.category === "missed-checkpoint" || fault.category === "wrong-checkpoint-order")
       .flatMap((fault) => fault.relatedNodeIds ?? [])
   );
 
@@ -1450,7 +1450,7 @@ function markerKindForFault(category: DrivingFaultCategory, severity: DrivingFau
     return "wrong-turn";
   }
 
-  if (category === "missed-checkpoint") {
+  if (category === "missed-checkpoint" || category === "wrong-checkpoint-order") {
     return "missed-checkpoint";
   }
 
@@ -1481,7 +1481,7 @@ function pointForFault(input: {
     return null;
   }
 
-  if (fault.category === "missed-checkpoint") {
+  if (fault.category === "missed-checkpoint" || fault.category === "wrong-checkpoint-order") {
     for (const nodeId of fault.relatedNodeIds ?? []) {
       const point = nodeById(input.map, nodeId);
 

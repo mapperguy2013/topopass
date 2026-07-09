@@ -36,6 +36,7 @@ export const DRIVING_FAULT_CATEGORIES = [
   "wrong-start",
   "wrong-destination",
   "missed-checkpoint",
+  "wrong-checkpoint-order",
   "no-entry",
   "one-way-direction",
   "prohibited-turn",

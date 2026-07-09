@@ -132,6 +132,7 @@ const routeAdherenceFaultCategories = new Set<DrivingFaultCategory>([
   "wrong-start",
   "wrong-destination",
   "missed-checkpoint",
+  "wrong-checkpoint-order",
   "route-drawing"
 ]);
 
@@ -383,6 +384,16 @@ function templateForFault(fault: LearnerAttemptScoredFault): FeedbackTemplate {
       whatHappened: "You missed the planned checkpoint after the junction.",
       whyItMatters: "Checkpoints confirm that you are still following the exercise route in the required order.",
       improvementSuggestion: "Recheck the road name and checkpoint marker before committing to the turn."
+    };
+  }
+
+  if (fault.category === "wrong-checkpoint-order") {
+    return {
+      category,
+      issueType,
+      whatHappened: "You visited a planned checkpoint out of order.",
+      whyItMatters: "Checkpoint exercises require each numbered stop before the destination, so reaching a later stop first is an objective failure.",
+      improvementSuggestion: "Use the numbered checkpoint sequence as the route plan and recover to the next required checkpoint before continuing."
     };
   }
 

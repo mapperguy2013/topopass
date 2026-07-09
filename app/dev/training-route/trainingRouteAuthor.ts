@@ -29,6 +29,7 @@ import {
 } from "../../../lib/training/learnerDriverTraining.ts";
 import {
   type CuratedTrainingRouteComplexitySummary,
+  type CuratedTrainingRouteCheckpointRequirement,
   type CuratedTrainingRouteExport,
   type CuratedTrainingRouteMetadata,
   type CuratedShortestRouteComparison,
@@ -593,9 +594,18 @@ function hasRequiredTrainingRouteMetadata(metadata: CuratedTrainingRouteMetadata
 }
 
 function trainingRouteAuthorCheckpointsRequired(metadata: CuratedTrainingRouteMetadata): boolean {
-  return (
-    metadata.exerciseType === "follow-planned-route" &&
-    metadata.scoringEmphasis.some((emphasis) => emphasis.toLowerCase().includes("required checkpoint"))
+  const checkpointRequirementText = [
+    metadata.objective,
+    metadata.description,
+    ...metadata.scoringEmphasis,
+    ...metadata.skillsPractised,
+    ...metadata.expectedLearnerMistakes,
+    ...metadata.hintSequence,
+    metadata.instructorFeedbackNotes
+  ].join(" ");
+
+  return /required checkpoint|checkpoint-ordering|checkpoint order|ordered checkpoint|checkpoint navigation|multi-stop|visit checkpoints in order|checkpoints in order/i.test(
+    checkpointRequirementText
   );
 }
 
@@ -613,6 +623,142 @@ function trainingRouteAuthorIssue(input: {
     roadIds: uniqueSortedStrings(input.roadIds ?? []),
     nodeIds: uniqueSortedStrings(input.nodeIds ?? []),
     explanation: input.explanation
+  };
+}
+
+function routeNodeVisitIndexAfter(routeNodeIds: readonly string[], nodeId: string, afterIndex: number): number {
+  for (let index = afterIndex + 1; index < routeNodeIds.length; index += 1) {
+    if (routeNodeIds[index] === nodeId) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function routeNodeVisitIndexAtOrBefore(routeNodeIds: readonly string[], nodeId: string, beforeOrAtIndex: number): number {
+  for (let index = 0; index <= beforeOrAtIndex && index < routeNodeIds.length; index += 1) {
+    if (routeNodeIds[index] === nodeId) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
+function validationSegmentsForNode(
+  validationSegments: readonly LearnerRouteValidationSegment[],
+  nodeId: string
+): LearnerRouteValidationSegment[] {
+  return validationSegments.filter((segment) => segment.fromNodeId === nodeId || segment.toNodeId === nodeId);
+}
+
+function authoringCheckpointRouteIssues(state: TrainingRouteAuthorState): LearnerRouteValidationIssue[] {
+  const issues: LearnerRouteValidationIssue[] = [];
+
+  if (state.routeNodeIds.length === 0 || state.validationSegments.length === 0) {
+    return issues;
+  }
+
+  const firstRouteNodeId = state.routeNodeIds[0];
+  const lastRouteNodeId = state.routeNodeIds[state.routeNodeIds.length - 1];
+
+  if (state.startNodeId && firstRouteNodeId !== state.startNodeId) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "start-segment-invalid",
+        nodeIds: [state.startNodeId],
+        routeSegmentIds: state.validationSegments[0] ? [state.validationSegments[0].id] : [],
+        roadIds: state.validationSegments[0] ? [state.validationSegments[0].roadId] : [],
+        explanation: `The matched route starts at ${firstRouteNodeId}, but the selected start is ${state.startNodeId}.`
+      })
+    );
+  }
+
+  if (state.destinationNodeId && lastRouteNodeId !== state.destinationNodeId) {
+    const lastSegment = state.validationSegments[state.validationSegments.length - 1];
+
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "end-segment-invalid",
+        nodeIds: [state.destinationNodeId],
+        routeSegmentIds: lastSegment ? [lastSegment.id] : [],
+        roadIds: lastSegment ? [lastSegment.roadId] : [],
+        explanation: `The matched route ends at ${lastRouteNodeId}, but the selected destination is ${state.destinationNodeId}.`
+      })
+    );
+  }
+
+  let previousVisitIndex = state.startNodeId ? state.routeNodeIds.indexOf(state.startNodeId) : -1;
+
+  if (previousVisitIndex < 0) {
+    previousVisitIndex = -1;
+  }
+
+  state.checkpointNodeIds.forEach((checkpointNodeId, index) => {
+    const visitIndex = routeNodeVisitIndexAfter(state.routeNodeIds, checkpointNodeId, previousVisitIndex);
+
+    if (visitIndex >= 0) {
+      previousVisitIndex = visitIndex;
+      return;
+    }
+
+    const touchingSegments = validationSegmentsForNode(state.validationSegments, checkpointNodeId);
+    const issueInput = {
+      nodeIds: [checkpointNodeId],
+      routeSegmentIds: touchingSegments.map((segment) => segment.id),
+      roadIds: touchingSegments.map((segment) => segment.roadId)
+    };
+    const outOfOrderIndex = routeNodeVisitIndexAtOrBefore(state.routeNodeIds, checkpointNodeId, previousVisitIndex);
+
+    if (outOfOrderIndex >= 0) {
+      issues.push(
+        trainingRouteAuthorIssue({
+          ...issueInput,
+          code: "author-checkpoint-out-of-order",
+          explanation: `Checkpoint ${index + 1} (${checkpointNodeId}) is visited out of order. Visit checkpoints in numbered order before the destination.`
+        })
+      );
+      return;
+    }
+
+    issues.push(
+      trainingRouteAuthorIssue({
+        ...issueInput,
+        code: "author-checkpoint-missed",
+        explanation: `Checkpoint ${index + 1} (${checkpointNodeId}) is not visited by the matched route.`
+      })
+    );
+  });
+
+  return issues;
+}
+
+function checkpointRequirementsForState(input: {
+  metadata: CuratedTrainingRouteMetadata;
+  startNodeId: string | null;
+  checkpointNodeIds: readonly string[];
+  destinationNodeId: string | null;
+}): CuratedTrainingRouteCheckpointRequirement {
+  const required = trainingRouteAuthorCheckpointsRequired(input.metadata);
+  const requiredNodeIds = [
+    input.startNodeId,
+    ...input.checkpointNodeIds,
+    input.destinationNodeId
+  ].filter((nodeId): nodeId is string => Boolean(nodeId));
+  const checkpointCount = input.checkpointNodeIds.length;
+
+  return {
+    required,
+    ordered: true,
+    checkpointCount,
+    requiredNodeIds,
+    instruction:
+      checkpointCount > 0
+        ? `Visit checkpoints in order: ${input.checkpointNodeIds.map((nodeId, index) => `Checkpoint ${index + 1} (${nodeId})`).join(", ")} before the destination.`
+        : required
+          ? "At least one ordered checkpoint is required before this route can be completed."
+          : "No intermediate checkpoint is required unless the route author adds one."
   };
 }
 
@@ -948,17 +1094,74 @@ function pointsForNodeIds(map: MapDefinition, nodeIds: readonly string[]): Vec2[
   return nodeIds.map((nodeId) => pointForNode(map, nodeId)).filter((point): point is Vec2 => Boolean(point));
 }
 
+function routeSegmentForStopNode(input: {
+  nodeId: string;
+  kind?: CuratedTrainingRouteStop["kind"];
+  validationSegments: readonly LearnerRouteValidationSegment[];
+}): LearnerRouteValidationSegment | null {
+  if (input.kind === "start") {
+    return input.validationSegments.find((segment) => segment.fromNodeId === input.nodeId) ?? null;
+  }
+
+  if (input.kind === "destination") {
+    return input.validationSegments.find((segment) => segment.toNodeId === input.nodeId) ?? null;
+  }
+
+  return (
+    input.validationSegments.find((segment) => segment.toNodeId === input.nodeId) ??
+    input.validationSegments.find((segment) => segment.fromNodeId === input.nodeId) ??
+    null
+  );
+}
+
 function curatedStopForNode(input: {
   map: MapDefinition;
   nodeId: string | null;
   fallbackLabel: string;
+  kind?: CuratedTrainingRouteStop["kind"];
+  order?: number;
+  required?: boolean;
+  validationSegments?: readonly LearnerRouteValidationSegment[];
 }): CuratedTrainingRouteStop {
   const nodeId = input.nodeId ?? "unselected";
+  const matchedSegment = input.nodeId
+    ? routeSegmentForStopNode({
+        nodeId: input.nodeId,
+        kind: input.kind,
+        validationSegments: input.validationSegments ?? []
+      })
+    : null;
+  const markerLabel =
+    input.kind === "start"
+      ? "START"
+      : input.kind === "destination"
+        ? "DESTINATION"
+        : typeof input.order === "number"
+          ? String(input.order)
+          : input.fallbackLabel;
 
   return {
+    id: input.kind === "checkpoint" ? `checkpoint-${input.order ?? "unknown"}` : input.kind,
+    kind: input.kind,
+    order: input.order,
     nodeId,
     label: input.nodeId ? nodeLabel(input.map, input.nodeId, input.fallbackLabel) : input.fallbackLabel,
-    point: pointForNode(input.map, input.nodeId)
+    point: pointForNode(input.map, input.nodeId),
+    roadId: matchedSegment?.roadId,
+    routeSegmentId: matchedSegment?.id,
+    required: input.required,
+    display: input.kind
+      ? {
+          markerLabel,
+          markerRole: input.kind,
+          description:
+            input.kind === "checkpoint"
+              ? `Required checkpoint ${input.order ?? ""}`.trim()
+              : input.kind === "start"
+                ? "Required route start"
+                : "Required route destination"
+        }
+      : undefined
   };
 }
 
@@ -970,14 +1173,14 @@ function metadataForNewRoute(): CuratedTrainingRouteMetadata {
     difficulty: "beginner",
     exerciseType: "follow-planned-route",
     description: "Curated learner-driver route authored from the Real London map.",
-    objective: "Complete the authored route legally while following the selected checkpoints.",
+    objective: "Complete the authored route legally from start to destination.",
     skillsPractised: ["route planning", "legal route choice", "junction observation"],
-    expectedLearnerMistakes: ["wrong turn", "missed checkpoint", "unnecessary detour"],
+    expectedLearnerMistakes: ["wrong turn", "unnecessary detour"],
     hintSequence: [
       "Check the next junction before committing.",
       "Confirm whether the next road is legal for your direction."
     ],
-    scoringEmphasis: ["legal route validity", "checkpoint order", "route efficiency"],
+    scoringEmphasis: ["legal route validity", "route adherence", "route efficiency"],
     instructorFeedbackNotes:
       "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
     routeChoiceJustification: "",
@@ -988,6 +1191,7 @@ function metadataForNewRoute(): CuratedTrainingRouteMetadata {
 function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetadata {
   const metadata = getRealLondonPilotExerciseMetadata(exercise);
   const routeType = metadata?.routeType ?? "direct";
+  const hasIntermediateStops = selectedStopNodeIds(exercise, realLondonOsmPilotRouteMap).length > 2;
 
   return {
     routeId: `curated-${exercise.id}`,
@@ -998,15 +1202,26 @@ function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetad
       ? "follow-planned-route"
       : "choose-legal-route",
     description: exercise.description ?? "Curated learner-driver route prepared from existing Real London map data.",
-    objective: "Complete the route legally while preserving checkpoint order and practical learner-driver decision making.",
+    objective: hasIntermediateStops
+      ? "Complete the route legally while visiting checkpoints in order before the destination."
+      : "Complete the route legally while making practical learner-driver decisions.",
     skillsPractised: ["route planning", "legal route choice", "junction observation"],
-    expectedLearnerMistakes: ["wrong turn", "missed checkpoint", "unnecessary detour"],
-    hintSequence: [
-      "Check the next junction before committing.",
-      "Confirm whether the next road is legal for your direction.",
-      "Use the planned checkpoint order to recover if you miss a turn."
-    ],
-    scoringEmphasis: ["legal route validity", "checkpoint order", "route efficiency"],
+    expectedLearnerMistakes: hasIntermediateStops
+      ? ["wrong turn", "missed checkpoint", "checkpoint out of order", "unnecessary detour"]
+      : ["wrong turn", "unnecessary detour"],
+    hintSequence: hasIntermediateStops
+      ? [
+          "Check the next junction before committing.",
+          "Confirm whether the next road is legal for your direction.",
+          "Use the planned checkpoint order to recover if you miss a turn."
+        ]
+      : [
+          "Check the next junction before committing.",
+          "Confirm whether the next road is legal for your direction."
+        ],
+    scoringEmphasis: hasIntermediateStops
+      ? ["legal route validity", "required checkpoint order", "route efficiency"]
+      : ["legal route validity", "route adherence", "route efficiency"],
     instructorFeedbackNotes:
       "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
     routeChoiceJustification:
@@ -1225,6 +1440,10 @@ function authoringValidationIssues(input: {
         explanation: "At least one checkpoint is required for this exercise type."
       })
     );
+  }
+
+  if (input.hasMatchedRoute) {
+    issues.push(...authoringCheckpointRouteIssues(input.state));
   }
 
   return issues;
@@ -1569,6 +1788,16 @@ function shortestRoutePoints(input: {
 }): Vec2[] {
   if (!input.comparisonHasRun) {
     return [];
+  }
+
+  if (input.stopNodeIds.length > 2) {
+    const checkpointRoute = findShortestLegalRouteThroughStops({
+      graph: input.graph,
+      stopNodeIds: [...input.stopNodeIds],
+      restrictions: input.map.restrictions
+    });
+
+    return checkpointRoute.found ? pointsForNodeIds(input.map, checkpointRoute.nodeIds) : [];
   }
 
   const directRoute = directShortestResult({
@@ -2091,6 +2320,8 @@ function buildExportReadiness(input: {
   metadata: CuratedTrainingRouteMetadata;
   hasStart: boolean;
   hasDestination: boolean;
+  checkpointsRequired: boolean;
+  checkpointCount: number;
   hasRoute: boolean;
   validation: LearnerRouteValidationResult;
   validationHasRun: boolean;
@@ -2109,6 +2340,7 @@ function buildExportReadiness(input: {
   const checklist = [
     { label: "Start selected", complete: input.hasStart },
     { label: "Destination selected", complete: input.hasDestination },
+    { label: "Required checkpoints selected", complete: !input.checkpointsRequired || input.checkpointCount > 0 },
     { label: "Route drawn and matched", complete: input.hasRoute },
     { label: "Practice map or training area selected", complete: hasSelectedArea },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
@@ -2137,6 +2369,8 @@ function buildSaveTarget(input: {
   metadata: CuratedTrainingRouteMetadata;
   hasStart: boolean;
   hasDestination: boolean;
+  checkpointsRequired: boolean;
+  checkpointCount: number;
   hasRoute: boolean;
   validation: LearnerRouteValidationResult;
   validationHasRun: boolean;
@@ -2165,6 +2399,7 @@ function buildSaveTarget(input: {
     ...baseChecklist,
     { label: "Start selected", complete: input.hasStart },
     { label: "Destination selected", complete: input.hasDestination },
+    { label: "Required checkpoints selected", complete: !input.checkpointsRequired || input.checkpointCount > 0 },
     { label: "Route drawn and matched", complete: input.hasRoute },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
     { label: "Validation has run", complete: input.validationHasRun }
@@ -2266,6 +2501,7 @@ function routeStatusSummary(input: {
 function buildRouteStatusItems(input: {
   hasStart: boolean;
   hasDestination: boolean;
+  checkpointsRequired: boolean;
   checkpointCount: number;
   hasUsableRoute: boolean;
   hasMatchedRoute: boolean;
@@ -2297,8 +2533,10 @@ function buildRouteStatusItems(input: {
     },
     {
       label: "Checkpoints",
-      value: `${input.checkpointCount}`,
-      state: input.checkpointCount > 0 ? "complete" : "ready"
+      value: input.checkpointsRequired
+        ? `${input.checkpointCount} required`
+        : `${input.checkpointCount}`,
+      state: input.checkpointCount > 0 ? "complete" : input.checkpointsRequired ? "missing" : "ready"
     },
     {
       label: "Validation",
@@ -2407,6 +2645,8 @@ export function buildTrainingRouteAuthorModel(input?: {
     metadata: exportMetadata,
     hasStart,
     hasDestination,
+    checkpointsRequired,
+    checkpointCount: baseState.checkpointNodeIds.length,
     hasRoute: hasMatchedRoute,
     validation,
     validationHasRun: baseState.validationHasRun,
@@ -2423,6 +2663,8 @@ export function buildTrainingRouteAuthorModel(input?: {
     metadata: exportMetadata,
     hasStart,
     hasDestination,
+    checkpointsRequired,
+    checkpointCount: baseState.checkpointNodeIds.length,
     hasRoute: hasMatchedRoute,
     validation,
     validationHasRun: baseState.validationHasRun,
@@ -2482,6 +2724,7 @@ export function buildTrainingRouteAuthorModel(input?: {
   const routeStatusItems = buildRouteStatusItems({
     hasStart,
     hasDestination,
+    checkpointsRequired,
     checkpointCount: baseState.checkpointNodeIds.length,
     hasUsableRoute,
     hasMatchedRoute,
@@ -2504,11 +2747,21 @@ export function buildTrainingRouteAuthorModel(input?: {
     comparisonHasRun: baseState.comparisonHasRun,
     exportReady: exportReadiness.ready
   });
+  const checkpointRequirements = checkpointRequirementsForState({
+    metadata: exportMetadata,
+    startNodeId: baseState.startNodeId,
+    checkpointNodeIds: baseState.checkpointNodeIds,
+    destinationNodeId: baseState.destinationNodeId
+  });
   const checkpoints = baseState.checkpointNodeIds.map((nodeId, index) =>
     curatedStopForNode({
       map: sourceMap,
       nodeId,
-      fallbackLabel: `Checkpoint ${index + 1}`
+      fallbackLabel: `Checkpoint ${index + 1}`,
+      kind: "checkpoint",
+      order: index + 1,
+      required: true,
+      validationSegments: baseState.validationSegments
     })
   );
   const exportData: CuratedTrainingRouteExport = {
@@ -2529,9 +2782,26 @@ export function buildTrainingRouteAuthorModel(input?: {
     mapVersion: sourceMap.mapVersion ?? sourceMap.version,
     sourceRouteExerciseId: baseState.sampleLoaded ? DEFAULT_ROUTE_EXERCISE?.id : undefined,
     sourceRouteExerciseVersion: baseState.sampleLoaded ? DEFAULT_ROUTE_EXERCISE?.exerciseVersion : undefined,
-    start: curatedStopForNode({ map: sourceMap, nodeId: baseState.startNodeId, fallbackLabel: "Start" }),
-    destination: curatedStopForNode({ map: sourceMap, nodeId: baseState.destinationNodeId, fallbackLabel: "Destination" }),
+    start: curatedStopForNode({
+      map: sourceMap,
+      nodeId: baseState.startNodeId,
+      fallbackLabel: "Start",
+      kind: "start",
+      order: 0,
+      required: true,
+      validationSegments: baseState.validationSegments
+    }),
+    destination: curatedStopForNode({
+      map: sourceMap,
+      nodeId: baseState.destinationNodeId,
+      fallbackLabel: "Destination",
+      kind: "destination",
+      order: baseState.checkpointNodeIds.length + 1,
+      required: true,
+      validationSegments: baseState.validationSegments
+    }),
     checkpoints,
+    checkpointRequirements,
     routeSegmentIds: baseState.validationSegments.map((segment) => segment.id),
     roadIds: [...new Set(baseState.validationSegments.map((segment) => segment.roadId))],
     nodeIds: baseState.routeNodeIds,

@@ -425,6 +425,29 @@ test("feedback engine references route and checkpoint context where available", 
   assert.match(checkpointMessage?.improvementSuggestion ?? "", /road name/);
 });
 
+test("feedback engine explains checkpoints visited out of order", () => {
+  const checkpointOrder = scoredFault({
+    id: "fault-checkpoint-order",
+    category: "wrong-checkpoint-order",
+    severity: "serious",
+    title: "Checkpoint visited out of order",
+    relatedNodeIds: ["c"]
+  });
+  const result = generateLearnerAttemptFeedback({
+    scoring: scoringResult({
+      faults: [checkpointOrder]
+    }),
+    map: feedbackMap(),
+    exercise: exercise()
+  });
+  const message = result.messages.find((candidate) => candidate.faultIds.includes("fault-checkpoint-order"));
+
+  assert.equal(message?.category, "route-adherence");
+  assert.match(message?.whatHappened ?? "", /out of order/);
+  assert.match(message?.whyItMatters ?? "", /numbered stop/);
+  assert.match(message?.location ?? "", /Midpoint Checkpoint/);
+});
+
 test("feedback engine avoids duplicate or contradictory messages", () => {
   const firstFault = scoredFault({
     id: "fault-one-way-1",

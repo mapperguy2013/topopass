@@ -44,7 +44,9 @@ export type LearnerRouteValidationRuleCode =
   | "author-route-missing"
   | "author-route-not-matched"
   | "author-metadata-incomplete"
-  | "author-checkpoint-missing";
+  | "author-checkpoint-missing"
+  | "author-checkpoint-missed"
+  | "author-checkpoint-out-of-order";
 
 export type LearnerRouteValidationSegment = {
   id: string;

@@ -342,7 +342,7 @@ function previousMistakePrompt(previousMistakes: readonly DrivingFault[] | undef
     return " Because your earlier mistake involved a junction decision, pause before committing to the next road.";
   }
 
-  if (latest.category === "missed-checkpoint") {
+  if (latest.category === "missed-checkpoint" || latest.category === "wrong-checkpoint-order") {
     return " Because you previously missed a checkpoint, confirm the next checkpoint before choosing the road.";
   }
 
@@ -423,6 +423,29 @@ function hintTextForStage(input: {
   const mistakePrompt = previousMistakePrompt(input.previousMistakes);
   const checkpointPrompt = checkpoint ? ` Keep ${checkpoint} in mind.` : "";
   const constraintPrompt = blockedRoadHint(target.instruction, stage);
+
+  if (target.objective.category === "checkpoint-ordering" && checkpoint) {
+    if (stage === "general-nudge") {
+      return `Check the next numbered checkpoint before choosing a segment.${mistakePrompt}`;
+    }
+
+    if (stage === "directional-clue") {
+      return `Your next required checkpoint is ${checkpoint}.${mistakePrompt}`;
+    }
+
+    if (stage === "road-junction-clue") {
+      return `Look for the road or junction that takes you towards ${checkpoint}.${mistakePrompt}`;
+    }
+
+    if (stage === "specific-next-action") {
+      return `Next action: ${actionLabel(target.instruction)} onto ${roadOrJunctionLabel(target.instruction)} so you reach ${checkpoint}.${constraintPrompt}`;
+    }
+
+    return `${revealText({
+      instruction: target.instruction,
+      routeSegment: target.routeSegment
+    })} This is the next route segment towards ${checkpoint}.${constraintPrompt}`;
+  }
 
   if (stage === "general-nudge") {
     return `${objectivePrompt(target.objective)} Look ahead to the next decision point before choosing a segment.${mistakePrompt}`;

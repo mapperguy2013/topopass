@@ -290,6 +290,36 @@ test("complete route save blocks missing route data and validation errors", asyn
   }
 });
 
+test("complete route save blocks missing required checkpoint data", async () => {
+  const workspaceRoot = await createTemporaryWorkspaceRoot();
+  const route = buildValidCuratedRouteExport();
+
+  try {
+    const result = await saveCuratedTrainingRouteDraft({
+      route: {
+        ...route,
+        checkpoints: [],
+        checkpointRequirements: {
+          ...route.checkpointRequirements,
+          required: true,
+          checkpointCount: 0,
+          requiredNodeIds: [route.start.nodeId, route.destination.nodeId]
+        }
+      },
+      saveMode: "complete-route",
+      workspaceRoot,
+      nodeEnv: "development"
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 400);
+    assert.equal(result.reasonCode, "curated-training-route-draft-invalid");
+    assert.ok(result.errors?.some((error) => error.includes("required checkpoint")));
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
 test("complete route save blocks missing practice map or area metadata", async () => {
   const workspaceRoot = await createTemporaryWorkspaceRoot();
   const route = buildValidCuratedRouteExport();
@@ -405,6 +435,13 @@ function incompleteWorkingDraftRoute(route: CuratedTrainingRouteExport): Curated
       label: "Destination"
     },
     checkpoints: [],
+    checkpointRequirements: {
+      required: false,
+      ordered: true,
+      checkpointCount: 0,
+      requiredNodeIds: [],
+      instruction: "No intermediate checkpoint is required unless the route author adds one."
+    },
     routeSegmentIds: [],
     roadIds: [],
     nodeIds: [],

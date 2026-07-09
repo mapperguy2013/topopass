@@ -293,6 +293,7 @@ function validateCuratedTrainingRouteDraftPayload(
   const metadata = readRecord(routeRecord.metadata);
   const start = readRecord(routeRecord.start);
   const destination = readRecord(routeRecord.destination);
+  const checkpointRequirements = readRecord(routeRecord.checkpointRequirements);
   const validationSummary = readRecord(routeRecord.validationSummary);
   const shortestRouteComparison = readRecord(routeRecord.shortestRouteComparison);
 
@@ -334,6 +335,10 @@ function validateCuratedTrainingRouteDraftPayload(
 
   if (typeof destination.nodeId !== "string" || destination.nodeId.trim().length === 0) {
     errors.push("Destination node is required.");
+  }
+
+  if (checkpointRequirements.required === true && !isArrayWithMinimum(routeRecord.checkpoints, 1)) {
+    errors.push("At least one required checkpoint is missing.");
   }
 
   if (!isArrayWithMinimum(routeRecord.routeGeometry, 2)) {

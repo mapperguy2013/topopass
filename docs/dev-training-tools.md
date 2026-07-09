@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. Stage 19.1 makes checkpoints ordered required stops for curated authoring when route metadata requires them. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -63,16 +63,18 @@ Stage 18.19 makes `/dev/training-route` map-first. The top toolbar contains the 
 
 Stage 18.20 keeps the map full-width but reduces the authoring viewport height from the previous 760px canvas ratio to a 570px ratio. The SVG, base map, route overlays, marker layer, legend, and interaction layer still share the same viewport dimensions, so the shorter map should not create stretching, marker drift, or blank space below the rendered map.
 
+Stage 19.1 makes checkpoint behaviour explicit. Checkpoints added in `Add checkpoint` mode are numbered required stops when route metadata says the exercise needs checkpoint order. Validation checks the matched route visits them as Start -> Checkpoint 1 -> Checkpoint 2 -> Destination. Missed checkpoints and out-of-order checkpoints become blocking authoring validation issues for complete routes, and exports include checkpoint ids, order, labels, snapped node metadata, related route segment or road ids where available, marker display metadata, and an ordered `checkpointRequirements` block.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
 
 1. Set the start point on the map by choosing `Set start` and clicking a valid road/node.
 2. Draw the learner route in driving order with `Draw route`; the tool snaps and matches the trace to Real London road segments.
-3. Add numbered checkpoints with `Add checkpoint` if the learner must visit them.
+3. Add numbered checkpoints with `Add checkpoint` if the learner must visit them. They are validated in the order shown on the map and in the Route state tab.
 4. Set the destination by choosing `Set destination` and clicking the final valid road/node.
 5. Use the bottom drawer's `Authoring steps` tab for the compact seven-step route workflow.
-6. Open the `Route state` tab to review missing start, destination, route, checkpoints, length, segments, turns, decisions, validation, comparison, and export readiness.
+6. Open the `Route state` tab to review missing start, destination, route, checkpoint requirement, ordered checkpoint list, length, segments, turns, decisions, validation, comparison, and export readiness.
 7. Open the `Metadata` tab to select the practice map / area and complete metadata after the route shape is clear. The current selector exposes the Real London pilot map because it is the only map the authoring workspace can load.
 8. Use `Validate route` from the top toolbar or `Validation` tab. This action is available even before the route is complete and should list missing start, destination, route, metadata, or matching requirements as blocking errors.
 9. Compare against the shortest valid route from the top toolbar or `Validation` tab. If the route cannot be compared yet, the comparison result should report an unknown or unsupported result rather than silently completing export readiness.
@@ -89,11 +91,13 @@ Use the validation panel before copying an export:
 
 1. Confirm the route is connected and starts/ends on valid drivable map data.
 2. Review blocking errors and advisory warnings from the learner route validator.
-3. Check affected segment ids and the complexity summary.
+3. Check affected segment ids, affected checkpoint node ids, and the complexity summary.
 4. Keep invalid routes as working drafts or review candidates; do not mark them beta or approved.
 5. Approve only after validation is clean and instructor review has resolved advisory warnings.
 
 The validation panel uses only restrictions present in the project data. Unknown legal restrictions remain advisory or unverified; they are not invented.
+
+Checkpoint validation is authoring-specific and uses the matched route node sequence. If a selected checkpoint node is not visited by the matched route, validation reports `author-checkpoint-missed`. If a checkpoint appears before an earlier required checkpoint, validation reports `author-checkpoint-out-of-order`. If metadata requires checkpoints but none are selected, validation reports `author-checkpoint-missing`.
 
 ## Shortest Route Check
 
@@ -102,7 +106,7 @@ The Training Route Author includes a shortest-route comparison panel. It compare
 - the direct shortest legal route from start to destination
 - the checkpoint-constrained shortest legal route, when intermediate checkpoints exist
 
-The check reuses the existing map graph, legal shortest-route traversal, one-way handling, prohibited turn handling, restricted/non-drivable filtering, and learner route validation. It does not invent legal restrictions. If the graph or restriction data cannot prove a route, the result is shown as `unknown` or advisory rather than invalid.
+The check reuses the existing map graph, legal shortest-route traversal, one-way handling, prohibited turn handling, restricted/non-drivable filtering, and learner route validation. It does not invent legal restrictions. If the graph or restriction data cannot prove a route, the result is shown as `unknown` or advisory rather than invalid. When checkpoints exist, the map overlay shows the checkpoint-constrained shortest route so the author compares against the same required-stop sequence.
 
 The percentage longer value means:
 
@@ -153,7 +157,7 @@ The exported contract includes:
 - map/area metadata including `practiceMapId`, `areaId`, `areaName`, optional `sourceFixture`, and map version when available
 - metadata and status
 - source map and route exercise ids
-- start, destination, checkpoints, node ids, and route geometry
+- start, destination, ordered checkpoints, checkpoint requirements, node ids, and route geometry
 - route segment ids and road ids
 - validation summary
 - complexity summary
@@ -191,7 +195,7 @@ Run the app locally and check:
 22. Choose `Set destination` and click the map without drawing a route; confirm the destination marker is aligned, then run `Validate route` and confirm the route missing error remains blocking.
 23. Choose `Draw route`, trace roads, and confirm the route summary changes to matched only after the trace snaps and matches to road segments.
 24. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments and the checkpoint marker remains aligned.
-25. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
+25. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state. If checkpoints are present, confirm the checkpoint-constrained comparison runs or reports a clear unsupported/unknown state.
 26. Confirm export remains blocked while validation has blocking errors, and the export checklist explains each missing requirement.
 27. Open the `Export` tab and confirm `Save working draft`, `Save review candidate`, and `Save complete route` are visible.
 28. Confirm `Save working draft` writes draft-status JSON under `data/training-routes/drafts/` and shows the saved path.
@@ -200,7 +204,7 @@ Run the app locally and check:
 31. Confirm an approved route cannot be saved into `data/training-routes/drafts/`.
 32. Confirm the `Export` tab shows save mode, JSON status, suggested filename, full save path, learner-facing later, and a checklist for each save target.
 33. Complete required metadata and confirm `Download JSON` and `Copy JSON` enable only when the export readiness checklist is complete.
-34. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, route metadata, map/area metadata, save lifecycle data, validation summary, complexity summary, and shortest-route comparison.
+34. Confirm the JSON contains the authored start, destination, ordered checkpoints, checkpoint requirements, route segment ids, route geometry, route metadata, map/area metadata, save lifecycle data, validation summary, complexity summary, and shortest-route comparison.
 35. Reload `/dev/training-route` after editing and confirm autosave recovery restores the local authoring state without looking like a file save.
 36. Confirm a repeated file save creates a safe copy instead of silently overwriting an existing route file.
 37. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
@@ -224,20 +228,23 @@ Run the app locally and check:
 55. Scroll the page away from and back to the map, then place start/destination again and confirm coordinates remain aligned.
 56. Draw a route and confirm the raw route line follows the cursor path.
 57. Enable `Show click diagnostics` and confirm the raw click marker and snapped marker are close to the clicked road.
-58. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-59. `/practice/training` remains the learner-facing Training Mode route.
+58. Add two checkpoints on a matched route, reverse their order through the route state if testing model-level validation, and confirm validation reports an out-of-order checkpoint rather than a generic route error.
+59. Add a checkpoint away from the matched route and confirm validation reports a missed checkpoint with the affected checkpoint node.
+60. Confirm the learner Training Mode review still displays numbered checkpoint markers, missed checkpoint markers, and checkpoint feedback for generated exercises that include checkpoints.
+61. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+62. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Ready for Stage 19 Checklist
 
 Before curated route loading begins in Stage 19, use `/dev/training-route` to prove the authoring pipeline end to end:
 
 1. Open `/dev/training-route` and confirm the map-first workspace starts empty. The top toolbar, shorter full-width map, collapsed `Map legend`, and bottom drawer should be visible without a permanent metadata/export panel.
-2. Create a route manually: `Set start`, `Draw route`, optional `Add checkpoint`, and `Set destination`. The route state cards should change from missing to selected or matched only after real map interaction.
-3. Run `Validate route`. Empty and partial routes should show blocking errors for missing start, destination, or route. Complete routes should show valid, warning, or invalid based on the current authored geometry and available map restrictions.
-4. Run `Compare shortest route`. If enough route data exists, confirm authored length, shortest length, percentage longer, and verdict are shown. If the route is a major detour, add a route choice justification before marking it beta or approved.
+2. Create a route manually: `Set start`, `Draw route`, optional or required `Add checkpoint`, and `Set destination`. The route state cards should change from missing to selected or matched only after real map interaction.
+3. Run `Validate route`. Empty and partial routes should show blocking errors for missing start, destination, route, or required checkpoints. Complete routes should show valid, warning, or invalid based on the current authored geometry, ordered checkpoints, and available map restrictions.
+4. Run `Compare shortest route`. If enough route data exists, confirm authored length, direct shortest length, checkpoint-constrained shortest length when checkpoints exist, percentage longer, and verdict are shown. If the route is a major detour, add a route choice justification before marking it beta or approved.
 5. Complete the `Metadata` tab. The `Practice map / area` selector should use the available Real London pilot map option, and route id plus filename suggestions should update from map/area, difficulty, exercise type, and title while remaining editable.
 6. Use `Save working draft` for incomplete authoring work under `data/training-routes/drafts/`. Use `Save review candidate` for validated instructor review files under `data/training-routes/review/`. Use `Save complete route` only for beta or approved routes that pass validation, shortest-route comparison, and route choice checks under `data/training-routes/complete/`.
-7. Confirm the exported JSON contains authored start, destination, checkpoint, route geometry, route segment ids, metadata, validation summary, complexity summary, shortest-route comparison, and lifecycle data. It must not contain placeholder route geometry from a hidden fixture unless `Load sample route` was clicked explicitly.
+7. Confirm the exported JSON contains authored start, destination, ordered checkpoints, checkpoint requirements, route geometry, route segment ids, metadata, validation summary, complexity summary, shortest-route comparison, and lifecycle data. It must not contain placeholder route geometry from a hidden fixture unless `Load sample route` was clicked explicitly.
 8. Verify one beginner, one intermediate, and one advanced route can reach export readiness. They can remain draft or review candidates during this gate; do not create the full curated route pack until Stage 19.
 9. Recheck `/dev/route-runner`, `/practice/training`, and `/practice/real-london` after authoring changes to ensure Phase 6 map rendering and Phase 7 learner Training Mode remain unchanged.
 
