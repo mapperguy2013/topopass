@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -60,6 +60,8 @@ Stage 18.17 keeps the authoring legend collapsed by default. Use the `Map legend
 Stage 18.18 prevents the authoring map card from stretching to match the height of the status panels beside it. The SVG, base map, route overlays, markers, pointer interaction layer, and legend now use the same viewport sizing contract, so the Real London map fills the visible authoring viewport without a large blank area below it.
 
 Stage 18.19 makes `/dev/training-route` map-first. The top toolbar contains the authoring modes and primary route actions. The bottom drawer opens on `Authoring steps` by default and contains `Route state`, `Validation`, `Metadata`, and `Export` tabs. Metadata, validation details, shortest-route comparison, and export JSON are no longer permanent blocks below or beside the map.
+
+Stage 18.20 keeps the map full-width but reduces the authoring viewport height from the previous 760px canvas ratio to a 570px ratio. The SVG, base map, route overlays, marker layer, legend, and interaction layer still share the same viewport dimensions, so the shorter map should not create stretching, marker drift, or blank space below the rendered map.
 
 ## Authoring Workflow
 
@@ -167,8 +169,8 @@ Run the app locally and check:
 
 1. `/dev` lists Route Runner and Training Route Author.
 2. `/dev/route-runner` opens the existing map workspace and still shows Phase 6 map labels, overlays, route review, and Training Mode test controls.
-3. `/dev/training-route` opens with no default route exported and shows a compact dev header, top authoring toolbar, large map, and bottom drawer. It should not show a permanent right sidebar or always-visible metadata/export blocks.
-4. Confirm the map fills the authoring viewport without a large empty grey/blue area below the visible roads or below the collapsed legend.
+3. At 100% browser zoom, `/dev/training-route` opens with no default route exported and shows a compact dev header, top authoring toolbar, shorter full-width map, and bottom drawer. It should not show a permanent right sidebar or always-visible metadata/export blocks.
+4. Confirm the map is about 25% shorter than the previous Stage 18.19 viewport, the bottom drawer is easier to reach, and the map still fills the authoring viewport without a large empty grey/blue area below the visible roads or below the collapsed legend.
 5. Confirm the bottom drawer opens on the `Authoring steps` tab and can be collapsed and expanded.
 6. Click `Validate route` with no authored route and confirm the bottom drawer opens validation details explaining the missing start, destination, and route.
 7. Confirm the `Route state` tab shows compact route status cards and the authoring steps do not mark route, validation, comparison, or export complete from the empty default state.
@@ -185,10 +187,10 @@ Run the app locally and check:
 18. Confirm drawing a route does not scroll the page.
 19. Confirm mobile/touch drawing and panning do not fight the page scroll.
 20. Confirm page scroll still works normally when the gesture starts outside the map.
-21. Choose `Set start` and click the map; confirm the start summary changes to selected.
-22. Choose `Set destination` and click the map without drawing a route; run `Validate route` and confirm the route missing error remains blocking.
+21. Choose `Set start` and click the map; confirm the start summary changes to selected and the marker appears where clicked or at the nearest-road snap point.
+22. Choose `Set destination` and click the map without drawing a route; confirm the destination marker is aligned, then run `Validate route` and confirm the route missing error remains blocking.
 23. Choose `Draw route`, trace roads, and confirm the route summary changes to matched only after the trace snaps and matches to road segments.
-24. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments.
+24. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments and the checkpoint marker remains aligned.
 25. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
 26. Confirm export remains blocked while validation has blocking errors, and the export checklist explains each missing requirement.
 27. Open the `Export` tab and confirm `Save working draft`, `Save review candidate`, and `Save complete route` are visible.

@@ -66,7 +66,11 @@ export type { CuratedShortestRouteComparisonDetail } from "../../../lib/training
 
 export const DEV_TRAINING_ROUTE_AUTHOR_PATH = "/dev/training-route";
 export const TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH = 1120;
-export const TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT = 760;
+export const TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT = 760;
+export const TRAINING_ROUTE_AUTHOR_DESKTOP_HEIGHT_SCALE = 0.75;
+export const TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT = Math.round(
+  TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT * TRAINING_ROUTE_AUTHOR_DESKTOP_HEIGHT_SCALE
+);
 export const TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE = 24;
 
 export type TrainingRouteAuthorMode =

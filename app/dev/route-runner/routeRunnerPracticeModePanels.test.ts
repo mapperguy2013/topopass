@@ -5,8 +5,10 @@ import { buildDevToolsHomeModel } from "../devTools.ts";
 import { getRouteRunnerMapViewportBounds } from "./routeRunnerMapOptionUtils.ts";
 import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
+  TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+  TRAINING_ROUTE_AUTHOR_DESKTOP_HEIGHT_SCALE,
   TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
   TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
   TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
@@ -199,6 +201,15 @@ test("curated training route author map viewport uses the author canvas aspect r
     mapBounds: initialBounds
   });
 
+  assert.equal(TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH, 1120);
+  assert.equal(TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT, 760);
+  assert.equal(TRAINING_ROUTE_AUTHOR_DESKTOP_HEIGHT_SCALE, 0.75);
+  assert.equal(TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT, 570);
+  assert.equal(TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT, Math.round(TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT * 0.75));
+  assert.ok(
+    TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT <= TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT * 0.76,
+    "author viewport height should be reduced by about 25 percent"
+  );
   assertClose(
     viewportLayout.aspectRatio,
     TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH / TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
@@ -210,7 +221,7 @@ test("curated training route author map viewport uses the author canvas aspect r
     viewportLayout.aspectRatio,
     "author map bounds aspect ratio"
   );
-  assert.equal(trainingRouteAuthorViewportAspectRatioCss(viewportLayout), "1120 / 760");
+  assert.equal(trainingRouteAuthorViewportAspectRatioCss(viewportLayout), "1120 / 570");
   assert.deepEqual(viewportLayout.contentRect, {
     left: 0,
     top: 0,
@@ -526,12 +537,18 @@ test("curated training route author converts client coordinates at map viewport 
   });
   const center = trainingRouteAuthorMapPointForClientPoint({
     bounds,
-    clientPoint: { clientX: 660, clientY: 580 },
+    clientPoint: {
+      clientX: 100 + TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH / 2,
+      clientY: 200 + TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT / 2
+    },
     viewportRect
   });
   const bottomRight = trainingRouteAuthorMapPointForClientPoint({
     bounds,
-    clientPoint: { clientX: 1220, clientY: 960 },
+    clientPoint: {
+      clientX: 100 + TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+      clientY: 200 + TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+    },
     viewportRect
   });
 
@@ -540,10 +557,10 @@ test("curated training route author converts client coordinates at map viewport 
   assert.ok(bottomRight);
   assertClose(topLeft.mapPoint.x, 0, "top-left x");
   assertClose(topLeft.mapPoint.y, 0, "top-left y");
-  assertClose(center.mapPoint.x, 560, "center x");
-  assertClose(center.mapPoint.y, 380, "center y");
-  assertClose(bottomRight.mapPoint.x, 1120, "bottom-right x");
-  assertClose(bottomRight.mapPoint.y, 760, "bottom-right y");
+  assertClose(center.mapPoint.x, TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH / 2, "center x");
+  assertClose(center.mapPoint.y, TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT / 2, "center y");
+  assertClose(bottomRight.mapPoint.x, TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH, "bottom-right x");
+  assertClose(bottomRight.mapPoint.y, TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT, "bottom-right y");
 });
 
 test("curated training route author coordinate conversion stays aligned after pan zoom scroll and resize", () => {
