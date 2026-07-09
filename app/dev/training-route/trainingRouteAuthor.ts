@@ -67,9 +67,41 @@ export type TrainingRouteAuthorMapWheelInput = {
   deltaY: number;
 };
 
+export type TrainingRouteAuthorMapBounds = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+};
+
+export type TrainingRouteAuthorScreenPoint = {
+  x: number;
+  y: number;
+};
+
+export type TrainingRouteAuthorScreenSize = {
+  width: number;
+  height: number;
+};
+
+export type TrainingRouteAuthorCursorZoomInput = {
+  currentBounds: TrainingRouteAuthorMapBounds;
+  initialBounds: TrainingRouteAuthorMapBounds;
+  screenPoint: TrainingRouteAuthorScreenPoint;
+  screenSize: TrainingRouteAuthorScreenSize;
+  zoomFactor: number;
+};
+
 export type TrainingRouteAuthorPointerIsolationInput = {
   targetInsideMap: boolean;
   activeMode: TrainingRouteAuthorMode;
+};
+
+export type TrainingRouteAuthorPointerButtonInput = {
+  button: number;
+  buttons?: number;
+  pointerType?: string;
+  isPrimary?: boolean;
 };
 
 export type TrainingRouteAuthorToolbarActionId =
@@ -220,6 +252,26 @@ function hasUsableScrollDelta(delta: number): boolean {
   return Number.isFinite(delta) && delta !== 0;
 }
 
+function trainingRouteAuthorBoundsWidth(bounds: TrainingRouteAuthorMapBounds): number {
+  return bounds.maxX - bounds.minX;
+}
+
+function trainingRouteAuthorBoundsHeight(bounds: TrainingRouteAuthorMapBounds): number {
+  return bounds.maxY - bounds.minY;
+}
+
+function clampUnitInterval(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 0.5;
+  }
+
+  return Math.min(1, Math.max(0, value));
+}
+
+function isMouseLikeTrainingRouteAuthorPointer(input: Pick<TrainingRouteAuthorPointerButtonInput, "pointerType">): boolean {
+  return !input.pointerType || input.pointerType === "mouse";
+}
+
 export function shouldIsolateTrainingRouteAuthorMapWheel(input: TrainingRouteAuthorMapWheelInput): boolean {
   return input.targetInsideMap && (hasUsableScrollDelta(input.deltaX) || hasUsableScrollDelta(input.deltaY));
 }
@@ -232,8 +284,88 @@ export function dominantTrainingRouteAuthorWheelDelta(input: Pick<TrainingRouteA
   return Math.abs(input.deltaY) >= Math.abs(input.deltaX) ? input.deltaY : input.deltaX;
 }
 
+export function trainingRouteAuthorWheelZoomFactor(delta: number): number {
+  return delta > 0 ? 1.15 : 0.87;
+}
+
+export function trainingRouteAuthorMapPointForScreenPoint(
+  bounds: TrainingRouteAuthorMapBounds,
+  screenPoint: TrainingRouteAuthorScreenPoint,
+  screenSize: TrainingRouteAuthorScreenSize
+): Vec2 | null {
+  if (screenSize.width <= 0 || screenSize.height <= 0) {
+    return null;
+  }
+
+  const xRatio = clampUnitInterval(screenPoint.x / screenSize.width);
+  const yRatio = clampUnitInterval(screenPoint.y / screenSize.height);
+
+  return {
+    x: bounds.minX + xRatio * trainingRouteAuthorBoundsWidth(bounds),
+    y: bounds.minY + yRatio * trainingRouteAuthorBoundsHeight(bounds)
+  };
+}
+
+export function zoomTrainingRouteAuthorBoundsAroundScreenPoint(
+  input: TrainingRouteAuthorCursorZoomInput
+): TrainingRouteAuthorMapBounds {
+  const currentWidth = trainingRouteAuthorBoundsWidth(input.currentBounds);
+  const currentHeight = trainingRouteAuthorBoundsHeight(input.currentBounds);
+  const initialWidth = trainingRouteAuthorBoundsWidth(input.initialBounds);
+
+  if (
+    currentWidth <= 0 ||
+    currentHeight <= 0 ||
+    initialWidth <= 0 ||
+    input.screenSize.width <= 0 ||
+    input.screenSize.height <= 0 ||
+    !Number.isFinite(input.zoomFactor) ||
+    input.zoomFactor <= 0
+  ) {
+    return input.currentBounds;
+  }
+
+  const xRatio = clampUnitInterval(input.screenPoint.x / input.screenSize.width);
+  const yRatio = clampUnitInterval(input.screenPoint.y / input.screenSize.height);
+  const anchor = trainingRouteAuthorMapPointForScreenPoint(input.currentBounds, input.screenPoint, input.screenSize);
+
+  if (!anchor) {
+    return input.currentBounds;
+  }
+
+  const nextWidth = Math.min(initialWidth * 2.4, Math.max(initialWidth * 0.08, currentWidth * input.zoomFactor));
+  const nextHeight = nextWidth * (currentHeight / currentWidth);
+
+  return {
+    minX: anchor.x - xRatio * nextWidth,
+    maxX: anchor.x + (1 - xRatio) * nextWidth,
+    minY: anchor.y - yRatio * nextHeight,
+    maxY: anchor.y + (1 - yRatio) * nextHeight
+  };
+}
+
 export function shouldIsolateTrainingRouteAuthorPointer(input: TrainingRouteAuthorPointerIsolationInput): boolean {
   return input.targetInsideMap;
+}
+
+export function canStartTrainingRouteAuthorPointer(input: TrainingRouteAuthorPointerButtonInput): boolean {
+  if (input.isPrimary === false) {
+    return false;
+  }
+
+  return !isMouseLikeTrainingRouteAuthorPointer(input) || input.button === 0;
+}
+
+export function canContinueTrainingRouteAuthorDrawPointer(input: TrainingRouteAuthorPointerButtonInput): boolean {
+  if (input.isPrimary === false) {
+    return false;
+  }
+
+  return !isMouseLikeTrainingRouteAuthorPointer(input) || Boolean((input.buttons ?? 0) & 1);
+}
+
+export function shouldPreventTrainingRouteAuthorAuxiliaryClick(input: TrainingRouteAuthorPointerButtonInput): boolean {
+  return isMouseLikeTrainingRouteAuthorPointer(input) && input.button !== 0;
 }
 
 function stopNodeId(stop: RouteStop, map: MapDefinition): string | null {

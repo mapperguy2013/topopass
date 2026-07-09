@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent, type PointerEvent } from "react";
 import {
   buildRoadRenderPasses,
   buildSyntheticMapLabels,
@@ -28,6 +28,8 @@ import {
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   buildTrainingRouteAuthorModel,
+  canContinueTrainingRouteAuthorDrawPointer,
+  canStartTrainingRouteAuthorPointer,
   clearTrainingRouteAuthorCheckpoints,
   clearTrainingRouteAuthorRoute,
   compareTrainingRouteAuthorShortestRoute,
@@ -43,12 +45,15 @@ import {
   setTrainingRouteAuthorStart,
   shouldIsolateTrainingRouteAuthorMapWheel,
   shouldIsolateTrainingRouteAuthorPointer,
+  shouldPreventTrainingRouteAuthorAuxiliaryClick,
   startTrainingRouteAuthorStroke,
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+  trainingRouteAuthorWheelZoomFactor,
   undoTrainingRouteAuthorAction,
   updateTrainingRouteAuthorMetadataField,
   validateTrainingRouteAuthorState,
+  zoomTrainingRouteAuthorBoundsAroundScreenPoint,
   type CuratedShortestRouteComparisonDetail,
   type TrainingRouteAuthorField,
   type TrainingRouteAuthorMode,
@@ -617,35 +622,40 @@ export function TrainingRouteAuthorClient() {
       event.stopPropagation();
 
       const rect = svgElement.getBoundingClientRect();
-      const fallbackCenter = {
-        x: (viewBounds.minX + viewBounds.maxX) / 2,
-        y: (viewBounds.minY + viewBounds.maxY) / 2
-      };
-      const pointerPoint =
+      const screenSize =
         rect.width === 0 || rect.height === 0
-          ? null
+          ? {
+              width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+              height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+            }
           : {
-              x: viewBounds.minX + ((event.clientX - rect.left) / rect.width) * boundsWidth(viewBounds),
-              y: viewBounds.minY + ((event.clientY - rect.top) / rect.height) * boundsHeight(viewBounds)
+              width: rect.width,
+              height: rect.height
             };
-      const center = pointerPoint ?? fallbackCenter;
+      const screenPoint =
+        rect.width === 0 || rect.height === 0
+          ? {
+              x: screenSize.width / 2,
+              y: screenSize.height / 2
+            }
+          : {
+              x: event.clientX - rect.left,
+              y: event.clientY - rect.top
+            };
       const zoomDelta = dominantTrainingRouteAuthorWheelDelta({
         deltaX: event.deltaX,
         deltaY: event.deltaY
       });
-      const zoomFactor = zoomDelta > 0 ? 1.15 : 0.87;
-      const nextWidth = Math.min(
-        boundsWidth(initialBounds) * 2.4,
-        Math.max(boundsWidth(initialBounds) * 0.08, boundsWidth(viewBounds) * zoomFactor)
-      );
-      const nextHeight = nextWidth * (TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT / TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH);
 
-      setViewBounds({
-        minX: center.x - nextWidth / 2,
-        maxX: center.x + nextWidth / 2,
-        minY: center.y - nextHeight / 2,
-        maxY: center.y + nextHeight / 2
-      });
+      setViewBounds(
+        zoomTrainingRouteAuthorBoundsAroundScreenPoint({
+          currentBounds: viewBounds,
+          initialBounds,
+          screenPoint,
+          screenSize,
+          zoomFactor: trainingRouteAuthorWheelZoomFactor(zoomDelta)
+        })
+      );
     }
 
     svgElement.addEventListener("wheel", handleNativeWheel, { passive: false });
@@ -696,8 +706,53 @@ export function TrainingRouteAuthorClient() {
     }
   }
 
+  function pointerButtonInput(event: PointerEvent<SVGSVGElement>) {
+    return {
+      button: event.button,
+      buttons: event.buttons,
+      pointerType: event.pointerType,
+      isPrimary: event.isPrimary
+    };
+  }
+
+  function handleMapMouseDown(event: MouseEvent<SVGSVGElement>) {
+    if (
+      shouldPreventTrainingRouteAuthorAuxiliaryClick({
+        button: event.button,
+        buttons: event.buttons,
+        pointerType: "mouse"
+      })
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  function handleMapAuxClick(event: MouseEvent<SVGSVGElement>) {
+    if (
+      shouldPreventTrainingRouteAuthorAuxiliaryClick({
+        button: event.button,
+        buttons: event.buttons,
+        pointerType: "mouse"
+      })
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }
+
+  function handleMapContextMenu(event: MouseEvent<SVGSVGElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   function handleMapPointerDown(event: PointerEvent<SVGSVGElement>) {
     isolateMapPointerEvent(event);
+
+    if (!canStartTrainingRouteAuthorPointer(pointerButtonInput(event))) {
+      dragStateRef.current = null;
+      return;
+    }
 
     const point = pointFromPointer(event.currentTarget, event.clientX, event.clientY);
 
@@ -757,6 +812,10 @@ export function TrainingRouteAuthorClient() {
     isolateMapPointerEvent(event);
 
     if (dragState.kind === "select") {
+      return;
+    }
+
+    if (!canContinueTrainingRouteAuthorDrawPointer(pointerButtonInput(event))) {
       return;
     }
 
@@ -995,6 +1054,9 @@ export function TrainingRouteAuthorClient() {
               className={`block h-[420px] w-full touch-none select-none overscroll-contain sm:h-[560px] ${
                 model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
               }`}
+              onAuxClick={handleMapAuxClick}
+              onContextMenu={handleMapContextMenu}
+              onMouseDown={handleMapMouseDown}
               onPointerCancel={handleMapPointerEnd}
               onPointerDown={handleMapPointerDown}
               onPointerLeave={handleMapPointerEnd}

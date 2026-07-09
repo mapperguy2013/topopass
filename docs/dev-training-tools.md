@@ -41,6 +41,8 @@ Stage 18.9 isolates map gestures from page scrolling. Mouse wheel and trackpad s
 
 Stage 18.10 aligns the authoring map styling with the learner practice map. One-way indicators now use the shared restriction arrow styling and decluttering pipeline, START/DESTINATION/checkpoint markers use the shared practice marker assets and label bubbles, and authored, matched, and shortest-route overlays use the shared route overlay tokens.
 
+Stage 18.11 fixes authoring map input precision. Wheel zoom now keeps the map point under the cursor stable, while middle-click and right-click inside the map are blocked from placing start/destination/checkpoints, drawing routes, or triggering browser autoscroll.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
@@ -136,8 +138,13 @@ Run the app locally and check:
 19. Confirm START and DESTINATION markers match the practice map marker style and are not oversized.
 20. Confirm checkpoint markers match the Training Mode/practice map style and remain readable.
 21. Confirm authored, matched, shortest-route, and validation overlays remain visually distinct over the Real London map.
-22. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-23. `/practice/training` remains the learner-facing Training Mode route.
+22. Confirm wheel zoom over the map zooms towards the cursor and the map point under the cursor stays stable.
+23. Confirm middle-click does not place start, destination, or checkpoints and does not draw a route.
+24. Confirm right-click does not place or draw on the map.
+25. Confirm left-click still places start, destination, checkpoints, and begins drawing in the matching authoring modes.
+26. Confirm touch drawing and panning still work on mobile.
+27. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+28. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 

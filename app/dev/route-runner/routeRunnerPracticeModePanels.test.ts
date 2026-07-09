@@ -6,6 +6,8 @@ import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
+  canContinueTrainingRouteAuthorDrawPointer,
+  canStartTrainingRouteAuthorPointer,
   classifyShortestRouteComparison,
   buildTrainingRouteAuthorModel,
   clearTrainingRouteAuthorCheckpoints,
@@ -21,15 +23,23 @@ import {
   setTrainingRouteAuthorStart,
   shouldIsolateTrainingRouteAuthorMapWheel,
   shouldIsolateTrainingRouteAuthorPointer,
+  shouldPreventTrainingRouteAuthorAuxiliaryClick,
   startTrainingRouteAuthorStroke,
+  trainingRouteAuthorMapPointForScreenPoint,
+  trainingRouteAuthorWheelZoomFactor,
   updateTrainingRouteAuthorMetadataField,
-  validateTrainingRouteAuthorState
+  validateTrainingRouteAuthorState,
+  zoomTrainingRouteAuthorBoundsAroundScreenPoint
 } from "../training-route/trainingRouteAuthor.ts";
 import {
   ROUTE_RUNNER_BETA_CORE_PANEL_LABELS,
   ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS,
   buildRouteRunnerPracticeModePanelVisibility
 } from "./routeRunnerPracticeModePanels.ts";
+
+function assertClose(actual: number, expected: number, message: string): void {
+  assert.ok(Math.abs(actual - expected) < 0.000001, `${message}: expected ${expected}, got ${actual}`);
+}
 
 test("beta practice mode hides dev-only route-runner panel labels", () => {
   const visibility = buildRouteRunnerPracticeModePanelVisibility({ mode: "student-beta" });
@@ -177,6 +187,114 @@ test("curated training route author wheel events isolate map zoom from page scro
   assert.doesNotMatch(clientSource, /onWheel=\{handleMapWheel\}/);
 });
 
+test("curated training route author wheel zoom keeps the cursor world coordinate stable", () => {
+  const initialBounds = {
+    minX: 0,
+    maxX: 1000,
+    minY: 0,
+    maxY: 500
+  };
+  const screenSize = {
+    width: 1000,
+    height: 500
+  };
+  const screenPoint = {
+    x: 760,
+    y: 140
+  };
+  const before = trainingRouteAuthorMapPointForScreenPoint(initialBounds, screenPoint, screenSize);
+  const zoomed = zoomTrainingRouteAuthorBoundsAroundScreenPoint({
+    currentBounds: initialBounds,
+    initialBounds,
+    screenPoint,
+    screenSize,
+    zoomFactor: trainingRouteAuthorWheelZoomFactor(-120)
+  });
+  const after = trainingRouteAuthorMapPointForScreenPoint(zoomed, screenPoint, screenSize);
+
+  assert.ok(before);
+  assert.ok(after);
+  assertClose(after.x, before.x, "cursor-centred zoom should preserve x");
+  assertClose(after.y, before.y, "cursor-centred zoom should preserve y");
+  assert.ok(zoomed.maxX - zoomed.minX < initialBounds.maxX - initialBounds.minX);
+});
+
+test("curated training route author repeated wheel zoom does not drift from the cursor anchor", () => {
+  const initialBounds = {
+    minX: -100,
+    maxX: 900,
+    minY: 50,
+    maxY: 550
+  };
+  const screenSize = {
+    width: 1200,
+    height: 600
+  };
+  const screenPoint = {
+    x: 180,
+    y: 490
+  };
+  const anchor = trainingRouteAuthorMapPointForScreenPoint(initialBounds, screenPoint, screenSize);
+  let bounds = initialBounds;
+
+  assert.ok(anchor);
+
+  for (let index = 0; index < 8; index += 1) {
+    bounds = zoomTrainingRouteAuthorBoundsAroundScreenPoint({
+      currentBounds: bounds,
+      initialBounds,
+      screenPoint,
+      screenSize,
+      zoomFactor: trainingRouteAuthorWheelZoomFactor(-80)
+    });
+  }
+
+  const after = trainingRouteAuthorMapPointForScreenPoint(bounds, screenPoint, screenSize);
+
+  assert.ok(after);
+  assertClose(after.x, anchor.x, "repeated cursor zoom should not drift x");
+  assertClose(after.y, anchor.y, "repeated cursor zoom should not drift y");
+});
+
+test("curated training route author wheel zoom clamps to configured author bounds", () => {
+  const initialBounds = {
+    minX: 0,
+    maxX: 1000,
+    minY: 0,
+    maxY: 500
+  };
+  const screenSize = {
+    width: 1000,
+    height: 500
+  };
+  const screenPoint = {
+    x: 500,
+    y: 250
+  };
+  let zoomedIn = initialBounds;
+  let zoomedOut = initialBounds;
+
+  for (let index = 0; index < 60; index += 1) {
+    zoomedIn = zoomTrainingRouteAuthorBoundsAroundScreenPoint({
+      currentBounds: zoomedIn,
+      initialBounds,
+      screenPoint,
+      screenSize,
+      zoomFactor: trainingRouteAuthorWheelZoomFactor(-120)
+    });
+    zoomedOut = zoomTrainingRouteAuthorBoundsAroundScreenPoint({
+      currentBounds: zoomedOut,
+      initialBounds,
+      screenPoint,
+      screenSize,
+      zoomFactor: trainingRouteAuthorWheelZoomFactor(120)
+    });
+  }
+
+  assertClose(zoomedIn.maxX - zoomedIn.minX, 80, "zoom-in width should clamp at 8 percent");
+  assertClose(zoomedOut.maxX - zoomedOut.minX, 2400, "zoom-out width should clamp at 240 percent");
+});
+
 test("curated training route author pointer modes isolate map drags without trapping page scroll elsewhere", () => {
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
 
@@ -190,6 +308,41 @@ test("curated training route author pointer modes isolate map drags without trap
   assert.match(clientSource, /releasePointerCapture\?\.\(event\.pointerId\)/);
   assert.match(clientSource, /touch-none select-none overscroll-contain/);
   assert.match(clientSource, /ref=\{mapSvgRef\}/);
+});
+
+test("curated training route author accepts only left mouse or primary touch for authoring starts", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  for (const activeMode of ["set-start", "set-destination", "add-checkpoint", "draw-route", "pan"] as const) {
+    assert.equal(canStartTrainingRouteAuthorPointer({ button: 0, buttons: 1, pointerType: "mouse", isPrimary: true }), true);
+    assert.equal(canStartTrainingRouteAuthorPointer({ button: 1, buttons: 4, pointerType: "mouse", isPrimary: true }), false);
+    assert.equal(canStartTrainingRouteAuthorPointer({ button: 2, buttons: 2, pointerType: "mouse", isPrimary: true }), false);
+    assert.equal(canStartTrainingRouteAuthorPointer({ button: 0, buttons: 1, pointerType: "touch", isPrimary: true }), true);
+    assert.equal(canStartTrainingRouteAuthorPointer({ button: 0, buttons: 1, pointerType: "touch", isPrimary: false }), false);
+    assert.equal(shouldIsolateTrainingRouteAuthorPointer({ targetInsideMap: true, activeMode }), true);
+  }
+
+  assert.match(clientSource, /canStartTrainingRouteAuthorPointer\(pointerButtonInput\(event\)\)/);
+  assert.match(clientSource, /dragStateRef\.current = null/);
+  assert.match(clientSource, /onMouseDown=\{handleMapMouseDown\}/);
+  assert.match(clientSource, /onAuxClick=\{handleMapAuxClick\}/);
+  assert.match(clientSource, /onContextMenu=\{handleMapContextMenu\}/);
+});
+
+test("curated training route author blocks auxiliary clicks from placement and drawing modes", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.equal(shouldPreventTrainingRouteAuthorAuxiliaryClick({ button: 1, pointerType: "mouse" }), true);
+  assert.equal(shouldPreventTrainingRouteAuthorAuxiliaryClick({ button: 2, pointerType: "mouse" }), true);
+  assert.equal(shouldPreventTrainingRouteAuthorAuxiliaryClick({ button: 0, pointerType: "mouse" }), false);
+  assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 0, buttons: 1, pointerType: "mouse", isPrimary: true }), true);
+  assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 0, buttons: 0, pointerType: "mouse", isPrimary: true }), false);
+  assert.equal(canContinueTrainingRouteAuthorDrawPointer({ button: 0, buttons: 1, pointerType: "touch", isPrimary: true }), true);
+  assert.match(clientSource, /shouldPreventTrainingRouteAuthorAuxiliaryClick/);
+  assert.match(clientSource, /canContinueTrainingRouteAuthorDrawPointer\(pointerButtonInput\(event\)\)/);
+  assert.match(clientSource, /handleMapContextMenu/);
+  assert.match(clientSource, /event\.preventDefault\(\)/);
+  assert.match(clientSource, /event\.stopPropagation\(\)/);
 });
 
 test("curated training route author keeps map controls clickable outside the isolated viewport", () => {
