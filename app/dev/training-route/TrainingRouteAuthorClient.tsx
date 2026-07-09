@@ -55,6 +55,7 @@ import {
   validateTrainingRouteAuthorState,
   zoomTrainingRouteAuthorBoundsAroundScreenPoint,
   type CuratedShortestRouteComparisonDetail,
+  type TrainingRouteAuthorDraftSaveReadiness,
   type TrainingRouteAuthorField,
   type TrainingRouteAuthorMode,
   type TrainingRouteAuthorStatusItem,
@@ -79,6 +80,30 @@ type DragState =
       pointerId: number;
     }
   | null;
+
+type TrainingRouteAuthorFileSaveStatus = {
+  state: "idle" | "saving" | "saved" | "error";
+  message: string;
+  relativePath?: string;
+  savedAt?: string;
+  missingItems?: string[];
+};
+
+type TrainingRouteAuthorAutosavePayload = {
+  state: TrainingRouteAuthorState;
+  savedAt: string;
+};
+
+type CuratedTrainingRouteDraftSaveResponse = {
+  ok?: boolean;
+  message?: string;
+  relativePath?: string;
+  savedAt?: string;
+  errors?: string[];
+};
+
+const TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY = "topopass.devTrainingRouteAuthor.autosave.v1";
+const TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT = "/api/dev/training-routes/drafts";
 
 function polylinePoints(points: readonly Vec2[]): string {
   return points.map((point) => `${Math.round(point.x)},${Math.round(point.y)}`).join(" ");
@@ -106,6 +131,62 @@ function statusClass(state: TrainingRouteAuthorStatusItem["state"]): string {
 
 function fieldValueForInput(field: TrainingRouteAuthorField): string {
   return field.value;
+}
+
+function parseTrainingRouteAuthorAutosave(raw: string | null): TrainingRouteAuthorAutosavePayload | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: unknown;
+      savedAt?: unknown;
+    };
+
+    if (!isAutosavedTrainingRouteAuthorState(parsed.state) || typeof parsed.savedAt !== "string") {
+      return null;
+    }
+
+    return {
+      state: parsed.state,
+      savedAt: parsed.savedAt
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isAutosavedTrainingRouteAuthorState(value: unknown): value is TrainingRouteAuthorState {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof (value as { activeMode?: unknown }).activeMode === "string" &&
+    Boolean((value as { metadata?: unknown }).metadata) &&
+    typeof (value as { routeDraft?: unknown }).routeDraft === "object"
+  );
+}
+
+function readinessMissingItems(readiness: TrainingRouteAuthorDraftSaveReadiness): string[] {
+  return readiness.checklist.filter((item) => !item.complete).map((item) => item.label);
+}
+
+function readableTimestamp(timestamp: string | null | undefined): string {
+  if (!timestamp) {
+    return "Not yet";
+  }
+
+  const date = new Date(timestamp);
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp;
+  }
+
+  return date.toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
 }
 
 function readableActionTitle(action: TrainingRouteAuthorToolbarAction): string {
@@ -543,6 +624,13 @@ export function TrainingRouteAuthorClient() {
   const [viewBounds, setViewBounds] = useState<RouteRunnerMapBounds>(initialBounds);
   const [showRestrictions, setShowRestrictions] = useState(true);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [fileSaveStatus, setFileSaveStatus] = useState<TrainingRouteAuthorFileSaveStatus>({
+    state: "idle",
+    message: "No file save has run in this session."
+  });
+  const [lastAutosavedAt, setLastAutosavedAt] = useState<string | null>(null);
+  const [autosaveNotice, setAutosaveNotice] = useState<string | null>(null);
+  const [lastSavedExportJson, setLastSavedExportJson] = useState<string | null>(null);
   const dragStateRef = useRef<DragState>(null);
   const mapSvgRef = useRef<SVGSVGElement | null>(null);
   const model = useMemo(() => buildTrainingRouteAuthorModel({ state }), [state]);
@@ -595,6 +683,47 @@ export function TrainingRouteAuthorClient() {
     [currentZoom, mapLabels, viewport]
   );
   const mapUnitsPerPixel = boundsWidth(viewBounds) / TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH;
+
+  useEffect(() => {
+    let recovered: TrainingRouteAuthorAutosavePayload | null = null;
+
+    try {
+      recovered = parseTrainingRouteAuthorAutosave(window.localStorage.getItem(TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY));
+    } catch {
+      setAutosaveNotice("Autosave recovery is unavailable in this browser session.");
+      return;
+    }
+
+    if (!recovered) {
+      return;
+    }
+
+    setState(recovered.state);
+    setLastAutosavedAt(recovered.savedAt);
+    setAutosaveNotice(`Recovered autosaved route from ${readableTimestamp(recovered.savedAt)}.`);
+  }, []);
+
+  useEffect(() => {
+    const savedAt = new Date().toISOString();
+    const timeout = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY,
+          JSON.stringify({
+            state,
+            savedAt
+          })
+        );
+        setLastAutosavedAt(savedAt);
+      } catch {
+        setAutosaveNotice("Autosave could not be written in this browser session.");
+      }
+    }, 500);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [state]);
 
   useEffect(() => {
     const svg = mapSvgRef.current;
@@ -903,6 +1032,92 @@ export function TrainingRouteAuthorClient() {
       setCopyStatus("Export JSON copied.");
     } catch {
       setCopyStatus("Clipboard unavailable. Select the JSON text manually.");
+    }
+  }
+
+  function downloadExportJson() {
+    if (!model.exportReadiness.ready) {
+      return;
+    }
+
+    const blob = new Blob([model.exportJson], { type: "application/json" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = model.exportReadiness.suggestedFilename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async function saveTrainingRouteDraft(saveMode: "draft" | "validated-draft") {
+    const readiness = saveMode === "validated-draft" ? model.validatedDraftSaveReadiness : model.draftSaveReadiness;
+    const missingItems = readinessMissingItems(readiness);
+
+    if (!readiness.ready) {
+      setFileSaveStatus({
+        state: "error",
+        message:
+          saveMode === "validated-draft"
+            ? "Validated draft cannot be saved until the route, validation, and comparison checks are complete."
+            : "Draft cannot be saved until the required route data exists.",
+        missingItems
+      });
+      return;
+    }
+
+    setFileSaveStatus({
+      state: "saving",
+      message: saveMode === "validated-draft" ? "Saving validated draft..." : "Saving draft..."
+    });
+
+    try {
+      const response = await fetch(TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          saveMode,
+          route: model.exportData
+        })
+      });
+      const responseBody = (await response.json().catch(() => null)) as CuratedTrainingRouteDraftSaveResponse | null;
+
+      if (!response.ok || !responseBody?.ok) {
+        setFileSaveStatus({
+          state: "error",
+          message: responseBody?.message ?? "Training route draft could not be saved.",
+          missingItems: responseBody?.errors
+        });
+        return;
+      }
+
+      setFileSaveStatus({
+        state: "saved",
+        message: responseBody.message ?? "Training route draft saved.",
+        relativePath: responseBody.relativePath,
+        savedAt: responseBody.savedAt
+      });
+      setLastSavedExportJson(model.exportJson);
+    } catch {
+      setFileSaveStatus({
+        state: "error",
+        message: "Training route draft could not be saved because the dev save endpoint was unavailable."
+      });
+    }
+  }
+
+  function clearAutosaveDraft() {
+    try {
+      window.localStorage.removeItem(TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY);
+      setAutosaveNotice("Autosave recovery draft cleared.");
+      setLastAutosavedAt(null);
+    } catch {
+      setAutosaveNotice("Autosave recovery could not be cleared in this browser session.");
     }
   }
 
@@ -1300,35 +1515,145 @@ export function TrainingRouteAuthorClient() {
           <div>
             <h2 className="text-xl font-bold text-ink">Export panel</h2>
             <p className="mt-2 text-sm leading-6 text-slate-700">
-              Export comes last and uses only the currently authored route data.
+              Save dev drafts under data/training-routes/drafts or export the current JSON for review.
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-800">
               Suggested filename: <span className="font-mono">{model.exportReadiness.suggestedFilename}</span>
             </p>
           </div>
-          <button
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-sm disabled:bg-slate-300 disabled:text-slate-600"
-            disabled={!model.exportReadiness.ready}
-            onClick={copyExportJson}
-            type="button"
-          >
-            Copy JSON
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={fileSaveStatus.state === "saving"}
+              onClick={() => void saveTrainingRouteDraft("draft")}
+              type="button"
+            >
+              Save draft
+            </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={fileSaveStatus.state === "saving"}
+              onClick={() => void saveTrainingRouteDraft("validated-draft")}
+              type="button"
+            >
+              Save validated draft
+            </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={!model.exportReadiness.ready}
+              onClick={downloadExportJson}
+              type="button"
+            >
+              Download JSON
+            </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:bg-slate-300 disabled:text-slate-600"
+              disabled={!model.exportReadiness.ready}
+              onClick={copyExportJson}
+              type="button"
+            >
+              Copy JSON
+            </button>
+          </div>
         </div>
         {copyStatus ? <p className="mt-3 text-sm font-semibold text-slate-700">{copyStatus}</p> : null}
-        <div className="mt-4 grid gap-4 lg:grid-cols-[360px_1fr]">
-          <div className="rounded-lg border border-slate-200 p-3">
-            <p className="text-sm font-bold text-ink">Export readiness checklist</p>
-            <ul className="mt-3 space-y-2 text-sm text-slate-700">
-              {model.exportReadiness.checklist.map((item) => (
-                <li className="flex items-center justify-between gap-3" key={item.label}>
-                  <span>{item.label}</span>
-                  <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
-                    {item.complete ? "ready" : "missing"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+        {autosaveNotice ? <p className="mt-3 text-sm font-semibold text-slate-700">{autosaveNotice}</p> : null}
+        <div className="mt-4 grid gap-4 lg:grid-cols-[400px_1fr]">
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-sm font-bold text-ink">Save status</p>
+              <dl className="mt-3 space-y-2 text-sm text-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Unsaved changes</dt>
+                  <dd className={lastSavedExportJson === model.exportJson ? "text-green-700" : "text-amber-800"}>
+                    {lastSavedExportJson === null
+                      ? "Not saved to file yet"
+                      : lastSavedExportJson === model.exportJson
+                        ? "No"
+                        : "Yes"}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Last autosave</dt>
+                  <dd>{readableTimestamp(lastAutosavedAt)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Last file save</dt>
+                  <dd>{readableTimestamp(fileSaveStatus.savedAt)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Saved path</dt>
+                  <dd className="break-all font-mono text-xs">{fileSaveStatus.relativePath ?? "Not yet"}</dd>
+                </div>
+              </dl>
+              <p
+                className={`mt-3 rounded-md border p-3 text-sm leading-6 ${
+                  fileSaveStatus.state === "saved"
+                    ? "border-green-200 bg-green-50 text-green-900"
+                    : fileSaveStatus.state === "error"
+                      ? "border-red-200 bg-red-50 text-red-950"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                }`}
+              >
+                {fileSaveStatus.message}
+              </p>
+              {fileSaveStatus.missingItems?.length ? (
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-900">
+                  {fileSaveStatus.missingItems.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <button
+                className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={clearAutosaveDraft}
+                type="button"
+              >
+                Clear autosave recovery
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-sm font-bold text-ink">Draft save readiness</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                {model.draftSaveReadiness.checklist.map((item) => (
+                  <li className="flex items-center justify-between gap-3" key={item.label}>
+                    <span>{item.label}</span>
+                    <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
+                      {item.complete ? "ready" : "missing"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-sm font-bold text-ink">Validated draft readiness</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                {model.validatedDraftSaveReadiness.checklist.map((item) => (
+                  <li className="flex items-center justify-between gap-3" key={item.label}>
+                    <span>{item.label}</span>
+                    <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
+                      {item.complete ? "ready" : "missing"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="text-sm font-bold text-ink">Export readiness checklist</p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                {model.exportReadiness.checklist.map((item) => (
+                  <li className="flex items-center justify-between gap-3" key={item.label}>
+                    <span>{item.label}</span>
+                    <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
+                      {item.complete ? "ready" : "missing"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
           <textarea
             aria-label="Curated route JSON export"

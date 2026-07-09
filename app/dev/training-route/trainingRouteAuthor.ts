@@ -178,6 +178,15 @@ export type TrainingRouteAuthorExportReadiness = {
   }>;
 };
 
+export type TrainingRouteAuthorDraftSaveReadiness = {
+  ready: boolean;
+  suggestedFilename: string;
+  checklist: Array<{
+    label: string;
+    complete: boolean;
+  }>;
+};
+
 export type TrainingRouteAuthorRouteMatchStatus =
   | "empty"
   | "insufficient"
@@ -217,6 +226,8 @@ export type TrainingRouteAuthorModel = {
   routeStatusItems: TrainingRouteAuthorStatusItem[];
   mapModel: TrainingRouteAuthorMapModel;
   exportReadiness: TrainingRouteAuthorExportReadiness;
+  draftSaveReadiness: TrainingRouteAuthorDraftSaveReadiness;
+  validatedDraftSaveReadiness: TrainingRouteAuthorDraftSaveReadiness;
   metadataFields: TrainingRouteAuthorField[];
   validationRunStatus: "not-run" | LearnerRouteValidationResult["status"];
   comparisonRunStatus: "not-run" | CuratedShortestRouteComparisonDetail["comparisonStatus"];
@@ -1393,6 +1404,74 @@ function buildExportReadiness(input: {
   };
 }
 
+function buildDraftSaveReadiness(input: {
+  metadata: CuratedTrainingRouteMetadata;
+  hasStart: boolean;
+  hasDestination: boolean;
+  hasRoute: boolean;
+}): TrainingRouteAuthorDraftSaveReadiness {
+  const checklist = [
+    { label: "Route id is safe and present", complete: Boolean(input.metadata.routeId.trim()) },
+    { label: "Start selected", complete: input.hasStart },
+    { label: "Destination selected", complete: input.hasDestination },
+    { label: "Route drawn and matched", complete: input.hasRoute }
+  ];
+
+  return {
+    ready: checklist.every((item) => item.complete),
+    suggestedFilename: `${input.metadata.routeId.trim() || "curated-training-route"}.json`,
+    checklist
+  };
+}
+
+function buildValidatedDraftSaveReadiness(input: {
+  metadata: CuratedTrainingRouteMetadata;
+  hasStart: boolean;
+  hasDestination: boolean;
+  hasRoute: boolean;
+  validation: LearnerRouteValidationResult;
+  validationHasRun: boolean;
+  comparisonHasRun: boolean;
+  comparison: CuratedShortestRouteComparison;
+}): TrainingRouteAuthorDraftSaveReadiness {
+  const hasRequiredMetadata = Boolean(
+    input.metadata.routeId.trim() &&
+      input.metadata.title.trim() &&
+      input.metadata.area.trim() &&
+      input.metadata.objective.trim()
+  );
+  const requiresRouteChoiceJustification =
+    input.comparison.requiresRouteChoiceJustification ||
+    input.comparison.directComparison.verdict === "major-detour-warning" ||
+    input.comparison.checkpointConstrainedComparison.verdict === "major-detour-warning";
+  const routeChoiceJustificationComplete =
+    !requiresRouteChoiceJustification || Boolean(input.metadata.routeChoiceJustification.trim());
+  const checklist = [
+    { label: "Route id is safe and present", complete: Boolean(input.metadata.routeId.trim()) },
+    { label: "Start selected", complete: input.hasStart },
+    { label: "Destination selected", complete: input.hasDestination },
+    { label: "Route drawn and matched", complete: input.hasRoute },
+    { label: "Required metadata complete", complete: hasRequiredMetadata },
+    { label: "Validation has run", complete: input.validationHasRun },
+    {
+      label: "Validation has no blocking errors",
+      complete:
+        input.validationHasRun &&
+        input.validation.valid &&
+        input.validation.status !== "invalid" &&
+        input.validation.blockingErrors.length === 0
+    },
+    { label: "Shortest-route comparison has run", complete: input.comparisonHasRun },
+    { label: "Route choice justification complete when required", complete: routeChoiceJustificationComplete }
+  ];
+
+  return {
+    ready: checklist.every((item) => item.complete),
+    suggestedFilename: `${input.metadata.routeId.trim() || "curated-training-route"}.json`,
+    checklist
+  };
+}
+
 function buildRouteStatusItems(input: {
   hasStart: boolean;
   hasDestination: boolean;
@@ -1514,6 +1593,22 @@ export function buildTrainingRouteAuthorModel(input?: {
     validationHasRun: baseState.validationHasRun,
     comparisonHasRun: baseState.comparisonHasRun,
     approvalWarning: approval
+  });
+  const draftSaveReadiness = buildDraftSaveReadiness({
+    metadata,
+    hasStart,
+    hasDestination,
+    hasRoute
+  });
+  const validatedDraftSaveReadiness = buildValidatedDraftSaveReadiness({
+    metadata,
+    hasStart,
+    hasDestination,
+    hasRoute,
+    validation,
+    validationHasRun: baseState.validationHasRun,
+    comparisonHasRun: baseState.comparisonHasRun,
+    comparison: shortestRouteComparison
   });
   const routeGeometry = pointsForNodeIds(sourceMap, baseState.routeNodeIds);
   const rawRoutePoints = routeDraftToDrawnRouteTrace(baseState.routeDraft).points;
@@ -1643,6 +1738,8 @@ export function buildTrainingRouteAuthorModel(input?: {
     routeStatusItems,
     mapModel,
     exportReadiness,
+    draftSaveReadiness,
+    validatedDraftSaveReadiness,
     metadataFields: buildMetadataFields(metadata),
     validationRunStatus: baseState.validationHasRun ? validation.status : "not-run",
     comparisonRunStatus: baseState.comparisonHasRun

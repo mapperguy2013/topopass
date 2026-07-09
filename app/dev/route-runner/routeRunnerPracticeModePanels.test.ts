@@ -143,6 +143,9 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(clientSource, /Validation panel/);
   assert.match(clientSource, /Shortest route comparison/);
   assert.match(clientSource, /Export panel/);
+  assert.match(clientSource, /Save draft/);
+  assert.match(clientSource, /Save validated draft/);
+  assert.match(clientSource, /Download JSON/);
   assert.match(clientSource, /Curated route JSON export/);
   assert.doesNotMatch(clientSource, /RouteRunnerClient/);
 });
@@ -527,6 +530,73 @@ test("curated route author export is blocked until required route data exists", 
   assert.equal(model.exportReadiness.ready, false);
   assert.ok(model.exportReadiness.checklist.some((item) => item.label === "Route drawn and matched" && !item.complete));
   assert.match(clientSource, /disabled=\{!model\.exportReadiness\.ready\}/);
+});
+
+test("curated route author save draft readiness blocks missing required route data", () => {
+  const model = buildTrainingRouteAuthorModel();
+
+  assert.equal(model.draftSaveReadiness.ready, false);
+  assert.ok(
+    model.draftSaveReadiness.checklist.some((item) => item.label === "Route drawn and matched" && !item.complete)
+  );
+  assert.ok(model.draftSaveReadiness.checklist.some((item) => item.label === "Start selected" && !item.complete));
+  assert.ok(
+    model.draftSaveReadiness.checklist.some((item) => item.label === "Destination selected" && !item.complete)
+  );
+});
+
+test("curated route author validated draft readiness blocks validation and comparison gaps", () => {
+  const unvalidatedModel = buildTrainingRouteAuthorModel({ state: createSampleTrainingRouteAuthorState() });
+  const invalidModel = buildTrainingRouteAuthorModel();
+  const readyModel = buildTrainingRouteAuthorModel({
+    state: compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()))
+  });
+
+  assert.equal(unvalidatedModel.draftSaveReadiness.ready, true);
+  assert.equal(unvalidatedModel.validatedDraftSaveReadiness.ready, false);
+  assert.ok(
+    unvalidatedModel.validatedDraftSaveReadiness.checklist.some(
+      (item) => item.label === "Validation has run" && !item.complete
+    )
+  );
+  assert.ok(
+    unvalidatedModel.validatedDraftSaveReadiness.checklist.some(
+      (item) => item.label === "Shortest-route comparison has run" && !item.complete
+    )
+  );
+  assert.equal(invalidModel.validatedDraftSaveReadiness.ready, false);
+  assert.equal(readyModel.validatedDraftSaveReadiness.ready, true);
+});
+
+test("curated route author dev save UI keeps save tools off learner navigation", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const sidebarSource = readFileSync("components/layout/Sidebar.tsx", "utf8");
+  const practicePageSource = readFileSync("app/practice/page.tsx", "utf8");
+
+  assert.match(clientSource, /TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT/);
+  assert.match(clientSource, /Save status/);
+  assert.match(clientSource, /Clear autosave recovery/);
+  assert.match(clientSource, /topopass\.devTrainingRouteAuthor\.autosave\.v1/);
+  assert.match(clientSource, /localStorage\.setItem/);
+  assert.match(clientSource, /localStorage\.getItem/);
+  assert.match(clientSource, /localStorage\.removeItem/);
+  assert.doesNotMatch(sidebarSource, /Save validated draft/);
+  assert.doesNotMatch(practicePageSource, /Save validated draft/);
+});
+
+test("curated route author export includes save-ready route, metadata, validation, complexity, and shortest comparison", () => {
+  const state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.draftSaveReadiness.ready, true);
+  assert.equal(model.validatedDraftSaveReadiness.ready, true);
+  assert.ok(model.exportJson.includes('"start"'));
+  assert.ok(model.exportJson.includes('"destination"'));
+  assert.ok(model.exportJson.includes('"checkpoints"'));
+  assert.ok(model.exportJson.includes('"metadata"'));
+  assert.ok(model.exportJson.includes('"validationSummary"'));
+  assert.ok(model.exportJson.includes('"complexitySummary"'));
+  assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
 });
 
 test("curated route author exposes difficulty mismatch warnings in validation", () => {
