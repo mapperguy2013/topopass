@@ -47,6 +47,8 @@ Stage 18.12 adds dev-only draft saving for curated training routes. The authorin
 
 Stage 18.12 map-control follow-up aligns `/dev/training-route` with the beta practice map controls. Wheel zoom stays cursor-centred, middle mouse drag temporarily pans without changing the selected authoring mode, middle/right clicks cannot place markers or draw route points, and page scroll remains isolated while the pointer is inside the map.
 
+Stage 18.13 fixes click-to-map coordinate alignment on `/dev/training-route`. Pointer coordinates are converted through the actual SVG content box before snapping or drawing, so START, DESTINATION, checkpoint, and route points use the same corrected map coordinate after zooming, panning, resizing, or page scrolling. The optional `Show click diagnostics` toggle displays the raw client point, local SVG point, canonical map point, snap target, and snap distance for dev QA.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
@@ -173,8 +175,15 @@ Run the app locally and check:
 32. Confirm left-click still places start, destination, checkpoints, and begins drawing in the matching authoring modes.
 33. Confirm page scroll does not move while panning or drawing inside the map.
 34. Confirm touch drawing and panning still work on mobile.
-35. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-36. `/practice/training` remains the learner-facing Training Mode route.
+35. Click `Set start` on several parts of the map and confirm the marker appears at the clicked or nearest-road snap location.
+36. Zoom in, repeat start placement, and confirm there is no growing offset across the viewport.
+37. Zoom out, repeat destination placement, and confirm the selected marker stays aligned.
+38. Pan the map, then place checkpoints across different map areas and confirm each checkpoint lands near the clicked road.
+39. Scroll the page away from and back to the map, then place start/destination again and confirm coordinates remain aligned.
+40. Draw a route and confirm the raw route line follows the cursor path.
+41. Enable `Show click diagnostics` and confirm the raw click marker and snapped marker are close to the clicked road.
+42. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+43. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 

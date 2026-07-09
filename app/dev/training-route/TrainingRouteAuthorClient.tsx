@@ -41,7 +41,7 @@ import {
   getTrainingRouteAuthorMap,
   isTrainingRouteAuthorMiddlePanPointer,
   removeLastTrainingRouteAuthorCheckpoint,
-  resolveNearestTrainingRouteAuthorNode,
+  resolveNearestTrainingRouteAuthorNodeSnap,
   setTrainingRouteAuthorDestination,
   setTrainingRouteAuthorMode,
   setTrainingRouteAuthorStart,
@@ -51,6 +51,7 @@ import {
   startTrainingRouteAuthorStroke,
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+  trainingRouteAuthorMapPointForClientPoint,
   trainingRouteAuthorWheelZoomFactor,
   undoTrainingRouteAuthorAction,
   updateTrainingRouteAuthorMetadataField,
@@ -60,6 +61,8 @@ import {
   type TrainingRouteAuthorDraftSaveReadiness,
   type TrainingRouteAuthorField,
   type TrainingRouteAuthorMode,
+  type TrainingRouteAuthorNodeSnapResult,
+  type TrainingRouteAuthorPointerMapConversion,
   type TrainingRouteAuthorStatusItem,
   type TrainingRouteAuthorToolbarAction,
   type TrainingRouteAuthorState
@@ -92,6 +95,30 @@ type TrainingRouteAuthorFileSaveStatus = {
   missingItems?: string[];
 };
 
+type TrainingRouteAuthorClickDiagnostic = {
+  mode: TrainingRouteAuthorMode;
+  message: string;
+  clientPoint: Vec2;
+  localPoint: Vec2;
+  screenPoint: Vec2;
+  mapPoint: Vec2;
+  contentRect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  snap?: {
+    nodeId: string;
+    roadId: string;
+    roadName?: string;
+    roadPoint: Vec2;
+    nodePoint: Vec2;
+    roadDistance: number;
+    nodeDistance: number;
+  };
+};
+
 type TrainingRouteAuthorAutosavePayload = {
   state: TrainingRouteAuthorState;
   savedAt: string;
@@ -107,6 +134,8 @@ type CuratedTrainingRouteDraftSaveResponse = {
 
 const TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY = "topopass.devTrainingRouteAuthor.autosave.v1";
 const TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT = "/api/dev/training-routes/drafts";
+const CLICK_DIAGNOSTIC_RAW_STROKE = "#f59e0b";
+const CLICK_DIAGNOSTIC_SNAP_STROKE = "#0f766e";
 
 function polylinePoints(points: readonly Vec2[]): string {
   return points.map((point) => `${Math.round(point.x)},${Math.round(point.y)}`).join(" ");
@@ -576,6 +605,67 @@ function renderAuthorMarkerLabel(marker: { id: string; kind: "start" | "destinat
   );
 }
 
+function formatDiagnosticPoint(point: Vec2): string {
+  return `${point.x.toFixed(1)}, ${point.y.toFixed(1)}`;
+}
+
+function renderClickDiagnosticOverlay(
+  diagnostic: TrainingRouteAuthorClickDiagnostic | null,
+  mapUnitsPerPixel: number
+) {
+  if (!diagnostic) {
+    return null;
+  }
+
+  const rawRadius = 5 * mapUnitsPerPixel;
+  const snapRadius = 6 * mapUnitsPerPixel;
+  const lineWidth = 1.75 * mapUnitsPerPixel;
+
+  return (
+    <g aria-hidden="true" key="click-diagnostic-overlay">
+      <circle
+        cx={diagnostic.mapPoint.x}
+        cy={diagnostic.mapPoint.y}
+        fill="rgba(245,158,11,0.18)"
+        r={rawRadius}
+        stroke={CLICK_DIAGNOSTIC_RAW_STROKE}
+        strokeDasharray={`${3 * mapUnitsPerPixel} ${3 * mapUnitsPerPixel}`}
+        strokeWidth={lineWidth}
+      />
+      {diagnostic.snap ? (
+        <>
+          <line
+            stroke={CLICK_DIAGNOSTIC_SNAP_STROKE}
+            strokeDasharray={`${4 * mapUnitsPerPixel} ${3 * mapUnitsPerPixel}`}
+            strokeLinecap="round"
+            strokeWidth={lineWidth}
+            x1={diagnostic.mapPoint.x}
+            x2={diagnostic.snap.nodePoint.x}
+            y1={diagnostic.mapPoint.y}
+            y2={diagnostic.snap.nodePoint.y}
+          />
+          <circle
+            cx={diagnostic.snap.roadPoint.x}
+            cy={diagnostic.snap.roadPoint.y}
+            fill="#ffffff"
+            r={rawRadius * 0.72}
+            stroke={CLICK_DIAGNOSTIC_SNAP_STROKE}
+            strokeWidth={lineWidth}
+          />
+          <circle
+            cx={diagnostic.snap.nodePoint.x}
+            cy={diagnostic.snap.nodePoint.y}
+            fill="rgba(20,184,166,0.24)"
+            r={snapRadius}
+            stroke={CLICK_DIAGNOSTIC_SNAP_STROKE}
+            strokeWidth={lineWidth}
+          />
+        </>
+      ) : null}
+    </g>
+  );
+}
+
 function renderComparison(label: string, comparison: CuratedShortestRouteComparisonDetail) {
   const verdictClass =
     comparison.verdict === "major-detour-warning" || comparison.verdict === "detour-warning"
@@ -626,6 +716,9 @@ export function TrainingRouteAuthorClient() {
   const [state, setState] = useState<TrainingRouteAuthorState>(() => createEmptyTrainingRouteAuthorState());
   const [viewBounds, setViewBounds] = useState<RouteRunnerMapBounds>(initialBounds);
   const [showRestrictions, setShowRestrictions] = useState(true);
+  const [showClickDiagnostics, setShowClickDiagnostics] = useState(false);
+  const [clickDiagnostic, setClickDiagnostic] = useState<TrainingRouteAuthorClickDiagnostic | null>(null);
+  const [mapInteractionMessage, setMapInteractionMessage] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const [fileSaveStatus, setFileSaveStatus] = useState<TrainingRouteAuthorFileSaveStatus>({
     state: "idle",
@@ -797,21 +890,65 @@ export function TrainingRouteAuthorClient() {
     };
   }, [initialBounds, viewBounds]);
 
-  function pointFromPointer(
+  function pointerMapConversionFromClientPoint(
     element: SVGSVGElement,
     clientX: number,
     clientY: number
-  ): Vec2 | null {
+  ): TrainingRouteAuthorPointerMapConversion | null {
     const rect = element.getBoundingClientRect();
 
-    if (rect.width === 0 || rect.height === 0) {
-      return null;
+    return trainingRouteAuthorMapPointForClientPoint({
+      bounds: viewBounds,
+      clientPoint: {
+        clientX,
+        clientY
+      },
+      viewportRect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height
+      },
+      screenSize: {
+        width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+        height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+      }
+    });
+  }
+
+  function recordClickDiagnostic(input: {
+    mode: TrainingRouteAuthorMode;
+    conversion: TrainingRouteAuthorPointerMapConversion;
+    snap?: TrainingRouteAuthorNodeSnapResult | null;
+    message: string;
+  }) {
+    if (!showClickDiagnostics) {
+      return;
     }
 
-    return {
-      x: viewBounds.minX + ((clientX - rect.left) / rect.width) * boundsWidth(viewBounds),
-      y: viewBounds.minY + ((clientY - rect.top) / rect.height) * boundsHeight(viewBounds)
-    };
+    setClickDiagnostic({
+      mode: input.mode,
+      message: input.message,
+      clientPoint: {
+        x: input.conversion.clientPoint.clientX,
+        y: input.conversion.clientPoint.clientY
+      },
+      localPoint: input.conversion.localPoint,
+      screenPoint: input.conversion.screenPoint,
+      mapPoint: input.conversion.mapPoint,
+      contentRect: input.conversion.contentRect,
+      snap: input.snap
+        ? {
+            nodeId: input.snap.node.id,
+            roadId: input.snap.roadId,
+            roadName: input.snap.roadName,
+            roadPoint: input.snap.roadPoint,
+            nodePoint: input.snap.nodePoint,
+            roadDistance: input.snap.roadDistance,
+            nodeDistance: input.snap.nodeDistance
+          }
+        : undefined
+    });
   }
 
   function panBy(deltaX: number, deltaY: number) {
@@ -899,12 +1036,6 @@ export function TrainingRouteAuthorClient() {
       return;
     }
 
-    const point = pointFromPointer(event.currentTarget, event.clientX, event.clientY);
-
-    if (!point) {
-      return;
-    }
-
     if (state.activeMode === "pan") {
       dragStateRef.current = {
         kind: "pan",
@@ -917,13 +1048,26 @@ export function TrainingRouteAuthorClient() {
       return;
     }
 
+    const conversion = pointerMapConversionFromClientPoint(event.currentTarget, event.clientX, event.clientY);
+
+    if (!conversion) {
+      setMapInteractionMessage("Click inside the visible map area.");
+      return;
+    }
+
     if (state.activeMode === "draw-route") {
       dragStateRef.current = {
         kind: "draw",
         pointerId: event.pointerId
       };
       event.currentTarget.setPointerCapture?.(event.pointerId);
-      setState((currentState) => startTrainingRouteAuthorStroke(currentState, point));
+      setMapInteractionMessage(null);
+      recordClickDiagnostic({
+        mode: state.activeMode,
+        conversion,
+        message: "Started drawing at the converted map point."
+      });
+      setState((currentState) => startTrainingRouteAuthorStroke(currentState, conversion.mapPoint));
       return;
     }
 
@@ -933,18 +1077,34 @@ export function TrainingRouteAuthorClient() {
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
 
-    const node = resolveNearestTrainingRouteAuthorNode(point);
+    const snap = resolveNearestTrainingRouteAuthorNodeSnap(conversion.mapPoint);
 
-    if (!node) {
+    if (!snap) {
+      const message = "Click closer to a road segment.";
+      setMapInteractionMessage(message);
+      recordClickDiagnostic({
+        mode: state.activeMode,
+        conversion,
+        snap,
+        message
+      });
       return;
     }
 
+    setMapInteractionMessage(null);
+    recordClickDiagnostic({
+      mode: state.activeMode,
+      conversion,
+      snap,
+      message: `Snapped to ${snap.roadName ?? snap.roadId}.`
+    });
+
     if (state.activeMode === "set-start") {
-      setState((currentState) => setTrainingRouteAuthorStart(currentState, node.id));
+      setState((currentState) => setTrainingRouteAuthorStart(currentState, snap.node.id));
     } else if (state.activeMode === "set-destination") {
-      setState((currentState) => setTrainingRouteAuthorDestination(currentState, node.id));
+      setState((currentState) => setTrainingRouteAuthorDestination(currentState, snap.node.id));
     } else if (state.activeMode === "add-checkpoint") {
-      setState((currentState) => addTrainingRouteAuthorCheckpoint(currentState, node.id));
+      setState((currentState) => addTrainingRouteAuthorCheckpoint(currentState, snap.node.id));
     }
   }
 
@@ -979,13 +1139,18 @@ export function TrainingRouteAuthorClient() {
       return;
     }
 
-    const point = pointFromPointer(event.currentTarget, event.clientX, event.clientY);
+    const conversion = pointerMapConversionFromClientPoint(event.currentTarget, event.clientX, event.clientY);
 
-    if (!point) {
+    if (!conversion) {
       return;
     }
 
-    setState((currentState) => appendTrainingRouteAuthorStrokePoint(currentState, point));
+    recordClickDiagnostic({
+      mode: state.activeMode,
+      conversion,
+      message: "Added a drawn route point at the converted map position."
+    });
+    setState((currentState) => appendTrainingRouteAuthorStrokePoint(currentState, conversion.mapPoint));
   }
 
   function handleMapPointerEnd(event: PointerEvent<SVGSVGElement>) {
@@ -1003,9 +1168,17 @@ export function TrainingRouteAuthorClient() {
       return;
     }
 
-    const point = pointFromPointer(event.currentTarget, event.clientX, event.clientY) ?? undefined;
+    const conversion = pointerMapConversionFromClientPoint(event.currentTarget, event.clientX, event.clientY);
 
-    setState((currentState) => finishTrainingRouteAuthorStroke(currentState, point));
+    if (conversion) {
+      recordClickDiagnostic({
+        mode: state.activeMode,
+        conversion,
+        message: "Finished drawing at the converted map point."
+      });
+    }
+
+    setState((currentState) => finishTrainingRouteAuthorStroke(currentState, conversion?.mapPoint));
   }
 
   function handleToolbarAction(action: TrainingRouteAuthorToolbarAction) {
@@ -1014,6 +1187,7 @@ export function TrainingRouteAuthorClient() {
     }
 
     setCopyStatus(null);
+    setMapInteractionMessage(null);
 
     if (isTrainingRouteAuthorMode(action.id)) {
       const nextMode = action.id;
@@ -1206,6 +1380,8 @@ export function TrainingRouteAuthorClient() {
               onClick={() => {
                 setState(createSampleTrainingRouteAuthorState());
                 setCopyStatus(null);
+                setClickDiagnostic(null);
+                setMapInteractionMessage(null);
               }}
               type="button"
             >
@@ -1216,6 +1392,8 @@ export function TrainingRouteAuthorClient() {
               onClick={() => {
                 setState(createEmptyTrainingRouteAuthorState());
                 setCopyStatus(null);
+                setClickDiagnostic(null);
+                setMapInteractionMessage(null);
               }}
               type="button"
             >
@@ -1281,10 +1459,77 @@ export function TrainingRouteAuthorClient() {
                 />
                 Show one-way/restriction cues
               </label>
+              <label className="inline-flex items-center gap-2 font-semibold">
+                <input
+                  checked={showClickDiagnostics}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
+                  onChange={(event) => setShowClickDiagnostics(event.target.checked)}
+                  type="checkbox"
+                />
+                Show click diagnostics
+              </label>
               <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">
                 Active mode: {model.activeMode.replaceAll("-", " ")}
               </span>
             </div>
+            {mapInteractionMessage ? (
+              <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950" role="status">
+                {mapInteractionMessage}
+              </p>
+            ) : null}
+            {showClickDiagnostics ? (
+              <div className="border-b border-slate-200 bg-white px-3 py-3 text-xs text-slate-700">
+                <p className="font-bold uppercase tracking-wide text-slate-500">Click diagnostics</p>
+                {clickDiagnostic ? (
+                  <dl className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div>
+                      <dt className="font-semibold">Client</dt>
+                      <dd>{formatDiagnosticPoint(clickDiagnostic.clientPoint)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Local SVG</dt>
+                      <dd>{formatDiagnosticPoint(clickDiagnostic.localPoint)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Canonical screen</dt>
+                      <dd>{formatDiagnosticPoint(clickDiagnostic.screenPoint)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Map point</dt>
+                      <dd>{formatDiagnosticPoint(clickDiagnostic.mapPoint)}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Content box</dt>
+                      <dd>
+                        {`${clickDiagnostic.contentRect.left.toFixed(1)}, ${clickDiagnostic.contentRect.top.toFixed(1)} / ${clickDiagnostic.contentRect.width.toFixed(1)} x ${clickDiagnostic.contentRect.height.toFixed(1)}`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Snap</dt>
+                      <dd>
+                        {clickDiagnostic.snap
+                          ? `${clickDiagnostic.snap.nodeId} via ${clickDiagnostic.snap.roadName ?? clickDiagnostic.snap.roadId}`
+                          : "none"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Road distance</dt>
+                      <dd>{clickDiagnostic.snap ? `${clickDiagnostic.snap.roadDistance.toFixed(1)} map units` : "n/a"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Node distance</dt>
+                      <dd>{clickDiagnostic.snap ? `${clickDiagnostic.snap.nodeDistance.toFixed(1)} map units` : "n/a"}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold">Message</dt>
+                      <dd>{clickDiagnostic.message}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p className="mt-2">No map click recorded yet.</p>
+                )}
+              </div>
+            ) : null}
             <svg
               aria-label="Interactive Real London training route authoring map"
               className={`block h-[420px] w-full touch-none select-none overscroll-contain sm:h-[560px] ${
@@ -1388,6 +1633,7 @@ export function TrainingRouteAuthorClient() {
               {model.mapModel.markers.map((marker) =>
                 renderAuthorMarkerLabel(marker, viewport, currentZoom, mapUnitsPerPixel)
               )}
+              {showClickDiagnostics ? renderClickDiagnosticOverlay(clickDiagnostic, mapUnitsPerPixel) : null}
             </svg>
             <div className="flex flex-wrap gap-3 border-t border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700">
               <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-orange-500" />Raw drawing</span>

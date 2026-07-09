@@ -84,6 +84,32 @@ export type TrainingRouteAuthorScreenSize = {
   height: number;
 };
 
+export type TrainingRouteAuthorClientPoint = {
+  clientX: number;
+  clientY: number;
+};
+
+export type TrainingRouteAuthorViewportRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+export type TrainingRouteAuthorPointerMapConversion = {
+  clientPoint: TrainingRouteAuthorClientPoint;
+  localPoint: Vec2;
+  screenPoint: TrainingRouteAuthorScreenPoint;
+  screenSize: TrainingRouteAuthorScreenSize;
+  mapPoint: Vec2;
+  contentRect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+};
+
 export type TrainingRouteAuthorCursorZoomInput = {
   currentBounds: TrainingRouteAuthorMapBounds;
   initialBounds: TrainingRouteAuthorMapBounds;
@@ -156,6 +182,16 @@ export type TrainingRouteAuthorMapMarker = {
   label: string;
   kind: "start" | "destination" | "checkpoint";
   point: Vec2;
+};
+
+export type TrainingRouteAuthorNodeSnapResult = {
+  node: MapNode;
+  roadId: string;
+  roadName?: string;
+  roadPoint: Vec2;
+  nodePoint: Vec2;
+  roadDistance: number;
+  nodeDistance: number;
 };
 
 export type TrainingRouteAuthorMapModel = {
@@ -281,6 +317,10 @@ function clampUnitInterval(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
+function hasPositiveFiniteSize(size: TrainingRouteAuthorScreenSize | TrainingRouteAuthorViewportRect): boolean {
+  return Number.isFinite(size.width) && size.width > 0 && Number.isFinite(size.height) && size.height > 0;
+}
+
 function isMouseLikeTrainingRouteAuthorPointer(input: Pick<TrainingRouteAuthorPointerButtonInput, "pointerType">): boolean {
   return !input.pointerType || input.pointerType === "mouse";
 }
@@ -316,6 +356,78 @@ export function trainingRouteAuthorMapPointForScreenPoint(
   return {
     x: bounds.minX + xRatio * trainingRouteAuthorBoundsWidth(bounds),
     y: bounds.minY + yRatio * trainingRouteAuthorBoundsHeight(bounds)
+  };
+}
+
+export function trainingRouteAuthorMapPointForClientPoint(input: {
+  bounds: TrainingRouteAuthorMapBounds;
+  clientPoint: TrainingRouteAuthorClientPoint;
+  viewportRect: TrainingRouteAuthorViewportRect;
+  screenSize?: TrainingRouteAuthorScreenSize;
+}): TrainingRouteAuthorPointerMapConversion | null {
+  const screenSize = input.screenSize ?? {
+    width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+  const boundsWidth = trainingRouteAuthorBoundsWidth(input.bounds);
+  const boundsHeight = trainingRouteAuthorBoundsHeight(input.bounds);
+
+  if (
+    !hasPositiveFiniteSize(input.viewportRect) ||
+    !hasPositiveFiniteSize(screenSize) ||
+    boundsWidth <= 0 ||
+    boundsHeight <= 0
+  ) {
+    return null;
+  }
+
+  const localPoint = {
+    x: input.clientPoint.clientX - input.viewportRect.left,
+    y: input.clientPoint.clientY - input.viewportRect.top
+  };
+  const scale = Math.min(input.viewportRect.width / boundsWidth, input.viewportRect.height / boundsHeight);
+
+  if (!Number.isFinite(scale) || scale <= 0) {
+    return null;
+  }
+
+  const contentRect = {
+    left: (input.viewportRect.width - boundsWidth * scale) / 2,
+    top: (input.viewportRect.height - boundsHeight * scale) / 2,
+    width: boundsWidth * scale,
+    height: boundsHeight * scale
+  };
+  const contentX = localPoint.x - contentRect.left;
+  const contentY = localPoint.y - contentRect.top;
+  const insideContent =
+    contentX >= 0 &&
+    contentY >= 0 &&
+    contentX <= contentRect.width &&
+    contentY <= contentRect.height;
+
+  if (!insideContent) {
+    return null;
+  }
+
+  const xRatio = clampUnitInterval(contentX / contentRect.width);
+  const yRatio = clampUnitInterval(contentY / contentRect.height);
+  const screenPoint = {
+    x: xRatio * screenSize.width,
+    y: yRatio * screenSize.height
+  };
+  const mapPoint = trainingRouteAuthorMapPointForScreenPoint(input.bounds, screenPoint, screenSize);
+
+  if (!mapPoint) {
+    return null;
+  }
+
+  return {
+    clientPoint: input.clientPoint,
+    localPoint,
+    screenPoint,
+    screenSize,
+    mapPoint,
+    contentRect
   };
 }
 
@@ -1092,7 +1204,10 @@ export function getTrainingRouteAuthorMap(): MapDefinition {
   return realLondonOsmPilotRouteMap;
 }
 
-export function resolveNearestTrainingRouteAuthorNode(point: Vec2, tolerance = 80): MapNode | null {
+export function resolveNearestTrainingRouteAuthorNodeSnap(
+  point: Vec2,
+  tolerance = 80
+): TrainingRouteAuthorNodeSnapResult | null {
   const map = realLondonOsmPilotRouteMap;
   const graph = buildMapGraph(map);
   const candidates = findCandidateRoadsForPoint({
@@ -1101,9 +1216,10 @@ export function resolveNearestTrainingRouteAuthorNode(point: Vec2, tolerance = 8
     tolerance,
     maxCandidates: 1
   });
-  const road = candidates[0] ? graph.roadsById[candidates[0].roadId] : null;
+  const candidate = candidates[0];
+  const road = candidate ? graph.roadsById[candidate.roadId] : null;
 
-  if (!road) {
+  if (!candidate || !road) {
     return null;
   }
 
@@ -1116,8 +1232,22 @@ export function resolveNearestTrainingRouteAuthorNode(point: Vec2, tolerance = 8
 
   const fromDistance = Math.hypot(point.x - from.x, point.y - from.y);
   const toDistance = Math.hypot(point.x - to.x, point.y - to.y);
+  const node = fromDistance <= toDistance ? from : to;
+  const nodeDistance = Math.min(fromDistance, toDistance);
 
-  return fromDistance <= toDistance ? from : to;
+  return {
+    node,
+    roadId: road.id,
+    roadName: road.name,
+    roadPoint: { ...candidate.projection.point },
+    nodePoint: { x: node.x, y: node.y },
+    roadDistance: candidate.distanceFromRoad,
+    nodeDistance
+  };
+}
+
+export function resolveNearestTrainingRouteAuthorNode(point: Vec2, tolerance = 80): MapNode | null {
+  return resolveNearestTrainingRouteAuthorNodeSnap(point, tolerance)?.node ?? null;
 }
 
 export function setTrainingRouteAuthorMode(

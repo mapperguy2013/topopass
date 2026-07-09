@@ -4,6 +4,9 @@ import test from "node:test";
 import { buildDevToolsHomeModel } from "../devTools.ts";
 import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
+  TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
+  TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+  TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   canContinueTrainingRouteAuthorDrawPointer,
@@ -21,6 +24,7 @@ import {
   getTrainingRouteAuthorMap,
   isTrainingRouteAuthorMiddlePanActive,
   isTrainingRouteAuthorMiddlePanPointer,
+  resolveNearestTrainingRouteAuthorNodeSnap,
   setTrainingRouteAuthorDestination,
   setTrainingRouteAuthorMode,
   setTrainingRouteAuthorStart,
@@ -28,6 +32,7 @@ import {
   shouldIsolateTrainingRouteAuthorPointer,
   shouldPreventTrainingRouteAuthorAuxiliaryClick,
   startTrainingRouteAuthorStroke,
+  trainingRouteAuthorMapPointForClientPoint,
   trainingRouteAuthorMapPointForScreenPoint,
   trainingRouteAuthorWheelZoomFactor,
   updateTrainingRouteAuthorMetadataField,
@@ -299,6 +304,169 @@ test("curated training route author wheel zoom clamps to configured author bound
 
   assertClose(zoomedIn.maxX - zoomedIn.minX, 80, "zoom-in width should clamp at 8 percent");
   assertClose(zoomedOut.maxX - zoomedOut.minX, 2400, "zoom-out width should clamp at 240 percent");
+});
+
+test("curated training route author converts client coordinates at map viewport corners", () => {
+  const bounds = {
+    minX: 0,
+    maxX: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    minY: 0,
+    maxY: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+  const viewportRect = {
+    left: 100,
+    top: 200,
+    width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+  const topLeft = trainingRouteAuthorMapPointForClientPoint({
+    bounds,
+    clientPoint: { clientX: 100, clientY: 200 },
+    viewportRect
+  });
+  const center = trainingRouteAuthorMapPointForClientPoint({
+    bounds,
+    clientPoint: { clientX: 660, clientY: 580 },
+    viewportRect
+  });
+  const bottomRight = trainingRouteAuthorMapPointForClientPoint({
+    bounds,
+    clientPoint: { clientX: 1220, clientY: 960 },
+    viewportRect
+  });
+
+  assert.ok(topLeft);
+  assert.ok(center);
+  assert.ok(bottomRight);
+  assertClose(topLeft.mapPoint.x, 0, "top-left x");
+  assertClose(topLeft.mapPoint.y, 0, "top-left y");
+  assertClose(center.mapPoint.x, 560, "center x");
+  assertClose(center.mapPoint.y, 380, "center y");
+  assertClose(bottomRight.mapPoint.x, 1120, "bottom-right x");
+  assertClose(bottomRight.mapPoint.y, 760, "bottom-right y");
+});
+
+test("curated training route author coordinate conversion stays aligned after pan zoom scroll and resize", () => {
+  const pannedZoomedBounds = {
+    minX: 100,
+    maxX: 660,
+    minY: 50,
+    maxY: 430
+  };
+  const scrolledViewportRect = {
+    left: 75,
+    top: 620,
+    width: 560,
+    height: 380
+  };
+  const center = trainingRouteAuthorMapPointForClientPoint({
+    bounds: pannedZoomedBounds,
+    clientPoint: { clientX: 355, clientY: 810 },
+    viewportRect: scrolledViewportRect
+  });
+  const resizedTallViewportRect = {
+    left: 20,
+    top: 300,
+    width: 560,
+    height: 760
+  };
+  const tallCenter = trainingRouteAuthorMapPointForClientPoint({
+    bounds: pannedZoomedBounds,
+    clientPoint: { clientX: 300, clientY: 680 },
+    viewportRect: resizedTallViewportRect
+  });
+  const letterboxClick = trainingRouteAuthorMapPointForClientPoint({
+    bounds: pannedZoomedBounds,
+    clientPoint: { clientX: 300, clientY: 330 },
+    viewportRect: resizedTallViewportRect
+  });
+
+  assert.ok(center);
+  assertClose(center.localPoint.x, 280, "scrolled local x");
+  assertClose(center.localPoint.y, 190, "scrolled local y");
+  assertClose(center.mapPoint.x, 380, "panned zoomed center x");
+  assertClose(center.mapPoint.y, 240, "panned zoomed center y");
+  assert.ok(tallCenter);
+  assertClose(tallCenter.contentRect.top, 190, "tall viewport letterbox top");
+  assertClose(tallCenter.mapPoint.x, 380, "resized center x");
+  assertClose(tallCenter.mapPoint.y, 240, "resized center y");
+  assert.equal(letterboxClick, null);
+});
+
+test("curated training route author snapping uses corrected map coordinates and rejects distant clicks", () => {
+  const map = getTrainingRouteAuthorMap();
+  const startNode = map.nodes[0];
+  const checkpointNode = map.nodes[1];
+  const destinationNode = map.nodes[2];
+  const startSnap = resolveNearestTrainingRouteAuthorNodeSnap(startNode, TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE);
+  const farSnap = resolveNearestTrainingRouteAuthorNodeSnap({ x: -100000, y: -100000 }, TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE);
+  let state = createEmptyTrainingRouteAuthorState();
+
+  assert.ok(startSnap);
+  assert.equal(startSnap.node.id, startNode.id);
+  assert.equal(startSnap.roadDistance, 0);
+  assert.equal(farSnap, null);
+
+  state = setTrainingRouteAuthorStart(state, startSnap.node.id);
+  state = addTrainingRouteAuthorCheckpoint(state, checkpointNode.id);
+  state = setTrainingRouteAuthorDestination(state, destinationNode.id);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const markers = new Map(model.mapModel.markers.map((marker) => [marker.kind, marker]));
+
+  assert.deepEqual(markers.get("start")?.point, { x: startSnap.node.x, y: startSnap.node.y });
+  assert.deepEqual(markers.get("checkpoint")?.point, { x: checkpointNode.x, y: checkpointNode.y });
+  assert.deepEqual(markers.get("destination")?.point, { x: destinationNode.x, y: destinationNode.y });
+});
+
+test("curated training route author draw mode records converted cursor path points", () => {
+  const bounds = {
+    minX: 0,
+    maxX: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    minY: 0,
+    maxY: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+  const viewportRect = {
+    left: 10,
+    top: 20,
+    width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+  const convertedPoints = [
+    { clientX: 110, clientY: 120 },
+    { clientX: 210, clientY: 220 },
+    { clientX: 310, clientY: 320 }
+  ].map((clientPoint) =>
+    trainingRouteAuthorMapPointForClientPoint({
+      bounds,
+      clientPoint,
+      viewportRect
+    })
+  );
+  let state = setTrainingRouteAuthorMode(createEmptyTrainingRouteAuthorState(), "draw-route");
+
+  assert.ok(convertedPoints.every(Boolean));
+
+  state = startTrainingRouteAuthorStroke(state, convertedPoints[0]?.mapPoint ?? { x: 0, y: 0 });
+  state = appendTrainingRouteAuthorStrokePoint(state, convertedPoints[1]?.mapPoint ?? { x: 0, y: 0 });
+  state = appendTrainingRouteAuthorStrokePoint(state, convertedPoints[2]?.mapPoint ?? { x: 0, y: 0 });
+
+  assert.deepEqual(state.routeDraft.strokes[0]?.points, [
+    convertedPoints[0]?.mapPoint,
+    convertedPoints[1]?.mapPoint,
+    convertedPoints[2]?.mapPoint
+  ]);
+});
+
+test("curated training route author UI uses canonical conversion and exposes click diagnostics", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.match(clientSource, /trainingRouteAuthorMapPointForClientPoint/);
+  assert.match(clientSource, /pointerMapConversionFromClientPoint/);
+  assert.match(clientSource, /resolveNearestTrainingRouteAuthorNodeSnap/);
+  assert.match(clientSource, /Show click diagnostics/);
+  assert.match(clientSource, /Click closer to a road segment\./);
+  assert.match(clientSource, /renderClickDiagnosticOverlay/);
 });
 
 test("curated training route author pointer modes isolate map drags without trapping page scroll elsewhere", () => {
