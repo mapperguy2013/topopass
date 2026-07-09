@@ -227,6 +227,20 @@ Run the app locally and check:
 58. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
 59. `/practice/training` remains the learner-facing Training Mode route.
 
+## Ready for Stage 19 Checklist
+
+Before curated route loading begins in Stage 19, use `/dev/training-route` to prove the authoring pipeline end to end:
+
+1. Open `/dev/training-route` and confirm the map-first workspace starts empty. The top toolbar, shorter full-width map, collapsed `Map legend`, and bottom drawer should be visible without a permanent metadata/export panel.
+2. Create a route manually: `Set start`, `Draw route`, optional `Add checkpoint`, and `Set destination`. The route state cards should change from missing to selected or matched only after real map interaction.
+3. Run `Validate route`. Empty and partial routes should show blocking errors for missing start, destination, or route. Complete routes should show valid, warning, or invalid based on the current authored geometry and available map restrictions.
+4. Run `Compare shortest route`. If enough route data exists, confirm authored length, shortest length, percentage longer, and verdict are shown. If the route is a major detour, add a route choice justification before marking it beta or approved.
+5. Complete the `Metadata` tab. The `Practice map / area` selector should use the available Real London pilot map option, and route id plus filename suggestions should update from map/area, difficulty, exercise type, and title while remaining editable.
+6. Use `Save working draft` for incomplete authoring work under `data/training-routes/drafts/`. Use `Save review candidate` for validated instructor review files under `data/training-routes/review/`. Use `Save complete route` only for beta or approved routes that pass validation, shortest-route comparison, and route choice checks under `data/training-routes/complete/`.
+7. Confirm the exported JSON contains authored start, destination, checkpoint, route geometry, route segment ids, metadata, validation summary, complexity summary, shortest-route comparison, and lifecycle data. It must not contain placeholder route geometry from a hidden fixture unless `Load sample route` was clicked explicitly.
+8. Verify one beginner, one intermediate, and one advanced route can reach export readiness. They can remain draft or review candidates during this gate; do not create the full curated route pack until Stage 19.
+9. Recheck `/dev/route-runner`, `/practice/training`, and `/practice/real-london` after authoring changes to ensure Phase 6 map rendering and Phase 7 learner Training Mode remain unchanged.
+
 ## Validation Commands
 
 Run the project validation suite before committing dev tool changes:

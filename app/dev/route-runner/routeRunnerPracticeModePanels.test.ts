@@ -1271,6 +1271,116 @@ test("curated route author export includes save-ready route, metadata, validatio
   assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
 });
 
+test("curated route author completion gate keeps the map-first workflow ready from an empty state", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel();
+  const statusItems = new Map(model.routeStatusItems.map((item) => [item.label, item]));
+  const toolbarActions = new Map(model.toolbarActions.map((action) => [action.id, action]));
+  const legend = buildTrainingRouteAuthorMapLegendModel();
+
+  assert.match(clientSource, /data-testid="training-author-top-toolbar"/);
+  assert.match(clientSource, /data-testid="training-author-map-workspace"/);
+  assert.match(clientSource, /data-testid="training-author-bottom-drawer"/);
+  assert.match(clientSource, /useState<TrainingRouteAuthorDrawerTabId>\("authoring-steps"\)/);
+  assert.match(clientSource, /Authoring steps/);
+  assert.match(clientSource, /Route state/);
+  assert.match(clientSource, /Validation/);
+  assert.match(clientSource, /Metadata/);
+  assert.match(clientSource, /Export/);
+  assert.match(clientSource, /Load sample route/);
+  assert.doesNotMatch(clientSource, /<aside className="space-y-4">/);
+
+  assert.equal(legend.collapsedByDefault, true);
+  assert.equal(model.sampleLoaded, false);
+  assert.equal(model.sourceExerciseId, "none");
+  assert.equal(model.mapModel.markers.length, 0);
+  assert.equal(model.exportData.routeGeometry.length, 0);
+  assert.equal(model.exportData.routeSegmentIds.length, 0);
+  assert.equal(model.validationRunStatus, "not-run");
+  assert.equal(model.comparisonRunStatus, "not-run");
+  assert.equal(model.exportReadiness.ready, false);
+  assert.equal(statusItems.get("Start")?.value, "missing");
+  assert.equal(statusItems.get("Destination")?.value, "missing");
+  assert.equal(statusItems.get("Route")?.value, "missing");
+  assert.equal(statusItems.get("Validation")?.value, "not run");
+  assert.equal(statusItems.get("Shortest comparison")?.value, "not run");
+  assert.equal(toolbarActions.get("validate-route")?.disabled, undefined);
+  assert.equal(toolbarActions.get("compare-shortest-route")?.disabled, undefined);
+  assert.equal(toolbarActions.get("export-json")?.disabled, true);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Set start")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Draw route")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Set destination")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Validate")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Compare shortest route")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Export")?.complete, false);
+});
+
+test("curated route author can produce beginner intermediate and advanced sample exports for Stage 19 review", () => {
+  const variants = [
+    {
+      difficulty: "beginner",
+      exerciseType: "follow-planned-route",
+      title: "Completion gate beginner route"
+    },
+    {
+      difficulty: "intermediate",
+      exerciseType: "identify-next-safe-turn",
+      title: "Completion gate intermediate route"
+    },
+    {
+      difficulty: "advanced",
+      exerciseType: "route-review-mistake-correction",
+      title: "Completion gate advanced route"
+    }
+  ] as const;
+
+  for (const variant of variants) {
+    let state = createSampleTrainingRouteAuthorState();
+
+    state = updateTrainingRouteAuthorMetadataField(state, "routeId", "curated-training-route-draft");
+    state = updateTrainingRouteAuthorMetadataField(state, "title", variant.title);
+    state = updateTrainingRouteAuthorMetadataField(state, "difficulty", variant.difficulty);
+    state = updateTrainingRouteAuthorMetadataField(state, "exerciseType", variant.exerciseType);
+    state = updateTrainingRouteAuthorMetadataField(state, "status", "beta");
+    state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(state));
+
+    const model = buildTrainingRouteAuthorModel({ state });
+    const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+    const exported = JSON.parse(model.exportJson) as {
+      difficulty: string;
+      exerciseType: string;
+      title: string;
+      status: string;
+      lifecycleStage: string;
+      start: { nodeId: string };
+      destination: { nodeId: string };
+      routeGeometry: unknown[];
+      routeSegmentIds: string[];
+      validationSummary: { valid: boolean; blockingErrors: unknown[] };
+    };
+
+    assert.equal(model.sampleLoaded, true);
+    assert.equal(model.sourceExerciseId === "none", false);
+    assert.equal(model.exportReadiness.ready, true);
+    assert.equal(model.validationRunStatus === "valid" || model.validationRunStatus === "warning", true);
+    assert.equal(model.comparisonRunStatus, "available");
+    assert.equal(completeRoute?.ready, true);
+    assert.equal(completeRoute?.learnerFacingLater, true);
+    assert.match(completeRoute?.relativePath ?? "", /^data\/training-routes\/complete\/real-london-/);
+    assert.equal(exported.difficulty, variant.difficulty);
+    assert.equal(exported.exerciseType, variant.exerciseType);
+    assert.equal(exported.title, variant.title);
+    assert.equal(exported.status, "beta");
+    assert.equal(exported.lifecycleStage, "authoring");
+    assert.ok(exported.start.nodeId.length > 0);
+    assert.ok(exported.destination.nodeId.length > 0);
+    assert.ok(exported.routeGeometry.length > 1);
+    assert.ok(exported.routeSegmentIds.length > 0);
+    assert.equal(exported.validationSummary.valid, true);
+    assert.equal(exported.validationSummary.blockingErrors.length, 0);
+  }
+});
+
 test("curated route author exposes difficulty mismatch warnings in validation", () => {
   const state = createSampleTrainingRouteAuthorState();
   const model = buildTrainingRouteAuthorModel({
