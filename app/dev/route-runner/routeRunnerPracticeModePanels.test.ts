@@ -135,6 +135,7 @@ test("dev route-runner keeps existing RouteRunnerClient workspace available", ()
 test("curated training route author page renders the interactive authoring client", () => {
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel();
   const mapIndex = clientSource.indexOf("Map authoring workspace");
   const validationResultIndex = clientSource.indexOf("Validation result");
   const metadataIndex = clientSource.indexOf("Route metadata");
@@ -154,9 +155,14 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(clientSource, /Validation panel/);
   assert.match(clientSource, /Shortest route comparison/);
   assert.match(clientSource, /Export panel/);
-  assert.match(clientSource, /Save draft/);
-  assert.match(clientSource, /Save validated draft/);
+  assert.deepEqual(model.saveTargets.map((target) => target.actionLabel), [
+    "Save working draft",
+    "Save review candidate",
+    "Save complete route"
+  ]);
+  assert.doesNotMatch(clientSource, /Save validated draft/);
   assert.match(clientSource, /Download JSON/);
+  assert.match(clientSource, /Copy JSON/);
   assert.match(clientSource, /Curated route JSON export/);
   assert.doesNotMatch(clientSource, /RouteRunnerClient/);
 });
@@ -641,9 +647,13 @@ test("curated training route author export checklist explains blocking validatio
   const state = validateTrainingRouteAuthorState(createEmptyTrainingRouteAuthorState());
   const model = buildTrainingRouteAuthorModel({ state });
   const checklist = new Map(model.exportReadiness.checklist.map((item) => [item.label, item.complete]));
+  const reviewCandidate = model.saveTargets.find((target) => target.mode === "review-candidate");
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
 
   assert.equal(model.exportReadiness.ready, false);
-  assert.equal(model.validatedDraftSaveReadiness.ready, false);
+  assert.equal(reviewCandidate?.ready, false);
+  assert.equal(completeRoute?.ready, false);
+  assert.match(completeRoute?.unavailableMessage ?? "", /Save complete route unavailable/);
   assert.equal(checklist.get("Start selected"), false);
   assert.equal(checklist.get("Destination selected"), false);
   assert.equal(checklist.get("Route drawn and matched"), false);
@@ -670,6 +680,16 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.ok(model.exportJson.includes('"complexitySummary"'));
   assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
   assert.ok(model.exportReadiness.ready);
+  assert.equal(model.exportData.lifecycleStage, "authoring");
+  assert.equal(model.saveTargets.length, 3);
+  assert.deepEqual(model.saveTargets.map((target) => target.label), [
+    "Save working draft",
+    "Save review candidate",
+    "Save complete route"
+  ]);
+  assert.match(model.saveTargets[0]?.relativePath ?? "", /^data\/training-routes\/drafts\//);
+  assert.match(model.saveTargets[1]?.relativePath ?? "", /^data\/training-routes\/review\//);
+  assert.match(model.saveTargets[2]?.relativePath ?? "", /^data\/training-routes\/complete\//);
   assert.deepEqual(fieldIds, [
     "routeId",
     "title",
@@ -800,40 +820,87 @@ test("curated route author export is blocked until required route data exists", 
   assert.match(clientSource, /disabled=\{!model\.exportReadiness\.ready\}/);
 });
 
-test("curated route author save draft readiness blocks missing required route data", () => {
-  const model = buildTrainingRouteAuthorModel();
+test("curated route author suggests metadata-based route ids, filenames, and save paths", () => {
+  let state = createEmptyTrainingRouteAuthorState();
 
-  assert.equal(model.draftSaveReadiness.ready, false);
-  assert.ok(
-    model.draftSaveReadiness.checklist.some((item) => item.label === "Route drawn and matched" && !item.complete)
+  state = updateTrainingRouteAuthorMetadataField(state, "title", "Goodge to Tottenham");
+  state = updateTrainingRouteAuthorMetadataField(state, "difficulty", "intermediate");
+  state = updateTrainingRouteAuthorMetadataField(state, "exerciseType", "follow-planned-route");
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const routeIdField = model.metadataFields.find((field) => field.id === "routeId");
+  const workingDraft = model.saveTargets.find((target) => target.mode === "working-draft");
+  const reviewCandidate = model.saveTargets.find((target) => target.mode === "review-candidate");
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+
+  assert.equal(model.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(model.effectiveRouteId, model.suggestedRouteId);
+  assert.equal(routeIdField?.value, model.suggestedRouteId);
+  assert.match(routeIdField?.helpText ?? "", /Auto-suggested from metadata/);
+  assert.equal(workingDraft?.suggestedFilename, "real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json");
+  assert.equal(reviewCandidate?.suggestedFilename, "real-london-intermediate-follow-planned-route-goodge-to-tottenham.json");
+  assert.equal(completeRoute?.suggestedFilename, "real-london-intermediate-follow-planned-route-goodge-to-tottenham.json");
+  assert.equal(
+    workingDraft?.relativePath,
+    "data/training-routes/drafts/real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
   );
-  assert.ok(model.draftSaveReadiness.checklist.some((item) => item.label === "Start selected" && !item.complete));
-  assert.ok(
-    model.draftSaveReadiness.checklist.some((item) => item.label === "Destination selected" && !item.complete)
+  assert.equal(
+    reviewCandidate?.relativePath,
+    "data/training-routes/review/real-london-intermediate-follow-planned-route-goodge-to-tottenham.json"
+  );
+  assert.equal(
+    completeRoute?.relativePath,
+    "data/training-routes/complete/real-london-intermediate-follow-planned-route-goodge-to-tottenham.json"
   );
 });
 
-test("curated route author validated draft readiness blocks validation and comparison gaps", () => {
+test("curated route author working draft save allows incomplete routes but blocks approved status", () => {
+  const model = buildTrainingRouteAuthorModel();
+  const approvedModel = buildTrainingRouteAuthorModel({
+    state: updateTrainingRouteAuthorMetadataField(createEmptyTrainingRouteAuthorState(), "status", "approved"),
+    statusOverride: "approved"
+  });
+  const workingDraft = model.saveTargets.find((target) => target.mode === "working-draft");
+  const approvedDraft = approvedModel.saveTargets.find((target) => target.mode === "working-draft");
+
+  assert.equal(workingDraft?.ready, true);
+  assert.equal(workingDraft?.jsonStatus, "draft");
+  assert.match(workingDraft?.relativePath ?? "", /^data\/training-routes\/drafts\//);
+  assert.equal(approvedDraft?.ready, false);
+  assert.ok(
+    approvedDraft?.checklist.some((item) => item.label === "Approved routes use Save complete route" && !item.complete)
+  );
+  assert.match(approvedDraft?.unavailableMessage ?? "", /Save working draft unavailable/);
+});
+
+test("curated route author review and complete save targets explain validation and comparison gaps", () => {
   const unvalidatedModel = buildTrainingRouteAuthorModel({ state: createSampleTrainingRouteAuthorState() });
   const invalidModel = buildTrainingRouteAuthorModel();
   const readyModel = buildTrainingRouteAuthorModel({
     state: compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()))
   });
+  const unvalidatedReview = unvalidatedModel.saveTargets.find((target) => target.mode === "review-candidate");
+  const unvalidatedComplete = unvalidatedModel.saveTargets.find((target) => target.mode === "complete-route");
+  const invalidReview = invalidModel.saveTargets.find((target) => target.mode === "review-candidate");
+  const readyReview = readyModel.saveTargets.find((target) => target.mode === "review-candidate");
+  const readyComplete = readyModel.saveTargets.find((target) => target.mode === "complete-route");
 
   assert.equal(unvalidatedModel.draftSaveReadiness.ready, true);
-  assert.equal(unvalidatedModel.validatedDraftSaveReadiness.ready, false);
+  assert.equal(unvalidatedReview?.ready, false);
+  assert.equal(unvalidatedComplete?.ready, false);
   assert.ok(
-    unvalidatedModel.validatedDraftSaveReadiness.checklist.some(
+    unvalidatedReview?.checklist.some(
       (item) => item.label === "Validation has run" && !item.complete
     )
   );
   assert.ok(
-    unvalidatedModel.validatedDraftSaveReadiness.checklist.some(
+    unvalidatedComplete?.checklist.some(
       (item) => item.label === "Shortest-route comparison has run" && !item.complete
     )
   );
-  assert.equal(invalidModel.validatedDraftSaveReadiness.ready, false);
-  assert.equal(readyModel.validatedDraftSaveReadiness.ready, true);
+  assert.equal(invalidReview?.ready, false);
+  assert.equal(readyReview?.ready, true);
+  assert.equal(readyComplete?.ready, true);
 });
 
 test("curated route author dev save UI keeps save tools off learner navigation", () => {
@@ -841,13 +908,16 @@ test("curated route author dev save UI keeps save tools off learner navigation",
   const sidebarSource = readFileSync("components/layout/Sidebar.tsx", "utf8");
   const practicePageSource = readFileSync("app/practice/page.tsx", "utf8");
 
-  assert.match(clientSource, /TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT/);
-  assert.match(clientSource, /Save status/);
+  assert.match(clientSource, /TRAINING_ROUTE_SAVE_ENDPOINT/);
+  assert.match(clientSource, /Explicit route save status/);
+  assert.match(clientSource, /Autosave recovery:/);
+  assert.match(clientSource, /Explicit saves write route JSON/);
   assert.match(clientSource, /Clear autosave recovery/);
   assert.match(clientSource, /topopass\.devTrainingRouteAuthor\.autosave\.v1/);
   assert.match(clientSource, /localStorage\.setItem/);
   assert.match(clientSource, /localStorage\.getItem/);
   assert.match(clientSource, /localStorage\.removeItem/);
+  assert.doesNotMatch(clientSource, /Save validated draft/);
   assert.doesNotMatch(sidebarSource, /Save validated draft/);
   assert.doesNotMatch(practicePageSource, /Save validated draft/);
 });
@@ -855,12 +925,23 @@ test("curated route author dev save UI keeps save tools off learner navigation",
 test("curated route author export includes save-ready route, metadata, validation, complexity, and shortest comparison", () => {
   const state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
   const model = buildTrainingRouteAuthorModel({ state });
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
 
   assert.equal(model.draftSaveReadiness.ready, true);
   assert.equal(model.validatedDraftSaveReadiness.ready, true);
+  assert.equal(completeRoute?.ready, true);
+  assert.equal(completeRoute?.jsonStatus, "beta");
+  assert.equal(completeRoute?.learnerFacingLater, true);
   assert.ok(model.exportJson.includes('"start"'));
   assert.ok(model.exportJson.includes('"destination"'));
   assert.ok(model.exportJson.includes('"checkpoints"'));
+  assert.ok(model.exportJson.includes('"routeId"'));
+  assert.ok(model.exportJson.includes('"title"'));
+  assert.ok(model.exportJson.includes('"area"'));
+  assert.ok(model.exportJson.includes('"difficulty"'));
+  assert.ok(model.exportJson.includes('"exerciseType"'));
+  assert.ok(model.exportJson.includes('"status"'));
+  assert.ok(model.exportJson.includes('"lifecycleStage"'));
   assert.ok(model.exportJson.includes('"metadata"'));
   assert.ok(model.exportJson.includes('"validationSummary"'));
   assert.ok(model.exportJson.includes('"complexitySummary"'));

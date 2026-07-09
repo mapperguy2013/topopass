@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -9,7 +9,7 @@ Open `/dev` locally to see the internal tool index.
 Available tools:
 
 - `/dev/route-runner` - Dev Route Runner for map QA, route drawing, overlays, route review, and Training Mode testing.
-- `/dev/training-route` - Curated Training Route Author for drafting future learner training routes.
+- `/dev/training-route` - Curated Training Route Author for drafting, reviewing, and completing future learner training routes.
 - `/dev/beta-feedback` - internal Real London beta feedback review.
 - `/dev/beta-attempts` - internal Real London beta attempt review.
 
@@ -29,7 +29,7 @@ The authoring page reuses:
 - the learner route validation engine
 - Phase 7 exercise difficulty and exercise type models
 
-Author fields include route id, title, area, difficulty, exercise type, description, objective, skills practised, expected learner mistakes, hint sequence, scoring emphasis, instructor feedback notes, and draft/beta/approved status.
+Author fields include route id, title, area, difficulty, exercise type, description, objective, skills practised, expected learner mistakes, hint sequence, scoring emphasis, instructor feedback notes, route choice justification, and route lifecycle status.
 
 Stage 18.6 adds a `Route choice justification` field. Use it when the authored route is intentionally longer than the shortest legal route that the project can prove from current map data.
 
@@ -43,13 +43,15 @@ Stage 18.10 aligns the authoring map styling with the learner practice map. One-
 
 Stage 18.11 fixes authoring map input precision. Wheel zoom now keeps the map point under the cursor stable, while middle-click and right-click inside the map are blocked from placing start/destination/checkpoints, drawing routes, or triggering browser autoscroll.
 
-Stage 18.12 adds dev-only draft saving for curated training routes. The authoring page can now save JSON drafts to `data/training-routes/drafts/`, save stricter validated drafts, download JSON locally, copy JSON to the clipboard, and recover browser-local autosaves after a reload. The dev save endpoint is disabled in production and only writes sanitized `.json` filenames under the drafts directory.
+Stage 18.12 adds initial dev-only saving for curated training routes. The authoring page can save JSON locally, download JSON, copy JSON to the clipboard, and recover browser-local autosaves after a reload. The dev save endpoint is disabled in production.
 
 Stage 18.12 map-control follow-up aligns `/dev/training-route` with the beta practice map controls. Wheel zoom stays cursor-centred, middle mouse drag temporarily pans without changing the selected authoring mode, middle/right clicks cannot place markers or draw route points, and page scroll remains isolated while the pointer is inside the map.
 
 Stage 18.13 fixes click-to-map coordinate alignment on `/dev/training-route`. Pointer coordinates are converted through the actual SVG content box before snapping or drawing, so START, DESTINATION, checkpoint, and route points use the same corrected map coordinate after zooming, panning, resizing, or page scrolling. The optional `Show click diagnostics` toggle displays the raw client point, local SVG point, canonical map point, snap target, and snap distance for dev QA.
 
 Stage 18.14 separates validation readiness from export readiness. `Validate route` and `Compare shortest route` stay available so incomplete routes produce useful blocking messages instead of inactive controls. The map uses the author canvas aspect ratio to avoid a large unused empty area below the visible map, and the compact validation result now appears beside the route state summary near the map workspace.
+
+Stage 18.15 splits explicit saves into three targets: `Save working draft`, `Save review candidate`, and `Save complete route`. The export panel shows each target's save mode, JSON status, suggested filename, full save path, learner-facing readiness, and checklist. Browser autosave recovery is labelled separately because it is not a route library save.
 
 ## Authoring Workflow
 
@@ -63,9 +65,10 @@ Use `/dev/training-route` for curated route creation:
 6. Complete metadata after the route shape is clear.
 7. Validate the route. This button is available even before the route is complete and should list missing start, destination, route, metadata, or matching requirements as blocking errors.
 8. Compare against the shortest valid route. If the route cannot be compared yet, the comparison panel should report an unknown or unsupported result rather than silently completing export readiness.
-9. Use `Save draft` once route id, start, destination, and matched route data exist.
-10. Use `Save validated draft` only after metadata, validation, and shortest-route comparison are complete.
-11. Use `Download JSON` or `Copy JSON` for manual review only after the export readiness checklist is complete.
+9. Use `Save working draft` to preserve incomplete authoring work. It writes draft-status JSON to `data/training-routes/drafts/` and is blocked if the selected route status is approved.
+10. Use `Save review candidate` after route id, title, start, destination, matched route, required metadata, and validation have run. It writes draft-status JSON with review lifecycle metadata to `data/training-routes/review/`.
+11. Use `Save complete route` only after required metadata, validation, no blocking errors, shortest-route comparison, any required route choice justification, and beta or approved status are ready. It writes to `data/training-routes/complete/`.
+12. Use `Download JSON` or `Copy JSON` for manual review only after the export readiness checklist is complete.
 
 Use `/dev/route-runner` for full diagnostics, QA tables, manual route input, attempt review, adaptive practice diagnostics, and Route Runner regression testing. The authoring page links to `/dev/route-runner` from an advanced diagnostics section instead of showing those panels by default.
 
@@ -76,7 +79,7 @@ Use the validation panel before copying an export:
 1. Confirm the route is connected and starts/ends on valid drivable map data.
 2. Review blocking errors and advisory warnings from the learner route validator.
 3. Check affected segment ids and the complexity summary.
-4. Keep invalid routes in draft or beta.
+4. Keep invalid routes as working drafts or review candidates; do not mark them beta or approved.
 5. Approve only after validation is clean and instructor review has resolved advisory warnings.
 
 The validation panel uses only restrictions present in the project data. Unknown legal restrictions remain advisory or unverified; they are not invented.
@@ -105,28 +108,37 @@ For detour warnings and major detour warnings, write a route choice justificatio
 
 ## Export Workflow
 
-The export panel appears last. It shows save controls, copyable JSON for future files under `data/training-routes/`, and readiness checklists.
+The export panel appears last. It shows explicit save controls, copyable JSON for future files under `data/training-routes/`, autosave recovery state, and readiness checklists.
 
 Export should remain blocked until start, destination, matched route geometry, required metadata, validation, and shortest-route comparison are ready. The exported JSON uses the currently authored route shown in the authoring workspace and does not silently use a preselected fixture.
 
-`Save draft` is available earlier than export because it is meant to preserve authoring work. It still requires a safe route id, selected start, selected destination, and matched route. `Save validated draft` is stricter and requires complete metadata, a non-blocking validation result, a completed shortest-route comparison, and route choice justification where a major detour warning requires one.
+Save targets:
 
-Saved dev drafts are written to:
+- `Save working draft` is for incomplete or in-progress routes. It requires a safe route id and title, stores JSON status as `draft`, and writes to `data/training-routes/drafts/`.
+- `Save review candidate` is for routes ready for dev or instructor review. It requires route id, title, start, destination, matched route, required metadata, and a validation run. It stores JSON status as `draft`, lifecycle stage as `review`, and writes to `data/training-routes/review/`.
+- `Save complete route` is for routes ready to become curated learner training routes. It requires route id, title, area, difficulty, exercise type, start, destination, matched route, required metadata, validation run, no blocking validation errors, shortest-route comparison run or unknown, required route choice justification, and beta or approved status. It writes to `data/training-routes/complete/`.
+
+The suggested filename is based on route metadata:
+
+```text
+<area-slug>-<difficulty>-<exercise-type>-<title-slug>.json
+```
+
+Working drafts append `-draft` before `.json`. Review and complete route filenames avoid `draft` unless that word is genuinely part of the cleaned route title. Existing files are preserved by writing a safe `-copy` filename.
+
+Save directories:
 
 - `data/training-routes/drafts/`
+- `data/training-routes/review/`
+- `data/training-routes/complete/`
 
-Prepared future route folders are:
+The save API is intentionally dev-only. In production it returns a clear disabled response. Route ids are sanitized, path traversal is rejected, approved routes cannot be saved to drafts, and JSON is pretty-printed with `createdAt` and `updatedAt` timestamps.
 
-- `data/training-routes/beta/`
-- `data/training-routes/approved/`
-- `data/training-routes/archive/`
-
-The save API is intentionally dev-only. In production it returns a clear disabled response. Route ids are sanitized into `.json` filenames, path traversal is rejected, existing drafts are preserved by writing a safe copy filename, and JSON is pretty-printed with `createdAt` and `updatedAt` timestamps.
-
-The autosave recovery is browser-local storage for `/dev/training-route`. It is not a curated route source of truth; use file saves for drafts that should move toward Stage 19 review.
+The autosave recovery is browser-local storage for `/dev/training-route`. It is not a curated route source of truth and does not write any route library file. Use explicit file saves for work that should move toward Stage 19 review.
 
 The exported contract includes:
 
+- top-level route id, title, area, difficulty, exercise type, status, save mode where applicable, and lifecycle stage
 - metadata and status
 - source map and route exercise ids
 - start, destination, checkpoints, node ids, and route geometry
@@ -137,7 +149,7 @@ The exported contract includes:
 - route choice justification
 - validation segments for later replay
 
-Stage 18.5 and Stage 18.6 do not switch learner Training Mode to curated routes. Stage 19 can load these exports and instantiate exercises through the existing Phase 7 generation, validation, scoring, hint, feedback, and progress modules.
+Stage 18.5 through Stage 18.15 do not switch learner Training Mode to curated routes. Stage 19 can load complete, beta, or approved exports and instantiate exercises through the existing Phase 7 generation, validation, scoring, hint, feedback, and progress modules.
 
 ## Manual QA
 
@@ -162,35 +174,39 @@ Run the app locally and check:
 17. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments.
 18. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
 19. Confirm export remains blocked while validation has blocking errors, and the export checklist explains each missing requirement.
-20. Confirm `Save draft` writes a JSON file under `data/training-routes/drafts/` once required route data exists.
-21. Confirm `Save validated draft` blocks until validation and shortest-route comparison are complete.
-22. Complete required metadata and confirm `Download JSON` and `Copy JSON` enable only when the export readiness checklist is complete.
-23. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, metadata, validation summary, complexity summary, and shortest-route comparison.
-24. Reload `/dev/training-route` after editing and confirm autosave recovery restores the draft state.
-25. Confirm a repeated file save creates a safe copy instead of silently overwriting an existing draft.
-26. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
-27. Confirm one-way indicators on `/dev/training-route` are clearly arrows, not dot-like symbols.
-28. Confirm START and DESTINATION markers match the practice map marker style and are not oversized.
-29. Confirm checkpoint markers match the Training Mode/practice map style and remain readable.
-30. Confirm authored, matched, shortest-route, and validation overlays remain visually distinct over the Real London map.
-31. Confirm wheel zoom over the map zooms towards the cursor and the map point under the cursor stays stable.
-32. Confirm middle mouse drag pans the map in `Pan`, `Set start`, `Draw route`, `Add checkpoint`, and `Set destination` modes.
-33. Confirm releasing the middle mouse button leaves the selected authoring mode unchanged.
-34. Confirm middle-click does not place start, destination, or checkpoints and does not draw a route.
-35. Confirm browser middle-click autoscroll does not activate inside the map.
-36. Confirm right-click does not place or draw on the map.
-37. Confirm left-click still places start, destination, checkpoints, and begins drawing in the matching authoring modes.
-38. Confirm page scroll does not move while panning or drawing inside the map.
-39. Confirm touch drawing and panning still work on mobile.
-40. Click `Set start` on several parts of the map and confirm the marker appears at the clicked or nearest-road snap location.
-41. Zoom in, repeat start placement, and confirm there is no growing offset across the viewport.
-42. Zoom out, repeat destination placement, and confirm the selected marker stays aligned.
-43. Pan the map, then place checkpoints across different map areas and confirm each checkpoint lands near the clicked road.
-44. Scroll the page away from and back to the map, then place start/destination again and confirm coordinates remain aligned.
-45. Draw a route and confirm the raw route line follows the cursor path.
-46. Enable `Show click diagnostics` and confirm the raw click marker and snapped marker are close to the clicked road.
-47. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-48. `/practice/training` remains the learner-facing Training Mode route.
+20. Confirm `Save working draft`, `Save review candidate`, and `Save complete route` are visible in the export panel.
+21. Confirm `Save working draft` writes draft-status JSON under `data/training-routes/drafts/` and shows the saved path.
+22. Confirm `Save review candidate` blocks until validation has run and then writes under `data/training-routes/review/`.
+23. Confirm `Save complete route` blocks until validation, shortest-route comparison, route choice justification where required, and beta or approved status are ready, then writes under `data/training-routes/complete/`.
+24. Confirm an approved route cannot be saved into `data/training-routes/drafts/`.
+25. Confirm the export panel shows save mode, JSON status, suggested filename, full save path, learner-facing later, and a checklist for each save target.
+26. Complete required metadata and confirm `Download JSON` and `Copy JSON` enable only when the export readiness checklist is complete.
+27. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, route metadata, save lifecycle data, validation summary, complexity summary, and shortest-route comparison.
+28. Reload `/dev/training-route` after editing and confirm autosave recovery restores the local authoring state without looking like a file save.
+29. Confirm a repeated file save creates a safe copy instead of silently overwriting an existing route file.
+30. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
+31. Confirm one-way indicators on `/dev/training-route` are clearly arrows, not dot-like symbols.
+32. Confirm START and DESTINATION markers match the practice map marker style and are not oversized.
+33. Confirm checkpoint markers match the Training Mode/practice map style and remain readable.
+34. Confirm authored, matched, shortest-route, and validation overlays remain visually distinct over the Real London map.
+35. Confirm wheel zoom over the map zooms towards the cursor and the map point under the cursor stays stable.
+36. Confirm middle mouse drag pans the map in `Pan`, `Set start`, `Draw route`, `Add checkpoint`, and `Set destination` modes.
+37. Confirm releasing the middle mouse button leaves the selected authoring mode unchanged.
+38. Confirm middle-click does not place start, destination, or checkpoints and does not draw a route.
+39. Confirm browser middle-click autoscroll does not activate inside the map.
+40. Confirm right-click does not place or draw on the map.
+41. Confirm left-click still places start, destination, checkpoints, and begins drawing in the matching authoring modes.
+42. Confirm page scroll does not move while panning or drawing inside the map.
+43. Confirm touch drawing and panning still work on mobile.
+44. Click `Set start` on several parts of the map and confirm the marker appears at the clicked or nearest-road snap location.
+45. Zoom in, repeat start placement, and confirm there is no growing offset across the viewport.
+46. Zoom out, repeat destination placement, and confirm the selected marker stays aligned.
+47. Pan the map, then place checkpoints across different map areas and confirm each checkpoint lands near the clicked road.
+48. Scroll the page away from and back to the map, then place start/destination again and confirm coordinates remain aligned.
+49. Draw a route and confirm the raw route line follows the cursor path.
+50. Enable `Show click diagnostics` and confirm the raw click marker and snapped marker are close to the clicked road.
+51. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+52. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 

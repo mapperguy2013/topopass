@@ -1,17 +1,32 @@
 import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { CuratedTrainingRouteExport } from "./curatedTrainingRoutes.ts";
+import type {
+  CuratedTrainingRouteExport,
+  CuratedTrainingRouteStatus
+} from "./curatedTrainingRoutes.ts";
+import {
+  CURATED_TRAINING_ROUTE_SAVE_MODE_DIRECTORIES,
+  curatedTrainingRouteFilename,
+  effectiveCuratedTrainingRouteId,
+  lifecycleStageForCuratedTrainingRouteSaveMode,
+  normaliseCuratedTrainingRouteSaveMode,
+  slugifyCuratedTrainingRouteValue,
+  statusForCuratedTrainingRouteSaveMode,
+  type CuratedTrainingRouteSaveMode
+} from "./curatedTrainingRouteSaveNaming.ts";
 
 export const CURATED_TRAINING_ROUTE_ROOT_RELATIVE_DIR = "data/training-routes";
 export const CURATED_TRAINING_ROUTE_DRAFTS_RELATIVE_DIR = "data/training-routes/drafts";
 export const CURATED_TRAINING_ROUTE_STORAGE_RELATIVE_DIRS = [
   "data/training-routes/drafts",
+  "data/training-routes/review",
+  "data/training-routes/complete",
   "data/training-routes/beta",
   "data/training-routes/approved",
   "data/training-routes/archive"
 ] as const;
 
-export type CuratedTrainingRouteDraftSaveMode = "draft" | "validated-draft";
+export type CuratedTrainingRouteDraftSaveMode = CuratedTrainingRouteSaveMode;
 
 export type CuratedTrainingRouteDraftSaveSuccess = {
   ok: true;
@@ -52,7 +67,7 @@ export async function handleCuratedTrainingRouteDraftSaveRequest(input: {
     return {
       ok: false,
       status: 415,
-      message: "Training route draft saves must use application/json.",
+      message: "Training route saves must use application/json.",
       reasonCode: "unsupported-content-type"
     };
   }
@@ -65,7 +80,7 @@ export async function handleCuratedTrainingRouteDraftSaveRequest(input: {
     return {
       ok: false,
       status: 400,
-      message: "Training route draft save request body must be valid JSON.",
+      message: "Training route save request body must be valid JSON.",
       reasonCode: "invalid-json"
     };
   }
@@ -74,12 +89,12 @@ export async function handleCuratedTrainingRouteDraftSaveRequest(input: {
     return {
       ok: false,
       status: 400,
-      message: "Training route draft save request body must be a JSON object.",
+      message: "Training route save request body must be a JSON object.",
       reasonCode: "invalid-request-body"
     };
   }
 
-  const saveMode = body.saveMode === "validated-draft" ? "validated-draft" : "draft";
+  const saveMode = normaliseCuratedTrainingRouteSaveMode(body.saveMode);
 
   return saveCuratedTrainingRouteDraft({
     route: body.route,
@@ -101,7 +116,7 @@ export async function saveCuratedTrainingRouteDraft(input: {
     return {
       ok: false,
       status: 403,
-      message: "Dev training route draft saves are disabled in production.",
+      message: "Dev training route saves are disabled in production.",
       reasonCode: "dev-draft-save-disabled-in-production"
     };
   }
@@ -112,26 +127,32 @@ export async function saveCuratedTrainingRouteDraft(input: {
     return route;
   }
 
-  const saveMode = input.saveMode ?? "draft";
-  const validationErrors = validateCuratedTrainingRouteDraftPayload(route.value, saveMode);
+  const saveMode = normaliseCuratedTrainingRouteSaveMode(input.saveMode);
+
+  if (saveMode === "working-draft" && readRouteStatus(route.value) === "approved") {
+    return {
+      ok: false,
+      status: 400,
+      message: "Approved route cannot be saved to drafts. Use Save complete route instead.",
+      reasonCode: "approved-route-draft-save-blocked",
+      errors: ["Approved routes must be saved with Save complete route, not Save working draft."]
+    };
+  }
+
+  const normalisedRoute = withSaveModeRouteMetadata(route.value, saveMode);
+  const validationErrors = validateCuratedTrainingRouteDraftPayload(normalisedRoute, saveMode);
 
   if (validationErrors.length > 0) {
     return {
       ok: false,
       status: 400,
-      message:
-        saveMode === "validated-draft"
-          ? "Validated draft was not saved because the authored route is not ready for validated storage."
-          : "Draft was not saved because required authored route data is missing.",
+      message: saveFailureMessage(saveMode),
       reasonCode: "curated-training-route-draft-invalid",
       errors: validationErrors
     };
   }
 
-  const routeId = readRouteId(route.value);
-  const filenameSlug = sanitizeCuratedTrainingRouteDraftRouteId(routeId);
-
-  if (!filenameSlug) {
+  if (hasUnsafeRouteId(readRouteId(route.value))) {
     return {
       ok: false,
       status: 400,
@@ -144,34 +165,38 @@ export async function saveCuratedTrainingRouteDraft(input: {
   const now = input.now ?? new Date();
   const savedAt = now.toISOString();
   const workspaceRoot = path.resolve(input.workspaceRoot ?? process.cwd());
-  const draftsDir = path.resolve(workspaceRoot, ...CURATED_TRAINING_ROUTE_DRAFTS_RELATIVE_DIR.split("/"));
+  const targetRelativeDir = CURATED_TRAINING_ROUTE_SAVE_MODE_DIRECTORIES[saveMode];
+  const targetDir = path.resolve(workspaceRoot, ...targetRelativeDir.split("/"));
 
   await ensureCuratedTrainingRouteStorage(workspaceRoot);
 
-  const draftPath = await resolveAvailableDraftPath({
-    draftsDir,
-    filenameSlug
+  const savePath = await resolveAvailableSavePath({
+    targetDir,
+    filename: curatedTrainingRouteFilename({
+      metadata: normalisedRoute.metadata,
+      saveMode
+    })
   });
 
-  if (!isPathInsideDirectory(draftsDir, draftPath.filePath)) {
+  if (!isPathInsideDirectory(targetDir, savePath.filePath)) {
     return {
       ok: false,
       status: 400,
-      message: "Resolved draft path is outside the curated training route drafts directory.",
+      message: "Resolved save path is outside the curated training route storage directory.",
       reasonCode: "draft-path-outside-storage-root"
     };
   }
 
-  const payload = withDraftTimestamps(route.value, savedAt);
+  const payload = withDraftTimestamps(normalisedRoute, savedAt);
   const json = `${JSON.stringify(payload, null, 2)}\n`;
 
   try {
-    await writeFile(draftPath.filePath, json, "utf8");
+    await writeFile(savePath.filePath, json, "utf8");
   } catch {
     return {
       ok: false,
       status: 500,
-      message: "Training route draft could not be saved.",
+      message: "Training route could not be saved.",
       reasonCode: "draft-save-write-failed"
     };
   }
@@ -179,14 +204,14 @@ export async function saveCuratedTrainingRouteDraft(input: {
   return {
     ok: true,
     status: 200,
-    message: "Training route draft saved.",
-    filename: draftPath.filename,
-    relativePath: draftRelativePath(draftPath.filename),
-    filePath: draftPath.filePath,
+    message: saveSuccessMessage(saveMode, `${targetRelativeDir}/${savePath.filename}`),
+    filename: savePath.filename,
+    relativePath: `${targetRelativeDir}/${savePath.filename}`,
+    filePath: savePath.filePath,
     savedAt,
     createdAt: payload.createdAt,
     updatedAt: payload.updatedAt,
-    copiedFromExisting: draftPath.copiedFromExisting
+    copiedFromExisting: savePath.copiedFromExisting
   };
 }
 
@@ -207,11 +232,7 @@ export function sanitizeCuratedTrainingRouteDraftRouteId(routeId: string | null)
     return null;
   }
 
-  const slug = trimmed
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 96);
+  const slug = slugifyCuratedTrainingRouteValue(trimmed).slice(0, 120);
 
   return slug.length > 0 ? slug : null;
 }
@@ -255,7 +276,7 @@ function parseRouteInput(route: unknown):
     return {
       ok: false,
       status: 400,
-      message: "Training route draft must include a route JSON object.",
+      message: "Training route save must include a route JSON object.",
       reasonCode: "missing-route-json"
     };
   }
@@ -277,6 +298,30 @@ function validateCuratedTrainingRouteDraftPayload(
 
   if (typeof metadata.routeId !== "string" || metadata.routeId.trim().length === 0) {
     errors.push("Route id is required.");
+  }
+
+  if (typeof metadata.title !== "string" || metadata.title.trim().length === 0) {
+    errors.push("Title is required.");
+  }
+
+  if (saveMode === "working-draft") {
+    return errors;
+  }
+
+  if (typeof metadata.area !== "string" || metadata.area.trim().length === 0) {
+    errors.push("Area is required.");
+  }
+
+  if (typeof metadata.difficulty !== "string" || metadata.difficulty.trim().length === 0) {
+    errors.push("Difficulty is required.");
+  }
+
+  if (typeof metadata.exerciseType !== "string" || metadata.exerciseType.trim().length === 0) {
+    errors.push("Exercise type is required.");
+  }
+
+  if (typeof metadata.objective !== "string" || metadata.objective.trim().length === 0) {
+    errors.push("Objective is required.");
   }
 
   if (typeof start.nodeId !== "string" || start.nodeId.trim().length === 0) {
@@ -311,13 +356,21 @@ function validateCuratedTrainingRouteDraftPayload(
     errors.push("Shortest-route comparison summary is required.");
   }
 
-  if (saveMode === "validated-draft") {
+  if (validationHasNotRun(validationSummary)) {
+    errors.push("Validation has not run.");
+  }
+
+  if (saveMode === "complete-route") {
     if (validationSummary.valid !== true || validationSummary.status === "invalid") {
-      errors.push("Validated drafts require a valid route validation summary.");
+      errors.push("Complete routes require a valid route validation summary.");
     }
 
     if (Array.isArray(validationSummary.blockingErrors) && validationSummary.blockingErrors.length > 0) {
-      errors.push("Validated drafts cannot include blocking validation errors.");
+      errors.push("Complete routes cannot include blocking validation errors.");
+    }
+
+    if (!shortestRouteComparisonHasRun(shortestRouteComparison)) {
+      errors.push("Shortest-route comparison has not run.");
     }
 
     const requiresRouteChoiceJustification = shortestRouteComparison.requiresRouteChoiceJustification === true;
@@ -327,17 +380,110 @@ function validateCuratedTrainingRouteDraftPayload(
         : "";
 
     if (requiresRouteChoiceJustification && routeChoiceJustification.length === 0) {
-      errors.push("Validated drafts with a major detour warning require route choice justification.");
+      errors.push("Complete routes with a major detour warning require route choice justification.");
+    }
+
+    const status = typeof metadata.status === "string" ? metadata.status : "";
+
+    if (status !== "beta" && status !== "approved") {
+      errors.push("Complete routes require beta or approved status.");
     }
   }
 
   return errors;
 }
 
+function withSaveModeRouteMetadata(
+  route: CuratedTrainingRouteExport,
+  saveMode: CuratedTrainingRouteSaveMode
+): CuratedTrainingRouteExport {
+  const metadata = readRecord((route as Record<string, unknown>).metadata) as CuratedTrainingRouteExport["metadata"];
+  const currentStatus: CuratedTrainingRouteStatus =
+    metadata.status === "beta" || metadata.status === "approved" || metadata.status === "draft"
+      ? metadata.status
+      : "draft";
+  const sourceMetadata = {
+    ...metadata,
+    routeId: effectiveCuratedTrainingRouteId(metadata),
+    status: statusForCuratedTrainingRouteSaveMode({
+      saveMode,
+      status: currentStatus
+    })
+  };
+
+  return {
+    ...route,
+    routeId: sourceMetadata.routeId,
+    title: sourceMetadata.title,
+    area: sourceMetadata.area,
+    difficulty: sourceMetadata.difficulty,
+    exerciseType: sourceMetadata.exerciseType,
+    status: sourceMetadata.status,
+    saveMode,
+    lifecycleStage: lifecycleStageForCuratedTrainingRouteSaveMode(saveMode),
+    metadata: sourceMetadata
+  };
+}
+
+function hasUnsafeRouteId(routeId: string | null): boolean {
+  const trimmed = routeId?.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  return sanitizeCuratedTrainingRouteDraftRouteId(trimmed) === null;
+}
+
+function validationHasNotRun(validationSummary: Record<string, unknown>): boolean {
+  const explanation = typeof validationSummary.explanation === "string" ? validationSummary.explanation.toLowerCase() : "";
+
+  return explanation.includes("validation has not been run");
+}
+
+function shortestRouteComparisonHasRun(shortestRouteComparison: Record<string, unknown>): boolean {
+  const directComparison = readRecord(shortestRouteComparison.directComparison);
+  const explanation = typeof directComparison.explanation === "string" ? directComparison.explanation.toLowerCase() : "";
+
+  return !explanation.includes("has not been run");
+}
+
+function saveFailureMessage(saveMode: CuratedTrainingRouteSaveMode): string {
+  if (saveMode === "complete-route") {
+    return "Complete route could not be saved because required checks are missing.";
+  }
+
+  if (saveMode === "review-candidate") {
+    return "Review candidate could not be saved because required route data is missing.";
+  }
+
+  return "Working draft could not be saved because required route metadata is missing.";
+}
+
+function saveSuccessMessage(saveMode: CuratedTrainingRouteSaveMode, relativePath: string): string {
+  if (saveMode === "complete-route") {
+    return `Complete route saved. Path: ${relativePath}`;
+  }
+
+  if (saveMode === "review-candidate") {
+    return `Review candidate saved. Path: ${relativePath}`;
+  }
+
+  return `Working draft saved. Path: ${relativePath}`;
+}
+
 function readRouteId(route: CuratedTrainingRouteExport): string | null {
   const metadata = readRecord((route as Record<string, unknown>).metadata);
 
   return typeof metadata.routeId === "string" ? metadata.routeId : null;
+}
+
+function readRouteStatus(route: CuratedTrainingRouteExport): CuratedTrainingRouteStatus | null {
+  const metadata = readRecord((route as Record<string, unknown>).metadata);
+
+  return metadata.status === "draft" || metadata.status === "beta" || metadata.status === "approved"
+    ? metadata.status
+    : null;
 }
 
 function readRecord(value: unknown): Record<string, unknown> {
@@ -360,17 +506,21 @@ async function ensureCuratedTrainingRouteStorage(workspaceRoot: string): Promise
   );
 }
 
-async function resolveAvailableDraftPath(input: {
-  draftsDir: string;
-  filenameSlug: string;
+async function resolveAvailableSavePath(input: {
+  targetDir: string;
+  filename: string;
 }): Promise<{ filename: string; filePath: string; copiedFromExisting: boolean }> {
+  const parsedPath = path.parse(input.filename);
+  const baseName = parsedPath.name;
+  const extension = parsedPath.ext || ".json";
+
   for (let copyIndex = 0; copyIndex < 1000; copyIndex += 1) {
     const suffix = copyIndex === 0 ? "" : copyIndex === 1 ? "-copy" : `-copy-${copyIndex}`;
-    const filename = `${input.filenameSlug}${suffix}.json`;
-    const filePath = path.resolve(input.draftsDir, filename);
+    const filename = `${baseName}${suffix}${extension}`;
+    const filePath = path.resolve(input.targetDir, filename);
 
-    if (!isPathInsideDirectory(input.draftsDir, filePath)) {
-      throw new Error("Resolved draft path escaped the drafts directory.");
+    if (!isPathInsideDirectory(input.targetDir, filePath)) {
+      throw new Error("Resolved save path escaped the target directory.");
     }
 
     if (!(await fileExists(filePath))) {
@@ -382,7 +532,7 @@ async function resolveAvailableDraftPath(input: {
     }
   }
 
-  throw new Error("Could not allocate a curated training route draft filename.");
+  throw new Error("Could not allocate a curated training route filename.");
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -398,10 +548,6 @@ function isPathInsideDirectory(parentDir: string, childPath: string): boolean {
   const relative = path.relative(parentDir, childPath);
 
   return Boolean(relative) && !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
-function draftRelativePath(filename: string): string {
-  return `${CURATED_TRAINING_ROUTE_DRAFTS_RELATIVE_DIR}/${filename}`;
 }
 
 function withDraftTimestamps(

@@ -7,6 +7,10 @@ import type {
   LearnerRouteValidationResult,
   LearnerRouteValidationSegment
 } from "./learnerRouteValidation.ts";
+import type {
+  CuratedTrainingRouteLifecycleStage,
+  CuratedTrainingRouteSaveMode
+} from "./curatedTrainingRouteSaveNaming.ts";
 
 export type CuratedTrainingRouteStatus = "draft" | "beta" | "approved";
 
@@ -82,6 +86,14 @@ export type CuratedTrainingRouteStop = {
 
 export type CuratedTrainingRouteExport = {
   schemaVersion: 1;
+  routeId: string;
+  title: string;
+  area: string;
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+  exerciseType: ExerciseType;
+  status: CuratedTrainingRouteStatus;
+  saveMode?: CuratedTrainingRouteSaveMode;
+  lifecycleStage: CuratedTrainingRouteLifecycleStage;
   metadata: CuratedTrainingRouteMetadata;
   mapId: string;
   mapVersion?: string | number;

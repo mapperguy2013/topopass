@@ -37,6 +37,18 @@ import {
   type CuratedTrainingRouteStop
 } from "../../../lib/training/curatedTrainingRoutes.ts";
 import {
+  CURATED_TRAINING_ROUTE_SAVE_MODE_DIRECTORIES,
+  CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS,
+  curatedTrainingRouteFilename,
+  curatedTrainingRouteRelativePath,
+  effectiveCuratedTrainingRouteId,
+  isGenericCuratedTrainingRouteId,
+  lifecycleStageForCuratedTrainingRouteSaveMode,
+  statusForCuratedTrainingRouteSaveMode,
+  suggestCuratedTrainingRouteId,
+  type CuratedTrainingRouteSaveMode
+} from "../../../lib/training/curatedTrainingRouteSaveNaming.ts";
+import {
   validateLearnerRoute,
   type LearnerRouteValidationIssue,
   type LearnerRouteValidationResult,
@@ -148,6 +160,8 @@ export type TrainingRouteAuthorField = {
   input: "text" | "textarea" | "select";
   value: string;
   options?: readonly string[];
+  optionLabels?: Record<string, string>;
+  helpText?: string;
 };
 
 export type TrainingRouteAuthorApprovalWarning = {
@@ -215,6 +229,24 @@ export type TrainingRouteAuthorExportReadiness = {
   }>;
 };
 
+export type TrainingRouteAuthorSaveTarget = {
+  mode: CuratedTrainingRouteSaveMode;
+  label: string;
+  actionLabel: string;
+  ready: boolean;
+  unavailableMessage: string | null;
+  jsonStatus: CuratedTrainingRouteStatus;
+  lifecycleStage: ReturnType<typeof lifecycleStageForCuratedTrainingRouteSaveMode>;
+  suggestedFilename: string;
+  relativePath: string;
+  directory: string;
+  learnerFacingLater: boolean;
+  checklist: Array<{
+    label: string;
+    complete: boolean;
+  }>;
+};
+
 export type TrainingRouteAuthorDraftSaveReadiness = {
   ready: boolean;
   suggestedFilename: string;
@@ -265,6 +297,9 @@ export type TrainingRouteAuthorModel = {
   exportReadiness: TrainingRouteAuthorExportReadiness;
   draftSaveReadiness: TrainingRouteAuthorDraftSaveReadiness;
   validatedDraftSaveReadiness: TrainingRouteAuthorDraftSaveReadiness;
+  saveTargets: TrainingRouteAuthorSaveTarget[];
+  suggestedRouteId: string;
+  effectiveRouteId: string;
   metadataFields: TrainingRouteAuthorField[];
   validationRunStatus: "not-run" | LearnerRouteValidationResult["status"];
   comparisonRunStatus: "not-run" | CuratedShortestRouteComparisonDetail["comparisonStatus"];
@@ -652,9 +687,23 @@ function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetad
   };
 }
 
-function buildMetadataFields(metadata: CuratedTrainingRouteMetadata): TrainingRouteAuthorField[] {
+function buildMetadataFields(input: {
+  metadata: CuratedTrainingRouteMetadata;
+  effectiveRouteId: string;
+  suggestedRouteId: string;
+}): TrainingRouteAuthorField[] {
+  const metadata = input.metadata;
+
   return [
-    { id: "routeId", label: "Route id", input: "text", value: metadata.routeId },
+    {
+      id: "routeId",
+      label: "Route id",
+      input: "text",
+      value: input.effectiveRouteId,
+      helpText: isGenericCuratedTrainingRouteId(metadata.routeId)
+        ? `Auto-suggested from metadata: ${input.suggestedRouteId}`
+        : "Editable route id used for saved JSON and route library naming."
+    },
     { id: "title", label: "Title", input: "text", value: metadata.title },
     { id: "area", label: "Area", input: "text", value: metadata.area },
     {
@@ -701,10 +750,16 @@ function buildMetadataFields(metadata: CuratedTrainingRouteMetadata): TrainingRo
     },
     {
       id: "status",
-      label: "Approved/beta status",
+      label: "Route lifecycle status",
       input: "select",
       value: metadata.status,
-      options: ["draft", "beta", "approved"]
+      options: ["draft", "beta", "approved"],
+      optionLabels: {
+        draft: "Draft - not learner-facing",
+        beta: "Beta - learner-facing beta route",
+        approved: "Approved - complete approved route"
+      },
+      helpText: "Review candidate is a save mode. JSON status remains draft until the route is beta or approved."
     }
   ];
 }
@@ -1694,32 +1749,16 @@ function buildExportReadiness(input: {
 
   return {
     ready: checklist.every((item) => item.complete),
-    suggestedFilename: `${input.metadata.routeId.trim() || "curated-training-route"}.json`,
+    suggestedFilename: curatedTrainingRouteFilename({
+      metadata: input.metadata,
+      saveMode: "complete-route"
+    }),
     checklist
   };
 }
 
-function buildDraftSaveReadiness(input: {
-  metadata: CuratedTrainingRouteMetadata;
-  hasStart: boolean;
-  hasDestination: boolean;
-  hasRoute: boolean;
-}): TrainingRouteAuthorDraftSaveReadiness {
-  const checklist = [
-    { label: "Route id is safe and present", complete: Boolean(input.metadata.routeId.trim()) },
-    { label: "Start selected", complete: input.hasStart },
-    { label: "Destination selected", complete: input.hasDestination },
-    { label: "Route drawn and matched", complete: input.hasRoute }
-  ];
-
-  return {
-    ready: checklist.every((item) => item.complete),
-    suggestedFilename: `${input.metadata.routeId.trim() || "curated-training-route"}.json`,
-    checklist
-  };
-}
-
-function buildValidatedDraftSaveReadiness(input: {
+function buildSaveTarget(input: {
+  mode: CuratedTrainingRouteSaveMode;
   metadata: CuratedTrainingRouteMetadata;
   hasStart: boolean;
   hasDestination: boolean;
@@ -1728,7 +1767,8 @@ function buildValidatedDraftSaveReadiness(input: {
   validationHasRun: boolean;
   comparisonHasRun: boolean;
   comparison: CuratedShortestRouteComparison;
-}): TrainingRouteAuthorDraftSaveReadiness {
+  approvalWarning: TrainingRouteAuthorApprovalWarning | null;
+}): TrainingRouteAuthorSaveTarget {
   const hasRequiredMetadata = hasRequiredTrainingRouteMetadata(input.metadata);
   const requiresRouteChoiceJustification =
     input.comparison.requiresRouteChoiceJustification ||
@@ -1736,13 +1776,24 @@ function buildValidatedDraftSaveReadiness(input: {
     input.comparison.checkpointConstrainedComparison.verdict === "major-detour-warning";
   const routeChoiceJustificationComplete =
     !requiresRouteChoiceJustification || Boolean(input.metadata.routeChoiceJustification.trim());
-  const checklist = [
+  const baseChecklist = [
     { label: "Route id is safe and present", complete: Boolean(input.metadata.routeId.trim()) },
+    { label: "Title is present", complete: Boolean(input.metadata.title.trim()) }
+  ];
+  const workingDraftChecklist = [
+    ...baseChecklist,
+    { label: "Approved routes use Save complete route", complete: input.metadata.status !== "approved" }
+  ];
+  const reviewChecklist = [
+    ...baseChecklist,
     { label: "Start selected", complete: input.hasStart },
     { label: "Destination selected", complete: input.hasDestination },
     { label: "Route drawn and matched", complete: input.hasRoute },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
-    { label: "Validation has run", complete: input.validationHasRun },
+    { label: "Validation has run", complete: input.validationHasRun }
+  ];
+  const completeChecklist = [
+    ...reviewChecklist,
     {
       label: "Validation has no blocking errors",
       complete:
@@ -1752,14 +1803,59 @@ function buildValidatedDraftSaveReadiness(input: {
         input.validation.blockingErrors.length === 0
     },
     { label: "Shortest-route comparison has run", complete: input.comparisonHasRun },
-    { label: "Route choice justification complete when required", complete: routeChoiceJustificationComplete }
+    { label: "Route choice justification complete when required", complete: routeChoiceJustificationComplete },
+    { label: "Status is beta or approved", complete: input.metadata.status === "beta" || input.metadata.status === "approved" },
+    { label: "Approved status is allowed", complete: !input.approvalWarning?.blocking }
   ];
+  const checklist =
+    input.mode === "working-draft" ? workingDraftChecklist : input.mode === "review-candidate" ? reviewChecklist : completeChecklist;
+  const suggestedFilename = curatedTrainingRouteFilename({
+    metadata: input.metadata,
+    saveMode: input.mode
+  });
+  const ready = checklist.every((item) => item.complete);
 
   return {
-    ready: checklist.every((item) => item.complete),
-    suggestedFilename: `${input.metadata.routeId.trim() || "curated-training-route"}.json`,
+    mode: input.mode,
+    label: CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[input.mode],
+    actionLabel: CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[input.mode],
+    ready,
+    unavailableMessage: ready ? null : unavailableMessageForSaveMode(input.mode, checklist),
+    jsonStatus: statusForCuratedTrainingRouteSaveMode({
+      saveMode: input.mode,
+      status: input.metadata.status
+    }),
+    lifecycleStage: lifecycleStageForCuratedTrainingRouteSaveMode(input.mode),
+    suggestedFilename,
+    relativePath: curatedTrainingRouteRelativePath({
+      metadata: input.metadata,
+      saveMode: input.mode
+    }),
+    directory: CURATED_TRAINING_ROUTE_SAVE_MODE_DIRECTORIES[input.mode],
+    learnerFacingLater: input.mode === "complete-route" && (input.metadata.status === "beta" || input.metadata.status === "approved"),
     checklist
   };
+}
+
+function saveTargetToReadiness(target: TrainingRouteAuthorSaveTarget): TrainingRouteAuthorDraftSaveReadiness {
+  return {
+    ready: target.ready,
+    suggestedFilename: target.suggestedFilename,
+    checklist: target.checklist
+  };
+}
+
+function unavailableMessageForSaveMode(
+  mode: CuratedTrainingRouteSaveMode,
+  checklist: readonly { label: string; complete: boolean }[]
+): string | null {
+  const missingItem = checklist.find((item) => !item.complete);
+
+  if (!missingItem) {
+    return null;
+  }
+
+  return `${CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[mode]} unavailable: ${missingItem.label.charAt(0).toLowerCase()}${missingItem.label.slice(1)}.`;
 }
 
 function routeStatusSummary(input: {
@@ -1862,22 +1958,28 @@ export function buildTrainingRouteAuthorModel(input?: {
     routeChoiceJustification: input?.routeChoiceJustification ?? baseState.metadata.routeChoiceJustification,
     status: input?.statusOverride ?? baseState.metadata.status
   };
+  const suggestedRouteId = suggestCuratedTrainingRouteId(metadata);
+  const effectiveRouteId = effectiveCuratedTrainingRouteId(metadata);
+  const exportMetadata: CuratedTrainingRouteMetadata = {
+    ...metadata,
+    routeId: effectiveRouteId
+  };
   const hasStart = Boolean(baseState.startNodeId);
   const hasDestination = Boolean(baseState.destinationNodeId);
   const rawRoutePoints = routeDraftToDrawnRouteTrace(baseState.routeDraft).points;
   const hasUsableRoute = rawRoutePoints.length >= 2 || routeDraftHasUsablePoints(baseState.routeDraft);
   const hasMatchedRoute = baseState.validationSegments.length > 0 && baseState.routeMatchStatus === "matched";
-  const checkpointsRequired = trainingRouteAuthorCheckpointsRequired(metadata);
+  const checkpointsRequired = trainingRouteAuthorCheckpointsRequired(exportMetadata);
   const baseValidation = validationMetrics({
     map: sourceMap,
     routeSegments: baseState.validationSegments,
-    difficulty: metadata.difficulty
+    difficulty: exportMetadata.difficulty
   });
   const validation = validationWithAuthoringRequirements({
     validation: baseValidation,
     requirementIssues: authoringValidationIssues({
       state: baseState,
-      metadata,
+      metadata: exportMetadata,
       hasMatchedRoute,
       hasUsableRoute,
       checkpointsRequired
@@ -1895,11 +1997,11 @@ export function buildTrainingRouteAuthorModel(input?: {
     stopNodeIds: selectedStopNodeIds,
     authoredValidation: validation,
     authoredRouteIsValid: validation.valid && baseState.validationSegments.length > 0,
-    difficulty: metadata.difficulty,
-    routeChoiceJustification: metadata.routeChoiceJustification,
+    difficulty: exportMetadata.difficulty,
+    routeChoiceJustification: exportMetadata.routeChoiceJustification,
     comparisonHasRun: baseState.comparisonHasRun
   });
-  const estimatedDifficulty = inferDifficultyFromMetrics(validation, metadata.difficulty);
+  const estimatedDifficulty = inferDifficultyFromMetrics(validation, exportMetadata.difficulty);
   const complexitySummary: CuratedTrainingRouteComplexitySummary = {
     approximateRouteLengthMeters: Math.round(validation.metrics.routeDistanceMeters),
     segmentCount: validation.metrics.segmentCount,
@@ -1909,17 +2011,17 @@ export function buildTrainingRouteAuthorModel(input?: {
     estimatedDifficulty,
     warnings: complexityWarnings({
       validation,
-      selectedDifficulty: metadata.difficulty,
+      selectedDifficulty: exportMetadata.difficulty,
       estimatedDifficulty
     })
   };
   const approval = approvalWarning({
-    status: metadata.status,
+    status: exportMetadata.status,
     validation,
     validationHasRun: baseState.validationHasRun
   });
   const exportReadiness = buildExportReadiness({
-    metadata,
+    metadata: exportMetadata,
     hasStart,
     hasDestination,
     hasRoute: hasMatchedRoute,
@@ -1929,22 +2031,26 @@ export function buildTrainingRouteAuthorModel(input?: {
     comparison: shortestRouteComparison,
     approvalWarning: approval
   });
-  const draftSaveReadiness = buildDraftSaveReadiness({
-    metadata,
-    hasStart,
-    hasDestination,
-    hasRoute: hasMatchedRoute
-  });
-  const validatedDraftSaveReadiness = buildValidatedDraftSaveReadiness({
-    metadata,
+  const saveTargets: TrainingRouteAuthorSaveTarget[] = ([
+    "working-draft",
+    "review-candidate",
+    "complete-route"
+  ] as const).map((mode) => buildSaveTarget({
+    mode,
+    metadata: exportMetadata,
     hasStart,
     hasDestination,
     hasRoute: hasMatchedRoute,
     validation,
     validationHasRun: baseState.validationHasRun,
     comparisonHasRun: baseState.comparisonHasRun,
-    comparison: shortestRouteComparison
-  });
+    comparison: shortestRouteComparison,
+    approvalWarning: approval
+  }));
+  const workingDraftTarget = saveTargets.find((target) => target.mode === "working-draft") ?? saveTargets[0];
+  const reviewCandidateTarget = saveTargets.find((target) => target.mode === "review-candidate") ?? saveTargets[0];
+  const draftSaveReadiness = saveTargetToReadiness(workingDraftTarget);
+  const validatedDraftSaveReadiness = saveTargetToReadiness(reviewCandidateTarget);
   const routeGeometry = pointsForNodeIds(sourceMap, baseState.routeNodeIds);
   const markers: TrainingRouteAuthorMapMarker[] = [
     ...(baseState.startNodeId
@@ -2024,7 +2130,14 @@ export function buildTrainingRouteAuthorModel(input?: {
   );
   const exportData: CuratedTrainingRouteExport = {
     schemaVersion: 1,
-    metadata,
+    routeId: exportMetadata.routeId,
+    title: exportMetadata.title,
+    area: exportMetadata.area,
+    difficulty: exportMetadata.difficulty,
+    exerciseType: exportMetadata.exerciseType,
+    status: exportMetadata.status,
+    lifecycleStage: "authoring",
+    metadata: exportMetadata,
     mapId: sourceMap.id,
     mapVersion: sourceMap.mapVersion ?? sourceMap.version,
     sourceRouteExerciseId: baseState.sampleLoaded ? DEFAULT_ROUTE_EXERCISE?.id : undefined,
@@ -2076,7 +2189,14 @@ export function buildTrainingRouteAuthorModel(input?: {
     exportReadiness,
     draftSaveReadiness,
     validatedDraftSaveReadiness,
-    metadataFields: buildMetadataFields(metadata),
+    saveTargets,
+    suggestedRouteId,
+    effectiveRouteId,
+    metadataFields: buildMetadataFields({
+      metadata,
+      effectiveRouteId,
+      suggestedRouteId
+    }),
     validationRunStatus: baseState.validationHasRun ? validation.status : "not-run",
     comparisonRunStatus: baseState.comparisonHasRun
       ? shortestRouteComparison.directComparison.comparisonStatus

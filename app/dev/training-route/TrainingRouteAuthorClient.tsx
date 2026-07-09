@@ -63,6 +63,7 @@ import {
   type TrainingRouteAuthorMode,
   type TrainingRouteAuthorNodeSnapResult,
   type TrainingRouteAuthorPointerMapConversion,
+  type TrainingRouteAuthorSaveTarget,
   type TrainingRouteAuthorStatusItem,
   type TrainingRouteAuthorToolbarAction,
   type TrainingRouteAuthorState
@@ -90,6 +91,7 @@ type DragState =
 type TrainingRouteAuthorFileSaveStatus = {
   state: "idle" | "saving" | "saved" | "error";
   message: string;
+  saveMode?: TrainingRouteAuthorSaveTarget["mode"];
   relativePath?: string;
   savedAt?: string;
   missingItems?: string[];
@@ -133,7 +135,7 @@ type CuratedTrainingRouteDraftSaveResponse = {
 };
 
 const TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY = "topopass.devTrainingRouteAuthor.autosave.v1";
-const TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT = "/api/dev/training-routes/drafts";
+const TRAINING_ROUTE_SAVE_ENDPOINT = "/api/dev/training-routes/drafts";
 const CLICK_DIAGNOSTIC_RAW_STROKE = "#f59e0b";
 const CLICK_DIAGNOSTIC_SNAP_STROKE = "#0f766e";
 
@@ -200,7 +202,7 @@ function isAutosavedTrainingRouteAuthorState(value: unknown): value is TrainingR
   );
 }
 
-function readinessMissingItems(readiness: TrainingRouteAuthorDraftSaveReadiness): string[] {
+function readinessMissingItems(readiness: Pick<TrainingRouteAuthorDraftSaveReadiness, "checklist">): string[] {
   return readiness.checklist.filter((item) => !item.complete).map((item) => item.label);
 }
 
@@ -1248,17 +1250,14 @@ export function TrainingRouteAuthorClient() {
     window.URL.revokeObjectURL(url);
   }
 
-  async function saveTrainingRouteDraft(saveMode: "draft" | "validated-draft") {
-    const readiness = saveMode === "validated-draft" ? model.validatedDraftSaveReadiness : model.draftSaveReadiness;
-    const missingItems = readinessMissingItems(readiness);
+  async function saveTrainingRoute(target: TrainingRouteAuthorSaveTarget) {
+    const missingItems = readinessMissingItems(target);
 
-    if (!readiness.ready) {
+    if (!target.ready) {
       setFileSaveStatus({
         state: "error",
-        message:
-          saveMode === "validated-draft"
-            ? "Validated draft cannot be saved until the route, validation, and comparison checks are complete."
-            : "Draft cannot be saved until the required route data exists.",
+        saveMode: target.mode,
+        message: target.unavailableMessage ?? `${target.label} is not ready.`,
         missingItems
       });
       return;
@@ -1266,17 +1265,18 @@ export function TrainingRouteAuthorClient() {
 
     setFileSaveStatus({
       state: "saving",
-      message: saveMode === "validated-draft" ? "Saving validated draft..." : "Saving draft..."
+      saveMode: target.mode,
+      message: `${target.label}...`
     });
 
     try {
-      const response = await fetch(TRAINING_ROUTE_DRAFT_SAVE_ENDPOINT, {
+      const response = await fetch(TRAINING_ROUTE_SAVE_ENDPOINT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          saveMode,
+          saveMode: target.mode,
           route: model.exportData
         })
       });
@@ -1285,7 +1285,8 @@ export function TrainingRouteAuthorClient() {
       if (!response.ok || !responseBody?.ok) {
         setFileSaveStatus({
           state: "error",
-          message: responseBody?.message ?? "Training route draft could not be saved.",
+          saveMode: target.mode,
+          message: responseBody?.message ?? `${target.label} could not be saved.`,
           missingItems: responseBody?.errors
         });
         return;
@@ -1293,7 +1294,8 @@ export function TrainingRouteAuthorClient() {
 
       setFileSaveStatus({
         state: "saved",
-        message: responseBody.message ?? "Training route draft saved.",
+        saveMode: target.mode,
+        message: responseBody.message ?? `${target.label} saved.`,
         relativePath: responseBody.relativePath,
         savedAt: responseBody.savedAt
       });
@@ -1301,7 +1303,8 @@ export function TrainingRouteAuthorClient() {
     } catch {
       setFileSaveStatus({
         state: "error",
-        message: "Training route draft could not be saved because the dev save endpoint was unavailable."
+        saveMode: target.mode,
+        message: `${target.label} could not be saved because the dev save endpoint was unavailable.`
       });
     }
   }
@@ -1309,7 +1312,7 @@ export function TrainingRouteAuthorClient() {
   function clearAutosaveDraft() {
     try {
       window.localStorage.removeItem(TRAINING_ROUTE_AUTHOR_AUTOSAVE_KEY);
-      setAutosaveNotice("Autosave recovery draft cleared.");
+      setAutosaveNotice("Temporary autosave recovery cleared. No route library file was changed.");
       setLastAutosavedAt(null);
     } catch {
       setAutosaveNotice("Autosave recovery could not be cleared in this browser session.");
@@ -1321,42 +1324,51 @@ export function TrainingRouteAuthorClient() {
 
     if (field.input === "textarea") {
       return (
-        <textarea
-          className={`${baseClass} min-h-24`}
-          id={field.id}
-          name={field.id}
-          onChange={(event) => handleMetadataChange(field, event)}
-          value={fieldValueForInput(field)}
-        />
+        <>
+          <textarea
+            className={`${baseClass} min-h-24`}
+            id={field.id}
+            name={field.id}
+            onChange={(event) => handleMetadataChange(field, event)}
+            value={fieldValueForInput(field)}
+          />
+          {field.helpText ? <span className="mt-1 block text-xs font-normal text-slate-500">{field.helpText}</span> : null}
+        </>
       );
     }
 
     if (field.input === "select") {
       return (
-        <select
+        <>
+          <select
+            className={baseClass}
+            id={field.id}
+            name={field.id}
+            onChange={(event) => handleMetadataChange(field, event)}
+            value={fieldValueForInput(field)}
+          >
+            {field.options?.map((option) => (
+              <option key={option} value={option}>
+                {field.optionLabels?.[option] ?? option}
+              </option>
+            ))}
+          </select>
+          {field.helpText ? <span className="mt-1 block text-xs font-normal text-slate-500">{field.helpText}</span> : null}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <input
           className={baseClass}
           id={field.id}
           name={field.id}
           onChange={(event) => handleMetadataChange(field, event)}
           value={fieldValueForInput(field)}
-        >
-          {field.options?.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    return (
-      <input
-        className={baseClass}
-        id={field.id}
-        name={field.id}
-        onChange={(event) => handleMetadataChange(field, event)}
-        value={fieldValueForInput(field)}
-      />
+        />
+        {field.helpText ? <span className="mt-1 block text-xs font-normal text-slate-500">{field.helpText}</span> : null}
+      </>
     );
   }
 
@@ -1834,29 +1846,25 @@ export function TrainingRouteAuthorClient() {
           <div>
             <h2 className="text-xl font-bold text-ink">Export panel</h2>
             <p className="mt-2 text-sm leading-6 text-slate-700">
-              Save dev drafts under data/training-routes/drafts or export the current JSON for review.
+              Explicit saves write route JSON to the selected training-route folder. Browser autosave is only temporary recovery.
             </p>
             <p className="mt-2 text-sm font-semibold text-slate-800">
-              Suggested filename: <span className="font-mono">{model.exportReadiness.suggestedFilename}</span>
+              Suggested route id: <span className="font-mono">{model.effectiveRouteId}</span>
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
-              disabled={fileSaveStatus.state === "saving"}
-              onClick={() => void saveTrainingRouteDraft("draft")}
-              type="button"
-            >
-              Save draft
-            </button>
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
-              disabled={fileSaveStatus.state === "saving"}
-              onClick={() => void saveTrainingRouteDraft("validated-draft")}
-              type="button"
-            >
-              Save validated draft
-            </button>
+            {model.saveTargets.map((target) => (
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+                disabled={fileSaveStatus.state === "saving" || !target.ready}
+                key={target.mode}
+                onClick={() => void saveTrainingRoute(target)}
+                title={target.unavailableMessage ?? target.relativePath}
+                type="button"
+              >
+                {target.actionLabel}
+              </button>
+            ))}
             <button
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
               disabled={!model.exportReadiness.ready}
@@ -1876,11 +1884,57 @@ export function TrainingRouteAuthorClient() {
           </div>
         </div>
         {copyStatus ? <p className="mt-3 text-sm font-semibold text-slate-700">{copyStatus}</p> : null}
-        {autosaveNotice ? <p className="mt-3 text-sm font-semibold text-slate-700">{autosaveNotice}</p> : null}
+        {autosaveNotice ? (
+          <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">
+            Autosave recovery: {autosaveNotice}
+          </p>
+        ) : null}
+        <div className="mt-4 grid gap-3 xl:grid-cols-3">
+          {model.saveTargets.map((target) => (
+            <section className="rounded-lg border border-slate-200 p-3" key={target.mode}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-ink">{target.label}</h3>
+                  <p className="mt-1 break-all font-mono text-xs text-slate-700">{target.relativePath}</p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                    target.ready ? "border-green-200 bg-green-50 text-green-800" : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}
+                >
+                  {target.ready ? "Ready" : "Blocked"}
+                </span>
+              </div>
+              <dl className="mt-3 grid gap-2 text-xs text-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Save mode</dt>
+                  <dd>{target.mode}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">JSON status</dt>
+                  <dd>{target.jsonStatus}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Suggested filename</dt>
+                  <dd className="break-all font-mono">{target.suggestedFilename}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Learner-facing later</dt>
+                  <dd>{target.learnerFacingLater ? "Yes" : "No"}</dd>
+                </div>
+              </dl>
+              {target.unavailableMessage ? (
+                <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs font-semibold leading-5 text-amber-950">
+                  {target.unavailableMessage}
+                </p>
+              ) : null}
+            </section>
+          ))}
+        </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-[400px_1fr]">
           <div className="space-y-4">
             <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-bold text-ink">Save status</p>
+              <p className="text-sm font-bold text-ink">Explicit route save status</p>
               <dl className="mt-3 space-y-2 text-sm text-slate-700">
                 <div className="flex items-start justify-between gap-3">
                   <dt className="font-semibold">Unsaved changes</dt>
@@ -1930,49 +1984,26 @@ export function TrainingRouteAuthorClient() {
               >
                 Clear autosave recovery
               </button>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Autosave recovery is browser-local and temporary. Explicit saves write route JSON to the folder shown above.
+              </p>
             </div>
 
-            <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-bold text-ink">Draft save readiness</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                {model.draftSaveReadiness.checklist.map((item) => (
-                  <li className="flex items-center justify-between gap-3" key={item.label}>
-                    <span>{item.label}</span>
-                    <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
-                      {item.complete ? "ready" : "missing"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-bold text-ink">Validated draft readiness</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                {model.validatedDraftSaveReadiness.checklist.map((item) => (
-                  <li className="flex items-center justify-between gap-3" key={item.label}>
-                    <span>{item.label}</span>
-                    <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
-                      {item.complete ? "ready" : "missing"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-bold text-ink">Export readiness checklist</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                {model.exportReadiness.checklist.map((item) => (
-                  <li className="flex items-center justify-between gap-3" key={item.label}>
-                    <span>{item.label}</span>
-                    <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
-                      {item.complete ? "ready" : "missing"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {model.saveTargets.map((target) => (
+              <div className="rounded-lg border border-slate-200 p-3" key={`checklist-${target.mode}`}>
+                <p className="text-sm font-bold text-ink">{target.label} checklist</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  {target.checklist.map((item) => (
+                    <li className="flex items-center justify-between gap-3" key={item.label}>
+                      <span>{item.label}</span>
+                      <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
+                        {item.complete ? "ready" : "missing"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
           <textarea
             aria-label="Curated route JSON export"
