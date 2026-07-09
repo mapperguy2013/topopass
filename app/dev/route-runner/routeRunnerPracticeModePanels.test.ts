@@ -136,6 +136,7 @@ test("curated training route author page renders the interactive authoring clien
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
   const mapIndex = clientSource.indexOf("Map authoring workspace");
+  const validationResultIndex = clientSource.indexOf("Validation result");
   const metadataIndex = clientSource.indexOf("Route metadata");
   const exportIndex = clientSource.indexOf("Export panel");
 
@@ -145,6 +146,8 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(clientSource, /Interactive Real London training route authoring map/);
   assert.match(clientSource, /Map authoring workspace/);
   assert.ok(mapIndex > -1);
+  assert.ok(validationResultIndex > mapIndex);
+  assert.ok(validationResultIndex < metadataIndex);
   assert.ok(metadataIndex > mapIndex);
   assert.ok(exportIndex > metadataIndex);
   assert.match(clientSource, /Route metadata/);
@@ -156,6 +159,15 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(clientSource, /Download JSON/);
   assert.match(clientSource, /Curated route JSON export/);
   assert.doesNotMatch(clientSource, /RouteRunnerClient/);
+});
+
+test("curated training route author map viewport uses the author canvas aspect ratio", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.match(clientSource, /aspect-\[1120\/760\]/);
+  assert.match(clientSource, /touch-none select-none overscroll-contain/);
+  assert.doesNotMatch(clientSource, /h-\[420px\]/);
+  assert.doesNotMatch(clientSource, /sm:h-\[560px\]/);
 });
 
 test("curated training route author toolbar exposes the route creation workflow", () => {
@@ -178,8 +190,8 @@ test("curated training route author toolbar exposes the route creation workflow"
     "Compare shortest route",
     "Export JSON"
   ]);
-  assert.equal(model.toolbarActions.find((action) => action.id === "validate-route")?.disabled, true);
-  assert.equal(model.toolbarActions.find((action) => action.id === "compare-shortest-route")?.disabled, true);
+  assert.equal(model.toolbarActions.find((action) => action.id === "validate-route")?.disabled, undefined);
+  assert.equal(model.toolbarActions.find((action) => action.id === "compare-shortest-route")?.disabled, undefined);
   assert.equal(model.toolbarActions.find((action) => action.id === "export-json")?.disabled, true);
   assert.match(clientSource, /role="toolbar"/);
 });
@@ -567,6 +579,7 @@ test("curated training route author hides unrelated route-runner panels by defau
 
 test("curated training route author starts empty and does not export fake route data", () => {
   const model = buildTrainingRouteAuthorModel();
+  const statusItems = new Map(model.routeStatusItems.map((item) => [item.label, item]));
 
   assert.equal(model.exportReadiness.ready, false);
   assert.equal(model.validationRunStatus, "not-run");
@@ -576,6 +589,67 @@ test("curated training route author starts empty and does not export fake route 
   assert.equal(model.sampleLoaded, false);
   assert.equal(model.authoringSteps.find((step) => step.label === "Set start")?.complete, false);
   assert.equal(model.authoringSteps.find((step) => step.label === "Draw route")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Export")?.complete, false);
+  assert.equal(statusItems.get("Start")?.value, "missing");
+  assert.equal(statusItems.get("Route")?.value, "missing");
+  assert.equal(statusItems.get("Export")?.value, "not ready");
+});
+
+test("curated training route author validation reports missing empty-state requirements", () => {
+  const state = validateTrainingRouteAuthorState(createEmptyTrainingRouteAuthorState());
+  const model = buildTrainingRouteAuthorModel({ state });
+  const blockingCodes = model.validation.blockingErrors.map((issue) => issue.code);
+
+  assert.equal(model.validationRunStatus, "invalid");
+  assert.equal(model.validation.valid, false);
+  assert.ok(blockingCodes.includes("author-start-missing"));
+  assert.ok(blockingCodes.includes("author-destination-missing"));
+  assert.ok(blockingCodes.includes("author-route-missing"));
+  assert.match(model.validation.explanation, /Start point is missing/);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Draw route")?.complete, false);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Validate")?.complete, false);
+  assert.equal(model.exportReadiness.ready, false);
+});
+
+test("curated training route author validation reports route missing after endpoints are selected", () => {
+  const map = getTrainingRouteAuthorMap();
+  const startNode = map.nodes[0];
+  const destinationNode = map.nodes[1];
+  let state = createEmptyTrainingRouteAuthorState();
+
+  state = setTrainingRouteAuthorStart(state, startNode.id);
+  state = setTrainingRouteAuthorDestination(state, destinationNode.id);
+  state = validateTrainingRouteAuthorState(state);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const blockingCodes = model.validation.blockingErrors.map((issue) => issue.code);
+  const statusItems = new Map(model.routeStatusItems.map((item) => [item.label, item]));
+
+  assert.equal(model.validationRunStatus, "invalid");
+  assert.equal(blockingCodes.includes("author-start-missing"), false);
+  assert.equal(blockingCodes.includes("author-destination-missing"), false);
+  assert.ok(blockingCodes.includes("author-route-missing"));
+  assert.equal(model.authoringSteps.find((step) => step.label === "Set start")?.complete, true);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Set destination")?.complete, true);
+  assert.equal(model.authoringSteps.find((step) => step.label === "Draw route")?.complete, false);
+  assert.equal(statusItems.get("Start")?.value, "selected");
+  assert.equal(statusItems.get("Destination")?.value, "selected");
+  assert.equal(statusItems.get("Route")?.value, "missing");
+});
+
+test("curated training route author export checklist explains blocking validation gaps", () => {
+  const state = validateTrainingRouteAuthorState(createEmptyTrainingRouteAuthorState());
+  const model = buildTrainingRouteAuthorModel({ state });
+  const checklist = new Map(model.exportReadiness.checklist.map((item) => [item.label, item.complete]));
+
+  assert.equal(model.exportReadiness.ready, false);
+  assert.equal(model.validatedDraftSaveReadiness.ready, false);
+  assert.equal(checklist.get("Start selected"), false);
+  assert.equal(checklist.get("Destination selected"), false);
+  assert.equal(checklist.get("Route drawn and matched"), false);
+  assert.equal(checklist.get("Validation has run"), true);
+  assert.equal(checklist.get("Validation has no blocking errors"), false);
+  assert.equal(checklist.get("Shortest-route comparison has run"), false);
 });
 
 test("curated training route author sample can produce Stage 19 route contract metadata", () => {

@@ -282,6 +282,42 @@ const validationRuleFaults: Record<
     severity: "minor",
     title: "Unnecessary backtracking",
     blocking: false
+  },
+  "author-start-missing": {
+    category: "wrong-start",
+    severity: "serious",
+    title: "Authoring start missing",
+    blocking: true
+  },
+  "author-destination-missing": {
+    category: "wrong-destination",
+    severity: "serious",
+    title: "Authoring destination missing",
+    blocking: true
+  },
+  "author-route-missing": {
+    category: "route-drawing",
+    severity: "serious",
+    title: "Authoring route missing",
+    blocking: true
+  },
+  "author-route-not-matched": {
+    category: "route-drawing",
+    severity: "serious",
+    title: "Authoring route not matched",
+    blocking: true
+  },
+  "author-metadata-incomplete": {
+    category: "map-reading",
+    severity: "observation",
+    title: "Authoring metadata incomplete",
+    blocking: false
+  },
+  "author-checkpoint-missing": {
+    category: "missed-checkpoint",
+    severity: "serious",
+    title: "Authoring checkpoint missing",
+    blocking: true
   }
 };
 

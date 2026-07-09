@@ -38,6 +38,7 @@ import {
 } from "../../../lib/training/curatedTrainingRoutes.ts";
 import {
   validateLearnerRoute,
+  type LearnerRouteValidationIssue,
   type LearnerRouteValidationResult,
   type LearnerRouteValidationSegment
 } from "../../../lib/training/learnerRouteValidation.ts";
@@ -296,6 +297,43 @@ const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
 ]);
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTON = 1;
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTONS_MASK = 4;
+
+function uniqueSortedStrings(values: readonly string[]): string[] {
+  return [...new Set(values.filter(Boolean))].sort();
+}
+
+function hasRequiredTrainingRouteMetadata(metadata: CuratedTrainingRouteMetadata): boolean {
+  return Boolean(
+    metadata.routeId.trim() &&
+      metadata.title.trim() &&
+      metadata.area.trim() &&
+      metadata.objective.trim()
+  );
+}
+
+function trainingRouteAuthorCheckpointsRequired(metadata: CuratedTrainingRouteMetadata): boolean {
+  return (
+    metadata.exerciseType === "follow-planned-route" &&
+    metadata.scoringEmphasis.some((emphasis) => emphasis.toLowerCase().includes("required checkpoint"))
+  );
+}
+
+function trainingRouteAuthorIssue(input: {
+  code: LearnerRouteValidationIssue["code"];
+  nodeIds?: readonly string[];
+  routeSegmentIds?: readonly string[];
+  roadIds?: readonly string[];
+  explanation: string;
+}): LearnerRouteValidationIssue {
+  return {
+    code: input.code,
+    severity: "error",
+    routeSegmentIds: uniqueSortedStrings(input.routeSegmentIds ?? []),
+    roadIds: uniqueSortedStrings(input.roadIds ?? []),
+    nodeIds: uniqueSortedStrings(input.nodeIds ?? []),
+    explanation: input.explanation
+  };
+}
 
 function hasUsableScrollDelta(delta: number): boolean {
   return Number.isFinite(delta) && delta !== 0;
@@ -713,6 +751,96 @@ function validationMetrics(input: {
     routeSegments: input.routeSegments,
     difficulty: input.difficulty
   });
+}
+
+function routeDraftHasUsablePoints(routeDraft: DrawnRouteDraft): boolean {
+  return routeDraftToDrawnRouteTrace(routeDraft).points.length >= 2;
+}
+
+function authoringValidationIssues(input: {
+  state: TrainingRouteAuthorState;
+  metadata: CuratedTrainingRouteMetadata;
+  hasMatchedRoute: boolean;
+  hasUsableRoute: boolean;
+  checkpointsRequired: boolean;
+}): LearnerRouteValidationIssue[] {
+  const issues: LearnerRouteValidationIssue[] = [];
+
+  if (!input.state.startNodeId) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-start-missing",
+        explanation: "Start point is missing."
+      })
+    );
+  }
+
+  if (!input.state.destinationNodeId) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-destination-missing",
+        explanation: "Destination point is missing."
+      })
+    );
+  }
+
+  if (!input.hasUsableRoute) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-route-missing",
+        explanation: "Drawn route is missing."
+      })
+    );
+  } else if (!input.hasMatchedRoute) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-route-not-matched",
+        explanation: "Route has not been snapped and matched to road segments."
+      })
+    );
+  }
+
+  if (!hasRequiredTrainingRouteMetadata(input.metadata)) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-metadata-incomplete",
+        explanation: "Required route metadata is incomplete."
+      })
+    );
+  }
+
+  if (input.checkpointsRequired && input.state.checkpointNodeIds.length === 0) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-checkpoint-missing",
+        explanation: "At least one checkpoint is required for this exercise type."
+      })
+    );
+  }
+
+  return issues;
+}
+
+function validationWithAuthoringRequirements(input: {
+  validation: LearnerRouteValidationResult;
+  requirementIssues: readonly LearnerRouteValidationIssue[];
+}): LearnerRouteValidationResult {
+  if (input.requirementIssues.length === 0) {
+    return input.validation;
+  }
+
+  const blockingErrors = [...input.requirementIssues, ...input.validation.blockingErrors];
+  const allIssues = [...blockingErrors, ...input.validation.advisoryWarnings];
+
+  return {
+    ...input.validation,
+    status: "invalid",
+    valid: false,
+    blockingErrors,
+    affectedRouteSegmentIds: uniqueSortedStrings(allIssues.flatMap((issue) => issue.routeSegmentIds)),
+    ruleCodes: uniqueSortedStrings(allIssues.map((issue) => issue.code)) as LearnerRouteValidationResult["ruleCodes"],
+    explanation: `${input.requirementIssues[0]?.explanation ?? "Authoring requirements are incomplete."} Resolve blocking authoring requirements before exporting.`
+  };
 }
 
 function inferDifficultyFromMetrics(
@@ -1392,14 +1520,14 @@ export function clearTrainingRouteAuthorRoute(state: TrainingRouteAuthorState): 
 export function validateTrainingRouteAuthorState(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
   return {
     ...state,
-    validationHasRun: Boolean(state.startNodeId && state.destinationNodeId && state.validationSegments.length > 0)
+    validationHasRun: true
   };
 }
 
 export function compareTrainingRouteAuthorShortestRoute(state: TrainingRouteAuthorState): TrainingRouteAuthorState {
   return {
     ...state,
-    comparisonHasRun: Boolean(state.startNodeId && state.destinationNodeId && state.validationSegments.length > 0)
+    comparisonHasRun: true
   };
 }
 
@@ -1443,8 +1571,6 @@ function buildToolbarActions(input: {
   canRemoveCheckpoint: boolean;
   canClearRoute: boolean;
   canClearCheckpoints: boolean;
-  canValidate: boolean;
-  canCompare: boolean;
   exportReady: boolean;
 }): TrainingRouteAuthorToolbarAction[] {
   return [
@@ -1458,19 +1584,21 @@ function buildToolbarActions(input: {
     { id: "clear-route", label: "Clear route", disabled: !input.canClearRoute },
     { id: "clear-checkpoints", label: "Clear checkpoints", disabled: !input.canClearCheckpoints },
     { id: "reset-view", label: "Reset view" },
-    { id: "validate-route", label: "Validate route", primary: true, disabled: !input.canValidate },
-    { id: "compare-shortest-route", label: "Compare shortest route", primary: true, disabled: !input.canCompare },
+    { id: "validate-route", label: "Validate route", primary: true },
+    { id: "compare-shortest-route", label: "Compare shortest route", primary: true },
     { id: "export-json", label: "Export JSON", primary: true, disabled: !input.exportReady }
   ];
 }
 
 function buildAuthoringSteps(input: {
   hasStart: boolean;
-  hasRoute: boolean;
+  hasUsableRoute: boolean;
+  hasMatchedRoute: boolean;
   checkpointCount: number;
+  checkpointsRequired: boolean;
   hasDestination: boolean;
   validationHasRun: boolean;
-  validationStatus: LearnerRouteValidationResult["status"];
+  validation: LearnerRouteValidationResult;
   comparisonHasRun: boolean;
   exportReady: boolean;
 }): TrainingRouteAuthorStep[] {
@@ -1484,15 +1612,17 @@ function buildAuthoringSteps(input: {
     {
       index: 2,
       label: "Draw route",
-      complete: input.hasRoute,
+      complete: input.hasUsableRoute,
       instruction: "Switch to Draw route and trace the intended learner route on the roads."
     },
     {
       index: 3,
       label: "Add checkpoints if needed",
-      complete: false,
-      optional: true,
-      instruction: `${input.checkpointCount} checkpoint(s) selected. Add checkpoints only when the exercise needs them.`
+      complete: !input.checkpointsRequired || input.checkpointCount > 0,
+      optional: !input.checkpointsRequired,
+      instruction: input.checkpointsRequired
+        ? `${input.checkpointCount} checkpoint(s) selected. Add at least one checkpoint for this exercise type.`
+        : `${input.checkpointCount} checkpoint(s) selected. Add checkpoints only when the exercise needs them.`
     },
     {
       index: 4,
@@ -1503,8 +1633,10 @@ function buildAuthoringSteps(input: {
     {
       index: 5,
       label: "Validate",
-      complete: input.validationHasRun && input.validationStatus !== "invalid",
-      instruction: "Validate after start, destination, and a matched drawn route exist."
+      complete: input.validationHasRun && input.validation.blockingErrors.length === 0,
+      instruction: input.hasMatchedRoute
+        ? "Validate the current authored route and resolve any blocking errors."
+        : "Validate now to list missing or unmatched route requirements."
     },
     {
       index: 6,
@@ -1535,21 +1667,28 @@ function buildExportReadiness(input: {
   validation: LearnerRouteValidationResult;
   validationHasRun: boolean;
   comparisonHasRun: boolean;
+  comparison: CuratedShortestRouteComparison;
   approvalWarning: TrainingRouteAuthorApprovalWarning | null;
 }): TrainingRouteAuthorExportReadiness {
-  const hasRequiredMetadata = Boolean(
-    input.metadata.routeId.trim() &&
-      input.metadata.title.trim() &&
-      input.metadata.area.trim() &&
-      input.metadata.objective.trim()
-  );
+  const hasRequiredMetadata = hasRequiredTrainingRouteMetadata(input.metadata);
+  const requiresRouteChoiceJustification =
+    input.comparison.requiresRouteChoiceJustification ||
+    input.comparison.directComparison.verdict === "major-detour-warning" ||
+    input.comparison.checkpointConstrainedComparison.verdict === "major-detour-warning";
+  const routeChoiceJustificationComplete =
+    !requiresRouteChoiceJustification || Boolean(input.metadata.routeChoiceJustification.trim());
   const checklist = [
     { label: "Start selected", complete: input.hasStart },
     { label: "Destination selected", complete: input.hasDestination },
     { label: "Route drawn and matched", complete: input.hasRoute },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
-    { label: "Validation has run without blocking errors", complete: input.validationHasRun && input.validation.valid },
+    { label: "Validation has run", complete: input.validationHasRun },
+    {
+      label: "Validation has no blocking errors",
+      complete: input.validationHasRun && input.validation.valid && input.validation.blockingErrors.length === 0
+    },
     { label: "Shortest-route comparison has run", complete: input.comparisonHasRun },
+    { label: "Route choice justification complete when required", complete: routeChoiceJustificationComplete },
     { label: "Approved status is allowed", complete: !input.approvalWarning?.blocking }
   ];
 
@@ -1590,12 +1729,7 @@ function buildValidatedDraftSaveReadiness(input: {
   comparisonHasRun: boolean;
   comparison: CuratedShortestRouteComparison;
 }): TrainingRouteAuthorDraftSaveReadiness {
-  const hasRequiredMetadata = Boolean(
-    input.metadata.routeId.trim() &&
-      input.metadata.title.trim() &&
-      input.metadata.area.trim() &&
-      input.metadata.objective.trim()
-  );
+  const hasRequiredMetadata = hasRequiredTrainingRouteMetadata(input.metadata);
   const requiresRouteChoiceJustification =
     input.comparison.requiresRouteChoiceJustification ||
     input.comparison.directComparison.verdict === "major-detour-warning" ||
@@ -1628,11 +1762,37 @@ function buildValidatedDraftSaveReadiness(input: {
   };
 }
 
+function routeStatusSummary(input: {
+  hasUsableRoute: boolean;
+  hasMatchedRoute: boolean;
+  routeMatchStatus: TrainingRouteAuthorRouteMatchStatus;
+}): Pick<TrainingRouteAuthorStatusItem, "value" | "state"> {
+  if (input.hasMatchedRoute) {
+    return { value: "matched", state: "complete" };
+  }
+
+  if (!input.hasUsableRoute) {
+    return { value: "missing", state: "missing" };
+  }
+
+  if (input.routeMatchStatus === "snapping-failed") {
+    return { value: "drawn", state: "warning" };
+  }
+
+  if (input.routeMatchStatus === "matching-failed") {
+    return { value: "snapped", state: "warning" };
+  }
+
+  return { value: "drawn", state: "ready" };
+}
+
 function buildRouteStatusItems(input: {
   hasStart: boolean;
   hasDestination: boolean;
   checkpointCount: number;
-  hasRoute: boolean;
+  hasUsableRoute: boolean;
+  hasMatchedRoute: boolean;
+  routeMatchStatus: TrainingRouteAuthorRouteMatchStatus;
   validationHasRun: boolean;
   validation: LearnerRouteValidationResult;
   comparisonHasRun: boolean;
@@ -1640,6 +1800,11 @@ function buildRouteStatusItems(input: {
   exportReady: boolean;
 }): TrainingRouteAuthorStatusItem[] {
   const comparisonValue = input.comparisonHasRun ? input.comparison.directComparison.verdict : "not run";
+  const routeStatus = routeStatusSummary({
+    hasUsableRoute: input.hasUsableRoute,
+    hasMatchedRoute: input.hasMatchedRoute,
+    routeMatchStatus: input.routeMatchStatus
+  });
 
   return [
     { label: "Start", value: input.hasStart ? "selected" : "missing", state: input.hasStart ? "complete" : "missing" },
@@ -1650,8 +1815,8 @@ function buildRouteStatusItems(input: {
     },
     {
       label: "Route",
-      value: input.hasRoute ? "drawn and matched" : "missing",
-      state: input.hasRoute ? "complete" : "missing"
+      value: routeStatus.value,
+      state: routeStatus.state
     },
     {
       label: "Checkpoints",
@@ -1697,10 +1862,26 @@ export function buildTrainingRouteAuthorModel(input?: {
     routeChoiceJustification: input?.routeChoiceJustification ?? baseState.metadata.routeChoiceJustification,
     status: input?.statusOverride ?? baseState.metadata.status
   };
-  const validation = validationMetrics({
+  const hasStart = Boolean(baseState.startNodeId);
+  const hasDestination = Boolean(baseState.destinationNodeId);
+  const rawRoutePoints = routeDraftToDrawnRouteTrace(baseState.routeDraft).points;
+  const hasUsableRoute = rawRoutePoints.length >= 2 || routeDraftHasUsablePoints(baseState.routeDraft);
+  const hasMatchedRoute = baseState.validationSegments.length > 0 && baseState.routeMatchStatus === "matched";
+  const checkpointsRequired = trainingRouteAuthorCheckpointsRequired(metadata);
+  const baseValidation = validationMetrics({
     map: sourceMap,
     routeSegments: baseState.validationSegments,
     difficulty: metadata.difficulty
+  });
+  const validation = validationWithAuthoringRequirements({
+    validation: baseValidation,
+    requirementIssues: authoringValidationIssues({
+      state: baseState,
+      metadata,
+      hasMatchedRoute,
+      hasUsableRoute,
+      checkpointsRequired
+    })
   });
   const validationForDisplay = baseState.validationHasRun ? validation : EMPTY_VALIDATION;
   const selectedStopNodeIds = [
@@ -1732,9 +1913,6 @@ export function buildTrainingRouteAuthorModel(input?: {
       estimatedDifficulty
     })
   };
-  const hasStart = Boolean(baseState.startNodeId);
-  const hasDestination = Boolean(baseState.destinationNodeId);
-  const hasRoute = baseState.validationSegments.length > 0 && baseState.routeMatchStatus === "matched";
   const approval = approvalWarning({
     status: metadata.status,
     validation,
@@ -1744,30 +1922,30 @@ export function buildTrainingRouteAuthorModel(input?: {
     metadata,
     hasStart,
     hasDestination,
-    hasRoute,
+    hasRoute: hasMatchedRoute,
     validation,
     validationHasRun: baseState.validationHasRun,
     comparisonHasRun: baseState.comparisonHasRun,
+    comparison: shortestRouteComparison,
     approvalWarning: approval
   });
   const draftSaveReadiness = buildDraftSaveReadiness({
     metadata,
     hasStart,
     hasDestination,
-    hasRoute
+    hasRoute: hasMatchedRoute
   });
   const validatedDraftSaveReadiness = buildValidatedDraftSaveReadiness({
     metadata,
     hasStart,
     hasDestination,
-    hasRoute,
+    hasRoute: hasMatchedRoute,
     validation,
     validationHasRun: baseState.validationHasRun,
     comparisonHasRun: baseState.comparisonHasRun,
     comparison: shortestRouteComparison
   });
   const routeGeometry = pointsForNodeIds(sourceMap, baseState.routeNodeIds);
-  const rawRoutePoints = routeDraftToDrawnRouteTrace(baseState.routeDraft).points;
   const markers: TrainingRouteAuthorMapMarker[] = [
     ...(baseState.startNodeId
       ? [
@@ -1816,7 +1994,9 @@ export function buildTrainingRouteAuthorModel(input?: {
     hasStart,
     hasDestination,
     checkpointCount: baseState.checkpointNodeIds.length,
-    hasRoute,
+    hasUsableRoute,
+    hasMatchedRoute,
+    routeMatchStatus: baseState.routeMatchStatus,
     validationHasRun: baseState.validationHasRun,
     validation: validationForDisplay,
     comparisonHasRun: baseState.comparisonHasRun,
@@ -1825,11 +2005,13 @@ export function buildTrainingRouteAuthorModel(input?: {
   });
   const authoringSteps = buildAuthoringSteps({
     hasStart,
-    hasRoute,
+    hasUsableRoute,
+    hasMatchedRoute,
     checkpointCount: baseState.checkpointNodeIds.length,
+    checkpointsRequired,
     hasDestination,
     validationHasRun: baseState.validationHasRun,
-    validationStatus: validation.status,
+    validation,
     comparisonHasRun: baseState.comparisonHasRun,
     exportReady: exportReadiness.ready
   });
@@ -1886,8 +2068,6 @@ export function buildTrainingRouteAuthorModel(input?: {
       canRemoveCheckpoint: baseState.checkpointNodeIds.length > 0,
       canClearRoute: baseState.routeDraft.strokes.length > 0,
       canClearCheckpoints: baseState.checkpointNodeIds.length > 0,
-      canValidate: hasStart && hasDestination && hasRoute,
-      canCompare: hasStart && hasDestination && hasRoute,
       exportReady: exportReadiness.ready
     }),
     authoringSteps,

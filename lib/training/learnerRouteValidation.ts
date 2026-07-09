@@ -38,7 +38,13 @@ export type LearnerRouteValidationRuleCode =
   | "route-length-out-of-bounds"
   | "estimated-time-out-of-bounds"
   | "duplicate-loop"
-  | "unnecessary-backtracking";
+  | "unnecessary-backtracking"
+  | "author-start-missing"
+  | "author-destination-missing"
+  | "author-route-missing"
+  | "author-route-not-matched"
+  | "author-metadata-incomplete"
+  | "author-checkpoint-missing";
 
 export type LearnerRouteValidationSegment = {
   id: string;

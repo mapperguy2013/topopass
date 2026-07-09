@@ -1532,7 +1532,7 @@ export function TrainingRouteAuthorClient() {
             ) : null}
             <svg
               aria-label="Interactive Real London training route authoring map"
-              className={`block h-[420px] w-full touch-none select-none overscroll-contain sm:h-[560px] ${
+              className={`block aspect-[1120/760] w-full touch-none select-none overscroll-contain ${
                 model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
               }`}
               onAuxClick={handleMapAuxClick}
@@ -1676,6 +1676,58 @@ export function TrainingRouteAuthorClient() {
                   </div>
                 ))}
               </dl>
+            </section>
+
+            <section className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-bold text-ink">Validation result</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    {model.validationRunStatus === "not-run"
+                      ? "Validation has not been run for the current authored route."
+                      : model.validation.explanation}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                    model.validationRunStatus === "not-run"
+                      ? "border-slate-200 bg-slate-50 text-slate-700"
+                      : model.validation.valid
+                        ? "border-green-200 bg-green-50 text-green-800"
+                        : "border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  {model.validationRunStatus}
+                </span>
+              </div>
+              {model.validationRunStatus !== "not-run" ? (
+                <div className="mt-3 grid gap-3 text-sm">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Blocking errors</p>
+                    {model.validation.blockingErrors.length === 0 ? (
+                      <p className="mt-1 text-slate-700">None</p>
+                    ) : (
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-red-900">
+                        {model.validation.blockingErrors.map((issue) => (
+                          <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Advisory warnings</p>
+                    {model.validation.advisoryWarnings.length === 0 ? (
+                      <p className="mt-1 text-slate-700">None</p>
+                    ) : (
+                      <ul className="mt-1 list-disc space-y-1 pl-5 text-amber-900">
+                        {model.validation.advisoryWarnings.map((issue) => (
+                          <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </section>
           </aside>
         </div>
