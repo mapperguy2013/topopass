@@ -6,14 +6,24 @@ import {
   buildRoadRenderPasses,
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
+  cartographicCustomMarkerAssetScaleForZoom,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
-  roadStyleForViewport
+  roadStyleForViewport,
+  type SyntheticMapLabel
 } from "../route-runner/syntheticStreetMapRenderer";
+import {
+  buildRestrictionMapVisualItems,
+  filterRestrictionMapVisualItemsForViewport,
+  restrictionMapVisualStyleForViewport,
+  type RestrictionMapVisualItem
+} from "../route-runner/restrictionMapVisuals";
+import { buildRoadRestrictionOverlays } from "../route-runner/routeRunnerDisplay";
 import {
   getRouteRunnerMapViewportBounds,
   type RouteRunnerMapBounds
 } from "../route-runner/routeRunnerMapOptionUtils";
+import { TOPOPASS_STREET_ATLAS_STYLE } from "../route-runner/topopassCartographyStyle";
 import {
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
@@ -46,7 +56,7 @@ import {
   type TrainingRouteAuthorToolbarAction,
   type TrainingRouteAuthorState
 } from "./trainingRouteAuthor";
-import type { Vec2 } from "../../../lib/map-engine/index.ts";
+import { getTurnRestrictionVisuals, type Vec2 } from "../../../lib/map-engine/index.ts";
 
 type DragState =
   | {
@@ -108,6 +118,372 @@ function isTrainingRouteAuthorMode(id: TrainingRouteAuthorToolbarAction["id"]): 
     id === "draw-route" ||
     id === "add-checkpoint" ||
     id === "set-destination"
+  );
+}
+
+function fontSizeFromFont(font: string, fallback = 11): number {
+  const fontSizeMatch = /(\d+(?:\.\d+)?)px/.exec(font);
+
+  return fontSizeMatch ? Number(fontSizeMatch[1]) : fallback;
+}
+
+function markerLabelForAuthorMarker(marker: { id: string; kind: "start" | "destination" | "checkpoint"; label: string; point: Vec2 }): SyntheticMapLabel {
+  return {
+    id: `author-${marker.id}-label`,
+    kind: marker.kind === "destination" ? "finish" : marker.kind,
+    text: marker.label,
+    point: marker.point,
+    priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.exerciseStop
+  };
+}
+
+function markerAssetForAuthorMarker(marker: { kind: "start" | "destination" | "checkpoint" }) {
+  if (marker.kind === "start") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.asset;
+  }
+
+  if (marker.kind === "destination") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.asset;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase.asset;
+}
+
+function markerToneForAuthorMarker(marker: { kind: "start" | "destination" | "checkpoint" }) {
+  if (marker.kind === "start") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start;
+  }
+
+  if (marker.kind === "destination") {
+    return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination;
+  }
+
+  return TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.checkpointBase;
+}
+
+function scaledDash(dash: readonly number[] | undefined, mapUnitsPerPixel: number): string | undefined {
+  return dash?.map((value) => value * mapUnitsPerPixel).join(" ");
+}
+
+function renderStyledRoutePolyline(
+  id: string,
+  points: readonly Vec2[],
+  style: {
+    strokeColor: string;
+    strokeWidth: number;
+    casingColor?: string;
+    casingWidth?: number;
+    dash?: readonly number[];
+    alpha?: number;
+  },
+  mapUnitsPerPixel: number
+) {
+  if (points.length < 2) {
+    return null;
+  }
+
+  return (
+    <g key={id} opacity={style.alpha ?? 1}>
+      {style.casingColor && style.casingWidth ? (
+        <polyline
+          fill="none"
+          points={polylinePoints(points)}
+          stroke={style.casingColor}
+          strokeDasharray={scaledDash(style.dash, mapUnitsPerPixel)}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={style.casingWidth * mapUnitsPerPixel}
+        />
+      ) : null}
+      <polyline
+        fill="none"
+        points={polylinePoints(points)}
+        stroke={style.strokeColor}
+        strokeDasharray={scaledDash(style.dash, mapUnitsPerPixel)}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={style.strokeWidth * mapUnitsPerPixel}
+      />
+    </g>
+  );
+}
+
+function restrictionDirectionAngle(item: RestrictionMapVisualItem): number {
+  const direction = item.direction;
+
+  if (!direction) {
+    return 0;
+  }
+
+  return Math.atan2(direction.to.y - direction.from.y, direction.to.x - direction.from.x);
+}
+
+function renderOneWayRestrictionArrow(
+  item: RestrictionMapVisualItem,
+  mapUnitsPerPixel: number,
+  zoomStyle: { alpha: number; scale: number }
+) {
+  const direction = item.direction;
+
+  if (!direction) {
+    return null;
+  }
+
+  const angle = restrictionDirectionAngle(item);
+  const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay;
+  const tip = {
+    x: item.point.x + style.tipDistance * zoomStyle.scale * mapUnitsPerPixel * Math.cos(angle),
+    y: item.point.y + style.tipDistance * zoomStyle.scale * mapUnitsPerPixel * Math.sin(angle)
+  };
+  const tail = {
+    x: item.point.x - style.tailDistance * zoomStyle.scale * mapUnitsPerPixel * Math.cos(angle),
+    y: item.point.y - style.tailDistance * zoomStyle.scale * mapUnitsPerPixel * Math.sin(angle)
+  };
+  const arrowLength = 10 * zoomStyle.scale * mapUnitsPerPixel;
+  const headPoints = [
+    tip,
+    {
+      x: tip.x - arrowLength * Math.cos(angle - Math.PI / 6),
+      y: tip.y - arrowLength * Math.sin(angle - Math.PI / 6)
+    },
+    {
+      x: tip.x - arrowLength * Math.cos(angle + Math.PI / 6),
+      y: tip.y - arrowLength * Math.sin(angle + Math.PI / 6)
+    }
+  ];
+
+  return (
+    <g key={item.id} opacity={zoomStyle.alpha}>
+      <line
+        stroke={style.haloColor}
+        strokeLinecap="round"
+        strokeWidth={style.haloLineWidth * zoomStyle.scale * mapUnitsPerPixel}
+        x1={tail.x}
+        x2={tip.x}
+        y1={tail.y}
+        y2={tip.y}
+      />
+      <line
+        stroke={style.color}
+        strokeLinecap="round"
+        strokeWidth={style.lineWidth * zoomStyle.scale * mapUnitsPerPixel}
+        x1={tail.x}
+        x2={tip.x}
+        y1={tail.y}
+        y2={tip.y}
+      />
+      <polygon fill={style.color} points={polylinePoints(headPoints)} />
+    </g>
+  );
+}
+
+function renderRestrictionSymbol(item: RestrictionMapVisualItem, viewport: { width: number; height: number; mapBounds: RouteRunnerMapBounds }, currentZoom: number, mapUnitsPerPixel: number) {
+  const zoomStyle = restrictionMapVisualStyleForViewport(item, viewport, currentZoom);
+
+  if (item.symbol === "one-way-arrow") {
+    return renderOneWayRestrictionArrow(item, mapUnitsPerPixel, zoomStyle);
+  }
+
+  if (item.symbol === "no-entry-sign") {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.noEntryMarker;
+    const radius = style.radius * zoomStyle.scale * mapUnitsPerPixel;
+
+    return (
+      <g key={item.id} opacity={zoomStyle.alpha}>
+        <circle
+          cx={item.point.x}
+          cy={item.point.y}
+          fill={style.fillColor}
+          r={radius}
+          stroke={style.strokeColor}
+          strokeWidth={style.strokeWidth * zoomStyle.scale * mapUnitsPerPixel}
+        />
+        <line
+          stroke={style.strokeColor}
+          strokeLinecap="round"
+          strokeWidth={style.barWidth * zoomStyle.scale * mapUnitsPerPixel}
+          x1={item.point.x - radius * style.barRadiusRatio}
+          x2={item.point.x + radius * style.barRadiusRatio}
+          y1={item.point.y}
+          y2={item.point.y}
+        />
+      </g>
+    );
+  }
+
+  if (item.symbol === "restricted-road-sign") {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.restrictedMarker;
+    const radius = style.radius * zoomStyle.scale * mapUnitsPerPixel;
+    const points = [
+      { x: item.point.x, y: item.point.y - radius },
+      { x: item.point.x + radius, y: item.point.y },
+      { x: item.point.x, y: item.point.y + radius },
+      { x: item.point.x - radius, y: item.point.y }
+    ];
+
+    return (
+      <g key={item.id} opacity={zoomStyle.alpha}>
+        <polygon
+          fill={style.fillColor}
+          points={polylinePoints(points)}
+          stroke={style.strokeColor}
+          strokeWidth={style.strokeWidth * zoomStyle.scale * mapUnitsPerPixel}
+        />
+        <line
+          stroke={style.symbolColor}
+          strokeLinecap="round"
+          strokeWidth={style.symbolLineWidth * zoomStyle.scale * mapUnitsPerPixel}
+          x1={item.point.x}
+          x2={item.point.x}
+          y1={item.point.y - 7 * zoomStyle.scale * mapUnitsPerPixel}
+          y2={item.point.y + 2 * zoomStyle.scale * mapUnitsPerPixel}
+        />
+        <circle
+          cx={item.point.x}
+          cy={item.point.y + 7 * zoomStyle.scale * mapUnitsPerPixel}
+          fill={style.symbolColor}
+          r={style.dotRadius * zoomStyle.scale * mapUnitsPerPixel}
+        />
+      </g>
+    );
+  }
+
+  if (item.symbol === "turn-ban-sign") {
+    const style = TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker;
+    const scale = zoomStyle.scale * mapUnitsPerPixel;
+    const radius = style.radius * scale;
+    const direction = item.turnKind === "no-left-turn" ? -1 : 1;
+
+    return (
+      <g key={item.id} opacity={zoomStyle.alpha}>
+        <circle
+          cx={item.point.x}
+          cy={item.point.y}
+          fill={style.fillColor}
+          r={radius}
+          stroke={style.strokeColor}
+          strokeWidth={style.strokeWidth * scale}
+        />
+        <g transform={`translate(${item.point.x} ${item.point.y}) scale(${scale})`}>
+          {item.turnKind === "no-u-turn" ? (
+            <>
+              <path
+                d="M -8 -1 L -3 -3 L -4 3"
+                fill="none"
+                stroke={style.arrowColor}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={style.arrowLineWidth}
+              />
+              <path
+                d="M 6.7 4.2 A 7 7 0 1 0 -6.2 5.1"
+                fill="none"
+                stroke={style.arrowColor}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={style.arrowLineWidth}
+              />
+            </>
+          ) : (
+            <path
+              d={`M ${-6 * direction} 6 L ${-6 * direction} 0 Q ${-6 * direction} -6 0 -6 L ${7 * direction} -6 M ${4 * direction} -10 L ${8 * direction} -6 L ${4 * direction} -2`}
+              fill="none"
+              stroke={style.arrowColor}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={style.arrowLineWidth}
+            />
+          )}
+          <path
+            d="M -9 9 L 9 -9"
+            fill="none"
+            stroke={style.strokeColor}
+            strokeLinecap="round"
+            strokeWidth={style.strokeWidth}
+          />
+        </g>
+      </g>
+    );
+  }
+
+  return null;
+}
+
+function renderAuthorMarker(marker: { id: string; kind: "start" | "destination" | "checkpoint"; label: string; point: Vec2 }, currentZoom: number, mapUnitsPerPixel: number) {
+  const asset = markerAssetForAuthorMarker(marker);
+  const tone = markerToneForAuthorMarker(marker);
+  const assetScale = cartographicCustomMarkerAssetScaleForZoom(currentZoom) * mapUnitsPerPixel;
+
+  if (!asset) {
+    return (
+      <circle
+        cx={marker.point.x}
+        cy={marker.point.y}
+        fill={tone.fillColor}
+        key={marker.id}
+        r={tone.radius * mapUnitsPerPixel}
+        stroke={tone.strokeColor}
+        strokeWidth={tone.strokeWidth * mapUnitsPerPixel}
+      />
+    );
+  }
+
+  const width = asset.displayWidth * assetScale;
+  const height = asset.displayHeight * assetScale;
+  const anchorX = (asset.anchorX / asset.sourceWidth) * width;
+  const anchorY = (asset.anchorY / asset.sourceHeight) * height;
+
+  return (
+    <image
+      aria-hidden="true"
+      height={height}
+      href={asset.src}
+      key={marker.id}
+      preserveAspectRatio="xMidYMid meet"
+      width={width}
+      x={marker.point.x - anchorX}
+      y={marker.point.y - anchorY}
+    />
+  );
+}
+
+function renderAuthorMarkerLabel(marker: { id: string; kind: "start" | "destination" | "checkpoint"; label: string; point: Vec2 }, viewport: { width: number; height: number; mapBounds: RouteRunnerMapBounds }, currentZoom: number, mapUnitsPerPixel: number) {
+  const label = markerLabelForAuthorMarker(marker);
+  const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
+  const fontSize = fontSizeFromFont(style.font, 13) * mapUnitsPerPixel;
+  const bubble = TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.labelBubble;
+  const paddingX = bubble.paddingX * mapUnitsPerPixel;
+  const paddingY = bubble.paddingY * mapUnitsPerPixel;
+  const textWidth = Math.max(bubble.minWidth * mapUnitsPerPixel, label.text.length * fontSize * 0.58 + paddingX * 2);
+  const textHeight = fontSize + paddingY * 2;
+  const x = label.point.x - textWidth / 2;
+  const y = label.point.y + (style.yOffset ?? -58) * mapUnitsPerPixel - textHeight / 2;
+
+  return (
+    <g key={`${marker.id}-label`}>
+      <rect
+        fill={bubble.fillColor}
+        height={textHeight}
+        rx={bubble.borderRadius * mapUnitsPerPixel}
+        stroke={style.color}
+        strokeOpacity={0.28}
+        strokeWidth={bubble.strokeWidth * mapUnitsPerPixel}
+        width={textWidth}
+        x={x}
+        y={y}
+      />
+      <text
+        fill={style.color}
+        fontFamily="Arial, sans-serif"
+        fontSize={fontSize}
+        fontWeight="800"
+        textAnchor="middle"
+        x={label.point.x}
+        y={y + textHeight / 2 + fontSize * 0.34}
+      >
+        {label.text}
+      </text>
+    </g>
   );
 }
 
@@ -184,6 +560,25 @@ export function TrainingRouteAuthorClient() {
     [viewBounds]
   );
   const currentZoom = boundsWidth(initialBounds) / Math.max(1, boundsWidth(viewBounds));
+  const roadRestrictionOverlays = useMemo(() => buildRoadRestrictionOverlays(map), [map]);
+  const turnRestrictionVisuals = useMemo(() => getTurnRestrictionVisuals(map), [map]);
+  const restrictionMapVisualItems = useMemo(
+    () =>
+      buildRestrictionMapVisualItems({
+        roadRestrictionOverlays,
+        turnRestrictionVisuals,
+        routeIssueOverlays: [],
+        viewport
+      }),
+    [roadRestrictionOverlays, turnRestrictionVisuals, viewport]
+  );
+  const visibleRestrictionMapVisualItems = useMemo(
+    () =>
+      filterRestrictionMapVisualItemsForViewport(restrictionMapVisualItems, viewport, {
+        currentZoom
+      }),
+    [currentZoom, restrictionMapVisualItems, viewport]
+  );
   const labels = useMemo(
     () =>
       filterSyntheticMapLabelsForViewport({
@@ -195,7 +590,6 @@ export function TrainingRouteAuthorClient() {
     [currentZoom, mapLabels, viewport]
   );
   const mapUnitsPerPixel = boundsWidth(viewBounds) / TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH;
-  const markerRadius = model.mapModel.markerRadiusPixels * mapUnitsPerPixel;
 
   useEffect(() => {
     const svg = mapSvgRef.current;
@@ -598,7 +992,7 @@ export function TrainingRouteAuthorClient() {
             </div>
             <svg
               aria-label="Interactive Real London training route authoring map"
-              className={`block h-[420px] w-full touch-none select-none overscroll-contain bg-[#eef6f8] sm:h-[560px] ${
+              className={`block h-[420px] w-full touch-none select-none overscroll-contain sm:h-[560px] ${
                 model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
               }`}
               onPointerCancel={handleMapPointerEnd}
@@ -608,9 +1002,16 @@ export function TrainingRouteAuthorClient() {
               onPointerUp={handleMapPointerEnd}
               ref={mapSvgRef}
               role="img"
+              style={{ backgroundColor: TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor }}
               viewBox={`${viewBounds.minX} ${viewBounds.minY} ${boundsWidth(viewBounds)} ${boundsHeight(viewBounds)}`}
             >
-              <rect fill="#eef6f8" height={boundsHeight(viewBounds)} width={boundsWidth(viewBounds)} x={viewBounds.minX} y={viewBounds.minY} />
+              <rect
+                fill={TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor}
+                height={boundsHeight(viewBounds)}
+                width={boundsWidth(viewBounds)}
+                x={viewBounds.minX}
+                y={viewBounds.minY}
+              />
               {roadRenderPasses.map((pass) => {
                 const style = roadStyleForViewport(pass.visual, viewport, currentZoom);
                 const strokeWidth = pass.layer === "casing" ? style.casingWidth : style.strokeWidth;
@@ -631,56 +1032,30 @@ export function TrainingRouteAuthorClient() {
                 );
               })}
               {showRestrictions
-                ? roadVisuals.filter((visual) => visual.isOneWay || visual.hasNoEntryRestriction || visual.hasRoadClosedRestriction).map((visual) => (
-                    <text
-                      fill={visual.hasNoEntryRestriction || visual.hasRoadClosedRestriction ? "#b91c1c" : "#0369a1"}
-                      fontSize={12 * mapUnitsPerPixel}
-                      fontWeight="800"
-                      key={`restriction-${visual.roadId}`}
-                      textAnchor="middle"
-                      transform={`rotate(${(visual.labelAngleRadians * 180) / Math.PI} ${visual.midpoint.x} ${visual.midpoint.y})`}
-                      x={visual.midpoint.x}
-                      y={visual.midpoint.y - 6 * mapUnitsPerPixel}
-                    >
-                      {visual.hasNoEntryRestriction || visual.hasRoadClosedRestriction ? "!" : ">"}
-                    </text>
-                  ))
+                ? visibleRestrictionMapVisualItems.map((item) =>
+                    renderRestrictionSymbol(item, viewport, currentZoom, mapUnitsPerPixel)
+                  )
                 : null}
-              {model.mapModel.showShortestRouteComparison && model.mapModel.shortestRoutePoints.length > 1 ? (
-                <polyline
-                  fill="none"
-                  points={polylinePoints(model.mapModel.shortestRoutePoints)}
-                  stroke="#f59e0b"
-                  strokeDasharray="10 7"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="5"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ) : null}
-              {model.mapModel.authoredRoutePoints.length > 1 ? (
-                <polyline
-                  fill="none"
-                  opacity="0.74"
-                  points={polylinePoints(model.mapModel.authoredRoutePoints)}
-                  stroke="#f97316"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="4"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ) : null}
-              {model.mapModel.matchedRoutePoints.length > 1 ? (
-                <polyline
-                  fill="none"
-                  points={polylinePoints(model.mapModel.matchedRoutePoints)}
-                  stroke="#2563eb"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="6"
-                  vectorEffect="non-scaling-stroke"
-                />
-              ) : null}
+              {model.mapModel.showShortestRouteComparison
+                ? renderStyledRoutePolyline(
+                    "shortest-route-overlay",
+                    model.mapModel.shortestRoutePoints,
+                    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
+                    mapUnitsPerPixel
+                  )
+                : null}
+              {renderStyledRoutePolyline(
+                "authored-route-overlay",
+                model.mapModel.authoredRoutePoints,
+                TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute,
+                mapUnitsPerPixel
+              )}
+              {renderStyledRoutePolyline(
+                "matched-route-overlay",
+                model.mapModel.matchedRoutePoints,
+                TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute,
+                mapUnitsPerPixel
+              )}
               {labels.map((label) => {
                 const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
                 const fontSizeMatch = /(\d+(?:\.\d+)?)px/.exec(style.font);
@@ -711,37 +1086,18 @@ export function TrainingRouteAuthorClient() {
                   </text>
                 );
               })}
-              {model.mapModel.markers.map((marker) => (
-                <g key={marker.id}>
-                  <circle
-                    cx={marker.point.x}
-                    cy={marker.point.y}
-                    fill={
-                      marker.kind === "start" ? "#16a34a" : marker.kind === "destination" ? "#dc2626" : "#7c3aed"
-                    }
-                    r={markerRadius}
-                    stroke="#ffffff"
-                    strokeWidth={3 * mapUnitsPerPixel}
-                  />
-                  <text
-                    fill="#ffffff"
-                    fontSize={(marker.kind === "checkpoint" ? 10 : 6.5) * mapUnitsPerPixel}
-                    fontWeight="800"
-                    textAnchor="middle"
-                    x={marker.point.x}
-                    y={marker.point.y + 2.5 * mapUnitsPerPixel}
-                  >
-                    {marker.label}
-                  </text>
-                </g>
-              ))}
+              {model.mapModel.markers.map((marker) => renderAuthorMarker(marker, currentZoom, mapUnitsPerPixel))}
+              {model.mapModel.markers.map((marker) =>
+                renderAuthorMarkerLabel(marker, viewport, currentZoom, mapUnitsPerPixel)
+              )}
             </svg>
             <div className="flex flex-wrap gap-3 border-t border-slate-200 bg-white p-3 text-xs font-semibold text-slate-700">
               <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-orange-500" />Raw drawing</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-blue-600" />Matched route</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-amber-500" />Shortest overlay</span>
+              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-purple-600" />Matched route</span>
+              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-sky-600" />Shortest overlay</span>
+              <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 rounded-full bg-blue-700" />One-way arrows</span>
               <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-green-600" />START</span>
-              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-red-600" />DEST</span>
+              <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-red-600" />DESTINATION</span>
               <span className="inline-flex items-center gap-2"><span className="size-3 rounded-full bg-purple-600" />Checkpoint</span>
             </div>
           </div>

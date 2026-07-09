@@ -1406,7 +1406,7 @@ export function buildTrainingRouteAuthorModel(input?: {
       ? [
           {
             id: "destination",
-            label: "DEST",
+            label: "DESTINATION",
             kind: "destination" as const,
             point: pointForNode(sourceMap, baseState.destinationNodeId)
           }

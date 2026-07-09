@@ -467,6 +467,39 @@ test("curated route author marker sizing avoids oversized placeholder markers", 
   assert.doesNotMatch(clientSource, /r="34"/);
 });
 
+test("curated route author uses shared practice map marker and restriction styling", () => {
+  const sampleState = createSampleTrainingRouteAuthorState();
+  const map = getTrainingRouteAuthorMap();
+  const checkpointNode =
+    map.nodes.find((node) => node.id !== sampleState.startNodeId && node.id !== sampleState.destinationNodeId) ??
+    map.nodes[0];
+  const model = buildTrainingRouteAuthorModel({
+    state: addTrainingRouteAuthorCheckpoint(sampleState, checkpointNode.id)
+  });
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const markerLabels = new Map(model.mapModel.markers.map((marker) => [marker.kind, marker.label]));
+
+  assert.equal(markerLabels.get("start"), "START");
+  assert.equal(markerLabels.get("destination"), "DESTINATION");
+  assert.ok(model.mapModel.markers.some((marker) => marker.kind === "checkpoint"));
+  assert.match(clientSource, /buildRoadRestrictionOverlays\(map\)/);
+  assert.match(clientSource, /buildRestrictionMapVisualItems/);
+  assert.match(clientSource, /filterRestrictionMapVisualItemsForViewport/);
+  assert.match(clientSource, /restrictionMapVisualStyleForViewport/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.restrictions\.oneWay/);
+  assert.match(clientSource, /cartographicCustomMarkerAssetScaleForZoom/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.learnerOverlays\.markers\.start\.asset/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.learnerOverlays\.markers\.destination\.asset/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.learnerOverlays\.markers\.checkpointBase\.asset/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.routeOverlays\.rawRoute/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.routeOverlays\.matchedRoute/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.routeOverlays\.shortestLegalRoute/);
+  assert.match(clientSource, /TOPOPASS_STREET_ATLAS_STYLE\.canvas\.backgroundColor/);
+  assert.doesNotMatch(clientSource, /hasNoEntryRestriction \|\| visual\.hasRoadClosedRestriction/);
+  assert.doesNotMatch(clientSource, /stroke="#2563eb"/);
+  assert.doesNotMatch(clientSource, /stroke="#f59e0b"/);
+});
+
 test("learner navigation does not expose dev training authoring tools", () => {
   const sidebarSource = readFileSync("components/layout/Sidebar.tsx", "utf8");
   const practicePageSource = readFileSync("app/practice/page.tsx", "utf8");

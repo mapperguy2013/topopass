@@ -39,6 +39,8 @@ Stage 18.8 removes the static placeholder export. `/dev/training-route` now star
 
 Stage 18.9 isolates map gestures from page scrolling. Mouse wheel and trackpad scroll over the authoring map are handled by the map viewport only, touch drawing and panning do not drag the page, and normal page scroll still works outside the map.
 
+Stage 18.10 aligns the authoring map styling with the learner practice map. One-way indicators now use the shared restriction arrow styling and decluttering pipeline, START/DESTINATION/checkpoint markers use the shared practice marker assets and label bubbles, and authored, matched, and shortest-route overlays use the shared route overlay tokens.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
@@ -130,8 +132,12 @@ Run the app locally and check:
 15. Complete required metadata and confirm `Copy JSON` enables only when the readiness checklist is complete.
 16. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, metadata, validation summary, and shortest-route comparison.
 17. Use `Clear route` and confirm route data resets while checkpoints remain; use `Clear checkpoints` and confirm only checkpoints reset.
-18. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
-19. `/practice/training` remains the learner-facing Training Mode route.
+18. Confirm one-way indicators on `/dev/training-route` are clearly arrows, not dot-like symbols.
+19. Confirm START and DESTINATION markers match the practice map marker style and are not oversized.
+20. Confirm checkpoint markers match the Training Mode/practice map style and remain readable.
+21. Confirm authored, matched, shortest-route, and validation overlays remain visually distinct over the Real London map.
+22. The learner sidebar and `/practice` page do not link to `/dev/training-route`.
+23. `/practice/training` remains the learner-facing Training Mode route.
 
 ## Validation Commands
 
