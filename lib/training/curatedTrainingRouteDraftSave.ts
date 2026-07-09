@@ -304,6 +304,10 @@ function validateCuratedTrainingRouteDraftPayload(
     errors.push("Title is required.");
   }
 
+  if (!hasSelectedTrainingRouteAreaMetadata(metadata)) {
+    errors.push("Select a practice map or training area.");
+  }
+
   if (saveMode === "working-draft") {
     return errors;
   }
@@ -416,6 +420,10 @@ function withSaveModeRouteMetadata(
     routeId: sourceMetadata.routeId,
     title: sourceMetadata.title,
     area: sourceMetadata.area,
+    practiceMapId: sourceMetadata.practiceMapId,
+    areaId: sourceMetadata.areaId,
+    areaName: sourceMetadata.areaName,
+    sourceFixture: sourceMetadata.sourceFixture,
     difficulty: sourceMetadata.difficulty,
     exerciseType: sourceMetadata.exerciseType,
     status: sourceMetadata.status,
@@ -423,6 +431,15 @@ function withSaveModeRouteMetadata(
     lifecycleStage: lifecycleStageForCuratedTrainingRouteSaveMode(saveMode),
     metadata: sourceMetadata
   };
+}
+
+function hasSelectedTrainingRouteAreaMetadata(metadata: Record<string, unknown>): boolean {
+  const area = typeof metadata.area === "string" ? metadata.area.trim() : "";
+  const areaId = typeof metadata.areaId === "string" ? metadata.areaId.trim() : "";
+  const areaName = typeof metadata.areaName === "string" ? metadata.areaName.trim() : "";
+  const practiceMapId = typeof metadata.practiceMapId === "string" ? metadata.practiceMapId.trim() : "";
+
+  return Boolean(areaId && areaName && practiceMapId && area === areaName);
 }
 
 function hasUnsafeRouteId(routeId: string | null): boolean {

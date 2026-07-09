@@ -55,6 +55,10 @@ export type CuratedTrainingRouteMetadata = {
   routeId: string;
   title: string;
   area: string;
+  practiceMapId: string;
+  areaId: string;
+  areaName: string;
+  sourceFixture?: string;
   difficulty: Exclude<ExerciseDifficulty, "easy">;
   exerciseType: ExerciseType;
   description: string;
@@ -89,6 +93,10 @@ export type CuratedTrainingRouteExport = {
   routeId: string;
   title: string;
   area: string;
+  practiceMapId: string;
+  areaId: string;
+  areaName: string;
+  sourceFixture?: string;
   difficulty: Exclude<ExerciseDifficulty, "easy">;
   exerciseType: ExerciseType;
   status: CuratedTrainingRouteStatus;

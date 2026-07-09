@@ -79,6 +79,13 @@ test("working draft saves incomplete authoring JSON under drafts with draft stat
     assert.equal(savedRoute.lifecycleStage, "draft");
     assert.equal(savedRoute.title, "Goodge to Tottenham");
     assert.equal(savedRoute.area, "Real London");
+    assert.equal(savedRoute.practiceMapId, "osm-real-london-pilot");
+    assert.equal(savedRoute.areaId, "osm-real-london-pilot");
+    assert.equal(savedRoute.areaName, "Real London");
+    assert.equal(savedRoute.sourceFixture, "realLondonPilotOverpass.json");
+    assert.equal(savedRoute.metadata.practiceMapId, "osm-real-london-pilot");
+    assert.equal(savedRoute.metadata.areaId, "osm-real-london-pilot");
+    assert.equal(savedRoute.metadata.areaName, "Real London");
     assert.equal(savedRoute.difficulty, "intermediate");
     assert.equal(savedRoute.exerciseType, "follow-planned-route");
     assert.deepEqual(savedRoute.routeSegmentIds, []);
@@ -150,6 +157,10 @@ test("complete route saves under complete with learner-facing status and route m
     assert.equal(savedRoute.routeId, savedRoute.metadata.routeId);
     assert.equal(savedRoute.title, savedRoute.metadata.title);
     assert.equal(savedRoute.area, savedRoute.metadata.area);
+    assert.equal(savedRoute.practiceMapId, savedRoute.metadata.practiceMapId);
+    assert.equal(savedRoute.areaId, savedRoute.metadata.areaId);
+    assert.equal(savedRoute.areaName, savedRoute.metadata.areaName);
+    assert.equal(savedRoute.sourceFixture, savedRoute.metadata.sourceFixture);
     assert.equal(savedRoute.difficulty, savedRoute.metadata.difficulty);
     assert.equal(savedRoute.exerciseType, savedRoute.metadata.exerciseType);
     assert.equal(savedRoute.status, "beta");
@@ -274,6 +285,42 @@ test("complete route save blocks missing route data and validation errors", asyn
     assert.ok(result.errors?.some((error) => error.includes("Route segment ids")));
     assert.ok(result.errors?.some((error) => error.includes("valid route validation")));
     assert.ok(result.errors?.some((error) => error.includes("blocking validation errors")));
+  } finally {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  }
+});
+
+test("complete route save blocks missing practice map or area metadata", async () => {
+  const workspaceRoot = await createTemporaryWorkspaceRoot();
+  const route = buildValidCuratedRouteExport();
+
+  try {
+    const result = await saveCuratedTrainingRouteDraft({
+      route: {
+        ...route,
+        area: "",
+        practiceMapId: "",
+        areaId: "",
+        areaName: "",
+        sourceFixture: undefined,
+        metadata: {
+          ...route.metadata,
+          area: "",
+          practiceMapId: "",
+          areaId: "",
+          areaName: "",
+          sourceFixture: undefined
+        }
+      },
+      saveMode: "complete-route",
+      workspaceRoot,
+      nodeEnv: "development"
+    });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 400);
+    assert.equal(result.reasonCode, "curated-training-route-draft-invalid");
+    assert.ok(result.errors?.includes("Select a practice map or training area."));
   } finally {
     await rm(workspaceRoot, { recursive: true, force: true });
   }

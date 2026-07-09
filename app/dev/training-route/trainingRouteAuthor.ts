@@ -55,9 +55,11 @@ import {
   type LearnerRouteValidationSegment
 } from "../../../lib/training/learnerRouteValidation.ts";
 import {
+  ROUTE_RUNNER_MAP_OPTIONS,
   getRealLondonPilotExerciseMetadata,
   realLondonOsmPilotRouteExercises,
-  realLondonOsmPilotRouteMap
+  realLondonOsmPilotRouteMap,
+  type RouteRunnerMapOption
 } from "../route-runner/routeRunnerMaps.ts";
 
 export type { CuratedShortestRouteComparisonDetail } from "../../../lib/training/curatedTrainingRoutes.ts";
@@ -220,6 +222,21 @@ export type TrainingRouteAuthorMapModel = {
   markerRadiusPixels: number;
 };
 
+export type TrainingRouteAuthorAreaOption = {
+  areaId: string;
+  areaName: string;
+  label: string;
+  practiceMapId: string;
+  mapId: string;
+  mapName: string;
+  description: string;
+  source: RouteRunnerMapOption["source"];
+  sourceFixture?: string;
+  exerciseCount: number;
+  mapVersion?: string | number;
+  readiness: "authoring-ready";
+};
+
 export type TrainingRouteAuthorExportReadiness = {
   ready: boolean;
   suggestedFilename: string;
@@ -300,6 +317,8 @@ export type TrainingRouteAuthorModel = {
   saveTargets: TrainingRouteAuthorSaveTarget[];
   suggestedRouteId: string;
   effectiveRouteId: string;
+  areaOptions: TrainingRouteAuthorAreaOption[];
+  selectedArea: TrainingRouteAuthorAreaOption | null;
   metadataFields: TrainingRouteAuthorField[];
   validationRunStatus: "not-run" | LearnerRouteValidationResult["status"];
   comparisonRunStatus: "not-run" | CuratedShortestRouteComparisonDetail["comparisonStatus"];
@@ -318,6 +337,25 @@ const DEFAULT_ROUTE_EXERCISE =
   realLondonOsmPilotRouteExercises.find((exercise) => exercise.stops.length >= 2) ??
   realLondonOsmPilotRouteExercises[0];
 
+const TRAINING_ROUTE_AUTHOR_SUPPORTED_MAP_IDS = new Set([realLondonOsmPilotRouteMap.id]);
+
+export const TRAINING_ROUTE_AUTHOR_AREA_OPTIONS: TrainingRouteAuthorAreaOption[] = ROUTE_RUNNER_MAP_OPTIONS
+  .filter((option) => TRAINING_ROUTE_AUTHOR_SUPPORTED_MAP_IDS.has(option.map.id))
+  .map(routeRunnerMapOptionToTrainingRouteAuthorAreaOption);
+
+const DEFAULT_TRAINING_ROUTE_AUTHOR_AREA =
+  TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.mapId === realLondonOsmPilotRouteMap.id) ??
+  routeRunnerMapOptionToTrainingRouteAuthorAreaOption({
+    id: realLondonOsmPilotRouteMap.id,
+    label: realLondonOsmPilotRouteMap.name,
+    description: realLondonOsmPilotRouteMap.description ?? "Real London authoring map.",
+    source: "converted-osm",
+    map: realLondonOsmPilotRouteMap,
+    exercises: realLondonOsmPilotRouteExercises,
+    defaultExerciseId: realLondonOsmPilotRouteExercises[0]?.id ?? "",
+    fixtureName: "realLondonPilotOverpass.json"
+  });
+
 const EMPTY_VALIDATION = validateLearnerRoute({
   map: realLondonOsmPilotRouteMap,
   routeSegments: [],
@@ -333,17 +371,132 @@ const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTON = 1;
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTONS_MASK = 4;
 
+function routeRunnerMapOptionToTrainingRouteAuthorAreaOption(
+  option: RouteRunnerMapOption
+): TrainingRouteAuthorAreaOption {
+  const areaName = trainingRouteAuthorAreaNameForMapOption(option);
+
+  return {
+    areaId: option.id,
+    areaName,
+    label: option.label,
+    practiceMapId: option.id,
+    mapId: option.map.id,
+    mapName: option.map.name,
+    description: option.description,
+    source: option.source,
+    sourceFixture: option.fixtureName,
+    exerciseCount: option.exercises.length,
+    mapVersion: option.map.mapVersion ?? option.map.version,
+    readiness: "authoring-ready"
+  };
+}
+
+function trainingRouteAuthorAreaNameForMapOption(option: RouteRunnerMapOption): string {
+  if (option.map.id === realLondonOsmPilotRouteMap.id) {
+    return "Real London";
+  }
+
+  return option.map.name;
+}
+
+export function getTrainingRouteAuthorAreaOption(
+  areaId: string | null | undefined
+): TrainingRouteAuthorAreaOption | null {
+  const trimmedAreaId = areaId?.trim();
+
+  if (!trimmedAreaId) {
+    return null;
+  }
+
+  return TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.areaId === trimmedAreaId) ?? null;
+}
+
+function metadataAreaFieldsForOption(option: TrainingRouteAuthorAreaOption): Pick<
+  CuratedTrainingRouteMetadata,
+  "area" | "practiceMapId" | "areaId" | "areaName" | "sourceFixture"
+> {
+  return {
+    area: option.areaName,
+    practiceMapId: option.practiceMapId,
+    areaId: option.areaId,
+    areaName: option.areaName,
+    sourceFixture: option.sourceFixture
+  };
+}
+
+function normaliseTrainingRouteAuthorMetadataArea(
+  metadata: CuratedTrainingRouteMetadata
+): CuratedTrainingRouteMetadata {
+  const metadataRecord = metadata as CuratedTrainingRouteMetadata & Partial<CuratedTrainingRouteMetadata>;
+  const areaIdWasProvided = Object.prototype.hasOwnProperty.call(metadataRecord, "areaId");
+  const selectedOption = getTrainingRouteAuthorAreaOption(metadataRecord.areaId);
+
+  if (selectedOption) {
+    return {
+      ...metadata,
+      ...metadataAreaFieldsForOption(selectedOption)
+    };
+  }
+
+  if (!areaIdWasProvided) {
+    return {
+      ...metadata,
+      ...metadataAreaFieldsForOption(DEFAULT_TRAINING_ROUTE_AUTHOR_AREA)
+    };
+  }
+
+  return {
+    ...metadata,
+    practiceMapId: metadataRecord.practiceMapId ?? "",
+    areaId: metadataRecord.areaId ?? "",
+    areaName: metadataRecord.areaName ?? "",
+    area: metadataRecord.areaName ?? metadataRecord.area ?? "",
+    sourceFixture: metadataRecord.sourceFixture
+  };
+}
+
+function trainingRouteAuthorAreaSelectionIsValid(metadata: CuratedTrainingRouteMetadata): boolean {
+  const selectedOption = getTrainingRouteAuthorAreaOption(metadata.areaId);
+
+  return Boolean(
+    selectedOption &&
+      metadata.practiceMapId === selectedOption.practiceMapId &&
+      metadata.areaName === selectedOption.areaName &&
+      metadata.area === selectedOption.areaName
+  );
+}
+
+function trainingRouteAuthorAreaHelpText(option: TrainingRouteAuthorAreaOption | null): string {
+  if (!option) {
+    return "Select a practice map or training area.";
+  }
+
+  const details = [
+    `Map id: ${option.mapId}`,
+    option.sourceFixture ? `Source fixture: ${option.sourceFixture}` : null,
+    `Exercises: ${option.exerciseCount}`,
+    option.mapVersion ? `Map version: ${option.mapVersion}` : null,
+    "Readiness: authoring ready"
+  ].filter((detail): detail is string => Boolean(detail));
+
+  return details.join(" · ");
+}
+
 function uniqueSortedStrings(values: readonly string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort();
 }
 
-function hasRequiredTrainingRouteMetadata(metadata: CuratedTrainingRouteMetadata): boolean {
+function hasRequiredTrainingRouteTextMetadata(metadata: CuratedTrainingRouteMetadata): boolean {
   return Boolean(
     metadata.routeId.trim() &&
       metadata.title.trim() &&
-      metadata.area.trim() &&
       metadata.objective.trim()
   );
+}
+
+function hasRequiredTrainingRouteMetadata(metadata: CuratedTrainingRouteMetadata): boolean {
+  return hasRequiredTrainingRouteTextMetadata(metadata) && trainingRouteAuthorAreaSelectionIsValid(metadata);
 }
 
 function trainingRouteAuthorCheckpointsRequired(metadata: CuratedTrainingRouteMetadata): boolean {
@@ -638,7 +791,7 @@ function metadataForNewRoute(): CuratedTrainingRouteMetadata {
   return {
     routeId: "curated-training-route-draft",
     title: "Untitled curated training route",
-    area: "Real London",
+    ...metadataAreaFieldsForOption(DEFAULT_TRAINING_ROUTE_AUTHOR_AREA),
     difficulty: "beginner",
     exerciseType: "follow-planned-route",
     description: "Curated learner-driver route authored from the Real London map.",
@@ -664,7 +817,7 @@ function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetad
   return {
     routeId: `curated-${exercise.id}`,
     title: `${exercise.title} curated training route`,
-    area: "Real London beta fixture",
+    ...metadataAreaFieldsForOption(DEFAULT_TRAINING_ROUTE_AUTHOR_AREA),
     difficulty: metadata?.difficulty === "hard" ? "advanced" : metadata?.difficulty === "easy" ? "beginner" : "intermediate",
     exerciseType: routeType === "checkpoint" || routeType === "multi-stop"
       ? "follow-planned-route"
@@ -693,6 +846,12 @@ function buildMetadataFields(input: {
   suggestedRouteId: string;
 }): TrainingRouteAuthorField[] {
   const metadata = input.metadata;
+  const selectedArea = getTrainingRouteAuthorAreaOption(metadata.areaId);
+  const areaOptionIds = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.map((option) => option.areaId);
+  const areaOptions = selectedArea ? areaOptionIds : ["", ...areaOptionIds];
+  const areaOptionLabels = Object.fromEntries(
+    TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.map((option) => [option.areaId, option.label])
+  );
 
   return [
     {
@@ -705,7 +864,18 @@ function buildMetadataFields(input: {
         : "Editable route id used for saved JSON and route library naming."
     },
     { id: "title", label: "Title", input: "text", value: metadata.title },
-    { id: "area", label: "Area", input: "text", value: metadata.area },
+    {
+      id: "areaId",
+      label: "Practice map / area",
+      input: "select",
+      value: metadata.areaId,
+      options: areaOptions,
+      optionLabels: {
+        "": "Select a practice map or training area",
+        ...areaOptionLabels
+      },
+      helpText: trainingRouteAuthorAreaHelpText(selectedArea)
+    },
     {
       id: "difficulty",
       label: "Difficulty",
@@ -855,7 +1025,16 @@ function authoringValidationIssues(input: {
     );
   }
 
-  if (!hasRequiredTrainingRouteMetadata(input.metadata)) {
+  if (!trainingRouteAuthorAreaSelectionIsValid(input.metadata)) {
+    issues.push(
+      trainingRouteAuthorIssue({
+        code: "author-metadata-incomplete",
+        explanation: "Select a practice map or training area."
+      })
+    );
+  }
+
+  if (!hasRequiredTrainingRouteTextMetadata(input.metadata)) {
     issues.push(
       trainingRouteAuthorIssue({
         code: "author-metadata-incomplete",
@@ -1598,6 +1777,25 @@ export function updateTrainingRouteAuthorMetadataField(
       .split(/\r?\n/)
       .map((item) => item.trim())
       .filter(Boolean);
+  } else if (fieldId === "areaId") {
+    const selectedArea = getTrainingRouteAuthorAreaOption(value);
+
+    if (selectedArea) {
+      Object.assign(metadata, metadataAreaFieldsForOption(selectedArea));
+    } else {
+      metadata.areaId = value;
+      metadata.practiceMapId = "";
+      metadata.areaName = "";
+      metadata.area = "";
+      metadata.sourceFixture = undefined;
+    }
+
+    return {
+      ...state,
+      metadata,
+      validationHasRun: false,
+      comparisonHasRun: false
+    };
   } else if (fieldId === "difficulty") {
     metadata.difficulty = value as CuratedTrainingRouteMetadata["difficulty"];
     return {
@@ -1726,6 +1924,7 @@ function buildExportReadiness(input: {
   approvalWarning: TrainingRouteAuthorApprovalWarning | null;
 }): TrainingRouteAuthorExportReadiness {
   const hasRequiredMetadata = hasRequiredTrainingRouteMetadata(input.metadata);
+  const hasSelectedArea = trainingRouteAuthorAreaSelectionIsValid(input.metadata);
   const requiresRouteChoiceJustification =
     input.comparison.requiresRouteChoiceJustification ||
     input.comparison.directComparison.verdict === "major-detour-warning" ||
@@ -1736,6 +1935,7 @@ function buildExportReadiness(input: {
     { label: "Start selected", complete: input.hasStart },
     { label: "Destination selected", complete: input.hasDestination },
     { label: "Route drawn and matched", complete: input.hasRoute },
+    { label: "Practice map or training area selected", complete: hasSelectedArea },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
     { label: "Validation has run", complete: input.validationHasRun },
     {
@@ -1770,6 +1970,7 @@ function buildSaveTarget(input: {
   approvalWarning: TrainingRouteAuthorApprovalWarning | null;
 }): TrainingRouteAuthorSaveTarget {
   const hasRequiredMetadata = hasRequiredTrainingRouteMetadata(input.metadata);
+  const hasSelectedArea = trainingRouteAuthorAreaSelectionIsValid(input.metadata);
   const requiresRouteChoiceJustification =
     input.comparison.requiresRouteChoiceJustification ||
     input.comparison.directComparison.verdict === "major-detour-warning" ||
@@ -1778,7 +1979,8 @@ function buildSaveTarget(input: {
     !requiresRouteChoiceJustification || Boolean(input.metadata.routeChoiceJustification.trim());
   const baseChecklist = [
     { label: "Route id is safe and present", complete: Boolean(input.metadata.routeId.trim()) },
-    { label: "Title is present", complete: Boolean(input.metadata.title.trim()) }
+    { label: "Title is present", complete: Boolean(input.metadata.title.trim()) },
+    { label: "Practice map or training area selected", complete: hasSelectedArea }
   ];
   const workingDraftChecklist = [
     ...baseChecklist,
@@ -1853,6 +2055,10 @@ function unavailableMessageForSaveMode(
 
   if (!missingItem) {
     return null;
+  }
+
+  if (missingItem.label === "Practice map or training area selected") {
+    return `${CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[mode]} unavailable: Select a practice map or training area.`;
   }
 
   return `${CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[mode]} unavailable: ${missingItem.label.charAt(0).toLowerCase()}${missingItem.label.slice(1)}.`;
@@ -1952,12 +2158,14 @@ export function buildTrainingRouteAuthorModel(input?: {
   const sourceMap = realLondonOsmPilotRouteMap;
   const graph = buildMapGraph(sourceMap);
   const baseState = input?.state ?? createEmptyTrainingRouteAuthorState();
+  const baseMetadata = normaliseTrainingRouteAuthorMetadataArea(baseState.metadata);
   const metadata: CuratedTrainingRouteMetadata = {
-    ...baseState.metadata,
-    difficulty: input?.difficultyOverride ?? baseState.metadata.difficulty,
-    routeChoiceJustification: input?.routeChoiceJustification ?? baseState.metadata.routeChoiceJustification,
-    status: input?.statusOverride ?? baseState.metadata.status
+    ...baseMetadata,
+    difficulty: input?.difficultyOverride ?? baseMetadata.difficulty,
+    routeChoiceJustification: input?.routeChoiceJustification ?? baseMetadata.routeChoiceJustification,
+    status: input?.statusOverride ?? baseMetadata.status
   };
+  const selectedArea = getTrainingRouteAuthorAreaOption(metadata.areaId);
   const suggestedRouteId = suggestCuratedTrainingRouteId(metadata);
   const effectiveRouteId = effectiveCuratedTrainingRouteId(metadata);
   const exportMetadata: CuratedTrainingRouteMetadata = {
@@ -2133,6 +2341,10 @@ export function buildTrainingRouteAuthorModel(input?: {
     routeId: exportMetadata.routeId,
     title: exportMetadata.title,
     area: exportMetadata.area,
+    practiceMapId: exportMetadata.practiceMapId,
+    areaId: exportMetadata.areaId,
+    areaName: exportMetadata.areaName,
+    sourceFixture: exportMetadata.sourceFixture,
     difficulty: exportMetadata.difficulty,
     exerciseType: exportMetadata.exerciseType,
     status: exportMetadata.status,
@@ -2192,6 +2404,8 @@ export function buildTrainingRouteAuthorModel(input?: {
     saveTargets,
     suggestedRouteId,
     effectiveRouteId,
+    areaOptions: TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
+    selectedArea,
     metadataFields: buildMetadataFields({
       metadata,
       effectiveRouteId,

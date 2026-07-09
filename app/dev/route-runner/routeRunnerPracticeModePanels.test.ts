@@ -7,6 +7,7 @@ import {
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
   TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
+  TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   canContinueTrainingRouteAuthorDrawPointer,
@@ -666,11 +667,20 @@ test("curated training route author sample can produce Stage 19 route contract m
   const state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
   const model = buildTrainingRouteAuthorModel({ state });
   const fieldIds = model.metadataFields.map((field) => field.id);
+  const areaField = model.metadataFields.find((field) => field.id === "areaId");
 
   assert.equal(model.path, DEV_TRAINING_ROUTE_AUTHOR_PATH);
   assert.equal(model.exportData.schemaVersion, 1);
   assert.equal(model.exportData.mapId, model.sourceMapId);
+  assert.equal(model.exportData.practiceMapId, model.sourceMapId);
+  assert.equal(model.exportData.areaId, model.sourceMapId);
+  assert.equal(model.exportData.areaName, "Real London");
+  assert.equal(model.exportData.sourceFixture, "realLondonPilotOverpass.json");
   assert.ok(model.exportData.metadata.routeId.length > 0);
+  assert.equal(model.exportData.metadata.practiceMapId, model.sourceMapId);
+  assert.equal(model.exportData.metadata.areaId, model.sourceMapId);
+  assert.equal(model.exportData.metadata.areaName, "Real London");
+  assert.equal(model.selectedArea?.areaName, "Real London");
   assert.ok(model.exportData.start.nodeId.length > 0);
   assert.ok(model.exportData.destination.nodeId.length > 0);
   assert.ok(Array.isArray(model.exportData.checkpoints));
@@ -693,7 +703,7 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.deepEqual(fieldIds, [
     "routeId",
     "title",
-    "area",
+    "areaId",
     "difficulty",
     "exerciseType",
     "description",
@@ -706,6 +716,12 @@ test("curated training route author sample can produce Stage 19 route contract m
     "routeChoiceJustification",
     "status"
   ]);
+  assert.equal(areaField?.label, "Practice map / area");
+  assert.equal(areaField?.input, "select");
+  assert.notEqual(areaField?.input, "text");
+  assert.deepEqual(areaField?.options, TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.map((option) => option.areaId));
+  assert.match(areaField?.helpText ?? "", /Map id: osm-real-london-pilot/);
+  assert.match(areaField?.helpText ?? "", /Source fixture: realLondonPilotOverpass\.json/);
   assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
 });
 
@@ -854,6 +870,69 @@ test("curated route author suggests metadata-based route ids, filenames, and sav
   );
 });
 
+test("curated route author area selector updates metadata ids and filenames", () => {
+  const areaOption = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS[0];
+  let state = createEmptyTrainingRouteAuthorState();
+
+  assert.ok(areaOption);
+
+  state = updateTrainingRouteAuthorMetadataField(state, "title", "Goodge to Tottenham");
+  state = updateTrainingRouteAuthorMetadataField(state, "difficulty", "intermediate");
+  state = updateTrainingRouteAuthorMetadataField(state, "exerciseType", "follow-planned-route");
+  state = updateTrainingRouteAuthorMetadataField(state, "areaId", "");
+
+  const missingAreaModel = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(missingAreaModel.exportData.areaId, "");
+  assert.equal(missingAreaModel.exportData.areaName, "");
+  assert.equal(missingAreaModel.suggestedRouteId, "intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(missingAreaModel.saveTargets.find((target) => target.mode === "complete-route")?.ready, false);
+  assert.match(
+    missingAreaModel.saveTargets.find((target) => target.mode === "complete-route")?.unavailableMessage ?? "",
+    /Select a practice map or training area/
+  );
+
+  state = updateTrainingRouteAuthorMetadataField(state, "areaId", areaOption.areaId);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.exportData.practiceMapId, areaOption.practiceMapId);
+  assert.equal(model.exportData.areaId, areaOption.areaId);
+  assert.equal(model.exportData.areaName, areaOption.areaName);
+  assert.equal(model.exportData.area, areaOption.areaName);
+  assert.equal(model.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(
+    model.saveTargets.find((target) => target.mode === "working-draft")?.suggestedFilename,
+    "real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
+  );
+
+  const manualRouteState = updateTrainingRouteAuthorMetadataField(state, "routeId", "manual-goodge-training-route");
+  const manualRouteModel = buildTrainingRouteAuthorModel({ state: manualRouteState });
+
+  assert.equal(manualRouteModel.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(manualRouteModel.effectiveRouteId, "manual-goodge-training-route");
+});
+
+test("curated route author blocks save readiness when no valid area is selected", () => {
+  let state = createSampleTrainingRouteAuthorState();
+
+  state = validateTrainingRouteAuthorState(state);
+  state = compareTrainingRouteAuthorShortestRoute(state);
+  state = updateTrainingRouteAuthorMetadataField(state, "areaId", "");
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+
+  assert.equal(model.exportReadiness.ready, false);
+  assert.equal(
+    model.exportReadiness.checklist.find((item) => item.label === "Practice map or training area selected")?.complete,
+    false
+  );
+  assert.equal(model.draftSaveReadiness.ready, false);
+  assert.equal(completeRoute?.ready, false);
+  assert.match(completeRoute?.unavailableMessage ?? "", /Select a practice map or training area/);
+});
+
 test("curated route author working draft save allows incomplete routes but blocks approved status", () => {
   const model = buildTrainingRouteAuthorModel();
   const approvedModel = buildTrainingRouteAuthorModel({
@@ -938,6 +1017,10 @@ test("curated route author export includes save-ready route, metadata, validatio
   assert.ok(model.exportJson.includes('"routeId"'));
   assert.ok(model.exportJson.includes('"title"'));
   assert.ok(model.exportJson.includes('"area"'));
+  assert.ok(model.exportJson.includes('"practiceMapId"'));
+  assert.ok(model.exportJson.includes('"areaId"'));
+  assert.ok(model.exportJson.includes('"areaName"'));
+  assert.ok(model.exportJson.includes('"sourceFixture"'));
   assert.ok(model.exportJson.includes('"difficulty"'));
   assert.ok(model.exportJson.includes('"exerciseType"'));
   assert.ok(model.exportJson.includes('"status"'));
