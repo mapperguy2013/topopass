@@ -129,6 +129,37 @@ type TrainingRouteAuthorAutosavePayload = {
   savedAt: string;
 };
 
+type TrainingRouteAuthorDrawerTabId = "authoring-steps" | "route-state" | "validation" | "metadata" | "export";
+
+const TRAINING_ROUTE_AUTHOR_DRAWER_TABS: Array<{
+  id: TrainingRouteAuthorDrawerTabId;
+  label: string;
+}> = [
+  { id: "authoring-steps", label: "Authoring steps" },
+  { id: "route-state", label: "Route state" },
+  { id: "validation", label: "Validation" },
+  { id: "metadata", label: "Metadata" },
+  { id: "export", label: "Export" }
+];
+
+const TRAINING_ROUTE_AUTHOR_PRIMARY_TOOLBAR_ACTION_IDS: readonly TrainingRouteAuthorToolbarAction["id"][] = [
+  "pan",
+  "set-start",
+  "draw-route",
+  "add-checkpoint",
+  "set-destination",
+  "undo",
+  "validate-route",
+  "compare-shortest-route"
+];
+
+const TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS: readonly TrainingRouteAuthorToolbarAction["id"][] = [
+  "remove-last-checkpoint",
+  "clear-route",
+  "clear-checkpoints",
+  "reset-view"
+];
+
 type CuratedTrainingRouteDraftSaveResponse = {
   ok?: boolean;
   message?: string;
@@ -232,6 +263,24 @@ function readableActionTitle(action: TrainingRouteAuthorToolbarAction): string {
   }
 
   return action.label;
+}
+
+function toolbarActionClass(action: TrainingRouteAuthorToolbarAction): string {
+  if (action.pressed) {
+    return "border-blue-700 bg-blue-700 text-white shadow-sm";
+  }
+
+  if (action.primary) {
+    return "border-blue-200 bg-white text-slate-900 hover:border-blue-300 hover:bg-blue-50 disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400";
+  }
+
+  return "border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400";
+}
+
+function drawerTabClass(active: boolean): string {
+  return active
+    ? "border-blue-700 text-blue-700"
+    : "border-transparent text-slate-700 hover:border-slate-300 hover:text-slate-950";
 }
 
 function isTrainingRouteAuthorMode(id: TrainingRouteAuthorToolbarAction["id"]): id is TrainingRouteAuthorMode {
@@ -764,10 +813,22 @@ export function TrainingRouteAuthorClient() {
   const [lastAutosavedAt, setLastAutosavedAt] = useState<string | null>(null);
   const [autosaveNotice, setAutosaveNotice] = useState<string | null>(null);
   const [lastSavedExportJson, setLastSavedExportJson] = useState<string | null>(null);
+  const [drawerTab, setDrawerTab] = useState<TrainingRouteAuthorDrawerTabId>("authoring-steps");
+  const [drawerCollapsed, setDrawerCollapsed] = useState(false);
   const dragStateRef = useRef<DragState>(null);
   const mapSvgRef = useRef<SVGSVGElement | null>(null);
   const model = useMemo(() => buildTrainingRouteAuthorModel({ state }), [state]);
   const currentStep = model.authoringSteps.find((step) => step.current) ?? model.authoringSteps[0];
+  const toolbarActionsById = useMemo(
+    () => new Map(model.toolbarActions.map((action) => [action.id, action])),
+    [model.toolbarActions]
+  );
+  const primaryToolbarActions = TRAINING_ROUTE_AUTHOR_PRIMARY_TOOLBAR_ACTION_IDS
+    .map((id) => toolbarActionsById.get(id))
+    .filter((action): action is TrainingRouteAuthorToolbarAction => Boolean(action));
+  const moreToolbarActions = TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS
+    .map((id) => toolbarActionsById.get(id))
+    .filter((action): action is TrainingRouteAuthorToolbarAction => Boolean(action));
   const roadVisuals = useMemo(() => buildSyntheticRoadVisuals(map), [map]);
   const roadRenderPasses = useMemo(() => buildRoadRenderPasses(roadVisuals), [roadVisuals]);
   const mapLabels = useMemo(
@@ -1239,8 +1300,15 @@ export function TrainingRouteAuthorClient() {
       setViewBounds(initialBounds);
     } else if (action.id === "validate-route") {
       setState((currentState) => validateTrainingRouteAuthorState(currentState));
+      setDrawerCollapsed(false);
+      setDrawerTab("validation");
     } else if (action.id === "compare-shortest-route") {
       setState((currentState) => compareTrainingRouteAuthorShortestRoute(currentState));
+      setDrawerCollapsed(false);
+      setDrawerTab("validation");
+    } else if (action.id === "export-json") {
+      setDrawerCollapsed(false);
+      setDrawerTab("export");
     }
   }
 
@@ -1401,45 +1469,441 @@ export function TrainingRouteAuthorClient() {
     );
   }
 
+  function renderToolbarButton(action: TrainingRouteAuthorToolbarAction) {
+    return (
+      <button
+        aria-pressed={action.pressed}
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold ${toolbarActionClass(action)}`}
+        disabled={action.disabled}
+        key={action.id}
+        onClick={() => handleToolbarAction(action)}
+        title={readableActionTitle(action)}
+        type="button"
+      >
+        {action.label}
+      </button>
+    );
+  }
+
+  function openDrawerTab(tab: TrainingRouteAuthorDrawerTabId) {
+    setDrawerCollapsed(false);
+    setDrawerTab(tab);
+  }
+
+  function renderAuthoringStepsDrawer() {
+    return (
+      <section aria-labelledby="training-author-drawer-authoring-steps" data-testid="training-author-drawer-panel-authoring-steps">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-ink" id="training-author-drawer-authoring-steps">
+              Authoring steps
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{currentStep.instruction}</p>
+          </div>
+          <span className="w-fit rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900">
+            Active mode: {model.activeMode.replaceAll("-", " ")}
+          </span>
+        </div>
+        <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+          {model.authoringSteps.map((step) => (
+            <li
+              className={`rounded-lg border p-3 text-sm ${
+                step.current
+                  ? "border-blue-700 bg-blue-50 text-slate-950"
+                  : step.complete
+                    ? "border-green-200 bg-green-50 text-green-950"
+                    : "border-slate-200 bg-white text-slate-700"
+              }`}
+              key={step.index}
+            >
+              <div className="flex items-start gap-2">
+                <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-current text-xs font-bold">
+                  {step.index}
+                </span>
+                <div>
+                  <p className="font-bold">{step.label}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide">
+                    {step.complete ? "Complete" : step.current ? "Current" : "Pending"}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-2 text-xs leading-5">{step.complete ? "Ready" : step.instruction}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    );
+  }
+
+  function renderRouteStateDrawer() {
+    return (
+      <section aria-labelledby="training-author-drawer-route-state" data-testid="training-author-drawer-panel-route-state">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-ink" id="training-author-drawer-route-state">
+              Route state
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{model.routeMatchMessage}</p>
+          </div>
+          <button
+            className="inline-flex min-h-11 w-fit items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
+            onClick={() => openDrawerTab("validation")}
+            type="button"
+          >
+            Review validation
+          </button>
+        </div>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          {model.routeStatusItems.map((item) => (
+            <div className={`rounded-lg border p-3 ${statusClass(item.state)}`} key={item.label}>
+              <dt className="text-xs font-bold uppercase tracking-wide">{item.label}</dt>
+              <dd className="mt-2 text-base font-bold">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+    );
+  }
+
+  function renderValidationDrawer() {
+    const validateAction = toolbarActionsById.get("validate-route");
+    const compareAction = toolbarActionsById.get("compare-shortest-route");
+    const affectedSegmentIds = model.validationRunStatus === "not-run" ? [] : model.validation.affectedRouteSegmentIds;
+
+    return (
+      <section aria-labelledby="training-author-drawer-validation" data-testid="training-author-drawer-panel-validation">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-ink" id="training-author-drawer-validation">
+              Validation panel
+            </h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">
+              {model.validationRunStatus === "not-run"
+                ? "Validation has not been run for the current authored route."
+                : model.validation.explanation}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {validateAction ? (
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
+                onClick={() => handleToolbarAction(validateAction)}
+                type="button"
+              >
+                Validate route
+              </button>
+            ) : null}
+            {compareAction ? (
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                onClick={() => handleToolbarAction(compareAction)}
+                type="button"
+              >
+                Compare shortest route
+              </button>
+            ) : null}
+          </div>
+        </div>
+        {model.approvalWarning ? (
+          <p
+            className={`mt-4 rounded-lg border p-3 text-sm leading-6 ${
+              model.approvalWarning.blocking
+                ? "border-red-200 bg-red-50 text-red-950"
+                : "border-amber-200 bg-amber-50 text-amber-950"
+            }`}
+          >
+            {model.approvalWarning.message}
+          </p>
+        ) : null}
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Blocking errors</p>
+            {model.validationRunStatus === "not-run" || model.validation.blockingErrors.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-700">None shown</p>
+            ) : (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-900">
+                {model.validation.blockingErrors.map((issue) => (
+                  <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Advisory warnings</p>
+            {model.validationRunStatus === "not-run" || model.validation.advisoryWarnings.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-700">None shown</p>
+            ) : (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">
+                {model.validation.advisoryWarnings.map((issue) => (
+                  <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Affected segments</p>
+            {affectedSegmentIds.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-700">None shown</p>
+            ) : (
+              <p className="mt-2 break-all font-mono text-xs text-slate-700">{affectedSegmentIds.join(", ")}</p>
+            )}
+          </div>
+        </div>
+        <div className="mt-4">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Shortest route comparison</h3>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            {renderComparison("Direct shortest route", model.shortestRouteComparison.directComparison)}
+            {renderComparison(
+              "Checkpoint-constrained shortest route",
+              model.shortestRouteComparison.checkpointConstrainedComparison
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function renderMetadataDrawer() {
+    return (
+      <section aria-labelledby="training-author-drawer-metadata" data-testid="training-author-drawer-panel-metadata">
+        <h2 className="text-lg font-bold text-ink" id="training-author-drawer-metadata">
+          Route metadata
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-slate-700">
+          Complete metadata after the route shape is clear. These fields update the export JSON live.
+        </p>
+        <form className="mt-4 grid gap-4 md:grid-cols-2" data-testid="training-author-metadata-form">
+          {model.metadataFields.map((field) => (
+            <label
+              className={`text-sm font-semibold text-slate-700 ${field.input === "textarea" ? "md:col-span-2" : ""}`}
+              htmlFor={field.id}
+              key={field.id}
+            >
+              {field.label}
+              {renderField(field)}
+            </label>
+          ))}
+        </form>
+      </section>
+    );
+  }
+
+  function renderExportDrawer() {
+    return (
+      <section aria-labelledby="training-author-drawer-export" data-testid="training-author-drawer-panel-export">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-ink" id="training-author-drawer-export">
+              Export panel
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-700">
+              Explicit saves write route JSON to the selected training-route folder. Browser autosave is only temporary recovery.
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-800">
+              Suggested route id: <span className="font-mono">{model.effectiveRouteId}</span>
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {model.saveTargets.map((target) => (
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+                disabled={fileSaveStatus.state === "saving" || !target.ready}
+                key={target.mode}
+                onClick={() => void saveTrainingRoute(target)}
+                title={target.unavailableMessage ?? target.relativePath}
+                type="button"
+              >
+                {target.actionLabel}
+              </button>
+            ))}
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
+              disabled={!model.exportReadiness.ready}
+              onClick={downloadExportJson}
+              type="button"
+            >
+              Download JSON
+            </button>
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:bg-slate-300 disabled:text-slate-600"
+              disabled={!model.exportReadiness.ready}
+              onClick={copyExportJson}
+              type="button"
+            >
+              Copy JSON
+            </button>
+          </div>
+        </div>
+        {copyStatus ? <p className="mt-3 text-sm font-semibold text-slate-700">{copyStatus}</p> : null}
+        {autosaveNotice ? (
+          <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">
+            Autosave recovery: {autosaveNotice}
+          </p>
+        ) : null}
+        <div className="mt-4 grid gap-3 xl:grid-cols-3">
+          {model.saveTargets.map((target) => (
+            <section className="rounded-lg border border-slate-200 bg-white p-3" key={target.mode}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-ink">{target.label}</h3>
+                  <p className="mt-1 break-all font-mono text-xs text-slate-700">{target.relativePath}</p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                    target.ready ? "border-green-200 bg-green-50 text-green-800" : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}
+                >
+                  {target.ready ? "Ready" : "Blocked"}
+                </span>
+              </div>
+              <dl className="mt-3 grid gap-2 text-xs text-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Save mode</dt>
+                  <dd>{target.mode}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">JSON status</dt>
+                  <dd>{target.jsonStatus}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Suggested filename</dt>
+                  <dd className="break-all font-mono">{target.suggestedFilename}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Learner-facing later</dt>
+                  <dd>{target.learnerFacingLater ? "Yes" : "No"}</dd>
+                </div>
+              </dl>
+              {target.unavailableMessage ? (
+                <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs font-semibold leading-5 text-amber-950">
+                  {target.unavailableMessage}
+                </p>
+              ) : null}
+            </section>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[400px_1fr]">
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-white p-3">
+              <p className="text-sm font-bold text-ink">Explicit route save status</p>
+              <dl className="mt-3 space-y-2 text-sm text-slate-700">
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Unsaved changes</dt>
+                  <dd className={lastSavedExportJson === model.exportJson ? "text-green-700" : "text-amber-800"}>
+                    {lastSavedExportJson === null
+                      ? "Not saved to file yet"
+                      : lastSavedExportJson === model.exportJson
+                        ? "No"
+                        : "Yes"}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Last autosave</dt>
+                  <dd>{readableTimestamp(lastAutosavedAt)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Last file save</dt>
+                  <dd>{readableTimestamp(fileSaveStatus.savedAt)}</dd>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <dt className="font-semibold">Saved path</dt>
+                  <dd className="break-all font-mono text-xs">{fileSaveStatus.relativePath ?? "Not yet"}</dd>
+                </div>
+              </dl>
+              <p
+                className={`mt-3 rounded-md border p-3 text-sm leading-6 ${
+                  fileSaveStatus.state === "saved"
+                    ? "border-green-200 bg-green-50 text-green-900"
+                    : fileSaveStatus.state === "error"
+                      ? "border-red-200 bg-red-50 text-red-950"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                }`}
+              >
+                {fileSaveStatus.message}
+              </p>
+              {fileSaveStatus.missingItems?.length ? (
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-900">
+                  {fileSaveStatus.missingItems.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <button
+                className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                onClick={clearAutosaveDraft}
+                type="button"
+              >
+                Clear autosave recovery
+              </button>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Autosave recovery is browser-local and temporary. Explicit saves write route JSON to the folder shown above.
+              </p>
+            </div>
+
+            {model.saveTargets.map((target) => (
+              <div className="rounded-lg border border-slate-200 bg-white p-3" key={`checklist-${target.mode}`}>
+                <p className="text-sm font-bold text-ink">{target.label} checklist</p>
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                  {target.checklist.map((item) => (
+                    <li className="flex items-center justify-between gap-3" key={item.label}>
+                      <span>{item.label}</span>
+                      <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
+                        {item.complete ? "ready" : "missing"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <textarea
+            aria-label="Curated route JSON export"
+            className="h-96 w-full rounded-md border border-slate-300 bg-slate-950 p-3 font-mono text-xs text-slate-50"
+            readOnly
+            value={model.exportJson}
+          />
+        </div>
+      </section>
+    );
+  }
+
+  function renderDrawerContent() {
+    if (drawerTab === "route-state") {
+      return renderRouteStateDrawer();
+    }
+
+    if (drawerTab === "validation") {
+      return renderValidationDrawer();
+    }
+
+    if (drawerTab === "metadata") {
+      return renderMetadataDrawer();
+    }
+
+    if (drawerTab === "export") {
+      return renderExportDrawer();
+    }
+
+    return renderAuthoringStepsDrawer();
+  }
+
   return (
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="space-y-3" data-testid="training-author-map-first-shell">
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Dev/admin only</p>
-            <h1 className="mt-2 text-3xl font-bold text-ink">{model.title}</h1>
-            <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">{model.devOnlyNotice}</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <h1 className="mt-1 text-2xl font-bold text-ink sm:text-3xl">{model.title}</h1>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-700">
+              Map authoring workspace for curated learner routes. {model.devOnlyNotice}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
               {model.sampleLoaded
                 ? `Sample loaded from ${model.sourceMapName} (${model.sourceMapId}) / ${model.sourceExerciseId}.`
                 : `No sample route is loaded. Author from scratch on ${model.sourceMapName} (${model.sourceMapId}).`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
-              onClick={() => {
-                setState(createSampleTrainingRouteAuthorState());
-                setCopyStatus(null);
-                setClickDiagnostic(null);
-                setMapInteractionMessage(null);
-              }}
-              type="button"
-            >
-              Load sample route
-            </button>
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-              onClick={() => {
-                setState(createEmptyTrainingRouteAuthorState());
-                setCopyStatus(null);
-                setClickDiagnostic(null);
-                setMapInteractionMessage(null);
-              }}
-              type="button"
-            >
-              New empty route
-            </button>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               href="/dev"
@@ -1450,48 +1914,86 @@ export function TrainingRouteAuthorClient() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-blue-100 bg-white p-3 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-road">Map authoring workspace</p>
-            <h2 className="mt-2 text-2xl font-bold text-ink">Author the training route first</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-700">{currentStep.instruction}</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">{model.routeMatchMessage}</p>
-          </div>
-          <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            href="/dev/route-runner"
+      <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div
+          aria-label="Training route authoring toolbar"
+          className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white p-3"
+          data-testid="training-author-top-toolbar"
+          role="toolbar"
+        >
+          {primaryToolbarActions.map(renderToolbarButton)}
+          <button
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-400"
+            disabled
+            title="Redo will be enabled when redo history is available."
+            type="button"
           >
-            Open full Route Runner diagnostics
-          </Link>
-        </div>
-
-        <div aria-label="Training route authoring toolbar" className="mt-4 flex flex-wrap gap-2" role="toolbar">
-          {model.toolbarActions.map((action) => (
-            <button
-              aria-pressed={action.pressed}
-              className={`min-h-11 rounded-md border px-3 py-2 text-sm font-semibold ${
-                action.pressed
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : action.primary
-                    ? "border-road bg-road text-white disabled:border-slate-300 disabled:bg-slate-100 disabled:text-slate-500"
-                    : "border-slate-300 bg-white text-slate-700 disabled:bg-slate-100 disabled:text-slate-500"
-              }`}
-              disabled={action.disabled}
-              key={action.id}
-              onClick={() => handleToolbarAction(action)}
-              title={readableActionTitle(action)}
-              type="button"
+            Redo
+          </button>
+          <details className="shrink-0">
+            <summary className="inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">
+              Export
+            </summary>
+            <div className="mt-2 grid min-w-56 gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
+                onClick={() => openDrawerTab("export")}
+                type="button"
+              >
+                Open export panel
+              </button>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500"
+                disabled={!model.exportReadiness.ready}
+                onClick={downloadExportJson}
+                type="button"
+              >
+                Download JSON
+              </button>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500"
+                disabled={!model.exportReadiness.ready}
+                onClick={copyExportJson}
+                type="button"
+              >
+                Copy JSON
+              </button>
+            </div>
+          </details>
+          <details className="shrink-0">
+            <summary
+              aria-label="More authoring actions"
+              className="inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             >
-              {action.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="self-start overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-            <div className="flex flex-wrap gap-3 border-b border-slate-200 bg-white p-3 text-sm text-slate-700">
-              <label className="inline-flex items-center gap-2 font-semibold">
+              More
+            </summary>
+            <div className="mt-2 grid min-w-72 gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+              {moreToolbarActions.map(renderToolbarButton)}
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
+                onClick={() => {
+                  setState(createSampleTrainingRouteAuthorState());
+                  setCopyStatus(null);
+                  setClickDiagnostic(null);
+                  setMapInteractionMessage(null);
+                }}
+                type="button"
+              >
+                Load sample route
+              </button>
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                onClick={() => {
+                  setState(createEmptyTrainingRouteAuthorState());
+                  setCopyStatus(null);
+                  setClickDiagnostic(null);
+                  setMapInteractionMessage(null);
+                }}
+                type="button"
+              >
+                New empty route
+              </button>
+              <label className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
                 <input
                   checked={showRestrictions}
                   className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
@@ -1500,7 +2002,7 @@ export function TrainingRouteAuthorClient() {
                 />
                 Show one-way/restriction cues
               </label>
-              <label className="inline-flex items-center gap-2 font-semibold">
+              <label className="inline-flex min-h-11 items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700">
                 <input
                   checked={showClickDiagnostics}
                   className="h-4 w-4 rounded border-slate-300 text-blue-700 focus:ring-blue-200"
@@ -1509,10 +2011,15 @@ export function TrainingRouteAuthorClient() {
                 />
                 Show click diagnostics
               </label>
-              <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold">
-                Active mode: {model.activeMode.replaceAll("-", " ")}
-              </span>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                href="/dev/route-runner"
+              >
+                Open /dev/route-runner
+              </Link>
             </div>
+          </details>
+        </div>
             {mapInteractionMessage ? (
               <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950" role="status">
                 {mapInteractionMessage}
@@ -1571,6 +2078,7 @@ export function TrainingRouteAuthorClient() {
                 )}
               </div>
             ) : null}
+            <div className="bg-slate-100" data-testid="training-author-map-workspace">
             <div className="relative overflow-hidden" data-training-author-layer="map-viewport">
               <svg
                 aria-label="Interactive Real London training route authoring map"
@@ -1721,364 +2229,69 @@ export function TrainingRouteAuthorClient() {
               </div>
             </div>
           </div>
-
-          <aside className="space-y-4">
-            <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <h3 className="text-lg font-bold text-ink">Authoring steps</h3>
-              <ol className="mt-3 space-y-2">
-                {model.authoringSteps.map((step) => (
-                  <li
-                    className={`rounded-lg border p-3 text-sm ${
-                      step.current ? "border-road bg-blue-50 text-slate-900" : "border-slate-200 text-slate-700"
-                    }`}
-                    key={step.index}
-                  >
-                    <span className="font-bold">Step {step.index}: {step.label}</span>
-                    <span className="mt-1 block text-xs">
-                      {step.optional ? step.instruction : step.complete ? "Complete" : step.instruction}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-
-            <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <h3 className="text-lg font-bold text-ink">Route state summary</h3>
-              <dl className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-                {model.routeStatusItems.map((item) => (
-                  <div className={`rounded-lg border p-3 ${statusClass(item.state)}`} key={item.label}>
-                    <dt className="text-xs font-bold uppercase tracking-wide">{item.label}</dt>
-                    <dd className="mt-1 text-sm font-semibold">{item.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-
-            <section className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-bold text-ink">Validation result</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">
-                    {model.validationRunStatus === "not-run"
-                      ? "Validation has not been run for the current authored route."
-                      : model.validation.explanation}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                    model.validationRunStatus === "not-run"
-                      ? "border-slate-200 bg-slate-50 text-slate-700"
-                      : model.validation.valid
-                        ? "border-green-200 bg-green-50 text-green-800"
-                        : "border-red-200 bg-red-50 text-red-800"
-                  }`}
-                >
-                  {model.validationRunStatus}
-                </span>
-              </div>
-              {model.validationRunStatus !== "not-run" ? (
-                <div className="mt-3 grid gap-3 text-sm">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Blocking errors</p>
-                    {model.validation.blockingErrors.length === 0 ? (
-                      <p className="mt-1 text-slate-700">None</p>
-                    ) : (
-                      <ul className="mt-1 list-disc space-y-1 pl-5 text-red-900">
-                        {model.validation.blockingErrors.map((issue) => (
-                          <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Advisory warnings</p>
-                    {model.validation.advisoryWarnings.length === 0 ? (
-                      <p className="mt-1 text-slate-700">None</p>
-                    ) : (
-                      <ul className="mt-1 list-disc space-y-1 pl-5 text-amber-900">
-                        {model.validation.advisoryWarnings.map((issue) => (
-                          <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              ) : null}
-            </section>
-          </aside>
-        </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-xl font-bold text-ink">Route metadata</h2>
-        <p className="mt-2 text-sm leading-6 text-slate-700">
-          Complete metadata after the route shape is clear. These fields update the export JSON live.
-        </p>
-        <form className="mt-4 grid gap-4 md:grid-cols-2">
-          {model.metadataFields.map((field) => (
-            <label
-              className={`text-sm font-semibold text-slate-700 ${field.input === "textarea" ? "md:col-span-2" : ""}`}
-              htmlFor={field.id}
-              key={field.id}
-            >
-              {field.label}
-              {renderField(field)}
-            </label>
-          ))}
-        </form>
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-ink">Validation panel</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
-                {model.validationRunStatus === "not-run"
-                  ? "Validation has not been run for the current authored route."
-                  : model.validation.explanation}
-              </p>
-            </div>
-            <span
-              className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
-                model.validationRunStatus === "not-run"
-                  ? "border-slate-200 bg-slate-50 text-slate-700"
-                  : model.validation.valid
-                    ? "border-green-200 bg-green-50 text-green-800"
-                    : "border-red-200 bg-red-50 text-red-800"
-              }`}
-            >
-              {model.validationRunStatus}
-            </span>
-          </div>
-          {model.approvalWarning ? (
-            <p
-              className={`mt-4 rounded-lg border p-3 text-sm leading-6 ${
-                model.approvalWarning.blocking
-                  ? "border-red-200 bg-red-50 text-red-950"
-                  : "border-amber-200 bg-amber-50 text-amber-950"
-              }`}
-            >
-              {model.approvalWarning.message}
-            </p>
-          ) : null}
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Blocking errors</p>
-              {model.validationRunStatus === "not-run" || model.validation.blockingErrors.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-700">None shown</p>
-              ) : (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-900">
-                  {model.validation.blockingErrors.map((issue) => (
-                    <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Advisory warnings</p>
-              {model.validationRunStatus === "not-run" || model.validation.advisoryWarnings.length === 0 ? (
-                <p className="mt-2 text-sm text-slate-700">None shown</p>
-              ) : (
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-900">
-                  {model.validation.advisoryWarnings.map((issue) => (
-                    <li key={`${issue.code}-${issue.explanation}`}>{issue.explanation}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-bold text-ink">Shortest route comparison</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-700">
-            Run this after the authored route is matched. Unknown results are advisory when map data cannot prove a shortest legal route.
-          </p>
-          <div className="mt-4 grid gap-3">
-            {renderComparison("Direct shortest route", model.shortestRouteComparison.directComparison)}
-            {renderComparison(
-              "Checkpoint-constrained shortest route",
-              model.shortestRouteComparison.checkpointConstrainedComparison
-            )}
-          </div>
-        </section>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <section
+        aria-label="Training route author bottom drawer"
+        className="relative z-20 -mt-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-lg sm:p-4"
+        data-testid="training-author-bottom-drawer"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-bold text-ink">Export panel</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              Explicit saves write route JSON to the selected training-route folder. Browser autosave is only temporary recovery.
-            </p>
-            <p className="mt-2 text-sm font-semibold text-slate-800">
-              Suggested route id: <span className="font-mono">{model.effectiveRouteId}</span>
-            </p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Route authoring drawer</p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">{currentStep.label}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {model.saveTargets.map((target) => (
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
-                disabled={fileSaveStatus.state === "saving" || !target.ready}
-                key={target.mode}
-                onClick={() => void saveTrainingRoute(target)}
-                title={target.unavailableMessage ?? target.relativePath}
-                type="button"
-              >
-                {target.actionLabel}
-              </button>
-            ))}
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm disabled:bg-slate-100 disabled:text-slate-500"
-              disabled={!model.exportReadiness.ready}
-              onClick={downloadExportJson}
-              type="button"
-            >
-              Download JSON
-            </button>
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-4 py-2 text-sm font-semibold text-white shadow-sm disabled:bg-slate-300 disabled:text-slate-600"
-              disabled={!model.exportReadiness.ready}
-              onClick={copyExportJson}
-              type="button"
-            >
-              Copy JSON
-            </button>
-          </div>
+          <button
+            aria-expanded={!drawerCollapsed}
+            className="inline-flex min-h-11 w-fit items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            onClick={() => setDrawerCollapsed((collapsed) => !collapsed)}
+            type="button"
+          >
+            {drawerCollapsed ? "Expand drawer" : "Collapse drawer"}
+          </button>
         </div>
-        {copyStatus ? <p className="mt-3 text-sm font-semibold text-slate-700">{copyStatus}</p> : null}
-        {autosaveNotice ? (
-          <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">
-            Autosave recovery: {autosaveNotice}
-          </p>
-        ) : null}
-        <div className="mt-4 grid gap-3 xl:grid-cols-3">
-          {model.saveTargets.map((target) => (
-            <section className="rounded-lg border border-slate-200 p-3" key={target.mode}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-bold text-ink">{target.label}</h3>
-                  <p className="mt-1 break-all font-mono text-xs text-slate-700">{target.relativePath}</p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
-                    target.ready ? "border-green-200 bg-green-50 text-green-800" : "border-amber-200 bg-amber-50 text-amber-900"
-                  }`}
-                >
-                  {target.ready ? "Ready" : "Blocked"}
-                </span>
-              </div>
-              <dl className="mt-3 grid gap-2 text-xs text-slate-700">
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Save mode</dt>
-                  <dd>{target.mode}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">JSON status</dt>
-                  <dd>{target.jsonStatus}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Suggested filename</dt>
-                  <dd className="break-all font-mono">{target.suggestedFilename}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Learner-facing later</dt>
-                  <dd>{target.learnerFacingLater ? "Yes" : "No"}</dd>
-                </div>
-              </dl>
-              {target.unavailableMessage ? (
-                <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs font-semibold leading-5 text-amber-950">
-                  {target.unavailableMessage}
-                </p>
-              ) : null}
-            </section>
-          ))}
-        </div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[400px_1fr]">
-          <div className="space-y-4">
-            <div className="rounded-lg border border-slate-200 p-3">
-              <p className="text-sm font-bold text-ink">Explicit route save status</p>
-              <dl className="mt-3 space-y-2 text-sm text-slate-700">
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Unsaved changes</dt>
-                  <dd className={lastSavedExportJson === model.exportJson ? "text-green-700" : "text-amber-800"}>
-                    {lastSavedExportJson === null
-                      ? "Not saved to file yet"
-                      : lastSavedExportJson === model.exportJson
-                        ? "No"
-                        : "Yes"}
-                  </dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Last autosave</dt>
-                  <dd>{readableTimestamp(lastAutosavedAt)}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Last file save</dt>
-                  <dd>{readableTimestamp(fileSaveStatus.savedAt)}</dd>
-                </div>
-                <div className="flex items-start justify-between gap-3">
-                  <dt className="font-semibold">Saved path</dt>
-                  <dd className="break-all font-mono text-xs">{fileSaveStatus.relativePath ?? "Not yet"}</dd>
-                </div>
-              </dl>
-              <p
-                className={`mt-3 rounded-md border p-3 text-sm leading-6 ${
-                  fileSaveStatus.state === "saved"
-                    ? "border-green-200 bg-green-50 text-green-900"
-                    : fileSaveStatus.state === "error"
-                      ? "border-red-200 bg-red-50 text-red-950"
-                      : "border-slate-200 bg-slate-50 text-slate-700"
-                }`}
-              >
-                {fileSaveStatus.message}
-              </p>
-              {fileSaveStatus.missingItems?.length ? (
-                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-red-900">
-                  {fileSaveStatus.missingItems.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              ) : null}
-              <button
-                className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                onClick={clearAutosaveDraft}
-                type="button"
-              >
-                Clear autosave recovery
-              </button>
-              <p className="mt-2 text-xs leading-5 text-slate-500">
-                Autosave recovery is browser-local and temporary. Explicit saves write route JSON to the folder shown above.
-              </p>
-            </div>
 
-            {model.saveTargets.map((target) => (
-              <div className="rounded-lg border border-slate-200 p-3" key={`checklist-${target.mode}`}>
-                <p className="text-sm font-bold text-ink">{target.label} checklist</p>
-                <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                  {target.checklist.map((item) => (
-                    <li className="flex items-center justify-between gap-3" key={item.label}>
-                      <span>{item.label}</span>
-                      <span className={item.complete ? "font-semibold text-green-700" : "font-semibold text-slate-500"}>
-                        {item.complete ? "ready" : "missing"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-          <textarea
-            aria-label="Curated route JSON export"
-            className="h-96 w-full rounded-md border border-slate-300 bg-slate-950 p-3 font-mono text-xs text-slate-50"
-            readOnly
-            value={model.exportJson}
-          />
-        </div>
+        {drawerCollapsed ? (
+          <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            Drawer collapsed. The map remains active for route authoring.
+          </p>
+        ) : (
+          <>
+            <div
+              aria-label="Training route author drawer tabs"
+              className="mt-4 flex gap-4 overflow-x-auto border-b border-slate-200"
+              role="tablist"
+            >
+              {TRAINING_ROUTE_AUTHOR_DRAWER_TABS.map((tab) => (
+                <button
+                  aria-controls={`training-author-drawer-panel-${tab.id}`}
+                  aria-selected={drawerTab === tab.id}
+                  className={`min-h-11 shrink-0 border-b-2 px-1 py-3 text-sm font-semibold ${drawerTabClass(
+                    drawerTab === tab.id
+                  )}`}
+                  id={`training-author-drawer-tab-${tab.id}`}
+                  key={tab.id}
+                  onClick={() => setDrawerTab(tab.id)}
+                  role="tab"
+                  type="button"
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div
+              aria-labelledby={`training-author-drawer-tab-${drawerTab}`}
+              className="pt-4"
+              id={`training-author-drawer-panel-${drawerTab}`}
+              role="tabpanel"
+            >
+              {renderDrawerContent()}
+            </div>
+          </>
+        )}
       </section>
 
-      <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <details className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" data-testid="training-author-advanced-diagnostics">
         <summary className="cursor-pointer text-sm font-bold text-slate-800">Advanced diagnostics</summary>
         <p className="mt-3 text-sm leading-6 text-slate-700">
           Full Route Runner diagnostics, manual inputs, attempt review, adaptive practice diagnostics, and OSM QA stay in

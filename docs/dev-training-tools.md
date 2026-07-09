@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -59,6 +59,8 @@ Stage 18.17 keeps the authoring legend collapsed by default. Use the `Map legend
 
 Stage 18.18 prevents the authoring map card from stretching to match the height of the status panels beside it. The SVG, base map, route overlays, markers, pointer interaction layer, and legend now use the same viewport sizing contract, so the Real London map fills the visible authoring viewport without a large blank area below it.
 
+Stage 18.19 makes `/dev/training-route` map-first. The top toolbar contains the authoring modes and primary route actions. The bottom drawer opens on `Authoring steps` by default and contains `Route state`, `Validation`, `Metadata`, and `Export` tabs. Metadata, validation details, shortest-route comparison, and export JSON are no longer permanent blocks below or beside the map.
+
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
@@ -67,14 +69,15 @@ Use `/dev/training-route` for curated route creation:
 2. Draw the learner route in driving order with `Draw route`; the tool snaps and matches the trace to Real London road segments.
 3. Add numbered checkpoints with `Add checkpoint` if the learner must visit them.
 4. Set the destination by choosing `Set destination` and clicking the final valid road/node.
-5. Review the route state summary for missing start, destination, route, checkpoints, length, segments, turns, decisions, validation, comparison, and export readiness.
-6. Select the practice map / area and complete metadata after the route shape is clear. The current selector exposes the Real London pilot map because it is the only map the authoring workspace can load.
-7. Validate the route. This button is available even before the route is complete and should list missing start, destination, route, metadata, or matching requirements as blocking errors.
-8. Compare against the shortest valid route. If the route cannot be compared yet, the comparison panel should report an unknown or unsupported result rather than silently completing export readiness.
-9. Use `Save working draft` to preserve incomplete authoring work. It writes draft-status JSON to `data/training-routes/drafts/` and is blocked if the selected route status is approved.
-10. Use `Save review candidate` after route id, title, start, destination, matched route, required metadata, and validation have run. It writes draft-status JSON with review lifecycle metadata to `data/training-routes/review/`.
-11. Use `Save complete route` only after required metadata, validation, no blocking errors, shortest-route comparison, any required route choice justification, and beta or approved status are ready. It writes to `data/training-routes/complete/`.
-12. Use `Download JSON` or `Copy JSON` for manual review only after the export readiness checklist is complete.
+5. Use the bottom drawer's `Authoring steps` tab for the compact seven-step route workflow.
+6. Open the `Route state` tab to review missing start, destination, route, checkpoints, length, segments, turns, decisions, validation, comparison, and export readiness.
+7. Open the `Metadata` tab to select the practice map / area and complete metadata after the route shape is clear. The current selector exposes the Real London pilot map because it is the only map the authoring workspace can load.
+8. Use `Validate route` from the top toolbar or `Validation` tab. This action is available even before the route is complete and should list missing start, destination, route, metadata, or matching requirements as blocking errors.
+9. Compare against the shortest valid route from the top toolbar or `Validation` tab. If the route cannot be compared yet, the comparison result should report an unknown or unsupported result rather than silently completing export readiness.
+10. Open the `Export` tab and use `Save working draft` to preserve incomplete authoring work. It writes draft-status JSON to `data/training-routes/drafts/` and is blocked if the selected route status is approved.
+11. Use `Save review candidate` after route id, title, start, destination, matched route, required metadata, and validation have run. It writes draft-status JSON with review lifecycle metadata to `data/training-routes/review/`.
+12. Use `Save complete route` only after required metadata, validation, no blocking errors, shortest-route comparison, any required route choice justification, and beta or approved status are ready. It writes to `data/training-routes/complete/`.
+13. Use `Download JSON` or `Copy JSON` in the `Export` tab for manual review only after the export readiness checklist is complete.
 
 Use `/dev/route-runner` for full diagnostics, QA tables, manual route input, attempt review, adaptive practice diagnostics, and Route Runner regression testing. The authoring page links to `/dev/route-runner` from an advanced diagnostics section instead of showing those panels by default.
 
@@ -164,12 +167,12 @@ Run the app locally and check:
 
 1. `/dev` lists Route Runner and Training Route Author.
 2. `/dev/route-runner` opens the existing map workspace and still shows Phase 6 map labels, overlays, route review, and Training Mode test controls.
-3. `/dev/training-route` opens with no default route exported and shows the map authoring workspace before metadata, validation, shortest-route comparison, and export JSON.
+3. `/dev/training-route` opens with no default route exported and shows a compact dev header, top authoring toolbar, large map, and bottom drawer. It should not show a permanent right sidebar or always-visible metadata/export blocks.
 4. Confirm the map fills the authoring viewport without a large empty grey/blue area below the visible roads or below the collapsed legend.
-5. Click `Validate route` with no authored route and confirm blocking errors explain the missing start, destination, and route.
-6. Confirm the validation result appears beside the route state summary near the map, while the full validation panel remains available below.
-7. Confirm the authoring steps do not mark route, validation, comparison, or export complete from the empty default state.
-8. Confirm the `Practice map / area` field is a selector, lists the Real London pilot map, and shows map id, source fixture, exercise count, map version, and readiness details.
+5. Confirm the bottom drawer opens on the `Authoring steps` tab and can be collapsed and expanded.
+6. Click `Validate route` with no authored route and confirm the bottom drawer opens validation details explaining the missing start, destination, and route.
+7. Confirm the `Route state` tab shows compact route status cards and the authoring steps do not mark route, validation, comparison, or export complete from the empty default state.
+8. Open the `Metadata` tab and confirm the `Practice map / area` field is a selector, lists the Real London pilot map, and shows map id, source fixture, exercise count, map version, and readiness details.
 9. Confirm the suggested route id and filename continue to use the selected area and update while the route id is still auto-generated.
 10. Confirm removing or invalidating the selected map / area blocks save readiness with `Select a practice map or training area.`
 11. Confirm the map legend is collapsed by default and appears as a `Map legend` control, not a permanent row below the map.
@@ -188,12 +191,12 @@ Run the app locally and check:
 24. Choose `Add checkpoint`, click the map, and confirm the checkpoint count increments.
 25. Run `Validate route`, then `Compare shortest route`; confirm the panels move out of the not-run state.
 26. Confirm export remains blocked while validation has blocking errors, and the export checklist explains each missing requirement.
-27. Confirm `Save working draft`, `Save review candidate`, and `Save complete route` are visible in the export panel.
+27. Open the `Export` tab and confirm `Save working draft`, `Save review candidate`, and `Save complete route` are visible.
 28. Confirm `Save working draft` writes draft-status JSON under `data/training-routes/drafts/` and shows the saved path.
 29. Confirm `Save review candidate` blocks until validation has run and then writes under `data/training-routes/review/`.
 30. Confirm `Save complete route` blocks until validation, shortest-route comparison, route choice justification where required, and beta or approved status are ready, then writes under `data/training-routes/complete/`.
 31. Confirm an approved route cannot be saved into `data/training-routes/drafts/`.
-32. Confirm the export panel shows save mode, JSON status, suggested filename, full save path, learner-facing later, and a checklist for each save target.
+32. Confirm the `Export` tab shows save mode, JSON status, suggested filename, full save path, learner-facing later, and a checklist for each save target.
 33. Complete required metadata and confirm `Download JSON` and `Copy JSON` enable only when the export readiness checklist is complete.
 34. Confirm the JSON contains the authored start, destination, checkpoints, route segment ids, route geometry, route metadata, map/area metadata, save lifecycle data, validation summary, complexity summary, and shortest-route comparison.
 35. Reload `/dev/training-route` after editing and confirm autosave recovery restores the local authoring state without looking like a file save.

@@ -151,25 +151,29 @@ test("curated training route author page renders the interactive authoring clien
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
   const model = buildTrainingRouteAuthorModel();
-  const mapIndex = clientSource.indexOf("Map authoring workspace");
-  const validationResultIndex = clientSource.indexOf("Validation result");
-  const metadataIndex = clientSource.indexOf("Route metadata");
-  const exportIndex = clientSource.indexOf("Export panel");
+  const toolbarIndex = clientSource.indexOf('data-testid="training-author-top-toolbar"');
+  const mapIndex = clientSource.indexOf('data-testid="training-author-map-workspace"');
+  const drawerIndex = clientSource.indexOf('data-testid="training-author-bottom-drawer"');
 
   assert.match(pageSource, /Curated Training Route Author/);
   assert.match(pageSource, /TrainingRouteAuthorClient/);
   assert.match(clientSource, /buildTrainingRouteAuthorModel/);
   assert.match(clientSource, /Interactive Real London training route authoring map/);
-  assert.match(clientSource, /Map authoring workspace/);
+  assert.match(clientSource, /data-testid="training-author-map-first-shell"/);
+  assert.match(clientSource, /data-testid="training-author-top-toolbar"/);
+  assert.match(clientSource, /data-testid="training-author-map-workspace"/);
+  assert.match(clientSource, /data-testid="training-author-bottom-drawer"/);
+  assert.ok(toolbarIndex > -1);
   assert.ok(mapIndex > -1);
-  assert.ok(validationResultIndex > mapIndex);
-  assert.ok(validationResultIndex < metadataIndex);
-  assert.ok(metadataIndex > mapIndex);
-  assert.ok(exportIndex > metadataIndex);
+  assert.ok(drawerIndex > -1);
+  assert.ok(toolbarIndex < mapIndex);
+  assert.ok(mapIndex < drawerIndex);
   assert.match(clientSource, /Route metadata/);
   assert.match(clientSource, /Validation panel/);
   assert.match(clientSource, /Shortest route comparison/);
   assert.match(clientSource, /Export panel/);
+  assert.match(clientSource, /role="tablist"/);
+  assert.match(clientSource, /useState<TrainingRouteAuthorDrawerTabId>\("authoring-steps"\)/);
   assert.deepEqual(model.saveTargets.map((target) => target.actionLabel), [
     "Save working draft",
     "Save review candidate",
@@ -179,6 +183,7 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(clientSource, /Download JSON/);
   assert.match(clientSource, /Copy JSON/);
   assert.match(clientSource, /Curated route JSON export/);
+  assert.doesNotMatch(clientSource, /<aside className="space-y-4">/);
   assert.doesNotMatch(clientSource, /RouteRunnerClient/);
 });
 
@@ -233,8 +238,7 @@ test("curated training route author map viewport uses the author canvas aspect r
 test("curated training route author map card does not stretch past the rendered viewport", () => {
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
 
-  assert.match(clientSource, /mt-4 grid items-start gap-4 xl:grid-cols-\[minmax\(0,1fr\)_360px\]/);
-  assert.match(clientSource, /self-start overflow-hidden rounded-xl border border-slate-200 bg-slate-100/);
+  assert.match(clientSource, /data-testid="training-author-map-workspace"/);
   assert.match(clientSource, /className="relative overflow-hidden" data-training-author-layer="map-viewport"/);
   assert.match(clientSource, /data-testid="training-route-author-map-viewport"/);
   assert.match(clientSource, /data-training-author-layer="interaction"/);
@@ -245,7 +249,9 @@ test("curated training route author map card does not stretch past the rendered 
   assert.match(clientSource, /data-training-author-layer="markers"/);
   assert.match(clientSource, /height=\{boundsHeight\(viewBounds\)\}/);
   assert.match(clientSource, /width=\{boundsWidth\(viewBounds\)\}/);
+  assert.doesNotMatch(clientSource, /mt-4 grid items-start gap-4 xl:grid-cols-\[minmax\(0,1fr\)_360px\]/);
   assert.doesNotMatch(clientSource, /mt-4 grid gap-4 xl:grid-cols-\[minmax\(0,1fr\)_360px\]/);
+  assert.doesNotMatch(clientSource, /<aside className="space-y-4">/);
 });
 
 test("curated training route author map legend is collapsed inside the map viewport", () => {
@@ -306,6 +312,76 @@ test("curated training route author toolbar exposes the route creation workflow"
   assert.equal(model.toolbarActions.find((action) => action.id === "compare-shortest-route")?.disabled, undefined);
   assert.equal(model.toolbarActions.find((action) => action.id === "export-json")?.disabled, true);
   assert.match(clientSource, /role="toolbar"/);
+  assert.match(clientSource, /TRAINING_ROUTE_AUTHOR_PRIMARY_TOOLBAR_ACTION_IDS/);
+  assert.match(clientSource, /TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS/);
+  assert.match(clientSource, /Redo will be enabled when redo history is available/);
+  assert.match(clientSource, /Open export panel/);
+  assert.match(clientSource, /More authoring actions/);
+  assert.match(clientSource, /overflow-x-auto border-b border-slate-200/);
+});
+
+test("curated training route author uses a bottom drawer with tabbed panels", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const mapIndex = clientSource.indexOf('data-testid="training-author-map-workspace"');
+  const drawerIndex = clientSource.indexOf('data-testid="training-author-bottom-drawer"');
+  const defaultAuthoringIndex = clientSource.indexOf('useState<TrainingRouteAuthorDrawerTabId>("authoring-steps")');
+  const metadataBranchIndex = clientSource.indexOf('if (drawerTab === "metadata")');
+  const defaultPanelIndex = clientSource.indexOf("return renderAuthoringStepsDrawer();");
+
+  assert.match(clientSource, /TRAINING_ROUTE_AUTHOR_DRAWER_TABS/);
+  assert.match(clientSource, /Authoring steps/);
+  assert.match(clientSource, /Route state/);
+  assert.match(clientSource, /Validation/);
+  assert.match(clientSource, /Metadata/);
+  assert.match(clientSource, /Export/);
+  assert.match(clientSource, /data-testid="training-author-drawer-panel-authoring-steps"/);
+  assert.match(clientSource, /data-testid="training-author-drawer-panel-route-state"/);
+  assert.match(clientSource, /data-testid="training-author-drawer-panel-validation"/);
+  assert.match(clientSource, /data-testid="training-author-drawer-panel-metadata"/);
+  assert.match(clientSource, /data-testid="training-author-drawer-panel-export"/);
+  assert.match(clientSource, /aria-selected=\{drawerTab === tab\.id\}/);
+  assert.match(clientSource, /onClick=\{\(\) => setDrawerTab\(tab\.id\)\}/);
+  assert.ok(defaultAuthoringIndex > -1);
+  assert.ok(metadataBranchIndex > -1);
+  assert.ok(defaultPanelIndex > metadataBranchIndex);
+  assert.ok(mapIndex > -1);
+  assert.ok(drawerIndex > -1);
+  assert.ok(mapIndex < drawerIndex);
+  assert.doesNotMatch(clientSource, /<aside className="space-y-4">/);
+});
+
+test("curated training route author keeps metadata and export controls out of the default map view", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel();
+
+  assert.match(clientSource, /function renderMetadataDrawer\(\)/);
+  assert.match(clientSource, /function renderExportDrawer\(\)/);
+  assert.match(clientSource, /data-testid="training-author-metadata-form"/);
+  assert.match(clientSource, /data-testid="training-author-drawer-panel-export"/);
+  assert.match(clientSource, /Clear autosave recovery/);
+  assert.deepEqual(model.saveTargets.map((target) => target.actionLabel), [
+    "Save working draft",
+    "Save review candidate",
+    "Save complete route"
+  ]);
+  assert.doesNotMatch(
+    clientSource,
+    /<section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">\s*<h2 className="text-xl font-bold text-ink">Route metadata/
+  );
+  assert.doesNotMatch(
+    clientSource,
+    /<section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">\s*<div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">\s*<div>\s*<h2 className="text-xl font-bold text-ink">Export panel/
+  );
+});
+
+test("curated training route author mobile layout keeps toolbar and drawer controls scrollable", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.match(clientSource, /className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white p-3"/);
+  assert.match(clientSource, /inline-flex min-h-11 shrink-0/);
+  assert.match(clientSource, /className="mt-4 flex gap-4 overflow-x-auto border-b border-slate-200"/);
+  assert.match(clientSource, /min-h-11 shrink-0 border-b-2/);
+  assert.match(clientSource, /rounded-2xl border border-slate-200 bg-white p-3 shadow-lg sm:p-4/);
 });
 
 test("curated training route author wheel events isolate map zoom from page scroll", () => {
