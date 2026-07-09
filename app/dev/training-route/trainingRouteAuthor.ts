@@ -111,6 +111,24 @@ export type TrainingRouteAuthorViewportRect = {
   height: number;
 };
 
+export type TrainingRouteAuthorViewportLayout = {
+  screenSize: TrainingRouteAuthorScreenSize;
+  mapBounds: TrainingRouteAuthorMapBounds;
+  aspectRatio: number;
+  contentRect: {
+    left: 0;
+    top: 0;
+    width: number;
+    height: number;
+  };
+  unusedViewportInsets: {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  };
+};
+
 export type TrainingRouteAuthorPointerMapConversion = {
   clientPoint: TrainingRouteAuthorClientPoint;
   localPoint: Vec2;
@@ -616,6 +634,88 @@ function clampUnitInterval(value: number): number {
 
 function hasPositiveFiniteSize(size: TrainingRouteAuthorScreenSize | TrainingRouteAuthorViewportRect): boolean {
   return Number.isFinite(size.width) && size.width > 0 && Number.isFinite(size.height) && size.height > 0;
+}
+
+function defaultTrainingRouteAuthorScreenSize(): TrainingRouteAuthorScreenSize {
+  return {
+    width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+}
+
+export function fitTrainingRouteAuthorBoundsToViewportAspect(
+  bounds: TrainingRouteAuthorMapBounds,
+  screenSize: TrainingRouteAuthorScreenSize = defaultTrainingRouteAuthorScreenSize()
+): TrainingRouteAuthorMapBounds {
+  const width = trainingRouteAuthorBoundsWidth(bounds);
+  const height = trainingRouteAuthorBoundsHeight(bounds);
+
+  if (width <= 0 || height <= 0 || !hasPositiveFiniteSize(screenSize)) {
+    return { ...bounds };
+  }
+
+  const targetAspectRatio = screenSize.width / screenSize.height;
+  const boundsAspectRatio = width / height;
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const centerY = (bounds.minY + bounds.maxY) / 2;
+
+  if (Math.abs(boundsAspectRatio - targetAspectRatio) < 0.000001) {
+    return { ...bounds };
+  }
+
+  if (boundsAspectRatio < targetAspectRatio) {
+    const nextWidth = height * targetAspectRatio;
+    const halfWidth = nextWidth / 2;
+
+    return {
+      minX: centerX - halfWidth,
+      maxX: centerX + halfWidth,
+      minY: bounds.minY,
+      maxY: bounds.maxY
+    };
+  }
+
+  const nextHeight = width / targetAspectRatio;
+  const halfHeight = nextHeight / 2;
+
+  return {
+    minX: bounds.minX,
+    maxX: bounds.maxX,
+    minY: centerY - halfHeight,
+    maxY: centerY + halfHeight
+  };
+}
+
+export function buildTrainingRouteAuthorViewportLayout(input: {
+  mapBounds: TrainingRouteAuthorMapBounds;
+  screenSize?: TrainingRouteAuthorScreenSize;
+}): TrainingRouteAuthorViewportLayout {
+  const screenSize = input.screenSize ?? defaultTrainingRouteAuthorScreenSize();
+  const safeScreenSize = hasPositiveFiniteSize(screenSize) ? screenSize : defaultTrainingRouteAuthorScreenSize();
+
+  return {
+    screenSize: safeScreenSize,
+    mapBounds: fitTrainingRouteAuthorBoundsToViewportAspect(input.mapBounds, safeScreenSize),
+    aspectRatio: safeScreenSize.width / safeScreenSize.height,
+    contentRect: {
+      left: 0,
+      top: 0,
+      width: safeScreenSize.width,
+      height: safeScreenSize.height
+    },
+    unusedViewportInsets: {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0
+    }
+  };
+}
+
+export function trainingRouteAuthorViewportAspectRatioCss(
+  layout: Pick<TrainingRouteAuthorViewportLayout, "screenSize">
+): string {
+  return `${layout.screenSize.width} / ${layout.screenSize.height}`;
 }
 
 function isMouseLikeTrainingRouteAuthorPointer(input: Pick<TrainingRouteAuthorPointerButtonInput, "pointerType">): boolean {

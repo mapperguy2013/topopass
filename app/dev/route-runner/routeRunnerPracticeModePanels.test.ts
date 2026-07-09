@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildDevToolsHomeModel } from "../devTools.ts";
+import { getRouteRunnerMapViewportBounds } from "./routeRunnerMapOptionUtils.ts";
 import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
@@ -11,6 +12,7 @@ import {
   TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
+  buildTrainingRouteAuthorViewportLayout,
   canContinueTrainingRouteAuthorDrawPointer,
   canContinueTrainingRouteAuthorPanPointer,
   canStartTrainingRouteAuthorPointer,
@@ -37,6 +39,7 @@ import {
   startTrainingRouteAuthorStroke,
   trainingRouteAuthorMapPointForClientPoint,
   trainingRouteAuthorMapPointForScreenPoint,
+  trainingRouteAuthorViewportAspectRatioCss,
   trainingRouteAuthorWheelZoomFactor,
   updateTrainingRouteAuthorMetadataField,
   validateTrainingRouteAuthorState,
@@ -135,6 +138,15 @@ test("dev route-runner keeps existing RouteRunnerClient workspace available", ()
   assert.match(pageSource, /href="\/dev"/);
 });
 
+test("learner real london practice page still mounts the shared route-runner map", () => {
+  const pageSource = readFileSync("app/practice/real-london/page.tsx", "utf8");
+
+  assert.match(pageSource, /RouteRunnerClient/);
+  assert.match(pageSource, /REAL_LONDON_BETA_MAP_OPTIONS/);
+  assert.match(pageSource, /showTrainingModePanel=\{false\}/);
+  assert.match(pageSource, /RealLondonBetaFeedbackForm/);
+});
+
 test("curated training route author page renders the interactive authoring client", () => {
   const pageSource = readFileSync("app/dev/training-route/page.tsx", "utf8");
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
@@ -172,11 +184,68 @@ test("curated training route author page renders the interactive authoring clien
 
 test("curated training route author map viewport uses the author canvas aspect ratio", () => {
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const map = getTrainingRouteAuthorMap();
+  const initialBounds = getRouteRunnerMapViewportBounds(
+    map,
+    TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  );
+  const viewportLayout = buildTrainingRouteAuthorViewportLayout({
+    mapBounds: initialBounds
+  });
 
-  assert.match(clientSource, /aspect-\[1120\/760\]/);
+  assertClose(
+    viewportLayout.aspectRatio,
+    TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH / TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
+    "author viewport aspect ratio"
+  );
+  assertClose(
+    (viewportLayout.mapBounds.maxX - viewportLayout.mapBounds.minX) /
+      (viewportLayout.mapBounds.maxY - viewportLayout.mapBounds.minY),
+    viewportLayout.aspectRatio,
+    "author map bounds aspect ratio"
+  );
+  assert.equal(trainingRouteAuthorViewportAspectRatioCss(viewportLayout), "1120 / 760");
+  assert.deepEqual(viewportLayout.contentRect, {
+    left: 0,
+    top: 0,
+    width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  });
+  assert.deepEqual(viewportLayout.unusedViewportInsets, {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0
+  });
+  assert.match(clientSource, /buildTrainingRouteAuthorViewportLayout/);
+  assert.match(clientSource, /trainingRouteAuthorViewportAspectRatioCss\(initialViewportLayout\)/);
+  assert.match(clientSource, /height=\{initialViewportLayout\.screenSize\.height\}/);
+  assert.match(clientSource, /width=\{initialViewportLayout\.screenSize\.width\}/);
+  assert.match(clientSource, /preserveAspectRatio="xMidYMid meet"/);
+  assert.match(clientSource, /block h-auto w-full touch-none select-none overscroll-contain/);
   assert.match(clientSource, /touch-none select-none overscroll-contain/);
+  assert.doesNotMatch(clientSource, /aspect-\[1120\/760\]/);
   assert.doesNotMatch(clientSource, /h-\[420px\]/);
   assert.doesNotMatch(clientSource, /sm:h-\[560px\]/);
+});
+
+test("curated training route author map card does not stretch past the rendered viewport", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+
+  assert.match(clientSource, /mt-4 grid items-start gap-4 xl:grid-cols-\[minmax\(0,1fr\)_360px\]/);
+  assert.match(clientSource, /self-start overflow-hidden rounded-xl border border-slate-200 bg-slate-100/);
+  assert.match(clientSource, /className="relative overflow-hidden" data-training-author-layer="map-viewport"/);
+  assert.match(clientSource, /data-testid="training-route-author-map-viewport"/);
+  assert.match(clientSource, /data-training-author-layer="interaction"/);
+  assert.match(clientSource, /data-training-author-layer="base-map"/);
+  assert.match(clientSource, /data-training-author-layer="restriction-overlays"/);
+  assert.match(clientSource, /data-training-author-layer="route-overlays"/);
+  assert.match(clientSource, /data-training-author-layer="map-labels"/);
+  assert.match(clientSource, /data-training-author-layer="markers"/);
+  assert.match(clientSource, /height=\{boundsHeight\(viewBounds\)\}/);
+  assert.match(clientSource, /width=\{boundsWidth\(viewBounds\)\}/);
+  assert.doesNotMatch(clientSource, /mt-4 grid gap-4 xl:grid-cols-\[minmax\(0,1fr\)_360px\]/);
 });
 
 test("curated training route author map legend is collapsed inside the map viewport", () => {
@@ -197,6 +266,7 @@ test("curated training route author map legend is collapsed inside the map viewp
   assert.ok(expandedLegend.items.some((item) => item.label === "Raw drawing"));
   assert.ok(expandedLegend.items.some((item) => item.label === "Matched route"));
   assert.ok(expandedLegend.items.some((item) => item.label === "Shortest overlay"));
+  assert.match(clientSource, /className="relative overflow-hidden" data-training-author-layer="map-viewport"/);
   assert.match(clientSource, /<details className="pointer-events-auto max-w-full rounded-lg/);
   assert.match(clientSource, /Map legend/);
   assert.match(clientSource, /absolute bottom-2 left-2/);
@@ -445,6 +515,48 @@ test("curated training route author coordinate conversion stays aligned after pa
   assertClose(tallCenter.mapPoint.x, 380, "resized center x");
   assertClose(tallCenter.mapPoint.y, 240, "resized center y");
   assert.equal(letterboxClick, null);
+});
+
+test("curated training route author viewport layout keeps conversion content full height", () => {
+  const viewportLayout = buildTrainingRouteAuthorViewportLayout({
+    mapBounds: {
+      minX: -20,
+      maxX: 80,
+      minY: 10,
+      maxY: 110
+    }
+  });
+  const viewportRect = {
+    left: 40,
+    top: 120,
+    width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  };
+  const center = trainingRouteAuthorMapPointForClientPoint({
+    bounds: viewportLayout.mapBounds,
+    clientPoint: {
+      clientX: 40 + TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH / 2,
+      clientY: 120 + TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT / 2
+    },
+    viewportRect,
+    screenSize: viewportLayout.screenSize
+  });
+
+  assert.ok(center);
+  assertClose(center.contentRect.left, 0, "viewport layout content left");
+  assertClose(center.contentRect.top, 0, "viewport layout content top");
+  assertClose(center.contentRect.width, TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH, "viewport layout content width");
+  assertClose(center.contentRect.height, TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT, "viewport layout content height");
+  assertClose(
+    center.mapPoint.x,
+    (viewportLayout.mapBounds.minX + viewportLayout.mapBounds.maxX) / 2,
+    "layout center map x"
+  );
+  assertClose(
+    center.mapPoint.y,
+    (viewportLayout.mapBounds.minY + viewportLayout.mapBounds.maxY) / 2,
+    "layout center map y"
+  );
 });
 
 test("curated training route author snapping uses corrected map coordinates and rejects distant clicks", () => {

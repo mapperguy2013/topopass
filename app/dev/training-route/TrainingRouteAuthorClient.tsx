@@ -27,6 +27,7 @@ import { TOPOPASS_STREET_ATLAS_STYLE } from "../route-runner/topopassCartography
 import {
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
+  buildTrainingRouteAuthorViewportLayout,
   buildTrainingRouteAuthorModel,
   canContinueTrainingRouteAuthorDrawPointer,
   canContinueTrainingRouteAuthorPanPointer,
@@ -53,6 +54,7 @@ import {
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
   TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   trainingRouteAuthorMapPointForClientPoint,
+  trainingRouteAuthorViewportAspectRatioCss,
   trainingRouteAuthorWheelZoomFactor,
   undoTrainingRouteAuthorAction,
   updateTrainingRouteAuthorMetadataField,
@@ -736,10 +738,18 @@ function renderComparison(label: string, comparison: CuratedShortestRouteCompari
 
 export function TrainingRouteAuthorClient() {
   const map = useMemo(() => getTrainingRouteAuthorMap(), []);
-  const initialBounds = useMemo(
+  const initialMapBounds = useMemo(
     () => getRouteRunnerMapViewportBounds(map, TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH, TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT),
     [map]
   );
+  const initialViewportLayout = useMemo(
+    () =>
+      buildTrainingRouteAuthorViewportLayout({
+        mapBounds: initialMapBounds
+      }),
+    [initialMapBounds]
+  );
+  const initialBounds = initialViewportLayout.mapBounds;
   const [state, setState] = useState<TrainingRouteAuthorState>(() => createEmptyTrainingRouteAuthorState());
   const [viewBounds, setViewBounds] = useState<RouteRunnerMapBounds>(initialBounds);
   const [showRestrictions, setShowRestrictions] = useState(true);
@@ -769,11 +779,11 @@ export function TrainingRouteAuthorClient() {
   );
   const viewport = useMemo(
     () => ({
-      width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
-      height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
+      width: initialViewportLayout.screenSize.width,
+      height: initialViewportLayout.screenSize.height,
       mapBounds: viewBounds
     }),
-    [viewBounds]
+    [initialViewportLayout.screenSize.height, initialViewportLayout.screenSize.width, viewBounds]
   );
   const currentZoom = boundsWidth(initialBounds) / Math.max(1, boundsWidth(viewBounds));
   const roadRestrictionOverlays = useMemo(() => buildRoadRestrictionOverlays(map), [map]);
@@ -805,7 +815,7 @@ export function TrainingRouteAuthorClient() {
       }).slice(0, 260),
     [currentZoom, mapLabels, viewport]
   );
-  const mapUnitsPerPixel = boundsWidth(viewBounds) / TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH;
+  const mapUnitsPerPixel = boundsWidth(viewBounds) / initialViewportLayout.screenSize.width;
 
   useEffect(() => {
     let recovered: TrainingRouteAuthorAutosavePayload | null = null;
@@ -876,10 +886,7 @@ export function TrainingRouteAuthorClient() {
       const rect = svgElement.getBoundingClientRect();
       const screenSize =
         rect.width === 0 || rect.height === 0
-          ? {
-              width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
-              height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
-            }
+          ? initialViewportLayout.screenSize
           : {
               width: rect.width,
               height: rect.height
@@ -915,7 +922,7 @@ export function TrainingRouteAuthorClient() {
     return () => {
       svgElement.removeEventListener("wheel", handleNativeWheel);
     };
-  }, [initialBounds, viewBounds]);
+  }, [initialBounds, initialViewportLayout.screenSize, viewBounds]);
 
   function pointerMapConversionFromClientPoint(
     element: SVGSVGElement,
@@ -936,10 +943,7 @@ export function TrainingRouteAuthorClient() {
         width: rect.width,
         height: rect.height
       },
-      screenSize: {
-        width: TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
-        height: TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
-      }
+      screenSize: initialViewportLayout.screenSize
     });
   }
 
@@ -979,8 +983,8 @@ export function TrainingRouteAuthorClient() {
   }
 
   function panBy(deltaX: number, deltaY: number) {
-    const xScale = boundsWidth(viewBounds) / TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH;
-    const yScale = boundsHeight(viewBounds) / TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT;
+    const xScale = boundsWidth(viewBounds) / initialViewportLayout.screenSize.width;
+    const yScale = boundsHeight(viewBounds) / initialViewportLayout.screenSize.height;
 
     setViewBounds((currentBounds) => ({
       minX: currentBounds.minX - deltaX * xScale,
@@ -1484,8 +1488,8 @@ export function TrainingRouteAuthorClient() {
           ))}
         </div>
 
-        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+        <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="self-start overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
             <div className="flex flex-wrap gap-3 border-b border-slate-200 bg-white p-3 text-sm text-slate-700">
               <label className="inline-flex items-center gap-2 font-semibold">
                 <input
@@ -1567,12 +1571,15 @@ export function TrainingRouteAuthorClient() {
                 )}
               </div>
             ) : null}
-            <div className="relative">
+            <div className="relative overflow-hidden" data-training-author-layer="map-viewport">
               <svg
                 aria-label="Interactive Real London training route authoring map"
-                className={`block aspect-[1120/760] w-full touch-none select-none overscroll-contain ${
+                className={`block h-auto w-full touch-none select-none overscroll-contain ${
                   model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
                 }`}
+                data-testid="training-route-author-map-viewport"
+                data-training-author-layer="interaction"
+                height={initialViewportLayout.screenSize.height}
                 onAuxClick={handleMapAuxClick}
                 onContextMenu={handleMapContextMenu}
                 onMouseDown={handleMapMouseDown}
@@ -1581,97 +1588,112 @@ export function TrainingRouteAuthorClient() {
                 onPointerLeave={handleMapPointerEnd}
                 onPointerMove={handleMapPointerMove}
                 onPointerUp={handleMapPointerEnd}
+                preserveAspectRatio="xMidYMid meet"
                 ref={mapSvgRef}
                 role="img"
-                style={{ backgroundColor: TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor }}
+                style={{
+                  aspectRatio: trainingRouteAuthorViewportAspectRatioCss(initialViewportLayout),
+                  backgroundColor: TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor
+                }}
                 viewBox={`${viewBounds.minX} ${viewBounds.minY} ${boundsWidth(viewBounds)} ${boundsHeight(viewBounds)}`}
+                width={initialViewportLayout.screenSize.width}
               >
-              <rect
-                fill={TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor}
-                height={boundsHeight(viewBounds)}
-                width={boundsWidth(viewBounds)}
-                x={viewBounds.minX}
-                y={viewBounds.minY}
-              />
-              {roadRenderPasses.map((pass) => {
-                const style = roadStyleForViewport(pass.visual, viewport, currentZoom);
-                const strokeWidth = pass.layer === "casing" ? style.casingWidth : style.strokeWidth;
-
-                return (
-                  <polyline
-                    fill="none"
-                    key={`${pass.layer}-${pass.visual.roadId}`}
-                    opacity={style.alpha ?? 1}
-                    points={polylinePoints(pass.visual.points)}
-                    stroke={pass.layer === "casing" ? style.casingColor : style.strokeColor}
-                    strokeDasharray={pass.layer === "fill" && style.dash ? style.dash.join(" ") : undefined}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={strokeWidth}
-                    vectorEffect="non-scaling-stroke"
+                <g data-training-author-layer="base-map">
+                  <rect
+                    fill={TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor}
+                    height={boundsHeight(viewBounds)}
+                    width={boundsWidth(viewBounds)}
+                    x={viewBounds.minX}
+                    y={viewBounds.minY}
                   />
-                );
-              })}
-              {showRestrictions
-                ? visibleRestrictionMapVisualItems.map((item) =>
-                    renderRestrictionSymbol(item, viewport, currentZoom, mapUnitsPerPixel)
-                  )
-                : null}
-              {model.mapModel.showShortestRouteComparison
-                ? renderStyledRoutePolyline(
-                    "shortest-route-overlay",
-                    model.mapModel.shortestRoutePoints,
-                    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
-                    mapUnitsPerPixel
-                  )
-                : null}
-              {renderStyledRoutePolyline(
-                "authored-route-overlay",
-                model.mapModel.authoredRoutePoints,
-                TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute,
-                mapUnitsPerPixel
-              )}
-              {renderStyledRoutePolyline(
-                "matched-route-overlay",
-                model.mapModel.matchedRoutePoints,
-                TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute,
-                mapUnitsPerPixel
-              )}
-              {labels.map((label) => {
-                const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
-                const fontSizeMatch = /(\d+(?:\.\d+)?)px/.exec(style.font);
-                const fontSize = (fontSizeMatch ? Number(fontSizeMatch[1]) : 11) * mapUnitsPerPixel;
-                const haloWidth = (style.haloWidth ?? 2) * mapUnitsPerPixel;
+                  {roadRenderPasses.map((pass) => {
+                    const style = roadStyleForViewport(pass.visual, viewport, currentZoom);
+                    const strokeWidth = pass.layer === "casing" ? style.casingWidth : style.strokeWidth;
 
-                return (
-                  <text
-                    fill={style.color}
-                    fontFamily="Arial, sans-serif"
-                    fontSize={fontSize}
-                    fontWeight="700"
-                    key={label.id}
-                    paintOrder="stroke"
-                    stroke={style.haloColor}
-                    strokeLinejoin="round"
-                    strokeWidth={haloWidth}
-                    textAnchor="middle"
-                    transform={
-                      label.kind === "road" && typeof label.angleRadians === "number"
-                        ? `rotate(${(label.angleRadians * 180) / Math.PI} ${label.point.x} ${label.point.y})`
-                        : undefined
-                    }
-                    x={label.point.x}
-                    y={label.point.y}
-                  >
-                    {label.text}
-                  </text>
-                );
-              })}
-              {model.mapModel.markers.map((marker) => renderAuthorMarker(marker, currentZoom, mapUnitsPerPixel))}
-              {model.mapModel.markers.map((marker) =>
-                renderAuthorMarkerLabel(marker, viewport, currentZoom, mapUnitsPerPixel)
-              )}
-              {showClickDiagnostics ? renderClickDiagnosticOverlay(clickDiagnostic, mapUnitsPerPixel) : null}
+                    return (
+                      <polyline
+                        fill="none"
+                        key={`${pass.layer}-${pass.visual.roadId}`}
+                        opacity={style.alpha ?? 1}
+                        points={polylinePoints(pass.visual.points)}
+                        stroke={pass.layer === "casing" ? style.casingColor : style.strokeColor}
+                        strokeDasharray={pass.layer === "fill" && style.dash ? style.dash.join(" ") : undefined}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={strokeWidth}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })}
+                </g>
+                <g data-training-author-layer="restriction-overlays">
+                  {showRestrictions
+                    ? visibleRestrictionMapVisualItems.map((item) =>
+                        renderRestrictionSymbol(item, viewport, currentZoom, mapUnitsPerPixel)
+                      )
+                    : null}
+                </g>
+                <g data-training-author-layer="route-overlays">
+                  {model.mapModel.showShortestRouteComparison
+                    ? renderStyledRoutePolyline(
+                        "shortest-route-overlay",
+                        model.mapModel.shortestRoutePoints,
+                        TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
+                        mapUnitsPerPixel
+                      )
+                    : null}
+                  {renderStyledRoutePolyline(
+                    "authored-route-overlay",
+                    model.mapModel.authoredRoutePoints,
+                    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute,
+                    mapUnitsPerPixel
+                  )}
+                  {renderStyledRoutePolyline(
+                    "matched-route-overlay",
+                    model.mapModel.matchedRoutePoints,
+                    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute,
+                    mapUnitsPerPixel
+                  )}
+                </g>
+                <g data-training-author-layer="map-labels">
+                  {labels.map((label) => {
+                    const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
+                    const fontSizeMatch = /(\d+(?:\.\d+)?)px/.exec(style.font);
+                    const fontSize = (fontSizeMatch ? Number(fontSizeMatch[1]) : 11) * mapUnitsPerPixel;
+                    const haloWidth = (style.haloWidth ?? 2) * mapUnitsPerPixel;
+
+                    return (
+                      <text
+                        fill={style.color}
+                        fontFamily="Arial, sans-serif"
+                        fontSize={fontSize}
+                        fontWeight="700"
+                        key={label.id}
+                        paintOrder="stroke"
+                        stroke={style.haloColor}
+                        strokeLinejoin="round"
+                        strokeWidth={haloWidth}
+                        textAnchor="middle"
+                        transform={
+                          label.kind === "road" && typeof label.angleRadians === "number"
+                            ? `rotate(${(label.angleRadians * 180) / Math.PI} ${label.point.x} ${label.point.y})`
+                            : undefined
+                        }
+                        x={label.point.x}
+                        y={label.point.y}
+                      >
+                        {label.text}
+                      </text>
+                    );
+                  })}
+                </g>
+                <g data-training-author-layer="markers">
+                  {model.mapModel.markers.map((marker) => renderAuthorMarker(marker, currentZoom, mapUnitsPerPixel))}
+                  {model.mapModel.markers.map((marker) =>
+                    renderAuthorMarkerLabel(marker, viewport, currentZoom, mapUnitsPerPixel)
+                  )}
+                </g>
+                {showClickDiagnostics ? renderClickDiagnosticOverlay(clickDiagnostic, mapUnitsPerPixel) : null}
               </svg>
               <div className="pointer-events-none absolute bottom-2 left-2 z-20 max-w-[min(19rem,calc(100%-5.75rem))] sm:bottom-4 sm:left-4 sm:max-w-[min(24rem,calc(100%-7rem))]">
                 <details className="pointer-events-auto max-w-full rounded-lg border border-slate-200 bg-white/95 text-xs text-slate-800 shadow-md">
