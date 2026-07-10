@@ -191,6 +191,53 @@ For every future route before beta/approved use:
 9. Run `npm.cmd run test:training`.
 10. Run the full validation suite before committing.
 
+## Stage 19.6 Pipeline Acceptance
+
+Before building the full Stage 20 route pack, verify the curated route pipeline
+with one complete `beta` or `approved` route.
+
+To confirm a saved route appears in learner Training Mode:
+
+1. Save or commit the route JSON under `data/training-routes/complete/`.
+2. Add the JSON import to `lib/training/curatedLearnerRoutePack.ts` if the
+   project is still using the static manifest.
+3. Restart the dev server after adding the import.
+4. Open `/practice/training`.
+5. Select the matching map, difficulty, and exercise type.
+6. Confirm the curated route card shows title, area/map, route length or segment
+   count, checkpoint count, status, and skills practised.
+7. If the card is hidden, check
+   `buildCuratedTrainingRouteVisibilityDiagnostics()` for excluded routes and
+   filter mismatches.
+
+To test one curated route end to end:
+
+1. Generate the matching curated route from `/practice/training`.
+2. Confirm the map shows only the curated route, start marker, destination
+   marker, and any checkpoints for that exercise.
+3. Request a hint and confirm it uses the curated exercise objective and route
+   instruction context.
+4. Complete and review the attempt using the planned route.
+5. Confirm scoring passes a clean route, feedback is specific, route review
+   overlays remain readable, and local progress records the attempt.
+6. Change filters to a combination with no curated route and confirm the message
+   stays `No approved curated route is available for this selection yet.` with
+   only an explicitly labelled `Try experimental generated route` fallback.
+7. Recheck `/dev`, `/dev/route-runner`, and `/dev/training-route`; these should
+   still work and should not appear in learner navigation.
+
+Before Stage 20 starts, these checks must pass:
+
+- `/practice/training` displays at least one complete `beta` or `approved`
+  curated route.
+- Difficulty, exercise type, and map filters either reveal matching routes or
+  explain why no route is available.
+- Curated route start, hint, review, feedback, and progress flows work without
+  falling back to random generation.
+- Checkpoint routes preserve checkpoint markers and ordering.
+- `npm.cmd run lint`, `npm.cmd run test`, `npm.cmd run test:map`,
+  `npm.cmd run build`, and `git diff --check` pass.
+
 ## Known Limitations
 
 - The first pack focuses on the Real London pilot map. More areas are needed for
