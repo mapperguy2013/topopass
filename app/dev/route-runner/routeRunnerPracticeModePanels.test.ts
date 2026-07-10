@@ -4,6 +4,10 @@ import test from "node:test";
 import { buildDevToolsHomeModel } from "../devTools.ts";
 import { getRouteRunnerMapViewportBounds } from "./routeRunnerMapOptionUtils.ts";
 import {
+  createEmptyRouteDraft
+} from "../../../lib/map-engine/index.ts";
+import { curatedTrainingRouteToGeneratedLearnerExercise } from "../../../lib/training/curatedTrainingRoutes.ts";
+import {
   DEV_TRAINING_ROUTE_AUTHOR_PATH,
   TRAINING_ROUTE_AUTHOR_BASELINE_CANVAS_HEIGHT,
   TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT,
@@ -47,7 +51,6 @@ import {
   validateTrainingRouteAuthorState,
   zoomTrainingRouteAuthorBoundsAroundScreenPoint
 } from "../training-route/trainingRouteAuthor.ts";
-import { curatedTrainingRouteToGeneratedLearnerExercise } from "../../../lib/training/curatedTrainingRoutes.ts";
 import {
   ROUTE_RUNNER_BETA_CORE_PANEL_LABELS,
   ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS,
@@ -302,6 +305,14 @@ test("curated training route author map legend is collapsed inside the map viewp
 
 test("curated training route author toolbar exposes the route creation workflow", () => {
   const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const primaryToolbarBlock = clientSource.slice(
+    clientSource.indexOf("const TRAINING_ROUTE_AUTHOR_PRIMARY_TOOLBAR_ACTION_IDS"),
+    clientSource.indexOf("const TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS")
+  );
+  const moreToolbarBlock = clientSource.slice(
+    clientSource.indexOf("const TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS"),
+    clientSource.indexOf("type CuratedTrainingRouteDraftSaveResponse")
+  );
   const model = buildTrainingRouteAuthorModel();
   const labels = model.toolbarActions.map((action) => action.label);
 
@@ -312,6 +323,7 @@ test("curated training route author toolbar exposes the route creation workflow"
     "Add checkpoint",
     "Set destination",
     "Undo",
+    "Redo",
     "Remove last checkpoint",
     "Clear route",
     "Clear checkpoints",
@@ -324,11 +336,25 @@ test("curated training route author toolbar exposes the route creation workflow"
   assert.equal(model.toolbarActions.find((action) => action.id === "compare-shortest-route")?.disabled, undefined);
   assert.equal(model.toolbarActions.find((action) => action.id === "export-json")?.disabled, true);
   assert.match(clientSource, /role="toolbar"/);
-  assert.match(clientSource, /TRAINING_ROUTE_AUTHOR_PRIMARY_TOOLBAR_ACTION_IDS/);
-  assert.match(clientSource, /TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS/);
-  assert.match(clientSource, /Redo will be enabled when redo history is available/);
-  assert.match(clientSource, /Open export panel/);
+  assert.match(primaryToolbarBlock, /"pan"/);
+  assert.match(primaryToolbarBlock, /"set-start"/);
+  assert.match(primaryToolbarBlock, /"draw-route"/);
+  assert.match(primaryToolbarBlock, /"add-checkpoint"/);
+  assert.match(primaryToolbarBlock, /"set-destination"/);
+  assert.match(primaryToolbarBlock, /"undo"/);
+  assert.doesNotMatch(primaryToolbarBlock, /"validate-route"/);
+  assert.doesNotMatch(primaryToolbarBlock, /"compare-shortest-route"/);
+  assert.doesNotMatch(primaryToolbarBlock, /"export-json"/);
+  assert.match(moreToolbarBlock, /"redo"/);
   assert.match(clientSource, /More authoring actions/);
+  assert.match(clientSource, /function renderValidationDrawer\(\)/);
+  assert.match(clientSource, /Validate route/);
+  assert.match(clientSource, /Compare shortest route/);
+  assert.match(clientSource, /function renderExportDrawer\(\)/);
+  assert.match(clientSource, /Download JSON/);
+  assert.match(clientSource, /Copy JSON/);
+  assert.doesNotMatch(clientSource, /Open export panel/);
+  assert.doesNotMatch(clientSource, /Redo will be enabled when redo history is available/);
   assert.match(clientSource, /overflow-x-auto border-b border-slate-200/);
 });
 
@@ -351,6 +377,11 @@ test("curated training route author uses a bottom drawer with tabbed panels", ()
   assert.match(clientSource, /data-testid="training-author-drawer-panel-validation"/);
   assert.match(clientSource, /data-testid="training-author-drawer-panel-metadata"/);
   assert.match(clientSource, /data-testid="training-author-drawer-panel-export"/);
+  assert.match(clientSource, /Route state quick actions/);
+  assert.match(clientSource, /Must be fixed before complete route save/);
+  assert.match(clientSource, /Review before approving\. This does not block export/);
+  assert.match(clientSource, /Author decisions:/);
+  assert.match(clientSource, /Complete route has advisory warnings/);
   assert.match(clientSource, /aria-selected=\{drawerTab === tab\.id\}/);
   assert.match(clientSource, /onClick=\{\(\) => setDrawerTab\(tab\.id\)\}/);
   assert.ok(defaultAuthoringIndex > -1);
@@ -909,6 +940,7 @@ test("curated training route author sample can produce Stage 19 route contract m
   const model = buildTrainingRouteAuthorModel({ state });
   const fieldIds = model.metadataFields.map((field) => field.id);
   const areaField = model.metadataFields.find((field) => field.id === "areaId");
+  const checkpointRequirementField = model.metadataFields.find((field) => field.id === "checkpointRequirement");
 
   assert.equal(model.path, DEV_TRAINING_ROUTE_AUTHOR_PATH);
   assert.equal(model.exportData.schemaVersion, 1);
@@ -930,6 +962,7 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.ok(model.exportJson.includes('"validationSummary"'));
   assert.ok(model.exportJson.includes('"complexitySummary"'));
   assert.ok(model.exportJson.includes('"shortestRouteComparison"'));
+  assert.ok(model.exportJson.includes('"checkpointRequirement"'));
   assert.ok(model.exportReadiness.ready);
   assert.equal(model.exportData.lifecycleStage, "authoring");
   assert.equal(model.saveTargets.length, 3);
@@ -947,6 +980,7 @@ test("curated training route author sample can produce Stage 19 route contract m
     "areaId",
     "difficulty",
     "exerciseType",
+    "checkpointRequirement",
     "description",
     "objective",
     "skillsPractised",
@@ -963,6 +997,11 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.deepEqual(areaField?.options, TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.map((option) => option.areaId));
   assert.match(areaField?.helpText ?? "", /Map id: osm-real-london-pilot/);
   assert.match(areaField?.helpText ?? "", /Source fixture: realLondonPilotOverpass\.json/);
+  assert.equal(checkpointRequirementField?.label, "Checkpoint requirement");
+  assert.equal(checkpointRequirementField?.input, "select");
+  assert.deepEqual(checkpointRequirementField?.options, ["optional", "required"]);
+  assert.match(checkpointRequirementField?.helpText ?? "", /Optional checkpoints do not block export/);
+  assert.ok(["optional", "required"].includes(model.exportData.metadata.checkpointRequirement ?? ""));
   assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
 });
 
@@ -978,6 +1017,7 @@ test("curated route author exports ordered checkpoint metadata and can instantia
     "scoringEmphasis",
     "legal route validity\nrequired checkpoint order\nroute efficiency"
   );
+  state = updateTrainingRouteAuthorMetadataField(state, "checkpointRequirement", "required");
   state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(state));
 
   const model = buildTrainingRouteAuthorModel({ state });
@@ -988,11 +1028,10 @@ test("curated route author exports ordered checkpoint metadata and can instantia
   assert.equal(model.exportData.checkpointRequirements.required, true);
   assert.equal(model.exportData.checkpointRequirements.ordered, true);
   assert.equal(model.exportData.checkpointRequirements.checkpointCount, model.exportData.checkpoints.length);
-  assert.deepEqual(model.exportData.checkpointRequirements.requiredNodeIds, [
-    model.exportData.start.nodeId,
-    ...model.exportData.checkpoints.map((candidate) => candidate.nodeId),
-    model.exportData.destination.nodeId
-  ]);
+  assert.deepEqual(
+    model.exportData.checkpointRequirements.requiredNodeIds,
+    model.exportData.checkpoints.map((candidate) => candidate.nodeId)
+  );
   assert.equal(checkpoint.kind, "checkpoint");
   assert.equal(checkpoint.order, 1);
   assert.equal(checkpoint.required, true);
@@ -1018,6 +1057,7 @@ test("curated route author validation blocks checkpoints missed by the matched r
     checkpointNodeIds: [missingCheckpointNode.id],
     metadata: {
       ...sample.metadata,
+      checkpointRequirement: "required",
       scoringEmphasis: ["legal route validity", "required checkpoint order", "route efficiency"]
     },
     validationHasRun: false,
@@ -1043,6 +1083,7 @@ test("curated route author validation blocks checkpoints visited out of order", 
     checkpointNodeIds: [intermediateNodeIds[1], intermediateNodeIds[0]],
     metadata: {
       ...sample.metadata,
+      checkpointRequirement: "required",
       scoringEmphasis: ["legal route validity", "required checkpoint order", "route efficiency"]
     },
     validationHasRun: false,
@@ -1056,7 +1097,7 @@ test("curated route author validation blocks checkpoints visited out of order", 
   assert.ok(model.saveTargets.find((target) => target.mode === "complete-route")?.ready === false);
 });
 
-test("curated route author requires checkpoints only when metadata says the exercise needs them", () => {
+test("curated route author keeps checkpoints optional by default even when route notes mention them", () => {
   let state = createEmptyTrainingRouteAuthorState();
 
   state = updateTrainingRouteAuthorMetadataField(
@@ -1070,6 +1111,26 @@ test("curated route author requires checkpoints only when metadata says the exer
   const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
   const checkpointStep = model.authoringSteps.find((step) => step.label === "Add checkpoints if needed");
 
+  assert.equal(model.exportData.metadata.checkpointRequirement, "optional");
+  assert.equal(model.exportData.checkpointRequirements.required, false);
+  assert.equal(model.validation.blockingErrors.some((issue) => issue.code === "author-checkpoint-missing"), false);
+  assert.equal(model.exportReadiness.checklist.find((item) => item.label === "Required checkpoints selected")?.complete, true);
+  assert.equal(completeRoute?.checklist.find((item) => item.label === "Required checkpoints selected")?.complete, true);
+  assert.equal(checkpointStep?.complete, true);
+  assert.equal(checkpointStep?.optional, true);
+});
+
+test("curated route author requires checkpoints only when the explicit setting is Required", () => {
+  let state = createEmptyTrainingRouteAuthorState();
+
+  state = updateTrainingRouteAuthorMetadataField(state, "checkpointRequirement", "required");
+  state = validateTrainingRouteAuthorState(state);
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+  const checkpointStep = model.authoringSteps.find((step) => step.label === "Add checkpoints if needed");
+
+  assert.equal(model.exportData.metadata.checkpointRequirement, "required");
   assert.equal(model.exportData.checkpointRequirements.required, true);
   assert.ok(model.validation.blockingErrors.some((issue) => issue.code === "author-checkpoint-missing"));
   assert.equal(model.exportReadiness.checklist.find((item) => item.label === "Required checkpoints selected")?.complete, false);
@@ -1332,6 +1393,63 @@ test("curated route author review and complete save targets explain validation a
   assert.equal(invalidReview?.ready, false);
   assert.equal(readyReview?.ready, true);
   assert.equal(readyComplete?.ready, true);
+});
+
+test("curated route author treats beginner route complexity as advisory rather than blocking", () => {
+  let state = createSampleTrainingRouteAuthorState();
+
+  state = updateTrainingRouteAuthorMetadataField(state, "difficulty", "beginner");
+  state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(state));
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const warningCodes = model.validation.advisoryWarnings.map((issue) => issue.code);
+  const blockingCodes = model.validation.blockingErrors.map((issue) => issue.code);
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+
+  assert.equal(model.validationRunStatus, "warning");
+  assert.equal(model.validation.valid, true);
+  assert.ok(warningCodes.includes("excessive-route-complexity"));
+  assert.equal(blockingCodes.includes("excessive-route-complexity"), false);
+  assert.equal(completeRoute?.ready, true);
+  assert.equal(
+    completeRoute?.checklist.find((item) => item.label === "Validation has no blocking errors")?.complete,
+    true
+  );
+});
+
+test("curated route author treats routes below suggested length as advisory rather than blocking", () => {
+  const sample = createSampleTrainingRouteAuthorState();
+  const firstRoutePoint = sample.snappedRoutePoints[0];
+  const secondRoutePoint = sample.snappedRoutePoints[1];
+  let state = {
+    ...sample,
+    destinationNodeId: sample.routeNodeIds[1] ?? sample.destinationNodeId,
+    checkpointNodeIds: [],
+    routeDraft:
+      firstRoutePoint && secondRoutePoint
+        ? createEmptyRouteDraft([[firstRoutePoint, secondRoutePoint]])
+        : sample.routeDraft,
+    routeNodeIds: sample.routeNodeIds.slice(0, 2),
+    roadIds: sample.roadIds.slice(0, 1),
+    validationSegments: sample.validationSegments.slice(0, 1),
+    snappedRoutePoints: sample.snappedRoutePoints.slice(0, 2),
+    validationHasRun: false,
+    comparisonHasRun: false,
+    sampleLoaded: false
+  };
+
+  state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(state));
+
+  const model = buildTrainingRouteAuthorModel({ state });
+  const warningCodes = model.validation.advisoryWarnings.map((issue) => issue.code);
+  const blockingCodes = model.validation.blockingErrors.map((issue) => issue.code);
+  const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
+
+  assert.equal(model.validationRunStatus, "warning");
+  assert.equal(model.validation.valid, true);
+  assert.ok(warningCodes.includes("route-length-out-of-bounds"));
+  assert.equal(blockingCodes.includes("route-length-out-of-bounds"), false);
+  assert.equal(completeRoute?.ready, true);
 });
 
 test("curated route author dev save UI keeps save tools off learner navigation", () => {

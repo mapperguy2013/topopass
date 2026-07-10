@@ -148,12 +148,11 @@ const TRAINING_ROUTE_AUTHOR_PRIMARY_TOOLBAR_ACTION_IDS: readonly TrainingRouteAu
   "draw-route",
   "add-checkpoint",
   "set-destination",
-  "undo",
-  "validate-route",
-  "compare-shortest-route"
+  "undo"
 ];
 
 const TRAINING_ROUTE_AUTHOR_MORE_TOOLBAR_ACTION_IDS: readonly TrainingRouteAuthorToolbarAction["id"][] = [
+  "redo",
   "remove-last-checkpoint",
   "clear-route",
   "clear-checkpoints",
@@ -1536,6 +1535,10 @@ export function TrainingRouteAuthorClient() {
   }
 
   function renderRouteStateDrawer() {
+    const routeStateActions = (["clear-route", "clear-checkpoints", "reset-view"] as const)
+      .map((id) => toolbarActionsById.get(id))
+      .filter((action): action is TrainingRouteAuthorToolbarAction => Boolean(action));
+
     return (
       <section aria-labelledby="training-author-drawer-route-state" data-testid="training-author-drawer-panel-route-state">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -1552,6 +1555,9 @@ export function TrainingRouteAuthorClient() {
           >
             Review validation
           </button>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2" aria-label="Route state quick actions">
+          {routeStateActions.map(renderToolbarButton)}
         </div>
         <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {model.routeStatusItems.map((item) => (
@@ -1653,6 +1659,7 @@ export function TrainingRouteAuthorClient() {
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <div className="rounded-lg border border-slate-200 bg-white p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Blocking errors</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Must be fixed before complete route save.</p>
             {model.validationRunStatus === "not-run" || model.validation.blockingErrors.length === 0 ? (
               <p className="mt-2 text-sm text-slate-700">None shown</p>
             ) : (
@@ -1665,6 +1672,7 @@ export function TrainingRouteAuthorClient() {
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Advisory warnings</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Review before approving. This does not block export.</p>
             {model.validationRunStatus === "not-run" || model.validation.advisoryWarnings.length === 0 ? (
               <p className="mt-2 text-sm text-slate-700">None shown</p>
             ) : (
@@ -1684,6 +1692,10 @@ export function TrainingRouteAuthorClient() {
             )}
           </div>
         </div>
+        <p className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-blue-950">
+          Author decisions: learner suitability warnings may be intentional. Add route choice justification if the route is
+          deliberately long, complex, or includes practice-specific detours.
+        </p>
         <div className="mt-4">
           <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Shortest route comparison</h3>
           <div className="mt-3 grid gap-3 lg:grid-cols-2">
@@ -1773,6 +1785,11 @@ export function TrainingRouteAuthorClient() {
         {autosaveNotice ? (
           <p className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-700">
             Autosave recovery: {autosaveNotice}
+          </p>
+        ) : null}
+        {model.validationRunStatus === "warning" ? (
+          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-950">
+            Complete route has advisory warnings. Review before approving. This does not block export.
           </p>
         ) : null}
         <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3" data-testid="training-author-checkpoint-export">
@@ -1988,44 +2005,6 @@ export function TrainingRouteAuthorClient() {
           role="toolbar"
         >
           {primaryToolbarActions.map(renderToolbarButton)}
-          <button
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-400"
-            disabled
-            title="Redo will be enabled when redo history is available."
-            type="button"
-          >
-            Redo
-          </button>
-          <details className="shrink-0">
-            <summary className="inline-flex min-h-11 cursor-pointer select-none items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50">
-              Export
-            </summary>
-            <div className="mt-2 grid min-w-56 gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
-                onClick={() => openDrawerTab("export")}
-                type="button"
-              >
-                Open export panel
-              </button>
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500"
-                disabled={!model.exportReadiness.ready}
-                onClick={downloadExportJson}
-                type="button"
-              >
-                Download JSON
-              </button>
-              <button
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 disabled:bg-slate-100 disabled:text-slate-500"
-                disabled={!model.exportReadiness.ready}
-                onClick={copyExportJson}
-                type="button"
-              >
-                Copy JSON
-              </button>
-            </div>
-          </details>
           <details className="shrink-0">
             <summary
               aria-label="More authoring actions"

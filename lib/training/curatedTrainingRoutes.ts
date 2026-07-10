@@ -21,6 +21,7 @@ import type {
 } from "./curatedTrainingRouteSaveNaming.ts";
 
 export type CuratedTrainingRouteStatus = "draft" | "beta" | "approved";
+export type CuratedTrainingRouteCheckpointRequirementSetting = "optional" | "required";
 
 export type CuratedShortestRouteComparisonVerdict =
   | "shortest-or-near-shortest"
@@ -77,6 +78,7 @@ export type CuratedTrainingRouteMetadata = {
   scoringEmphasis: string[];
   instructorFeedbackNotes: string;
   routeChoiceJustification: string;
+  checkpointRequirement?: CuratedTrainingRouteCheckpointRequirementSetting;
   status: CuratedTrainingRouteStatus;
 };
 

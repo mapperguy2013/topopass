@@ -30,6 +30,7 @@ import {
 import {
   type CuratedTrainingRouteComplexitySummary,
   type CuratedTrainingRouteCheckpointRequirement,
+  type CuratedTrainingRouteCheckpointRequirementSetting,
   type CuratedTrainingRouteExport,
   type CuratedTrainingRouteMetadata,
   type CuratedShortestRouteComparison,
@@ -175,6 +176,7 @@ export type TrainingRouteAuthorToolbarActionId =
   | "clear-route"
   | "clear-checkpoints"
   | "reset-view"
+  | "redo"
   | "validate-route"
   | "compare-shortest-route"
   | "export-json";
@@ -412,6 +414,7 @@ const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
   "hintSequence",
   "scoringEmphasis"
 ]);
+const DEFAULT_CHECKPOINT_REQUIREMENT: CuratedTrainingRouteCheckpointRequirementSetting = "optional";
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTON = 1;
 const TRAINING_ROUTE_AUTHOR_MIDDLE_MOUSE_BUTTONS_MASK = 4;
 
@@ -593,20 +596,14 @@ function hasRequiredTrainingRouteMetadata(metadata: CuratedTrainingRouteMetadata
   return hasRequiredTrainingRouteTextMetadata(metadata) && trainingRouteAuthorAreaSelectionIsValid(metadata);
 }
 
-function trainingRouteAuthorCheckpointsRequired(metadata: CuratedTrainingRouteMetadata): boolean {
-  const checkpointRequirementText = [
-    metadata.objective,
-    metadata.description,
-    ...metadata.scoringEmphasis,
-    ...metadata.skillsPractised,
-    ...metadata.expectedLearnerMistakes,
-    ...metadata.hintSequence,
-    metadata.instructorFeedbackNotes
-  ].join(" ");
+function normaliseCheckpointRequirement(
+  value: CuratedTrainingRouteMetadata["checkpointRequirement"]
+): CuratedTrainingRouteCheckpointRequirementSetting {
+  return value === "required" ? "required" : DEFAULT_CHECKPOINT_REQUIREMENT;
+}
 
-  return /required checkpoint|checkpoint-ordering|checkpoint order|ordered checkpoint|checkpoint navigation|multi-stop|visit checkpoints in order|checkpoints in order/i.test(
-    checkpointRequirementText
-  );
+function trainingRouteAuthorCheckpointsRequired(metadata: CuratedTrainingRouteMetadata): boolean {
+  return normaliseCheckpointRequirement(metadata.checkpointRequirement) === "required";
 }
 
 function trainingRouteAuthorIssue(input: {
@@ -653,7 +650,10 @@ function validationSegmentsForNode(
   return validationSegments.filter((segment) => segment.fromNodeId === nodeId || segment.toNodeId === nodeId);
 }
 
-function authoringCheckpointRouteIssues(state: TrainingRouteAuthorState): LearnerRouteValidationIssue[] {
+function authoringCheckpointRouteIssues(
+  state: TrainingRouteAuthorState,
+  input: { checkpointsRequired: boolean }
+): LearnerRouteValidationIssue[] {
   const issues: LearnerRouteValidationIssue[] = [];
 
   if (state.routeNodeIds.length === 0 || state.validationSegments.length === 0) {
@@ -687,6 +687,10 @@ function authoringCheckpointRouteIssues(state: TrainingRouteAuthorState): Learne
         explanation: `The matched route ends at ${lastRouteNodeId}, but the selected destination is ${state.destinationNodeId}.`
       })
     );
+  }
+
+  if (!input.checkpointsRequired) {
+    return issues;
   }
 
   let previousVisitIndex = state.startNodeId ? state.routeNodeIds.indexOf(state.startNodeId) : -1;
@@ -741,11 +745,7 @@ function checkpointRequirementsForState(input: {
   destinationNodeId: string | null;
 }): CuratedTrainingRouteCheckpointRequirement {
   const required = trainingRouteAuthorCheckpointsRequired(input.metadata);
-  const requiredNodeIds = [
-    input.startNodeId,
-    ...input.checkpointNodeIds,
-    input.destinationNodeId
-  ].filter((nodeId): nodeId is string => Boolean(nodeId));
+  const requiredNodeIds = required ? [...input.checkpointNodeIds] : [];
   const checkpointCount = input.checkpointNodeIds.length;
 
   return {
@@ -1184,6 +1184,7 @@ function metadataForNewRoute(): CuratedTrainingRouteMetadata {
     instructorFeedbackNotes:
       "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
     routeChoiceJustification: "",
+    checkpointRequirement: DEFAULT_CHECKPOINT_REQUIREMENT,
     status: "draft"
   };
 }
@@ -1226,6 +1227,7 @@ function metadataForExercise(exercise: RouteExercise): CuratedTrainingRouteMetad
       "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
     routeChoiceJustification:
       "This sample follows the selected exercise stops. Replace this note if the authored route is intentionally longer than the shortest legal option.",
+    checkpointRequirement: hasIntermediateStops ? "required" : DEFAULT_CHECKPOINT_REQUIREMENT,
     status: "beta"
   };
 }
@@ -1279,6 +1281,19 @@ function buildMetadataFields(input: {
       input: "select",
       value: metadata.exerciseType,
       options: EXERCISE_TYPES
+    },
+    {
+      id: "checkpointRequirement",
+      label: "Checkpoint requirement",
+      input: "select",
+      value: normaliseCheckpointRequirement(metadata.checkpointRequirement),
+      options: ["optional", "required"],
+      optionLabels: {
+        optional: "Optional",
+        required: "Required"
+      },
+      helpText:
+        "Optional checkpoints do not block export. Required checkpoints enforce at least one ordered checkpoint before complete route save."
     },
     { id: "description", label: "Description", input: "textarea", value: metadata.description },
     { id: "objective", label: "Objective", input: "textarea", value: metadata.objective },
@@ -1364,7 +1379,10 @@ function validationMetrics(input: {
   return validateLearnerRoute({
     map: input.map,
     routeSegments: input.routeSegments,
-    difficulty: input.difficulty
+    difficulty: input.difficulty,
+    constraints: {
+      minDistanceMeters: 120
+    }
   });
 }
 
@@ -1437,13 +1455,13 @@ function authoringValidationIssues(input: {
     issues.push(
       trainingRouteAuthorIssue({
         code: "author-checkpoint-missing",
-        explanation: "At least one checkpoint is required for this exercise type."
+        explanation: "At least one checkpoint is required because Checkpoint requirement is set to Required."
       })
     );
   }
 
   if (input.hasMatchedRoute) {
-    issues.push(...authoringCheckpointRouteIssues(input.state));
+    issues.push(...authoringCheckpointRouteIssues(input.state, { checkpointsRequired: input.checkpointsRequired }));
   }
 
   return issues;
@@ -1541,7 +1559,7 @@ function approvalWarning(input: {
   if (input.validation.status === "warning") {
     return {
       blocking: false,
-      message: "This route can be approved only after an instructor reviews advisory warnings."
+      message: "Approved routes with advisory warnings need instructor review, but this does not block export."
     };
   }
 
@@ -2210,6 +2228,16 @@ export function updateTrainingRouteAuthorMetadataField(
     };
   } else if (fieldId === "exerciseType") {
     metadata.exerciseType = value as CuratedTrainingRouteMetadata["exerciseType"];
+  } else if (fieldId === "checkpointRequirement") {
+    metadata.checkpointRequirement = normaliseCheckpointRequirement(
+      value as CuratedTrainingRouteMetadata["checkpointRequirement"]
+    );
+    return {
+      ...state,
+      metadata,
+      validationHasRun: false,
+      comparisonHasRun: false
+    };
   } else if (fieldId === "status") {
     metadata.status = value as CuratedTrainingRouteMetadata["status"];
   } else {
@@ -2237,6 +2265,7 @@ function buildToolbarActions(input: {
     { id: "add-checkpoint", label: "Add checkpoint", pressed: input.activeMode === "add-checkpoint" },
     { id: "set-destination", label: "Set destination", primary: true, pressed: input.activeMode === "set-destination" },
     { id: "undo", label: "Undo", disabled: !input.canUndo },
+    { id: "redo", label: "Redo", disabled: true },
     { id: "remove-last-checkpoint", label: "Remove last checkpoint", disabled: !input.canRemoveCheckpoint },
     { id: "clear-route", label: "Clear route", disabled: !input.canClearRoute },
     { id: "clear-checkpoints", label: "Clear checkpoints", disabled: !input.canClearCheckpoints },
@@ -2576,6 +2605,7 @@ export function buildTrainingRouteAuthorModel(input?: {
     ...baseMetadata,
     difficulty: input?.difficultyOverride ?? baseMetadata.difficulty,
     routeChoiceJustification: input?.routeChoiceJustification ?? baseMetadata.routeChoiceJustification,
+    checkpointRequirement: normaliseCheckpointRequirement(baseMetadata.checkpointRequirement),
     status: input?.statusOverride ?? baseMetadata.status
   };
   const selectedArea = getTrainingRouteAuthorAreaOption(metadata.areaId);
