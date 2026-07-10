@@ -294,6 +294,8 @@ import {
   buildRouteRunnerPracticeModePanelVisibility
 } from "./routeRunnerPracticeModePanels";
 import {
+  LEARNER_TRAINING_DIFFICULTY_LABELS,
+  LEARNER_TRAINING_EXERCISE_TYPE_LABELS,
   buildLearnerTrainingModePanelModel,
   createLearnerTrainingModeState,
   openLearnerTrainingMode,
@@ -7112,6 +7114,12 @@ export function RouteRunnerClient({
                             </div>
                             <p className="mt-2 text-slate-700">{routeCard.description}</p>
                             <div className="mt-2 flex flex-wrap gap-1.5">
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {LEARNER_TRAINING_DIFFICULTY_LABELS[routeCard.difficulty]}
+                              </span>
+                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
+                                {LEARNER_TRAINING_EXERCISE_TYPE_LABELS[routeCard.exerciseType]}
+                              </span>
                               <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-semibold text-slate-700">
                                 {routeCard.approximateLengthLabel}
                               </span>

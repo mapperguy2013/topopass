@@ -30,25 +30,81 @@ export const CURATED_LEARNER_ROUTE_PACK_VERSION = "2026.07";
 export const NO_CURATED_ROUTE_AVAILABLE_MESSAGE = "No approved curated route is available for this selection yet.";
 export const EXPERIMENTAL_GENERATED_ROUTE_LABEL = "Try experimental generated route";
 
-const CURATED_LEARNER_ROUTE_PACK_RAW = [
-  routeBeginnerFollowGoodgeTottenham,
-  routeBeginnerFollowStoreStreet,
-  routeBeginnerFollowTorringtonByng,
-  routeBeginnerIdentifyNextSafeTurnStoreStreet,
-  routeIntermediateFollowHuntleyChenies,
-  routeIntermediateJunctionWhitfieldGoodge,
-  routeIntermediateLegalTorringtonOneWay,
-  routeIntermediateFollowGowerTorrington,
-  routeIntermediateCheckpointGoodgeChenies,
-  routeAdvancedReviewGoodgeByng,
-  routeAdvancedFollowSouthCrescentRidgmount,
-  routeAdvancedLegalTottenhamGower,
-  routeAdvancedLegalTorringtonReverse,
-  routeAdvancedJunctionMortimerGoodge
-] as const;
+export const CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY: Record<
+  Exclude<ExerciseDifficulty, "easy">,
+  number
+> = {
+  beginner: 5,
+  intermediate: 5,
+  advanced: 5
+};
 
-export const CURATED_LEARNER_ROUTE_PACK: CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK_RAW.map(
-  normaliseCuratedTrainingRouteExport
+export type CuratedTrainingRoutePackManifestEntry = {
+  filename: string;
+  route: unknown;
+};
+
+export const CURATED_LEARNER_ROUTE_PACK_FILES: CuratedTrainingRoutePackManifestEntry[] = [
+  {
+    filename: "real-london-beginner-follow-goodge-tottenham.json",
+    route: routeBeginnerFollowGoodgeTottenham
+  },
+  {
+    filename: "real-london-beginner-follow-store-street.json",
+    route: routeBeginnerFollowStoreStreet
+  },
+  {
+    filename: "real-london-beginner-follow-torrington-byng.json",
+    route: routeBeginnerFollowTorringtonByng
+  },
+  {
+    filename: "real-london-beginner-identify-next-safe-turn-store-street.json",
+    route: routeBeginnerIdentifyNextSafeTurnStoreStreet
+  },
+  {
+    filename: "real-london-intermediate-follow-huntley-chenies.json",
+    route: routeIntermediateFollowHuntleyChenies
+  },
+  {
+    filename: "real-london-intermediate-junction-whitfield-goodge.json",
+    route: routeIntermediateJunctionWhitfieldGoodge
+  },
+  {
+    filename: "real-london-intermediate-legal-torrington-one-way.json",
+    route: routeIntermediateLegalTorringtonOneWay
+  },
+  {
+    filename: "real-london-intermediate-follow-gower-torrington.json",
+    route: routeIntermediateFollowGowerTorrington
+  },
+  {
+    filename: "real-london-intermediate-checkpoint-goodge-chenies.json",
+    route: routeIntermediateCheckpointGoodgeChenies
+  },
+  {
+    filename: "real-london-advanced-review-goodge-byng.json",
+    route: routeAdvancedReviewGoodgeByng
+  },
+  {
+    filename: "real-london-advanced-follow-south-crescent-ridgmount.json",
+    route: routeAdvancedFollowSouthCrescentRidgmount
+  },
+  {
+    filename: "real-london-advanced-legal-tottenham-gower.json",
+    route: routeAdvancedLegalTottenhamGower
+  },
+  {
+    filename: "real-london-advanced-legal-torrington-reverse.json",
+    route: routeAdvancedLegalTorringtonReverse
+  },
+  {
+    filename: "real-london-advanced-junction-mortimer-goodge.json",
+    route: routeAdvancedJunctionMortimerGoodge
+  }
+];
+
+export const CURATED_LEARNER_ROUTE_PACK: CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK_FILES.map((entry) =>
+  normaliseCuratedTrainingRouteExport(entry.route)
 );
 
 export type CuratedTrainingRouteCardModel = {
@@ -72,11 +128,26 @@ export type CuratedTrainingRoutePackSummary = {
   packId: typeof CURATED_LEARNER_ROUTE_PACK_ID;
   packVersion: typeof CURATED_LEARNER_ROUTE_PACK_VERSION;
   totalLearnerFacingRoutes: number;
+  targetLearnerFacingRoutes: number;
   countsByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  targetCountsByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  missingTargetCountsByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
   countsByExerciseType: Partial<Record<ExerciseType, number>>;
   checkpointRouteCount: number;
   averageComplexityByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  routePackStatus: "initial-beta" | "target-met";
   knownLimitations: string[];
+};
+
+export type CuratedTrainingRoutePackReadiness = {
+  status: CuratedTrainingRoutePackSummary["routePackStatus"];
+  currentTotal: number;
+  targetTotal: number;
+  countsByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  targetCountsByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  missingTargetCountsByDifficulty: Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  missingTotal: number;
+  expansionTodo: string[];
 };
 
 export type CuratedTrainingRoutePackAuditIssue = {
@@ -107,6 +178,7 @@ export type CuratedTrainingRouteVisibilityExclusionCode =
   | "not-beta-or-approved"
   | "missing-required-metadata"
   | "missing-route-data"
+  | "checkpoint-requirement-invalid"
   | "validation-blocking-error"
   | "filter-mismatch";
 
@@ -130,6 +202,37 @@ export type CuratedTrainingRouteVisibilityDiagnostics = {
     matchingRouteCount: number;
     hiddenByFilterCount: number;
   };
+  availableFilterCombinations: Array<{
+    mapId: string;
+    areaName: string;
+    difficulty: Exclude<ExerciseDifficulty, "easy">;
+    exerciseType: ExerciseType;
+    routeCount: number;
+  }>;
+};
+
+export type CuratedTrainingRouteFileAuditRecord = {
+  filename: string;
+  routeId: string;
+  title: string;
+  areaName: string;
+  mapId: string;
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+  exerciseType: ExerciseType;
+  status: CuratedTrainingRouteStatus;
+  lifecycleStage: CuratedTrainingRouteLifecycleStage;
+  startExists: boolean;
+  destinationExists: boolean;
+  routeGeometryExists: boolean;
+  routeSegmentsExist: boolean;
+  checkpointCount: number;
+  checkpointRequirement: "Optional" | "Required";
+  validationStatus: CuratedTrainingRouteExport["validationSummary"]["status"];
+  validationBlockingErrorCount: number;
+  validationAdvisoryWarningCount: number;
+  shortestRouteComparisonStatus: CuratedTrainingRouteExport["shortestRouteComparison"]["directComparison"]["comparisonStatus"];
+  learnerFacing: boolean;
+  excludedReasons: CuratedTrainingRouteVisibilityExclusionCode[];
 };
 
 export function isLearnerFacingCuratedTrainingRoute(route: CuratedTrainingRouteExport): boolean {
@@ -211,6 +314,7 @@ export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
   exerciseType?: ExerciseType;
 } = {}): CuratedTrainingRouteVisibilityDiagnostics {
   const routes = (input.routes ?? CURATED_LEARNER_ROUTE_PACK).map(normaliseCuratedTrainingRouteExport);
+  const learnerRoutes = routes.filter((route) => learnerVisibilityExclusionReasons(route).length === 0);
   const excludedRoutes: CuratedTrainingRouteVisibilityExcludedRoute[] = [];
   let completeRouteCount = 0;
   let learnerFacingRouteCount = 0;
@@ -241,11 +345,11 @@ export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
     ).length,
     excludedMissingMetadataCount: excludedRoutes.filter((route) => route.reasons.includes("missing-required-metadata")).length,
     excludedValidationBlockingCount: excludedRoutes.filter((route) => route.reasons.includes("validation-blocking-error")).length,
-    excludedRoutes
+    excludedRoutes,
+    availableFilterCombinations: availableFilterCombinations(learnerRoutes)
   };
 
   if (input.mapId && input.difficulty && input.exerciseType) {
-    const learnerRoutes = routes.filter((route) => learnerVisibilityExclusionReasons(route).length === 0);
     const matchingRouteCount = learnerRoutes.filter(
       (route) =>
         route.mapId === input.mapId &&
@@ -274,9 +378,12 @@ export function curatedTrainingRouteUnavailableMessage(input: {
   const diagnostics = buildCuratedTrainingRouteVisibilityDiagnostics(input);
 
   if (diagnostics.filter && diagnostics.learnerFacingRouteCount > 0 && diagnostics.filter.matchingRouteCount === 0) {
+    const combinations = formatAvailableFilterCombinations(diagnostics.availableFilterCombinations);
+
     return [
       NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
-      `${diagnostics.filter.hiddenByFilterCount} learner-facing curated route(s) exist but are hidden by the selected map, difficulty, or exercise type.`
+      `${diagnostics.filter.hiddenByFilterCount} learner-facing curated route(s) exist but are hidden by the selected map, difficulty, or exercise type.`,
+      combinations ? `Available selections: ${combinations}.` : ""
     ].join(" ");
   }
 
@@ -290,6 +397,62 @@ export function curatedTrainingRouteUnavailableMessage(input: {
   return NO_CURATED_ROUTE_AVAILABLE_MESSAGE;
 }
 
+export function auditCuratedTrainingRouteFiles(
+  entries: readonly CuratedTrainingRoutePackManifestEntry[] = CURATED_LEARNER_ROUTE_PACK_FILES
+): CuratedTrainingRouteFileAuditRecord[] {
+  return entries.map((entry) => {
+    const route = normaliseCuratedTrainingRouteExport(entry.route);
+    const excludedReasons = learnerVisibilityExclusionReasons(route);
+
+    return {
+      filename: entry.filename,
+      routeId: visibilityRouteId(route),
+      title: route.title,
+      areaName: route.areaName,
+      mapId: route.mapId,
+      difficulty: route.difficulty,
+      exerciseType: route.exerciseType,
+      status: route.status,
+      lifecycleStage: route.lifecycleStage,
+      startExists: route.start.nodeId.trim().length > 0,
+      destinationExists: route.destination.nodeId.trim().length > 0,
+      routeGeometryExists: route.routeGeometry.length > 0,
+      routeSegmentsExist: route.routeSegmentIds.length > 0 && route.validationSegments.length > 0,
+      checkpointCount: route.checkpoints.length,
+      checkpointRequirement: route.checkpointRequirements.required ? "Required" : "Optional",
+      validationStatus: route.validationSummary.status,
+      validationBlockingErrorCount: route.validationSummary.blockingErrors.length,
+      validationAdvisoryWarningCount: route.validationSummary.advisoryWarnings.length,
+      shortestRouteComparisonStatus: route.shortestRouteComparison.directComparison.comparisonStatus,
+      learnerFacing: excludedReasons.length === 0,
+      excludedReasons
+    };
+  });
+}
+
+export function buildCuratedTrainingRoutePackReadiness(
+  routes: readonly CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK
+): CuratedTrainingRoutePackReadiness {
+  const summary = buildCuratedTrainingRoutePackSummary(routes);
+  const missingTotal = Object.values(summary.missingTargetCountsByDifficulty).reduce((total, count) => total + count, 0);
+  const expansionTodo = (Object.entries(summary.missingTargetCountsByDifficulty) as Array<
+    [Exclude<ExerciseDifficulty, "easy">, number]
+  >)
+    .filter(([, missingCount]) => missingCount > 0)
+    .map(([difficulty, missingCount]) => `Add ${missingCount} more ${difficulty} curated route${missingCount === 1 ? "" : "s"}.`);
+
+  return {
+    status: summary.routePackStatus,
+    currentTotal: summary.totalLearnerFacingRoutes,
+    targetTotal: summary.targetLearnerFacingRoutes,
+    countsByDifficulty: summary.countsByDifficulty,
+    targetCountsByDifficulty: summary.targetCountsByDifficulty,
+    missingTargetCountsByDifficulty: summary.missingTargetCountsByDifficulty,
+    missingTotal,
+    expansionTodo
+  };
+}
+
 export function buildCuratedTrainingRoutePackSummary(
   routes: readonly CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK
 ): CuratedTrainingRoutePackSummary {
@@ -297,6 +460,12 @@ export function buildCuratedTrainingRoutePackSummary(
   const difficulties: Array<Exclude<ExerciseDifficulty, "easy">> = ["beginner", "intermediate", "advanced"];
   const countsByDifficulty = Object.fromEntries(
     difficulties.map((difficulty) => [difficulty, learnerRoutes.filter((route) => route.difficulty === difficulty).length])
+  ) as Record<Exclude<ExerciseDifficulty, "easy">, number>;
+  const missingTargetCountsByDifficulty = Object.fromEntries(
+    difficulties.map((difficulty) => [
+      difficulty,
+      Math.max(0, CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY[difficulty] - countsByDifficulty[difficulty])
+    ])
   ) as Record<Exclude<ExerciseDifficulty, "easy">, number>;
   const averageComplexityByDifficulty = Object.fromEntries(
     difficulties.map((difficulty) => {
@@ -315,15 +484,24 @@ export function buildCuratedTrainingRoutePackSummary(
     "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turns.",
     "The first route pack focuses on the Real London pilot map; more areas should be added after instructor QA."
   ];
+  const targetLearnerFacingRoutes = Object.values(CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+  const missingTotal = Object.values(missingTargetCountsByDifficulty).reduce((sum, count) => sum + count, 0);
 
   return {
     packId: CURATED_LEARNER_ROUTE_PACK_ID,
     packVersion: CURATED_LEARNER_ROUTE_PACK_VERSION,
     totalLearnerFacingRoutes: learnerRoutes.length,
+    targetLearnerFacingRoutes,
     countsByDifficulty,
+    targetCountsByDifficulty: { ...CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY },
+    missingTargetCountsByDifficulty,
     countsByExerciseType,
     checkpointRouteCount: learnerRoutes.filter((route) => route.checkpoints.length > 0).length,
     averageComplexityByDifficulty,
+    routePackStatus: missingTotal === 0 ? "target-met" : "initial-beta",
     knownLimitations
   };
 }
@@ -382,12 +560,7 @@ export function auditCuratedTrainingRoutePack(input: {
       });
     }
 
-    if (
-      route.checkpointRequirements.required &&
-      (route.checkpoints.length === 0 ||
-        route.checkpointRequirements.requiredNodeIds.length !== route.checkpoints.length ||
-        !route.checkpoints.every((checkpoint, index) => checkpoint.order === index + 1 && checkpoint.required === true))
-    ) {
+    if (hasInvalidRequiredCheckpointData(route)) {
       issues.push({
         routeId: route.routeId,
         severity: "error",
@@ -545,6 +718,10 @@ function learnerVisibilityExclusionReasons(
     reasons.push("missing-route-data");
   }
 
+  if (hasInvalidRequiredCheckpointData(route)) {
+    reasons.push("checkpoint-requirement-invalid");
+  }
+
   if (!route.validationSummary.valid || route.validationSummary.blockingErrors.length > 0) {
     reasons.push("validation-blocking-error");
   }
@@ -578,6 +755,15 @@ function hasRequiredLearnerRouteData(route: CuratedTrainingRouteExport): boolean
   );
 }
 
+function hasInvalidRequiredCheckpointData(route: CuratedTrainingRouteExport): boolean {
+  return (
+    route.checkpointRequirements.required &&
+    (route.checkpoints.length === 0 ||
+      route.checkpointRequirements.requiredNodeIds.length !== route.checkpoints.length ||
+      !route.checkpoints.every((checkpoint, index) => checkpoint.order === index + 1 && checkpoint.required === true))
+  );
+}
+
 function visibilityRouteId(route: CuratedTrainingRouteExport): string {
   return route.routeId.trim() || route.metadata.routeId.trim() || "(missing route id)";
 }
@@ -595,11 +781,56 @@ function visibilityExclusionMessage(reasons: readonly CuratedTrainingRouteVisibi
     return "Route is missing start, destination, route geometry, or matched route segments.";
   }
 
+  if (reasons.includes("checkpoint-requirement-invalid")) {
+    return "Route requires checkpoints but does not include ordered required checkpoint data.";
+  }
+
   if (reasons.includes("validation-blocking-error")) {
     return "Route validation has blocking errors.";
   }
 
   return "Route is hidden from learner Training Mode.";
+}
+
+function availableFilterCombinations(
+  learnerRoutes: readonly CuratedTrainingRouteExport[]
+): CuratedTrainingRouteVisibilityDiagnostics["availableFilterCombinations"] {
+  const countsByKey = new Map<string, CuratedTrainingRouteVisibilityDiagnostics["availableFilterCombinations"][number]>();
+
+  for (const route of learnerRoutes) {
+    const key = [route.mapId, route.areaName, route.difficulty, route.exerciseType].join("|");
+    const existing = countsByKey.get(key);
+
+    if (existing) {
+      existing.routeCount += 1;
+    } else {
+      countsByKey.set(key, {
+        mapId: route.mapId,
+        areaName: route.areaName,
+        difficulty: route.difficulty,
+        exerciseType: route.exerciseType,
+        routeCount: 1
+      });
+    }
+  }
+
+  return [...countsByKey.values()].sort((left, right) =>
+    `${left.areaName}:${left.difficulty}:${left.exerciseType}`.localeCompare(
+      `${right.areaName}:${right.difficulty}:${right.exerciseType}`
+    )
+  );
+}
+
+function formatAvailableFilterCombinations(
+  combinations: readonly CuratedTrainingRouteVisibilityDiagnostics["availableFilterCombinations"][number][]
+): string {
+  return combinations
+    .slice(0, 6)
+    .map(
+      (combination) =>
+        `${combination.areaName} / ${combination.difficulty} / ${combination.exerciseType} (${combination.routeCount})`
+    )
+    .join("; ");
 }
 
 function curatedRouteCard(route: CuratedTrainingRouteExport, selected: boolean): CuratedTrainingRouteCardModel {

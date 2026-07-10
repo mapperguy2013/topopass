@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import test from "node:test";
 import { realLondonOsmPilotRouteMap } from "../../app/dev/route-runner/routeRunnerMaps.ts";
 import {
+  CURATED_LEARNER_ROUTE_PACK_FILES,
+  CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY,
   CURATED_LEARNER_ROUTE_PACK,
   EXPERIMENTAL_GENERATED_ROUTE_LABEL,
   auditCuratedTrainingRoutePack,
+  auditCuratedTrainingRouteFiles,
   buildCuratedTrainingRouteCards,
+  buildCuratedTrainingRoutePackReadiness,
   buildCuratedTrainingRoutePackSummary,
   buildCuratedTrainingRouteVisibilityDiagnostics,
   curatedTrainingRouteUnavailableMessage,
@@ -26,6 +31,10 @@ const routeMapById = {
   [realLondonOsmPilotRouteMap.id]: realLondonOsmPilotRouteMap
 };
 
+const completeRouteFilenames = readdirSync("data/training-routes/complete")
+  .filter((filename) => filename.endsWith(".json"))
+  .sort();
+
 test("Stage 20 curated learner route pack loads complete learner-facing routes", () => {
   const summary = buildCuratedTrainingRoutePackSummary();
   const learnerRoutes = learnerFacingCuratedTrainingRoutes();
@@ -36,12 +45,60 @@ test("Stage 20 curated learner route pack loads complete learner-facing routes",
   assert.equal(summary.countsByDifficulty.beginner, 4);
   assert.equal(summary.countsByDifficulty.intermediate, 5);
   assert.equal(summary.countsByDifficulty.advanced, 5);
+  assert.deepEqual(summary.targetCountsByDifficulty, CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY);
+  assert.deepEqual(summary.missingTargetCountsByDifficulty, {
+    beginner: 1,
+    intermediate: 0,
+    advanced: 0
+  });
+  assert.equal(summary.routePackStatus, "initial-beta");
   assert.equal(summary.checkpointRouteCount, 3);
   assert.equal(summary.countsByExerciseType["follow-planned-route"], 7);
   assert.equal(summary.countsByExerciseType["identify-next-safe-turn"], 1);
   assert.ok(summary.countsByExerciseType["choose-legal-route"]);
   assert.ok(summary.countsByExerciseType["practise-junction-decision-making"]);
   assert.ok(summary.countsByExerciseType["route-review-mistake-correction"]);
+});
+
+test("Stage 20 manifest includes every complete route JSON file", () => {
+  const manifestFilenames = CURATED_LEARNER_ROUTE_PACK_FILES.map((entry) => entry.filename).sort();
+
+  assert.deepEqual(manifestFilenames, completeRouteFilenames);
+});
+
+test("Stage 20 route file audit reports learner-facing visibility for every complete file", () => {
+  const fileAudit = auditCuratedTrainingRouteFiles();
+
+  assert.equal(fileAudit.length, completeRouteFilenames.length);
+  assert.equal(fileAudit.every((route) => route.filename.endsWith(".json")), true);
+  assert.equal(fileAudit.every((route) => route.routeId.length > 0), true);
+  assert.equal(fileAudit.every((route) => route.title.length > 0), true);
+  assert.equal(fileAudit.every((route) => route.areaName.length > 0 && route.mapId === realLondonOsmPilotRouteMap.id), true);
+  assert.equal(fileAudit.every((route) => route.startExists && route.destinationExists), true);
+  assert.equal(fileAudit.every((route) => route.routeGeometryExists && route.routeSegmentsExist), true);
+  assert.equal(fileAudit.every((route) => route.validationStatus === "valid" || route.validationStatus === "warning"), true);
+  assert.equal(fileAudit.every((route) => route.validationBlockingErrorCount === 0), true);
+  assert.equal(fileAudit.some((route) => route.validationAdvisoryWarningCount > 0), true);
+  assert.equal(fileAudit.every((route) => route.shortestRouteComparisonStatus !== "unknown"), true);
+  assert.equal(fileAudit.every((route) => route.learnerFacing), true);
+  assert.deepEqual(fileAudit.flatMap((route) => route.excludedReasons), []);
+  assert.ok(fileAudit.some((route) => route.checkpointCount > 0 && route.checkpointRequirement === "Required"));
+  assert.ok(fileAudit.some((route) => route.checkpointCount === 0 && route.checkpointRequirement === "Optional"));
+});
+
+test("Stage 20 route pack readiness documents the missing beginner route target", () => {
+  const readiness = buildCuratedTrainingRoutePackReadiness();
+
+  assert.equal(readiness.currentTotal, 14);
+  assert.equal(readiness.targetTotal, 15);
+  assert.equal(readiness.status, "initial-beta");
+  assert.deepEqual(readiness.missingTargetCountsByDifficulty, {
+    beginner: 1,
+    intermediate: 0,
+    advanced: 0
+  });
+  assert.equal(readiness.missingTotal, 1);
+  assert.deepEqual(readiness.expansionTodo, ["Add 1 more beginner curated route."]);
 });
 
 test("Stage 19.4 complete beta and approved route exports are loaded for learners", () => {
@@ -90,6 +147,74 @@ test("Stage 20 draft and review curated routes are excluded from learner Trainin
   assert.equal(learnerRoutes.some((route) => route.routeId === "draft-copy"), false);
   assert.equal(learnerRoutes.some((route) => route.routeId === "review-copy"), false);
   assert.equal(learnerRoutes.every((route) => route.status === "beta" || route.status === "approved"), true);
+});
+
+test("Stage 20 learner-suitability warnings do not block curated route inclusion", () => {
+  const warningRoute: CuratedTrainingRouteExport = {
+    ...CURATED_LEARNER_ROUTE_PACK[0],
+    routeId: "warning-copy",
+    validationSummary: {
+      ...CURATED_LEARNER_ROUTE_PACK[0].validationSummary,
+      status: "warning",
+      valid: true,
+      advisoryWarnings: [
+        {
+          code: "route-length-out-of-bounds",
+          severity: "warning",
+          routeSegmentIds: CURATED_LEARNER_ROUTE_PACK[0].routeSegmentIds,
+          roadIds: CURATED_LEARNER_ROUTE_PACK[0].roadIds,
+          nodeIds: CURATED_LEARNER_ROUTE_PACK[0].nodeIds,
+          explanation: "This route may be long for beginner practice. Instructor review recommended."
+        }
+      ],
+      ruleCodes: ["route-length-out-of-bounds"]
+    },
+    metadata: {
+      ...CURATED_LEARNER_ROUTE_PACK[0].metadata,
+      routeId: "warning-copy"
+    }
+  };
+
+  assert.equal(learnerFacingCuratedTrainingRoutes([warningRoute]).length, 1);
+  assert.equal(auditCuratedTrainingRouteFiles([{ filename: "warning-copy.json", route: warningRoute }])[0]?.learnerFacing, true);
+});
+
+test("Stage 20 checkpoint optional and required settings control learner visibility", () => {
+  const optionalNoCheckpointRoute = CURATED_LEARNER_ROUTE_PACK.find(
+    (route) => route.routeId === "real-london-beginner-identify-next-safe-turn-store-street"
+  );
+
+  assert.ok(optionalNoCheckpointRoute);
+  assert.equal(optionalNoCheckpointRoute.checkpointRequirements.required, false);
+  assert.equal(optionalNoCheckpointRoute.checkpoints.length, 0);
+  assert.equal(learnerFacingCuratedTrainingRoutes([optionalNoCheckpointRoute]).length, 1);
+
+  const requiredWithoutCheckpointRoute: CuratedTrainingRouteExport = {
+    ...optionalNoCheckpointRoute,
+    routeId: "required-missing-checkpoint-copy",
+    checkpointRequirements: {
+      required: true,
+      ordered: true,
+      checkpointCount: 0,
+      requiredNodeIds: [],
+      instruction: "Visit the required checkpoint."
+    },
+    metadata: {
+      ...optionalNoCheckpointRoute.metadata,
+      routeId: "required-missing-checkpoint-copy",
+      checkpointRequirement: "required"
+    }
+  };
+  const audit = auditCuratedTrainingRouteFiles([
+    {
+      filename: "required-missing-checkpoint-copy.json",
+      route: requiredWithoutCheckpointRoute
+    }
+  ]);
+
+  assert.equal(learnerFacingCuratedTrainingRoutes([requiredWithoutCheckpointRoute]).length, 0);
+  assert.equal(audit[0]?.learnerFacing, false);
+  assert.ok(audit[0]?.excludedReasons.includes("checkpoint-requirement-invalid"));
 });
 
 test("Stage 20 learner-facing routes pass metadata and validation audit", () => {
@@ -324,6 +449,7 @@ test("Stage 19.4 curated route diagnostics identify hidden and excluded routes",
   assert.equal(diagnostics.excludedMissingMetadataCount, 1);
   assert.equal(diagnostics.excludedValidationBlockingCount, 1);
   assert.equal(diagnostics.filter?.matchingRouteCount, 0);
+  assert.ok(diagnostics.availableFilterCombinations.some((combination) => combination.difficulty === "beginner"));
   assert.ok(diagnostics.excludedRoutes.some((route) => route.routeId === "diagnostic-draft" && route.reasons.includes("not-complete")));
   assert.ok(diagnostics.excludedRoutes.some((route) => route.routeId === "diagnostic-invalid" && route.reasons.includes("validation-blocking-error")));
   assert.match(
@@ -334,6 +460,15 @@ test("Stage 19.4 curated route diagnostics identify hidden and excluded routes",
       exerciseType: "practise-roundabouts"
     }),
     /hidden by the selected map, difficulty, or exercise type/
+  );
+  assert.match(
+    curatedTrainingRouteUnavailableMessage({
+      routes: [betaRoute],
+      mapId: realLondonOsmPilotRouteMap.id,
+      difficulty: "advanced",
+      exerciseType: "practise-roundabouts"
+    }),
+    /Available selections: Real London Pilot \/ beginner \/ follow-planned-route/
   );
 });
 

@@ -15,21 +15,29 @@ complete `beta` or `approved` curated routes first.
 - Pack version: `2026.07`
 - Storage: `data/training-routes/complete/`
 - Learner-facing statuses: `beta`, `approved`
-- Current status: first-pack routes are `beta` or `approved`
+- Current status: initial beta route pack
+- Target pack size: 15 routes, with 5 beginner, 5 intermediate, and 5 advanced
+  routes
+- Current pack size: 14 learner-facing routes
+- Remaining target gap: 1 beginner route
 - Source map: `osm-real-london-pilot`
 - Source fixture: `realLondonPilotOverpass.json`
 
 ## Route Counts
 
-| Difficulty | Count |
-| --- | ---: |
-| Beginner | 4 |
-| Intermediate | 5 |
-| Advanced | 5 |
+| Difficulty | Current | Target | Remaining |
+| --- | ---: | ---: | ---: |
+| Beginner | 4 | 5 | 1 |
+| Intermediate | 5 | 5 | 0 |
+| Advanced | 5 | 5 | 0 |
 
 Total learner-facing curated routes: 14.
 
 Checkpoint routes: 3.
+
+The pack is usable as the first beta learner-facing curated route pack, but it
+is intentionally documented as `initial-beta` until one more beginner route is
+authored, validated, reviewed, and added to the complete manifest.
 
 ## Exercise Type Counts
 
@@ -129,6 +137,34 @@ The optional fallback action is labelled:
 This prevents the learner-facing experience from silently returning to weak
 random generation.
 
+## Current Route Inventory
+
+The current complete route audit includes every JSON file under
+`data/training-routes/complete/`. All listed routes are learner-facing because
+they are complete, `beta` or `approved`, map-backed, and have no blocking
+validation errors.
+
+| Route file | Difficulty | Exercise type | Status | Area / map | Checkpoints | Validation | Learner-facing |
+| --- | --- | --- | --- | --- | ---: | --- | --- |
+| `real-london-beginner-follow-goodge-tottenham.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-beginner-follow-store-street.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | valid | yes |
+| `real-london-beginner-follow-torrington-byng.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-beginner-identify-next-safe-turn-store-street.json` | Beginner | Identify the next safe turn | approved | Real London / `osm-real-london-pilot` | 0 optional | valid | yes |
+| `real-london-intermediate-checkpoint-goodge-chenies.json` | Intermediate | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 1 required | warning | yes |
+| `real-london-intermediate-follow-gower-torrington.json` | Intermediate | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | valid | yes |
+| `real-london-intermediate-follow-huntley-chenies.json` | Intermediate | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 1 required | valid | yes |
+| `real-london-intermediate-junction-whitfield-goodge.json` | Intermediate | Practise junction decision-making | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-intermediate-legal-torrington-one-way.json` | Intermediate | Choose a legal route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-advanced-follow-south-crescent-ridgmount.json` | Advanced | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 2 required | warning | yes |
+| `real-london-advanced-junction-mortimer-goodge.json` | Advanced | Practise junction decision-making | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-advanced-legal-torrington-reverse.json` | Advanced | Choose a legal route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-advanced-legal-tottenham-gower.json` | Advanced | Choose a legal route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+| `real-london-advanced-review-goodge-byng.json` | Advanced | Route review / mistake correction | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
+
+Validation warnings in this inventory are advisory learner-suitability or route
+review notes. They do not block learner visibility or complete-route save when
+the route has no hard legal, technical, metadata, or checkpoint errors.
+
 ## Validation And Audit
 
 `lib/training/curatedLearnerRoutePack.test.ts` audits the first pack.
@@ -136,11 +172,17 @@ random generation.
 The audit checks:
 
 - learner-facing routes load from the complete pack
+- every JSON file in `data/training-routes/complete/` appears in the static
+  manifest
 - draft and review routes are excluded
 - required metadata exists
 - every learner-facing route validates against the available map data
 - there are no blocking validation errors
 - checkpoint-required routes include ordered checkpoints
+- checkpoint-optional routes remain learner-facing without checkpoints
+- learner-suitability warnings remain advisory and do not block visibility
+- route pack readiness records the 15-route target and the remaining beginner
+  route gap
 - shortest-route comparison exists or is explicitly non-applicable/unknown
 - average complexity increases from beginner to intermediate to advanced
 - advanced routes are not accidentally tiny/simple
@@ -242,6 +284,8 @@ Before Stage 20 starts, these checks must pass:
 
 - The first pack focuses on the Real London pilot map. More areas are needed for
   broader learner coverage.
+- The current initial beta pack has 14 learner-facing routes, one route short of
+  the target 5 beginner / 5 intermediate / 5 advanced split.
 - Legal restrictions are enforced only where committed map metadata exposes
   them.
 - OSM-derived roads can be split into many short graph segments, so raw segment

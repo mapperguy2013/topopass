@@ -128,6 +128,8 @@ test("Stage 20 Training Mode uses curated learner routes before experimental gen
   assert.ok(routeRunnerSource.includes("curatedRoutes: CURATED_LEARNER_ROUTE_PACK"));
   assert.ok(routeRunnerSource.includes("handleGenerateExperimentalLearnerTrainingExercise"));
   assert.ok(routeRunnerSource.includes("curatedRouteCards"));
+  assert.ok(routeRunnerSource.includes("LEARNER_TRAINING_DIFFICULTY_LABELS[routeCard.difficulty]"));
+  assert.ok(routeRunnerSource.includes("LEARNER_TRAINING_EXERCISE_TYPE_LABELS[routeCard.exerciseType]"));
   assert.ok(trainingModeSource.includes("selectCuratedTrainingRoute"));
   assert.ok(trainingModeSource.includes("NO_CURATED_ROUTE_AVAILABLE_MESSAGE"));
   assert.ok(trainingModeSource.includes("EXPERIMENTAL_GENERATED_ROUTE_LABEL"));
