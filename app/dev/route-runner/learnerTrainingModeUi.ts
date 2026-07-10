@@ -5,6 +5,7 @@ import {
   EXPERIMENTAL_GENERATED_ROUTE_LABEL,
   NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
   buildCuratedTrainingRouteCards,
+  curatedTrainingRouteUnavailableMessage,
   curatedTrainingRouteToGeneratedLearnerExercise,
   generateLearnerAttemptFeedback,
   generateLearnerExercise,
@@ -811,6 +812,14 @@ export function buildLearnerTrainingModePanelModel(input: {
         activeRouteId: input.state.generation.curatedRouteId
       })
     : [];
+  const curatedRouteUnavailableMessage = input.curatedRoutes
+    ? curatedTrainingRouteUnavailableMessage({
+        routes: input.curatedRoutes,
+        mapId: input.map.id,
+        difficulty: input.state.selectedDifficulty,
+        exerciseType: input.state.selectedExerciseType
+      })
+    : NO_CURATED_ROUTE_AVAILABLE_MESSAGE;
   const curatedRouteAvailability: LearnerTrainingModePanelModel["curatedRouteAvailability"] = input.curatedRoutes
     ? curatedRouteCards.length > 0
       ? {
@@ -820,7 +829,7 @@ export function buildLearnerTrainingModePanelModel(input: {
         }
       : {
           status: "unavailable",
-          message: NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
+          message: curatedRouteUnavailableMessage,
           experimentalFallbackLabel: EXPERIMENTAL_GENERATED_ROUTE_LABEL
         }
     : {

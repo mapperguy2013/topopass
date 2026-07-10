@@ -408,6 +408,32 @@ test("curated learner route cards render and curated generation starts a route",
   assert.equal(startedModel.validation?.blockingErrorCount, 0);
 });
 
+test("approved complete dev exports appear in learner Training Mode route options", () => {
+  const state = selectLearnerTrainingExerciseType(
+    openLearnerTrainingMode(createLearnerTrainingModeState()),
+    "identify-next-safe-turn"
+  );
+  const model = buildLearnerTrainingModePanelModel({
+    state,
+    map: realLondonOsmPilotRouteMap,
+    viewport: "desktop",
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK
+  });
+  const started = startLearnerTrainingExercise({
+    state,
+    map: realLondonOsmPilotRouteMap,
+    curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+    seed: "approved-dev-export"
+  });
+
+  assert.equal(model.curatedRouteAvailability.status, "available");
+  assert.equal(model.curatedRouteCards.length, 1);
+  assert.equal(model.curatedRouteCards[0]?.routeId, "real-london-beginner-identify-next-safe-turn-store-street");
+  assert.equal(started.generation.routeSource, "curated-route-pack");
+  assert.equal(started.generation.curatedRouteId, "real-london-beginner-identify-next-safe-turn-store-street");
+  assert.equal(started.activeExercise?.type, "identify-next-safe-turn");
+});
+
 test("curated generation avoids recent route ids when alternatives exist", () => {
   const baseState = openLearnerTrainingMode(createLearnerTrainingModeState());
   const first = startLearnerTrainingExercise({

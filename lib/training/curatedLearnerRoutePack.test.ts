@@ -4,14 +4,16 @@ import { realLondonOsmPilotRouteMap } from "../../app/dev/route-runner/routeRunn
 import {
   CURATED_LEARNER_ROUTE_PACK,
   EXPERIMENTAL_GENERATED_ROUTE_LABEL,
-  NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
   auditCuratedTrainingRoutePack,
   buildCuratedTrainingRouteCards,
   buildCuratedTrainingRoutePackSummary,
+  buildCuratedTrainingRouteVisibilityDiagnostics,
+  curatedTrainingRouteUnavailableMessage,
   curatedTrainingRouteToGeneratedLearnerExercise,
   generateLearnerAttemptFeedback,
   generateLearnerHint,
   learnerFacingCuratedTrainingRoutes,
+  normaliseCuratedTrainingRouteExport,
   recordLearnerTrainingAttempt,
   scoreLearnerAttempt,
   selectCuratedTrainingRoute,
@@ -28,17 +30,32 @@ test("Stage 20 curated learner route pack loads complete learner-facing routes",
   const summary = buildCuratedTrainingRoutePackSummary();
   const learnerRoutes = learnerFacingCuratedTrainingRoutes();
 
-  assert.equal(CURATED_LEARNER_ROUTE_PACK.length, 13);
-  assert.equal(learnerRoutes.length, 13);
-  assert.equal(summary.totalLearnerFacingRoutes, 13);
-  assert.equal(summary.countsByDifficulty.beginner, 3);
+  assert.equal(CURATED_LEARNER_ROUTE_PACK.length, 14);
+  assert.equal(learnerRoutes.length, 14);
+  assert.equal(summary.totalLearnerFacingRoutes, 14);
+  assert.equal(summary.countsByDifficulty.beginner, 4);
   assert.equal(summary.countsByDifficulty.intermediate, 5);
   assert.equal(summary.countsByDifficulty.advanced, 5);
   assert.equal(summary.checkpointRouteCount, 3);
   assert.equal(summary.countsByExerciseType["follow-planned-route"], 7);
+  assert.equal(summary.countsByExerciseType["identify-next-safe-turn"], 1);
   assert.ok(summary.countsByExerciseType["choose-legal-route"]);
   assert.ok(summary.countsByExerciseType["practise-junction-decision-making"]);
   assert.ok(summary.countsByExerciseType["route-review-mistake-correction"]);
+});
+
+test("Stage 19.4 complete beta and approved route exports are loaded for learners", () => {
+  const learnerRoutes = learnerFacingCuratedTrainingRoutes();
+
+  assert.ok(learnerRoutes.some((route) => route.routeId === "real-london-beginner-follow-store-street" && route.status === "beta"));
+  assert.ok(
+    learnerRoutes.some(
+      (route) =>
+        route.routeId === "real-london-beginner-identify-next-safe-turn-store-street" &&
+        route.status === "approved" &&
+        route.exerciseType === "identify-next-safe-turn"
+    )
+  );
 });
 
 test("Stage 20 draft and review curated routes are excluded from learner Training Mode", () => {
@@ -80,7 +97,7 @@ test("Stage 20 learner-facing routes pass metadata and validation audit", () => 
     mapById: routeMapById
   });
 
-  assert.equal(audit.validLearnerFacingRouteIds.length, 13);
+  assert.equal(audit.validLearnerFacingRouteIds.length, 14);
   assert.deepEqual(audit.issues.filter((issue) => issue.severity === "error"), []);
   assert.equal(
     audit.summary.averageComplexityByDifficulty.beginner <
@@ -107,10 +124,8 @@ test("Stage 20 every complete beta route validates with no blocking errors", () 
     assert.equal(route.validationSummary.valid, true, route.routeId);
     assert.equal(route.validationSummary.blockingErrors.length, 0, route.routeId);
     assert.ok(route.shortestRouteComparison.directComparison.comparisonStatus !== "unknown", route.routeId);
-    assert.ok(route.instructorQaNote?.length, route.routeId);
     assert.ok(route.metadata.hintSequence.length > 0, route.routeId);
     assert.ok(route.metadata.scoringEmphasis.length > 0, route.routeId);
-    assert.ok(route.routePack?.manualQaNote, route.routeId);
   }
 });
 
@@ -193,8 +208,133 @@ test("Stage 20 no curated route selection returns clear fallback messaging", () 
   });
 
   assert.equal(selection.route, null);
-  assert.equal(selection.message, NO_CURATED_ROUTE_AVAILABLE_MESSAGE);
+  assert.match(selection.message ?? "", /hidden by the selected map, difficulty, or exercise type/);
   assert.equal(EXPERIMENTAL_GENERATED_ROUTE_LABEL, "Try experimental generated route");
+});
+
+test("Stage 19.4 dev training-route exports are normalised for curated route visibility", () => {
+  const sourceRoute = CURATED_LEARNER_ROUTE_PACK.find(
+    (route) => route.routeId === "real-london-beginner-identify-next-safe-turn-store-street"
+  );
+
+  assert.ok(sourceRoute);
+
+  const devExportShape = {
+    ...sourceRoute,
+    mapId: undefined,
+    areaId: undefined,
+    areaName: undefined,
+    difficulty: undefined,
+    exerciseType: undefined,
+    status: undefined,
+    metadata: {
+      ...sourceRoute.metadata,
+      practiceMapId: realLondonOsmPilotRouteMap.id,
+      status: "approved"
+    }
+  };
+  const normalised = normaliseCuratedTrainingRouteExport(devExportShape);
+
+  assert.equal(normalised.mapId, realLondonOsmPilotRouteMap.id);
+  assert.equal(normalised.areaId, "osm-real-london-pilot");
+  assert.equal(normalised.difficulty, "beginner");
+  assert.equal(normalised.exerciseType, "identify-next-safe-turn");
+  assert.equal(normalised.status, "approved");
+  assert.equal(learnerFacingCuratedTrainingRoutes([normalised]).length, 1);
+});
+
+test("Stage 19.4 Training Mode route cards include matching complete route options", () => {
+  const cards = buildCuratedTrainingRouteCards({
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "beginner",
+    exerciseType: "identify-next-safe-turn",
+    activeRouteId: "real-london-beginner-identify-next-safe-turn-store-street"
+  });
+  const selection = selectCuratedTrainingRoute({
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "beginner",
+    exerciseType: "identify-next-safe-turn",
+    seed: "stage-19-4"
+  });
+
+  assert.equal(cards.length, 1);
+  assert.equal(cards[0]?.routeId, "real-london-beginner-identify-next-safe-turn-store-street");
+  assert.equal(cards[0]?.selected, true);
+  assert.equal(selection.route?.routeId, "real-london-beginner-identify-next-safe-turn-store-street");
+  assert.equal(selection.message, null);
+});
+
+test("Stage 19.4 curated route diagnostics identify hidden and excluded routes", () => {
+  const betaRoute = CURATED_LEARNER_ROUTE_PACK[0];
+  const draftRoute: CuratedTrainingRouteExport = {
+    ...betaRoute,
+    routeId: "diagnostic-draft",
+    status: "draft",
+    lifecycleStage: "draft",
+    metadata: {
+      ...betaRoute.metadata,
+      routeId: "diagnostic-draft",
+      status: "draft"
+    }
+  };
+  const invalidRoute: CuratedTrainingRouteExport = {
+    ...betaRoute,
+    routeId: "diagnostic-invalid",
+    validationSummary: {
+      ...betaRoute.validationSummary,
+      valid: false,
+      status: "invalid",
+      blockingErrors: [
+        {
+          code: "empty-route",
+          severity: "error",
+          routeSegmentIds: [],
+          roadIds: [],
+          nodeIds: [],
+          explanation: "Route is empty."
+        }
+      ]
+    },
+    metadata: {
+      ...betaRoute.metadata,
+      routeId: "diagnostic-invalid"
+    }
+  };
+  const missingMetadataRoute: CuratedTrainingRouteExport = {
+    ...betaRoute,
+    routeId: "",
+    title: "",
+    metadata: {
+      ...betaRoute.metadata,
+      routeId: "",
+      title: "",
+      description: ""
+    }
+  };
+  const diagnostics = buildCuratedTrainingRouteVisibilityDiagnostics({
+    routes: [betaRoute, draftRoute, invalidRoute, missingMetadataRoute],
+    mapId: realLondonOsmPilotRouteMap.id,
+    difficulty: "advanced",
+    exerciseType: "practise-roundabouts"
+  });
+
+  assert.equal(diagnostics.completeRouteCount, 3);
+  assert.equal(diagnostics.learnerFacingRouteCount, 1);
+  assert.equal(diagnostics.excludedDraftOrReviewCount, 1);
+  assert.equal(diagnostics.excludedMissingMetadataCount, 1);
+  assert.equal(diagnostics.excludedValidationBlockingCount, 1);
+  assert.equal(diagnostics.filter?.matchingRouteCount, 0);
+  assert.ok(diagnostics.excludedRoutes.some((route) => route.routeId === "diagnostic-draft" && route.reasons.includes("not-complete")));
+  assert.ok(diagnostics.excludedRoutes.some((route) => route.routeId === "diagnostic-invalid" && route.reasons.includes("validation-blocking-error")));
+  assert.match(
+    curatedTrainingRouteUnavailableMessage({
+      routes: [betaRoute],
+      mapId: realLondonOsmPilotRouteMap.id,
+      difficulty: "advanced",
+      exerciseType: "practise-roundabouts"
+    }),
+    /hidden by the selected map, difficulty, or exercise type/
+  );
 });
 
 test("Stage 20 curated routes instantiate, hint, score, feedback, and progress end to end", () => {

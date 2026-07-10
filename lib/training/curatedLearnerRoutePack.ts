@@ -6,6 +6,7 @@ import routeAdvancedReviewGoodgeByng from "../../data/training-routes/complete/r
 import routeBeginnerFollowGoodgeTottenham from "../../data/training-routes/complete/real-london-beginner-follow-goodge-tottenham.json" with { type: "json" };
 import routeBeginnerFollowStoreStreet from "../../data/training-routes/complete/real-london-beginner-follow-store-street.json" with { type: "json" };
 import routeBeginnerFollowTorringtonByng from "../../data/training-routes/complete/real-london-beginner-follow-torrington-byng.json" with { type: "json" };
+import routeBeginnerIdentifyNextSafeTurnStoreStreet from "../../data/training-routes/complete/real-london-beginner-identify-next-safe-turn-store-street.json" with { type: "json" };
 import routeIntermediateCheckpointGoodgeChenies from "../../data/training-routes/complete/real-london-intermediate-checkpoint-goodge-chenies.json" with { type: "json" };
 import routeIntermediateFollowGowerTorrington from "../../data/training-routes/complete/real-london-intermediate-follow-gower-torrington.json" with { type: "json" };
 import routeIntermediateFollowHuntleyChenies from "../../data/training-routes/complete/real-london-intermediate-follow-huntley-chenies.json" with { type: "json" };
@@ -14,17 +15,26 @@ import routeIntermediateLegalTorringtonOneWay from "../../data/training-routes/c
 import type { MapDefinition } from "../map-engine/index.ts";
 import type { ExerciseDifficulty, ExerciseType } from "./learnerDriverTraining.ts";
 import { validateLearnerRoute } from "./learnerRouteValidation.ts";
-import type { CuratedTrainingRouteExport } from "./curatedTrainingRoutes.ts";
+import type {
+  CuratedShortestRouteComparisonDetail,
+  CuratedTrainingRouteComplexitySummary,
+  CuratedTrainingRouteExport,
+  CuratedTrainingRouteMetadata,
+  CuratedTrainingRouteStatus,
+  CuratedTrainingRouteStop
+} from "./curatedTrainingRoutes.ts";
+import type { CuratedTrainingRouteLifecycleStage } from "./curatedTrainingRouteSaveNaming.ts";
 
 export const CURATED_LEARNER_ROUTE_PACK_ID = "real-london-pilot-route-pack-1";
 export const CURATED_LEARNER_ROUTE_PACK_VERSION = "2026.07";
 export const NO_CURATED_ROUTE_AVAILABLE_MESSAGE = "No approved curated route is available for this selection yet.";
 export const EXPERIMENTAL_GENERATED_ROUTE_LABEL = "Try experimental generated route";
 
-export const CURATED_LEARNER_ROUTE_PACK: CuratedTrainingRouteExport[] = [
+const CURATED_LEARNER_ROUTE_PACK_RAW = [
   routeBeginnerFollowGoodgeTottenham,
   routeBeginnerFollowStoreStreet,
   routeBeginnerFollowTorringtonByng,
+  routeBeginnerIdentifyNextSafeTurnStoreStreet,
   routeIntermediateFollowHuntleyChenies,
   routeIntermediateJunctionWhitfieldGoodge,
   routeIntermediateLegalTorringtonOneWay,
@@ -35,7 +45,11 @@ export const CURATED_LEARNER_ROUTE_PACK: CuratedTrainingRouteExport[] = [
   routeAdvancedLegalTottenhamGower,
   routeAdvancedLegalTorringtonReverse,
   routeAdvancedJunctionMortimerGoodge
-] as CuratedTrainingRouteExport[];
+] as const;
+
+export const CURATED_LEARNER_ROUTE_PACK: CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK_RAW.map(
+  normaliseCuratedTrainingRouteExport
+);
 
 export type CuratedTrainingRouteCardModel = {
   routeId: string;
@@ -88,18 +102,46 @@ export type CuratedTrainingRoutePackAudit = {
   draftOrReviewRouteIds: string[];
 };
 
+export type CuratedTrainingRouteVisibilityExclusionCode =
+  | "not-complete"
+  | "not-beta-or-approved"
+  | "missing-required-metadata"
+  | "missing-route-data"
+  | "validation-blocking-error"
+  | "filter-mismatch";
+
+export type CuratedTrainingRouteVisibilityExcludedRoute = {
+  routeId: string;
+  reasons: CuratedTrainingRouteVisibilityExclusionCode[];
+  message: string;
+};
+
+export type CuratedTrainingRouteVisibilityDiagnostics = {
+  completeRouteCount: number;
+  learnerFacingRouteCount: number;
+  excludedDraftOrReviewCount: number;
+  excludedMissingMetadataCount: number;
+  excludedValidationBlockingCount: number;
+  excludedRoutes: CuratedTrainingRouteVisibilityExcludedRoute[];
+  filter?: {
+    mapId: string;
+    difficulty: ExerciseDifficulty;
+    exerciseType: ExerciseType;
+    matchingRouteCount: number;
+    hiddenByFilterCount: number;
+  };
+};
+
 export function isLearnerFacingCuratedTrainingRoute(route: CuratedTrainingRouteExport): boolean {
-  return (
-    route.lifecycleStage === "complete" &&
-    (route.status === "beta" || route.status === "approved") &&
-    (route.metadata.status === "beta" || route.metadata.status === "approved")
-  );
+  return learnerVisibilityExclusionReasons(normaliseCuratedTrainingRouteExport(route)).length === 0;
 }
 
 export function learnerFacingCuratedTrainingRoutes(
   routes: readonly CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK
 ): CuratedTrainingRouteExport[] {
-  return routes.filter(isLearnerFacingCuratedTrainingRoute);
+  return routes
+    .map(normaliseCuratedTrainingRouteExport)
+    .filter(isLearnerFacingCuratedTrainingRoute);
 }
 
 export function buildCuratedTrainingRouteCards(input: {
@@ -143,7 +185,7 @@ export function selectCuratedTrainingRoute(input: {
     return {
       route: null,
       availableRoutes: [],
-      message: NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
+      message: curatedTrainingRouteUnavailableMessage(input),
       repeatedRecentRoute: false
     };
   }
@@ -160,6 +202,92 @@ export function selectCuratedTrainingRoute(input: {
     message: null,
     repeatedRecentRoute: recentRouteIds.has(route.routeId)
   };
+}
+
+export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
+  routes?: readonly CuratedTrainingRouteExport[];
+  mapId?: string;
+  difficulty?: ExerciseDifficulty;
+  exerciseType?: ExerciseType;
+} = {}): CuratedTrainingRouteVisibilityDiagnostics {
+  const routes = (input.routes ?? CURATED_LEARNER_ROUTE_PACK).map(normaliseCuratedTrainingRouteExport);
+  const excludedRoutes: CuratedTrainingRouteVisibilityExcludedRoute[] = [];
+  let completeRouteCount = 0;
+  let learnerFacingRouteCount = 0;
+
+  for (const route of routes) {
+    if (route.lifecycleStage === "complete") {
+      completeRouteCount += 1;
+    }
+
+    const reasons = learnerVisibilityExclusionReasons(route);
+
+    if (reasons.length === 0) {
+      learnerFacingRouteCount += 1;
+    } else {
+      excludedRoutes.push({
+        routeId: visibilityRouteId(route),
+        reasons,
+        message: visibilityExclusionMessage(reasons)
+      });
+    }
+  }
+
+  const diagnostics: CuratedTrainingRouteVisibilityDiagnostics = {
+    completeRouteCount,
+    learnerFacingRouteCount,
+    excludedDraftOrReviewCount: excludedRoutes.filter((route) =>
+      route.reasons.some((reason) => reason === "not-complete" || reason === "not-beta-or-approved")
+    ).length,
+    excludedMissingMetadataCount: excludedRoutes.filter((route) => route.reasons.includes("missing-required-metadata")).length,
+    excludedValidationBlockingCount: excludedRoutes.filter((route) => route.reasons.includes("validation-blocking-error")).length,
+    excludedRoutes
+  };
+
+  if (input.mapId && input.difficulty && input.exerciseType) {
+    const learnerRoutes = routes.filter((route) => learnerVisibilityExclusionReasons(route).length === 0);
+    const matchingRouteCount = learnerRoutes.filter(
+      (route) =>
+        route.mapId === input.mapId &&
+        route.difficulty === input.difficulty &&
+        route.exerciseType === input.exerciseType
+    ).length;
+
+    diagnostics.filter = {
+      mapId: input.mapId,
+      difficulty: input.difficulty,
+      exerciseType: input.exerciseType,
+      matchingRouteCount,
+      hiddenByFilterCount: Math.max(0, learnerRoutes.length - matchingRouteCount)
+    };
+  }
+
+  return diagnostics;
+}
+
+export function curatedTrainingRouteUnavailableMessage(input: {
+  routes?: readonly CuratedTrainingRouteExport[];
+  mapId?: string;
+  difficulty?: ExerciseDifficulty;
+  exerciseType?: ExerciseType;
+}): string {
+  const diagnostics = buildCuratedTrainingRouteVisibilityDiagnostics(input);
+
+  if (diagnostics.filter && diagnostics.learnerFacingRouteCount > 0 && diagnostics.filter.matchingRouteCount === 0) {
+    return [
+      NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
+      `${diagnostics.filter.hiddenByFilterCount} learner-facing curated route(s) exist but are hidden by the selected map, difficulty, or exercise type.`
+    ].join(" ");
+  }
+
+  if (diagnostics.excludedRoutes.length > 0) {
+    return [
+      NO_CURATED_ROUTE_AVAILABLE_MESSAGE,
+      `${diagnostics.excludedRoutes.length} curated route file(s) were excluded by visibility checks.`
+    ].join(" ");
+  }
+
+  return NO_CURATED_ROUTE_AVAILABLE_MESSAGE;
 }
 
 export function buildCuratedTrainingRoutePackSummary(
@@ -211,7 +339,7 @@ export function auditCuratedTrainingRoutePack(input: {
 
   for (const route of routes) {
     if (!isLearnerFacingCuratedTrainingRoute(route)) {
-      draftOrReviewRouteIds.push(route.routeId);
+      draftOrReviewRouteIds.push(visibilityRouteId(route));
       continue;
     }
 
@@ -309,6 +437,171 @@ export function auditCuratedTrainingRoutePack(input: {
   };
 }
 
+export function normaliseCuratedTrainingRouteExport(route: unknown): CuratedTrainingRouteExport {
+  const raw = recordValue(route);
+  const metadataRaw = recordValue(raw.metadata);
+  const validationSegments = validationSegmentsValue(raw.validationSegments);
+  const routeSegmentIds = stringArrayValue(raw.routeSegmentIds, validationSegments.map((segment) => segment.id));
+  const roadIds = stringArrayValue(raw.roadIds, [...new Set(validationSegments.map((segment) => segment.roadId))]);
+  const routeGeometry = pointArrayValue(raw.routeGeometry);
+  const checkpoints = stopArrayValue(raw.checkpoints, "checkpoint");
+  const status = statusValue(raw.status, statusValue(metadataRaw.status, "draft"));
+  const difficulty = difficultyValue(raw.difficulty, difficultyValue(metadataRaw.difficulty, "beginner"));
+  const exerciseType = exerciseTypeValue(raw.exerciseType, exerciseTypeValue(metadataRaw.exerciseType, "follow-planned-route"));
+  const mapId = stringValue(raw.mapId, stringValue(raw.practiceMapId, stringValue(metadataRaw.practiceMapId, "")));
+  const routeId = stringValue(raw.routeId, stringValue(metadataRaw.routeId, ""));
+  const title = stringValue(raw.title, stringValue(metadataRaw.title, ""));
+  const area = stringValue(raw.area, stringValue(metadataRaw.area, ""));
+  const areaId = stringValue(raw.areaId, stringValue(metadataRaw.areaId, mapId));
+  const areaName = stringValue(raw.areaName, stringValue(metadataRaw.areaName, area));
+  const sourceFixture = optionalStringValue(raw.sourceFixture, optionalStringValue(metadataRaw.sourceFixture));
+  const metadata = normaliseMetadata({
+    raw: metadataRaw,
+    routeId,
+    title,
+    area,
+    mapId,
+    areaId,
+    areaName,
+    sourceFixture,
+    difficulty,
+    exerciseType,
+    status
+  });
+  const start = stopValue(raw.start, "start", 0);
+  const destination = stopValue(raw.destination, "destination", checkpoints.length + 1);
+  const nodeIds = stringArrayValue(raw.nodeIds, [
+    start.nodeId,
+    ...validationSegments.map((segment) => segment.toNodeId),
+    ...checkpoints.map((checkpoint) => checkpoint.nodeId),
+    destination.nodeId
+  ].filter(Boolean));
+  const validationSummary = validationSummaryValue(raw.validationSummary);
+  const complexitySummary = complexitySummaryValue({
+    raw: raw.complexitySummary,
+    routeSegmentIds,
+    checkpoints,
+    routeGeometry,
+    validationSummary
+  });
+  const checkpointRequirements = checkpointRequirementsValue({
+    raw: raw.checkpointRequirements,
+    checkpoints,
+    required: metadata.checkpointRequirement === "required"
+  });
+
+  return {
+    ...(raw as Partial<CuratedTrainingRouteExport>),
+    schemaVersion: 1,
+    routeId,
+    title,
+    area,
+    practiceMapId: stringValue(raw.practiceMapId, metadata.practiceMapId),
+    areaId,
+    areaName,
+    ...(sourceFixture ? { sourceFixture } : {}),
+    difficulty,
+    exerciseType,
+    status,
+    lifecycleStage: lifecycleStageValue(raw.lifecycleStage),
+    metadata,
+    mapId,
+    start,
+    destination,
+    checkpoints,
+    checkpointRequirements,
+    routeSegmentIds,
+    roadIds,
+    nodeIds,
+    routeGeometry,
+    validationSummary,
+    complexitySummary,
+    shortestRouteComparison: shortestRouteComparisonValue(raw.shortestRouteComparison),
+    validationSegments
+  };
+}
+
+function learnerVisibilityExclusionReasons(
+  route: CuratedTrainingRouteExport
+): CuratedTrainingRouteVisibilityExclusionCode[] {
+  const reasons: CuratedTrainingRouteVisibilityExclusionCode[] = [];
+
+  if (route.lifecycleStage !== "complete") {
+    reasons.push("not-complete");
+  }
+
+  if (
+    (route.status !== "beta" && route.status !== "approved") ||
+    (route.metadata.status !== "beta" && route.metadata.status !== "approved")
+  ) {
+    reasons.push("not-beta-or-approved");
+  }
+
+  if (!hasRequiredLearnerVisibilityMetadata(route)) {
+    reasons.push("missing-required-metadata");
+  }
+
+  if (!hasRequiredLearnerRouteData(route)) {
+    reasons.push("missing-route-data");
+  }
+
+  if (!route.validationSummary.valid || route.validationSummary.blockingErrors.length > 0) {
+    reasons.push("validation-blocking-error");
+  }
+
+  return reasons;
+}
+
+function hasRequiredLearnerVisibilityMetadata(route: CuratedTrainingRouteExport): boolean {
+  return (
+    route.schemaVersion === 1 &&
+    route.routeId.trim().length > 0 &&
+    route.title.trim().length > 0 &&
+    route.mapId.trim().length > 0 &&
+    route.areaId.trim().length > 0 &&
+    route.areaName.trim().length > 0 &&
+    route.metadata.description.trim().length > 0 &&
+    route.metadata.objective.trim().length > 0 &&
+    route.metadata.skillsPractised.length > 0 &&
+    route.metadata.hintSequence.length > 0 &&
+    route.metadata.scoringEmphasis.length > 0
+  );
+}
+
+function hasRequiredLearnerRouteData(route: CuratedTrainingRouteExport): boolean {
+  return (
+    route.start.nodeId.trim().length > 0 &&
+    route.destination.nodeId.trim().length > 0 &&
+    route.routeGeometry.length > 0 &&
+    route.validationSegments.length > 0 &&
+    route.routeSegmentIds.length > 0
+  );
+}
+
+function visibilityRouteId(route: CuratedTrainingRouteExport): string {
+  return route.routeId.trim() || route.metadata.routeId.trim() || "(missing route id)";
+}
+
+function visibilityExclusionMessage(reasons: readonly CuratedTrainingRouteVisibilityExclusionCode[]): string {
+  if (reasons.includes("not-complete") || reasons.includes("not-beta-or-approved")) {
+    return "Route is not complete beta/approved learner-facing content.";
+  }
+
+  if (reasons.includes("missing-required-metadata")) {
+    return "Route is missing learner-facing metadata required for Training Mode cards.";
+  }
+
+  if (reasons.includes("missing-route-data")) {
+    return "Route is missing start, destination, route geometry, or matched route segments.";
+  }
+
+  if (reasons.includes("validation-blocking-error")) {
+    return "Route validation has blocking errors.";
+  }
+
+  return "Route is hidden from learner Training Mode.";
+}
+
 function curatedRouteCard(route: CuratedTrainingRouteExport, selected: boolean): CuratedTrainingRouteCardModel {
   return {
     routeId: route.routeId,
@@ -351,9 +644,7 @@ function auditRouteMetadata(route: CuratedTrainingRouteExport): CuratedTrainingR
     route.exerciseType,
     route.metadata.description,
     route.metadata.objective,
-    route.validationSummary.explanation,
-    route.instructorQaNote ?? "",
-    route.metadata.routeChoiceJustification
+    route.validationSummary.explanation
   ];
   const requiredArrays = [
     route.metadata.skillsPractised,
@@ -380,6 +671,294 @@ function auditRouteMetadata(route: CuratedTrainingRouteExport): CuratedTrainingR
           message: "Route is missing required learner-facing metadata."
         }
       ];
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function stringValue(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+}
+
+function optionalStringValue(value: unknown, fallback?: string): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+}
+
+function numberValue(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function booleanValue(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function stringArrayValue(value: unknown, fallback: readonly string[] = []): string[] {
+  if (!Array.isArray(value)) {
+    return [...fallback];
+  }
+
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function statusValue(value: unknown, fallback: CuratedTrainingRouteStatus): CuratedTrainingRouteStatus {
+  return value === "draft" || value === "beta" || value === "approved" ? value : fallback;
+}
+
+function lifecycleStageValue(value: unknown): CuratedTrainingRouteLifecycleStage {
+  return value === "authoring" || value === "draft" || value === "review" || value === "complete" ? value : "draft";
+}
+
+function difficultyValue(
+  value: unknown,
+  fallback: Exclude<ExerciseDifficulty, "easy">
+): Exclude<ExerciseDifficulty, "easy"> {
+  return value === "beginner" || value === "intermediate" || value === "advanced" ? value : fallback;
+}
+
+function exerciseTypeValue(value: unknown, fallback: ExerciseType): ExerciseType {
+  return value === "follow-planned-route" ||
+    value === "choose-legal-route" ||
+    value === "identify-next-safe-turn" ||
+    value === "practise-roundabouts" ||
+    value === "practise-junction-decision-making" ||
+    value === "route-review-mistake-correction"
+    ? value
+    : fallback;
+}
+
+function pointValue(value: unknown): { x: number; y: number } | undefined {
+  const raw = recordValue(value);
+  const x = numberValue(raw.x, Number.NaN);
+  const y = numberValue(raw.y, Number.NaN);
+
+  return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : undefined;
+}
+
+function pointArrayValue(value: unknown): { x: number; y: number }[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map(pointValue).filter((point): point is { x: number; y: number } => Boolean(point));
+}
+
+function stopValue(value: unknown, kind: "start" | "checkpoint" | "destination", order: number): CuratedTrainingRouteStop {
+  const raw = recordValue(value);
+  const point = pointValue(raw.point);
+  const displayRaw = recordValue(raw.display);
+
+  return {
+    id: stringValue(raw.id, kind),
+    kind,
+    order,
+    nodeId: stringValue(raw.nodeId, ""),
+    label: stringValue(raw.label, kind === "destination" ? "Destination" : kind === "start" ? "Start" : `Checkpoint ${order}`),
+    ...(point ? { point } : {}),
+    ...(optionalStringValue(raw.roadId) ? { roadId: optionalStringValue(raw.roadId) } : {}),
+    ...(optionalStringValue(raw.routeSegmentId) ? { routeSegmentId: optionalStringValue(raw.routeSegmentId) } : {}),
+    required: booleanValue(raw.required, kind !== "checkpoint"),
+    display: {
+      markerLabel: stringValue(displayRaw.markerLabel, kind === "destination" ? "DESTINATION" : kind === "start" ? "START" : `CP ${order}`),
+      markerRole: kind,
+      description: stringValue(displayRaw.description, kind === "checkpoint" ? "Route checkpoint" : `Required route ${kind}`)
+    }
+  };
+}
+
+function stopArrayValue(value: unknown, kind: "checkpoint"): CuratedTrainingRouteStop[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((item, index) => stopValue(item, kind, index + 1));
+}
+
+function validationSegmentsValue(value: unknown): CuratedTrainingRouteExport["validationSegments"] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const raw = recordValue(item);
+      const id = stringValue(raw.id, "");
+      const roadId = stringValue(raw.roadId, "");
+      const fromNodeId = stringValue(raw.fromNodeId, "");
+      const toNodeId = stringValue(raw.toNodeId, "");
+
+      return id && roadId && fromNodeId && toNodeId ? { id, roadId, fromNodeId, toNodeId } : null;
+    })
+    .filter((segment): segment is CuratedTrainingRouteExport["validationSegments"][number] => Boolean(segment));
+}
+
+function normaliseMetadata(input: {
+  raw: Record<string, unknown>;
+  routeId: string;
+  title: string;
+  area: string;
+  mapId: string;
+  areaId: string;
+  areaName: string;
+  sourceFixture?: string;
+  difficulty: Exclude<ExerciseDifficulty, "easy">;
+  exerciseType: ExerciseType;
+  status: CuratedTrainingRouteStatus;
+}): CuratedTrainingRouteMetadata {
+  return {
+    routeId: input.routeId,
+    title: input.title,
+    area: input.area,
+    practiceMapId: stringValue(input.raw.practiceMapId, input.mapId),
+    areaId: input.areaId,
+    areaName: input.areaName,
+    ...(input.sourceFixture ? { sourceFixture: input.sourceFixture } : {}),
+    difficulty: input.difficulty,
+    exerciseType: input.exerciseType,
+    description: stringValue(input.raw.description, "Curated learner-driver route."),
+    objective: stringValue(input.raw.objective, "Complete the curated learner route legally and accurately."),
+    skillsPractised: stringArrayValue(input.raw.skillsPractised, ["route planning"]),
+    expectedLearnerMistakes: stringArrayValue(input.raw.expectedLearnerMistakes),
+    hintSequence: stringArrayValue(input.raw.hintSequence, ["Check the next junction before committing."]),
+    scoringEmphasis: stringArrayValue(input.raw.scoringEmphasis, ["route adherence"]),
+    instructorFeedbackNotes: stringValue(input.raw.instructorFeedbackNotes, "Give one clear improvement suggestion for the main route issue."),
+    routeChoiceJustification: stringValue(input.raw.routeChoiceJustification, ""),
+    checkpointRequirement:
+      input.raw.checkpointRequirement === "required" || input.raw.checkpointRequirement === "optional"
+        ? input.raw.checkpointRequirement
+        : "optional",
+    status: statusValue(input.raw.status, input.status)
+  };
+}
+
+function validationSummaryValue(value: unknown): CuratedTrainingRouteExport["validationSummary"] {
+  const raw = recordValue(value);
+  const blockingErrors = Array.isArray(raw.blockingErrors)
+    ? (raw.blockingErrors as CuratedTrainingRouteExport["validationSummary"]["blockingErrors"])
+    : [];
+  const advisoryWarnings = Array.isArray(raw.advisoryWarnings)
+    ? (raw.advisoryWarnings as CuratedTrainingRouteExport["validationSummary"]["advisoryWarnings"])
+    : [];
+  const status =
+    raw.status === "valid" || raw.status === "invalid" || raw.status === "warning"
+      ? raw.status
+      : blockingErrors.length > 0
+        ? "invalid"
+        : advisoryWarnings.length > 0
+          ? "warning"
+          : "valid";
+
+  return {
+    status,
+    valid: booleanValue(raw.valid, blockingErrors.length === 0),
+    blockingErrors,
+    advisoryWarnings,
+    affectedRouteSegmentIds: stringArrayValue(raw.affectedRouteSegmentIds),
+    ruleCodes: stringArrayValue(raw.ruleCodes) as CuratedTrainingRouteExport["validationSummary"]["ruleCodes"],
+    explanation: stringValue(raw.explanation, "Route visibility has not been validated yet.")
+  };
+}
+
+function complexitySummaryValue(input: {
+  raw: unknown;
+  routeSegmentIds: readonly string[];
+  checkpoints: readonly CuratedTrainingRouteStop[];
+  routeGeometry: readonly { x: number; y: number }[];
+  validationSummary: CuratedTrainingRouteExport["validationSummary"];
+}): CuratedTrainingRouteComplexitySummary {
+  const raw = recordValue(input.raw);
+  const fallbackDistance = Math.max(0, input.routeGeometry.length - 1) * 40;
+
+  return {
+    approximateRouteLengthMeters: numberValue(raw.approximateRouteLengthMeters, fallbackDistance),
+    segmentCount: numberValue(raw.segmentCount, input.routeSegmentIds.length),
+    turnCount: numberValue(raw.turnCount, Math.max(0, input.routeSegmentIds.length - 1)),
+    decisionPointCount: numberValue(raw.decisionPointCount, 0),
+    checkpointCount: numberValue(raw.checkpointCount, input.checkpoints.length),
+    estimatedDifficulty: difficultyValue(raw.estimatedDifficulty, "beginner"),
+    warnings: stringArrayValue(raw.warnings, input.validationSummary.advisoryWarnings.map((warning) => warning.explanation))
+  };
+}
+
+function checkpointRequirementsValue(input: {
+  raw: unknown;
+  checkpoints: readonly CuratedTrainingRouteStop[];
+  required: boolean;
+}): CuratedTrainingRouteExport["checkpointRequirements"] {
+  const raw = recordValue(input.raw);
+  const required = booleanValue(raw.required, input.required);
+
+  return {
+    required,
+    ordered: true,
+    checkpointCount: numberValue(raw.checkpointCount, input.checkpoints.length),
+    requiredNodeIds: required ? stringArrayValue(raw.requiredNodeIds, input.checkpoints.map((checkpoint) => checkpoint.nodeId)) : stringArrayValue(raw.requiredNodeIds),
+    instruction: stringValue(
+      raw.instruction,
+      required
+        ? "Visit each checkpoint in order before reaching the destination."
+        : "No intermediate checkpoint is required unless the route author adds one."
+    )
+  };
+}
+
+function shortestRouteComparisonDetailValue(
+  value: unknown,
+  fallbackExplanation: string
+): CuratedShortestRouteComparisonDetail {
+  const raw = recordValue(value);
+
+  return {
+    comparisonStatus:
+      raw.comparisonStatus === "available" || raw.comparisonStatus === "unknown" || raw.comparisonStatus === "not-applicable"
+        ? raw.comparisonStatus
+        : "unknown",
+    verdict:
+      raw.verdict === "shortest-or-near-shortest" ||
+      raw.verdict === "acceptable-training-variation" ||
+      raw.verdict === "detour-warning" ||
+      raw.verdict === "major-detour-warning" ||
+      raw.verdict === "unknown"
+        ? raw.verdict
+        : "unknown",
+    explanation: stringValue(raw.explanation, fallbackExplanation),
+    authoredLengthMeters: nullableNumberValue(raw.authoredLengthMeters),
+    shortestLengthMeters: nullableNumberValue(raw.shortestLengthMeters),
+    lengthDeltaMeters: nullableNumberValue(raw.lengthDeltaMeters),
+    percentageLonger: nullableNumberValue(raw.percentageLonger),
+    authoredSegmentCount: nullableNumberValue(raw.authoredSegmentCount),
+    shortestSegmentCount: nullableNumberValue(raw.shortestSegmentCount),
+    segmentCountDelta: nullableNumberValue(raw.segmentCountDelta),
+    authoredTurnCount: nullableNumberValue(raw.authoredTurnCount),
+    shortestTurnCount: nullableNumberValue(raw.shortestTurnCount),
+    turnCountDelta: nullableNumberValue(raw.turnCountDelta),
+    authoredDecisionPointCount: nullableNumberValue(raw.authoredDecisionPointCount),
+    shortestDecisionPointCount: nullableNumberValue(raw.shortestDecisionPointCount),
+    decisionPointDelta: nullableNumberValue(raw.decisionPointDelta),
+    shortestRouteSegmentIds: stringArrayValue(raw.shortestRouteSegmentIds)
+  };
+}
+
+function shortestRouteComparisonValue(value: unknown): CuratedTrainingRouteExport["shortestRouteComparison"] {
+  const raw = recordValue(value);
+
+  return {
+    directComparison: shortestRouteComparisonDetailValue(
+      raw.directComparison,
+      "Shortest-route comparison has not been run for this route."
+    ),
+    checkpointConstrainedComparison: shortestRouteComparisonDetailValue(
+      raw.checkpointConstrainedComparison,
+      "Checkpoint-constrained comparison is not applicable or has not been run."
+    ),
+    routeChoiceJustification: stringValue(raw.routeChoiceJustification, ""),
+    requiresRouteChoiceJustification: booleanValue(raw.requiresRouteChoiceJustification, false),
+    guidance: stringArrayValue(raw.guidance)
+  };
+}
+
+function nullableNumberValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function formatDistance(distanceMeters: number): string {

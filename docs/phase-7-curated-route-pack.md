@@ -15,7 +15,7 @@ complete `beta` or `approved` curated routes first.
 - Pack version: `2026.07`
 - Storage: `data/training-routes/complete/`
 - Learner-facing statuses: `beta`, `approved`
-- Current status: all first-pack routes are `beta`
+- Current status: first-pack routes are `beta` or `approved`
 - Source map: `osm-real-london-pilot`
 - Source fixture: `realLondonPilotOverpass.json`
 
@@ -23,11 +23,11 @@ complete `beta` or `approved` curated routes first.
 
 | Difficulty | Count |
 | --- | ---: |
-| Beginner | 3 |
+| Beginner | 4 |
 | Intermediate | 5 |
 | Advanced | 5 |
 
-Total learner-facing curated routes: 13.
+Total learner-facing curated routes: 14.
 
 Checkpoint routes: 3.
 
@@ -37,6 +37,7 @@ Checkpoint routes: 3.
 | --- | ---: |
 | Follow a planned route | 7 |
 | Choose a legal route | 3 |
+| Identify the next safe turn | 1 |
 | Practise junction decision-making | 2 |
 | Route review / mistake correction | 1 |
 
@@ -49,9 +50,10 @@ route QA support them.
 
 Beginner routes should be short, clear, low-decision routes with simple start
 and destination recognition. The first pack uses three direct Real London pilot
-routes for route-following confidence. Two of those routes contain several OSM
-graph segments even though the learner-facing task is short; this is documented
-as a segmentation limitation rather than treated as a legal fault.
+route-following routes plus one identify-next-safe-turn route for early
+confidence. Some routes contain several OSM graph segments even though the
+learner-facing task is short; this is documented as a segmentation limitation
+rather than treated as a legal fault.
 
 Intermediate routes add more road changes, route-following pressure, legal-route
 choice, and ordered checkpoint navigation. They should remain realistic without
@@ -89,6 +91,27 @@ Training Mode filters curated routes by:
 - complete lifecycle stage
 
 Draft and review exports are excluded from learner Training Mode.
+
+This project currently uses the static manifest in
+`lib/training/curatedLearnerRoutePack.ts`. Saving a JSON route under
+`data/training-routes/complete/` is not enough for client-side Training Mode by
+itself; add the route JSON to that manifest unless the loader is later changed
+to a generated manifest. Restart the dev server after adding a new JSON import
+so Next.js picks up the new module.
+
+Learner visibility requires:
+
+- `lifecycleStage: "complete"`
+- `status: "beta"` or `status: "approved"` at the top level and in `metadata`
+- matching map/area metadata, especially `mapId` or `practiceMapId`
+- selected difficulty and exercise type matching the learner filters
+- start, destination, route geometry, route segment ids, and validation
+  segments
+- no blocking validation errors
+
+`buildCuratedTrainingRouteVisibilityDiagnostics()` reports how many complete
+routes were found, how many are learner-facing, and why any route was excluded.
+Use it when a saved complete route does not appear in `/practice/training`.
 
 Generate / Next route avoids the last three curated route ids where possible. If
 only one route matches the current selection, it may repeat and the generation
@@ -144,7 +167,10 @@ Use `/dev/training-route` for future authoring.
 Do not silently promote invalid drafts. A complete route should have a valid
 validation summary, no blocking validation errors, route geometry, segment ids,
 start/destination metadata, shortest-route comparison, scoring emphasis, hint
-sequence, instructor feedback notes, and an instructor QA note.
+sequence, and instructor feedback notes. Instructor QA notes and route-choice
+justification are recommended for reviewed route packs, but the learner loader
+does not hide otherwise valid dev-author exports solely because those optional
+notes are absent.
 
 ## Manual QA Checklist
 

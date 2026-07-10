@@ -1,0 +1,225 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-beginner-identify-next-safe-turn-store-street",
+  "title": "store-street",
+  "area": "Real London",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "beginner",
+  "exerciseType": "identify-next-safe-turn",
+  "status": "approved",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-beginner-identify-next-safe-turn-store-street",
+    "title": "store-street",
+    "area": "Real London",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "beginner",
+    "exerciseType": "identify-next-safe-turn",
+    "description": "Curated learner-driver route authored from the Real London map.",
+    "objective": "Complete the authored route legally while following the selected checkpoints.",
+    "skillsPractised": [
+      "route planning",
+      "legal route choice",
+      "junction observation"
+    ],
+    "expectedLearnerMistakes": [
+      "wrong turn",
+      "missed checkpoint",
+      "unnecessary detour"
+    ],
+    "hintSequence": [
+      "Check the next junction before committing.",
+      "Confirm whether the next road is legal for your direction."
+    ],
+    "scoringEmphasis": [
+      "legal route validity",
+      "checkpoint order",
+      "route efficiency"
+    ],
+    "instructorFeedbackNotes": "Explain the first major legal or planning issue, then give one concrete recovery suggestion.",
+    "routeChoiceJustification": "",
+    "status": "approved",
+    "checkpointRequirement": "optional"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "start": {
+    "id": "start",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-4222962185",
+    "label": "OSM node 4222962185",
+    "point": {
+      "x": 153.726651,
+      "y": 286.737052
+    },
+    "roadId": "osm-way-590298787-segment-4",
+    "routeSegmentId": "osm-way-590298787-segment-4:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Required route start"
+    }
+  },
+  "destination": {
+    "id": "destination",
+    "kind": "destination",
+    "order": 1,
+    "nodeId": "osm-node-881889766",
+    "label": "OSM node 881889766",
+    "point": {
+      "x": 175.322632,
+      "y": 150.431987
+    },
+    "roadId": "osm-way-2644237-segment-1",
+    "routeSegmentId": "osm-way-2644237-segment-1:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Required route destination"
+    }
+  },
+  "checkpoints": [],
+  "checkpointRequirements": {
+    "required": false,
+    "ordered": true,
+    "checkpointCount": 0,
+    "requiredNodeIds": [],
+    "instruction": "No intermediate checkpoint is required unless the route author adds one."
+  },
+  "routeSegmentIds": [
+    "osm-way-590298787-segment-4:forward",
+    "osm-way-2644237-segment-0:forward",
+    "osm-way-2644237-segment-1:forward"
+  ],
+  "roadIds": [
+    "osm-way-590298787-segment-4",
+    "osm-way-2644237-segment-0",
+    "osm-way-2644237-segment-1"
+  ],
+  "nodeIds": [
+    "osm-node-4222962185",
+    "osm-node-10845640242",
+    "osm-node-108028",
+    "osm-node-881889766"
+  ],
+  "routeGeometry": [
+    {
+      "x": 153.726651,
+      "y": 286.737052
+    },
+    {
+      "x": 230.804266,
+      "y": 232.709067
+    },
+    {
+      "x": 224.804146,
+      "y": 223.853452
+    },
+    {
+      "x": 175.322632,
+      "y": 150.431987
+    }
+  ],
+  "validationSummary": {
+    "status": "valid",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [],
+    "affectedRouteSegmentIds": [],
+    "ruleCodes": [],
+    "explanation": "Route passes available legal and practical checks."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 120,
+    "segmentCount": 3,
+    "turnCount": 2,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "estimatedDifficulty": "beginner",
+    "warnings": []
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route, which is near-shortest.",
+      "authoredLengthMeters": 120,
+      "shortestLengthMeters": 120,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 3,
+      "shortestSegmentCount": 3,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 2,
+      "shortestTurnCount": 2,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-590298787-segment-4:forward",
+        "osm-way-2644237-segment-0:forward",
+        "osm-way-2644237-segment-1:forward"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "not-applicable",
+      "verdict": "unknown",
+      "explanation": "Checkpoint-constrained comparison is not needed because this route has no intermediate checkpoints.",
+      "authoredLengthMeters": null,
+      "shortestLengthMeters": null,
+      "lengthDeltaMeters": null,
+      "percentageLonger": null,
+      "authoredSegmentCount": null,
+      "shortestSegmentCount": null,
+      "segmentCountDelta": null,
+      "authoredTurnCount": null,
+      "shortestTurnCount": null,
+      "turnCountDelta": null,
+      "authoredDecisionPointCount": null,
+      "shortestDecisionPointCount": null,
+      "decisionPointDelta": null,
+      "shortestRouteSegmentIds": []
+    },
+    "routeChoiceJustification": "",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "A training route does not need to be shortest if the objective justifies the route choice.",
+      "Beginner routes should usually stay close to shortest unless they are teaching checkpoint navigation.",
+      "Advanced routes may be longer when they deliberately practise complex junction or recovery decisions.",
+      "Major detours should include an instructor route-choice note before beta or approved status."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-590298787-segment-4:forward",
+      "roadId": "osm-way-590298787-segment-4",
+      "fromNodeId": "osm-node-4222962185",
+      "toNodeId": "osm-node-10845640242"
+    },
+    {
+      "id": "osm-way-2644237-segment-0:forward",
+      "roadId": "osm-way-2644237-segment-0",
+      "fromNodeId": "osm-node-10845640242",
+      "toNodeId": "osm-node-108028"
+    },
+    {
+      "id": "osm-way-2644237-segment-1:forward",
+      "roadId": "osm-way-2644237-segment-1",
+      "fromNodeId": "osm-node-108028",
+      "toNodeId": "osm-node-881889766"
+    }
+  ],
+  "saveMode": "complete-route",
+  "createdAt": "2026-07-10T00:27:09.612Z",
+  "updatedAt": "2026-07-10T00:27:09.612Z"
+}
