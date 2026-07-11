@@ -1,6 +1,6 @@
 # TOPOPASS Dev Training Tools
 
-Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. Stage 19.1 makes checkpoints ordered required stops for curated authoring when route metadata requires them. Stage 20 adds the first complete beta curated learner route pack under `data/training-routes/complete/`. Stage 20.1 lets the Training Route Author switch between real loadable map fixtures without exposing dev-only tooling to learners. These pages are intentionally not linked from the learner navigation.
+Phase 18.5 adds a dev-only workspace for testing Route Runner and preparing curated learner-driver training routes. Stage 18.7 rebuilds the authoring page around a map-first route creation flow. Stage 18.8 makes that authoring page interactive. Stage 18.15 adds explicit working draft, review candidate, and complete route save modes. Stage 18.16 adds a map/area selector backed by the existing Route Runner map registry. Stage 18.17 moves the authoring map legend into a collapsed map control. Stage 18.18 keeps the authoring map viewport sized to the rendered Real London map instead of stretching under the side panels. Stage 18.19 redesigns the authoring page as a map-first workspace with a top toolbar and bottom drawer instead of a permanent sidebar. Stage 18.20 reduces the authoring map height by about 25% so the drawer is easier to reach at normal browser zoom. Stage 19.1 makes checkpoints ordered required stops for curated authoring when route metadata requires them. Stage 20 adds the first complete beta curated learner route pack under `data/training-routes/complete/`. Stage 20.1 lets the Training Route Author switch between real loadable map fixtures without exposing dev-only tooling to learners. Stage 20.2 adds a dev-only content library manager at `/dev/library` for route/map diagnostics, imports, archive, and manifest health. These pages are intentionally not linked from the learner navigation.
 
 ## Dev Tools Home
 
@@ -10,6 +10,7 @@ Available tools:
 
 - `/dev/route-runner` - Dev Route Runner for map QA, route drawing, overlays, route review, and Training Mode testing.
 - `/dev/training-route` - Curated Training Route Author for drafting, reviewing, and completing future learner training routes.
+- `/dev/library` - Dev Content Library for curated route files, map registry diagnostics, imports, archive, and manifest health.
 - `/dev/beta-feedback` - internal Real London beta feedback review.
 - `/dev/beta-attempts` - internal Real London beta attempt review.
 
@@ -18,6 +19,42 @@ Available tools:
 `/dev/route-runner` keeps the existing RouteRunnerClient development surface. It remains useful for inspecting Phase 6 map rendering, road hierarchy, labels, overlays, drawn attempts, route review, and Training Mode behaviour.
 
 The page title is `Dev Route Runner` and it links back to `/dev`. No learner-facing Training Mode logic is duplicated here.
+
+## Dev Content Library
+
+`/dev/library` is a dev-only content library manager for non-critical training content. It does not replace `/dev/training-route` or `/dev/route-runner`; it organises and diagnoses the files those tools create.
+
+The page is labelled `Dev Content Library` and has five sections:
+
+- `Routes` lists JSON route files under `data/training-routes/drafts/`, `review/`, `complete/`, and `archive/`.
+- `Maps` lists the Stage 20.1 training author map registry, including unsupported entries and reasons.
+- `Imports` documents the route import flow and accepted targets.
+- `Archive` explains recovery-first route removal.
+- `Diagnostics` shows route counts, learner-facing counts, manifest gaps, unsupported maps, and schema errors.
+
+Routes show filename, route id, title, area/map, difficulty, exercise type, status, save mode/lifecycle, checkpoint count, validation status, learner-facing status, last updated timestamp when present, and whether a complete file is included in the static learner manifest.
+
+Route import uses the dev-only API at `/api/dev/library`. It accepts JSON exports from `/dev/training-route` and supports these targets:
+
+- `drafts`: accepts incomplete route data when route id, title, and map/area metadata are present.
+- `review`: requires basic start, destination, route geometry, segment ids, and metadata.
+- `complete`: requires `beta` or `approved` status and no blocking validation errors. Advisory warnings are allowed.
+
+Complete learner-facing imports do not silently edit TypeScript manifests. The library reports whether the route is already included in `CURATED_LEARNER_ROUTE_PACK_FILES`; if it is missing, it shows a copyable import snippet and marks manifest health as needing an update. `/practice/training` only uses complete `beta` or `approved` curated routes that pass learner visibility checks and are included in the static manifest.
+
+Route removal archives instead of deleting. Archive moves JSON into `data/training-routes/archive/`; restore can move it back to drafts, review, or complete. Archiving a complete route keeps the data recoverable and removes it from learner-facing discovery once the manifest no longer imports it.
+
+Map management is diagnostic and conservative. The Maps section reads `TRAINING_ROUTE_AUTHOR_MAP_REGISTRY`; it can validate descriptors for existing registered maps but does not write arbitrary map formats or mutate core Phase 6 map fixtures. Unknown map descriptors are rejected. If a map source cannot actually load in `/dev/training-route`, the entry remains unsupported with a reason.
+
+File-writing safety rules:
+
+- Writes are disabled in production.
+- Only approved route operations under `data/training-routes/` are allowed.
+- Path traversal, absolute paths, and writes outside approved folders are rejected.
+- Existing files are not overwritten; safe copy filenames are allocated.
+- Map registry/code updates remain manual unless a future secure manifest format is added.
+
+For maps and areas, keep the Stage 20.1 distinction: a map source is the actual route graph and fixture used for snapping, validation, shortest-route comparison, and learner replay; an area preset is only a viewport/bounds selection inside an existing source. Do not add fake maps or unknown fixture formats through the library.
 
 ## Curated Training Route Author
 

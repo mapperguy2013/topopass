@@ -34,6 +34,12 @@ export function buildDevToolsHomeModel(): DevToolsHomeModel {
         status: "available"
       },
       {
+        title: "Dev Content Library",
+        href: "/dev/library",
+        description: "Manage curated route files, map registry diagnostics, imports, archive, and manifest health.",
+        status: "available"
+      },
+      {
         title: "Beta Feedback Review",
         href: "/dev/beta-feedback",
         description: "Review stored Real London beta feedback when the internal review flag is enabled.",

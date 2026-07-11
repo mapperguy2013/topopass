@@ -132,6 +132,7 @@ test("dev tools home exposes route-runner and curated training authoring tools",
   assert.equal(model.linkedFromLearnerNavigation, false);
   assert.ok(hrefs.includes("/dev/route-runner"));
   assert.ok(hrefs.includes(DEV_TRAINING_ROUTE_AUTHOR_PATH));
+  assert.ok(hrefs.includes("/dev/library"));
   assert.ok(hrefs.includes("/dev/beta-feedback"));
   assert.ok(hrefs.includes("/dev/beta-attempts"));
   assert.match(pageSource, /TOPOPASS Dev Tools/);
@@ -1832,7 +1833,11 @@ test("learner navigation does not expose dev training authoring tools", () => {
   const practicePageSource = readFileSync("app/practice/page.tsx", "utf8");
 
   assert.doesNotMatch(sidebarSource, /\/dev\/training-route/);
+  assert.doesNotMatch(sidebarSource, /\/dev\/library/);
   assert.doesNotMatch(sidebarSource, /Training Route Author/);
+  assert.doesNotMatch(sidebarSource, /Dev Content Library/);
   assert.doesNotMatch(practicePageSource, /\/dev\/training-route/);
+  assert.doesNotMatch(practicePageSource, /\/dev\/library/);
   assert.doesNotMatch(practicePageSource, /Training Route Author/);
+  assert.doesNotMatch(practicePageSource, /Dev Content Library/);
 });
