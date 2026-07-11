@@ -73,18 +73,16 @@ Stage 20 adds the first curated learner-facing route pack. Complete route JSON
 exports live in `data/training-routes/complete/` and are loaded by
 `lib/training/curatedLearnerRoutePack.ts`.
 
-The first pack currently contains 14 learner-facing beta/approved routes on the
+The first pack currently contains 15 learner-facing beta/approved routes on the
 Real London pilot map:
 
-- 4 beginner routes
+- 5 beginner routes
 - 5 intermediate routes
 - 5 advanced routes
 - 3 checkpoint routes
 
-The Stage 20 target remains 15 routes: 5 beginner, 5 intermediate, and 5
-advanced. The pack is therefore marked as an initial beta route pack until one
-additional beginner route is authored, validated, and added to the complete
-manifest.
+The Stage 20 target is met at 15 routes: 5 beginner, 5 intermediate, and 5
+advanced.
 
 Training Mode now prefers complete `beta` or `approved` curated routes for the
 active map, selected difficulty, and selected exercise type. Draft and review

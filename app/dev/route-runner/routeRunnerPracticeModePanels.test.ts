@@ -16,6 +16,7 @@ import {
   TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
   TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
   TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
+  TRAINING_ROUTE_AUTHOR_MAP_REGISTRY,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   buildTrainingRouteAuthorViewportLayout,
@@ -36,6 +37,7 @@ import {
   isTrainingRouteAuthorMiddlePanActive,
   isTrainingRouteAuthorMiddlePanPointer,
   resolveNearestTrainingRouteAuthorNodeSnap,
+  selectTrainingRouteAuthorArea,
   setTrainingRouteAuthorDestination,
   setTrainingRouteAuthorMode,
   setTrainingRouteAuthorStart,
@@ -45,6 +47,7 @@ import {
   startTrainingRouteAuthorStroke,
   trainingRouteAuthorMapPointForClientPoint,
   trainingRouteAuthorMapPointForScreenPoint,
+  trainingRouteAuthorStateHasUnsavedChanges,
   trainingRouteAuthorViewportAspectRatioCss,
   trainingRouteAuthorWheelZoomFactor,
   updateTrainingRouteAuthorMetadataField,
@@ -164,7 +167,7 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(pageSource, /Curated Training Route Author/);
   assert.match(pageSource, /TrainingRouteAuthorClient/);
   assert.match(clientSource, /buildTrainingRouteAuthorModel/);
-  assert.match(clientSource, /Interactive Real London training route authoring map/);
+  assert.match(clientSource, /Interactive \$\{model\.sourceMapName\} training route authoring map/);
   assert.match(clientSource, /data-testid="training-author-map-first-shell"/);
   assert.match(clientSource, /data-testid="training-author-top-toolbar"/);
   assert.match(clientSource, /data-testid="training-author-map-workspace"/);
@@ -991,7 +994,7 @@ test("curated training route author sample can produce Stage 19 route contract m
     "routeChoiceJustification",
     "status"
   ]);
-  assert.equal(areaField?.label, "Practice map / area");
+  assert.equal(areaField?.label, "Map / training area");
   assert.equal(areaField?.input, "select");
   assert.notEqual(areaField?.input, "text");
   assert.deepEqual(areaField?.options, TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.map((option) => option.areaId));
@@ -1284,7 +1287,7 @@ test("curated route author suggests metadata-based route ids, filenames, and sav
 });
 
 test("curated route author area selector updates metadata ids and filenames", () => {
-  const areaOption = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS[0];
+  const areaOption = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.areaId === "osm-real-london-pilot");
   let state = createEmptyTrainingRouteAuthorState();
 
   assert.ok(areaOption);
@@ -1306,6 +1309,9 @@ test("curated route author area selector updates metadata ids and filenames", ()
   );
 
   state = updateTrainingRouteAuthorMetadataField(state, "areaId", areaOption.areaId);
+  state = updateTrainingRouteAuthorMetadataField(state, "title", "Goodge to Tottenham");
+  state = updateTrainingRouteAuthorMetadataField(state, "difficulty", "intermediate");
+  state = updateTrainingRouteAuthorMetadataField(state, "exerciseType", "follow-planned-route");
 
   const model = buildTrainingRouteAuthorModel({ state });
 
@@ -1324,6 +1330,92 @@ test("curated route author area selector updates metadata ids and filenames", ()
 
   assert.equal(manualRouteModel.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
   assert.equal(manualRouteModel.effectiveRouteId, "manual-goodge-training-route");
+});
+
+test("Stage 20.1 training route author map registry lists only supported maps for authoring", () => {
+  const clientSource = readFileSync("app/dev/training-route/TrainingRouteAuthorClient.tsx", "utf8");
+  const model = buildTrainingRouteAuthorModel();
+  const supportedAreaIds = new Set(model.areaOptions.map((option) => option.areaId));
+  const unsupportedEntries = TRAINING_ROUTE_AUTHOR_MAP_REGISTRY.filter((entry) => !entry.routeAuthoringSupported);
+
+  assert.match(clientSource, /Map \/ training area/);
+  assert.match(clientSource, /data-testid="training-author-map-selector"/);
+  assert.ok(supportedAreaIds.has("osm-real-london-pilot"));
+  assert.ok(supportedAreaIds.has("osm-real-london-pilot-2"));
+  assert.ok(supportedAreaIds.has("osm-curated-piccadilly-circus"));
+  assert.ok(supportedAreaIds.has("osm-curated-waterloo-bridge"));
+  assert.ok(supportedAreaIds.has("osm-curated-one-way-system-area"));
+  assert.ok(supportedAreaIds.has("osm-curated-quiet-residential-roads"));
+  assert.equal(supportedAreaIds.has("marlowe-district-dev-map"), false);
+  assert.equal(supportedAreaIds.has("osm-curated-centralLondon"), false);
+  assert.ok(unsupportedEntries.some((entry) => entry.mapType === "synthetic-practice"));
+  assert.ok(unsupportedEntries.some((entry) => entry.mapId === "osm-curated-centralLondon"));
+  assert.ok(model.areaOptions.every((option) => option.readiness === "authoring-ready"));
+});
+
+test("Stage 20.1 selecting an authoring map changes source map and export metadata", () => {
+  const piccadilly = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.areaId === "osm-curated-piccadilly-circus");
+
+  assert.ok(piccadilly);
+
+  const state = createEmptyTrainingRouteAuthorState(piccadilly.areaId);
+  const model = buildTrainingRouteAuthorModel({ state });
+  const map = getTrainingRouteAuthorMap(state);
+
+  assert.equal(model.sourceMapId, "osm-curated-piccadilly-circus");
+  assert.equal(map.id, "osm-curated-piccadilly-circus");
+  assert.equal(model.exportData.mapId, "osm-curated-piccadilly-circus");
+  assert.equal(model.exportData.areaId, piccadilly.areaId);
+  assert.equal(model.exportData.areaName, piccadilly.areaName);
+  assert.equal(model.exportData.sourceFixture, "piccadillyCircusOverpass.json");
+  assert.equal(model.exportData.mapVersion, map.mapVersion ?? map.version);
+  assert.deepEqual(model.exportData.mapViewport?.defaultBounds, piccadilly.defaultViewport);
+  assert.deepEqual(model.exportData.mapViewport?.fullBounds, piccadilly.bounds);
+});
+
+test("Stage 20.1 switching authoring maps clears route state and resets readiness", () => {
+  const piccadilly = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.areaId === "osm-curated-piccadilly-circus");
+  const sample = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
+
+  assert.ok(piccadilly);
+  assert.equal(trainingRouteAuthorStateHasUnsavedChanges(sample), true);
+
+  const switched = selectTrainingRouteAuthorArea(sample, piccadilly.areaId);
+  const model = buildTrainingRouteAuthorModel({ state: switched });
+
+  assert.equal(switched.startNodeId, null);
+  assert.equal(switched.destinationNodeId, null);
+  assert.deepEqual(switched.checkpointNodeIds, []);
+  assert.equal(switched.routeDraft.strokes.length, 0);
+  assert.deepEqual(switched.validationSegments, []);
+  assert.equal(switched.validationHasRun, false);
+  assert.equal(switched.comparisonHasRun, false);
+  assert.equal(switched.sampleLoaded, false);
+  assert.equal(model.exportReadiness.ready, false);
+  assert.equal(model.sourceMapId, piccadilly.mapId);
+  assert.equal(model.selectedArea?.areaId, piccadilly.areaId);
+});
+
+test("Stage 20.1 Real London authoring still validates and compares on the default map", () => {
+  const state = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
+  const model = buildTrainingRouteAuthorModel({ state });
+
+  assert.equal(model.sourceMapId, "osm-real-london-pilot");
+  assert.equal(model.validationRunStatus === "valid" || model.validationRunStatus === "warning", true);
+  assert.equal(model.comparisonRunStatus, "available");
+  assert.equal(model.exportData.mapId, "osm-real-london-pilot");
+  assert.equal(model.exportData.sourceFixture, "realLondonPilotOverpass.json");
+});
+
+test("Stage 20.1 selected area changes the authoring viewport bounds", () => {
+  const realLondon = createEmptyTrainingRouteAuthorState("osm-real-london-pilot");
+  const waterloo = createEmptyTrainingRouteAuthorState("osm-curated-waterloo-bridge");
+  const realLondonBounds = buildTrainingRouteAuthorModel({ state: realLondon }).selectedArea?.defaultViewport;
+  const waterlooBounds = buildTrainingRouteAuthorModel({ state: waterloo }).selectedArea?.defaultViewport;
+
+  assert.ok(realLondonBounds);
+  assert.ok(waterlooBounds);
+  assert.notDeepEqual(waterlooBounds, realLondonBounds);
 });
 
 test("curated route author blocks save readiness when no valid area is selected", () => {

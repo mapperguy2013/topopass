@@ -562,6 +562,29 @@ const realLondonOsmPilotRouteExerciseDefinitions = [
     ]
   },
   {
+    id: "osm-real-pilot-chenies-street-short-hop",
+    title: "Chenies Street short hop",
+    mapId: realLondonOsmPilotRouteMap.id,
+    description: "Start on Chenies Street near North Crescent and route legally to the Huntley Street side of Chenies Street.",
+    difficulty: "easy",
+    exerciseVersion: "1.0.0",
+    routeType: "direct",
+    estimatedDistanceMeters: 44.92,
+    expectedComplexity: "Short single-street A to B route for beginner endpoint control.",
+    stops: [
+      {
+        type: "node",
+        nodeId: "osm-node-25471919",
+        label: "Chenies Street west"
+      },
+      {
+        type: "node",
+        nodeId: "osm-node-108025",
+        label: "Chenies Street by Huntley Street"
+      }
+    ]
+  },
+  {
     id: "osm-real-pilot-gower-to-torrington",
     title: "Gower Street to Torrington Place",
     mapId: realLondonOsmPilotRouteMap.id,

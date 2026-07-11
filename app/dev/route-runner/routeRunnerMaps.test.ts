@@ -1369,6 +1369,7 @@ test("real London OSM pilot fixture is selectable from the real export", () => {
       "osm-real-pilot-longer-route",
       "osm-real-pilot-turn-choice",
       "osm-real-pilot-store-street-short-hop",
+      "osm-real-pilot-chenies-street-short-hop",
       "osm-real-pilot-gower-to-torrington",
       "osm-real-pilot-goodge-chenies-ridgmount",
       "osm-real-pilot-torrington-byng",

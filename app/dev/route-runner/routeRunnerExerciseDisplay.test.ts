@@ -21,6 +21,7 @@ test("real London pilot exercises have trainee-facing display labels", () => {
       ["osm-real-pilot-longer-route", "Goodge Street to Byng Place"],
       ["osm-real-pilot-turn-choice", "Whitfield Street to Goodge Street"],
       ["osm-real-pilot-store-street-short-hop", "Store Street short hop"],
+      ["osm-real-pilot-chenies-street-short-hop", "Chenies Street short hop"],
       ["osm-real-pilot-gower-to-torrington", "Gower Street to Torrington Place"],
       ["osm-real-pilot-goodge-chenies-ridgmount", "Goodge Street via Chenies Street"],
       ["osm-real-pilot-torrington-byng", "Torrington Place to Byng Place"],
@@ -58,6 +59,10 @@ test("real London pilot exercises have concise trainee-facing descriptions", () 
       [
         "osm-real-pilot-store-street-short-hop",
         "Start at Store Street east and route legally to Store Street west through the short one-way connector."
+      ],
+      [
+        "osm-real-pilot-chenies-street-short-hop",
+        "Start on Chenies Street near North Crescent and route legally to the Huntley Street side of Chenies Street."
       ],
       [
         "osm-real-pilot-gower-to-torrington",
@@ -101,6 +106,7 @@ test("real London pilot exercises expose valid difficulty labels without changin
       ["osm-real-pilot-longer-route", "hard"],
       ["osm-real-pilot-turn-choice", "medium"],
       ["osm-real-pilot-store-street-short-hop", "easy"],
+      ["osm-real-pilot-chenies-street-short-hop", "easy"],
       ["osm-real-pilot-gower-to-torrington", "medium"],
       ["osm-real-pilot-goodge-chenies-ridgmount", "medium"],
       ["osm-real-pilot-torrington-byng", "easy"],
@@ -112,7 +118,22 @@ test("real London pilot exercises expose valid difficulty labels without changin
   );
   assert.deepEqual(
     realLondonOsmPilotRouteExercises.map((exercise) => buildRouteExerciseDisplayModel(exercise).difficultyLabel),
-    ["Easy", "Medium", "Medium", "Hard", "Medium", "Easy", "Medium", "Medium", "Easy", "Hard", "Hard", "Hard", "Hard"]
+    [
+      "Easy",
+      "Medium",
+      "Medium",
+      "Hard",
+      "Medium",
+      "Easy",
+      "Easy",
+      "Medium",
+      "Medium",
+      "Easy",
+      "Hard",
+      "Hard",
+      "Hard",
+      "Hard"
+    ]
   );
 });
 

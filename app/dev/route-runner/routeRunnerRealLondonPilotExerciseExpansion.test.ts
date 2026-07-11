@@ -23,6 +23,7 @@ type FoundShortestRoute = Extract<ShortestLegalRouteThroughStopsResult, { found:
 
 const STAGE_122_EXERCISE_IDS = [
   "osm-real-pilot-store-street-short-hop",
+  "osm-real-pilot-chenies-street-short-hop",
   "osm-real-pilot-gower-to-torrington",
   "osm-real-pilot-goodge-chenies-ridgmount",
   "osm-real-pilot-torrington-byng",
@@ -32,8 +33,8 @@ const STAGE_122_EXERCISE_IDS = [
   "osm-real-pilot-mortimer-goodge-options"
 ] as const;
 
-test("Stage 122 adds eight real London pilot exercises in stable fixture order", () => {
-  assert.equal(realLondonOsmPilotRouteExercises.length, 13);
+test("Stage 122 expanded real London pilot exercises stay in stable fixture order", () => {
+  assert.equal(realLondonOsmPilotRouteExercises.length, 14);
   assert.deepEqual(
     realLondonOsmPilotRouteExercises.slice(-STAGE_122_EXERCISE_IDS.length).map((exercise) => exercise.id),
     STAGE_122_EXERCISE_IDS

@@ -95,6 +95,17 @@ const REAL_PILOT_ACCEPTANCE_SUMMARIES = [
     failureReasonCodes: []
   },
   {
+    exerciseId: "osm-real-pilot-chenies-street-short-hop",
+    startNodeId: "osm-node-25471919",
+    destinationNodeId: "osm-node-108025",
+    checkpointNodeIds: [],
+    checkpointCount: 0,
+    hasLegalRoute: true,
+    fastestRouteEdgeCount: 1,
+    fastestRouteDistanceMeters: 44.92,
+    failureReasonCodes: []
+  },
+  {
     exerciseId: "osm-real-pilot-gower-to-torrington",
     startNodeId: "osm-node-108033",
     destinationNodeId: "osm-node-108034",

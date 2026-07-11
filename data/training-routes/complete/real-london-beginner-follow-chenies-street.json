@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "routeId": "real-london-beginner-follow-chenies-street",
+  "title": "Chenies Street short route-following practice",
+  "area": "Real London Pilot",
+  "practiceMapId": "osm-real-london-pilot",
+  "areaId": "osm-real-london-pilot",
+  "areaName": "Real London Pilot",
+  "sourceFixture": "realLondonPilotOverpass.json",
+  "difficulty": "beginner",
+  "exerciseType": "follow-planned-route",
+  "status": "beta",
+  "saveMode": "complete-route",
+  "lifecycleStage": "complete",
+  "metadata": {
+    "routeId": "real-london-beginner-follow-chenies-street",
+    "title": "Chenies Street short route-following practice",
+    "area": "Real London Pilot",
+    "practiceMapId": "osm-real-london-pilot",
+    "areaId": "osm-real-london-pilot",
+    "areaName": "Real London Pilot",
+    "sourceFixture": "realLondonPilotOverpass.json",
+    "difficulty": "beginner",
+    "exerciseType": "follow-planned-route",
+    "description": "Short Chenies Street route using a committed map-backed segment for beginner route-following confidence.",
+    "objective": "Follow Chenies Street from the west-side start to the Huntley Street-side destination without adding a detour.",
+    "skillsPractised": [
+      "route following",
+      "endpoint accuracy",
+      "single-street control"
+    ],
+    "expectedLearnerMistakes": [
+      "wrong start",
+      "overrunning the destination",
+      "unnecessary detour"
+    ],
+    "hintSequence": [
+      "This is a short single-street route, so confirm the start before moving.",
+      "Keep the destination side of Chenies Street in view.",
+      "Stay on the planned Chenies Street segment and stop at the marker."
+    ],
+    "scoringEmphasis": [
+      "route adherence",
+      "endpoint accuracy",
+      "efficient completion"
+    ],
+    "instructorFeedbackNotes": "Feedback should focus on whether the learner stayed on the marked Chenies Street segment and stopped accurately.",
+    "routeChoiceJustification": "Beginner route uses a short legal map-backed segment with no checkpoint or route-choice pressure.",
+    "status": "beta"
+  },
+  "mapId": "osm-real-london-pilot",
+  "mapVersion": "1.0.0",
+  "sourceRouteExerciseId": "osm-real-pilot-chenies-street-short-hop",
+  "sourceRouteExerciseVersion": "1.0.0",
+  "start": {
+    "id": "start-00",
+    "kind": "start",
+    "order": 0,
+    "nodeId": "osm-node-25471919",
+    "label": "Chenies Street west",
+    "point": {
+      "x": -3.91288,
+      "y": 118.873434
+    },
+    "roadId": "osm-way-589646347-segment-2",
+    "routeSegmentId": "osm-way-589646347-segment-2:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "START",
+      "markerRole": "start",
+      "description": "Start at Chenies Street west."
+    }
+  },
+  "destination": {
+    "id": "destination-01",
+    "kind": "destination",
+    "order": 1,
+    "nodeId": "osm-node-108025",
+    "label": "Chenies Street by Huntley Street",
+    "point": {
+      "x": 55.754367,
+      "y": 78.226411
+    },
+    "roadId": "osm-way-589646347-segment-2",
+    "routeSegmentId": "osm-way-589646347-segment-2:forward",
+    "required": true,
+    "display": {
+      "markerLabel": "DESTINATION",
+      "markerRole": "destination",
+      "description": "Finish at Chenies Street by Huntley Street."
+    }
+  },
+  "checkpoints": [],
+  "checkpointRequirements": {
+    "required": false,
+    "ordered": true,
+    "checkpointCount": 0,
+    "requiredNodeIds": [],
+    "instruction": "No intermediate checkpoints are required for this route."
+  },
+  "routeSegmentIds": [
+    "osm-way-589646347-segment-2:forward"
+  ],
+  "roadIds": [
+    "osm-way-589646347-segment-2"
+  ],
+  "nodeIds": [
+    "osm-node-25471919",
+    "osm-node-108025"
+  ],
+  "routeGeometry": [
+    {
+      "x": -3.91288,
+      "y": 118.873434
+    },
+    {
+      "x": 55.754367,
+      "y": 78.226411
+    }
+  ],
+  "validationSummary": {
+    "status": "valid",
+    "valid": true,
+    "blockingErrors": [],
+    "advisoryWarnings": [],
+    "affectedRouteSegmentIds": [],
+    "ruleCodes": [],
+    "explanation": "Route passes available legal and practical checks."
+  },
+  "complexitySummary": {
+    "approximateRouteLengthMeters": 45,
+    "segmentCount": 1,
+    "turnCount": 0,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "estimatedDifficulty": "beginner",
+    "warnings": []
+  },
+  "shortestRouteComparison": {
+    "directComparison": {
+      "comparisonStatus": "available",
+      "verdict": "shortest-or-near-shortest",
+      "explanation": "The authored route is 0% longer than the shortest legal route for this comparison.",
+      "authoredLengthMeters": 45,
+      "shortestLengthMeters": 45,
+      "lengthDeltaMeters": 0,
+      "percentageLonger": 0,
+      "authoredSegmentCount": 1,
+      "shortestSegmentCount": 1,
+      "segmentCountDelta": 0,
+      "authoredTurnCount": 0,
+      "shortestTurnCount": 0,
+      "turnCountDelta": 0,
+      "authoredDecisionPointCount": 0,
+      "shortestDecisionPointCount": 0,
+      "decisionPointDelta": 0,
+      "shortestRouteSegmentIds": [
+        "osm-way-589646347-segment-2:forward"
+      ]
+    },
+    "checkpointConstrainedComparison": {
+      "comparisonStatus": "not-applicable",
+      "verdict": "unknown",
+      "explanation": "Checkpoint-constrained comparison is not needed because this route has no intermediate checkpoints.",
+      "authoredLengthMeters": null,
+      "shortestLengthMeters": null,
+      "lengthDeltaMeters": null,
+      "percentageLonger": null,
+      "authoredSegmentCount": null,
+      "shortestSegmentCount": null,
+      "segmentCountDelta": null,
+      "authoredTurnCount": null,
+      "shortestTurnCount": null,
+      "turnCountDelta": null,
+      "authoredDecisionPointCount": null,
+      "shortestDecisionPointCount": null,
+      "decisionPointDelta": null,
+      "shortestRouteSegmentIds": []
+    },
+    "routeChoiceJustification": "Beginner route uses a short legal map-backed segment with no checkpoint or route-choice pressure.",
+    "requiresRouteChoiceJustification": false,
+    "guidance": [
+      "Beginner curated routes should usually stay close to the shortest legal route.",
+      "Checkpoint routes should be judged against the checkpoint-constrained comparison.",
+      "Legal route-choice routes may be longer only when map metadata supports the restriction or one-way constraint."
+    ]
+  },
+  "validationSegments": [
+    {
+      "id": "osm-way-589646347-segment-2:forward",
+      "roadId": "osm-way-589646347-segment-2",
+      "fromNodeId": "osm-node-25471919",
+      "toNodeId": "osm-node-108025"
+    }
+  ],
+  "instructorQaNote": "Short validated Chenies Street segment for beginner endpoint control.",
+  "learnerCard": {
+    "area": "Real London Pilot",
+    "approximateLengthMeters": 45,
+    "segmentCount": 1,
+    "turnCount": 0,
+    "decisionPointCount": 0,
+    "checkpointCount": 0,
+    "skillsPractised": [
+      "route following",
+      "endpoint accuracy",
+      "single-street control"
+    ],
+    "statusLabel": "Beta"
+  },
+  "routePack": {
+    "packId": "real-london-pilot-route-pack-1",
+    "packVersion": "2026.07",
+    "sourceExerciseDifficulty": "easy",
+    "sourceRouteType": "direct",
+    "manualQaNote": "Short validated Chenies Street segment for beginner endpoint control.",
+    "knownLimitations": [
+      "Legal restrictions are only enforced where present in committed map metadata.",
+      "OSM-derived roads can be split into many graph segments, so segment count can overstate learner-facing turn count."
+    ]
+  }
+}

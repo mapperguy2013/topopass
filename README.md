@@ -85,13 +85,12 @@ learner flows. Supabase credentials are required for account features,
 account-backed progress records, and admin publishing controls.
 
 Phase 7 learner Training Mode now has its first curated beta route pack. The
-pack lives under `data/training-routes/complete/`, currently contains 14
+pack lives under `data/training-routes/complete/`, currently contains 15
 Real London pilot learner routes, and is documented in
-`docs/phase-7-curated-route-pack.md`. The initial beta pack has 4 beginner, 5
-intermediate, and 5 advanced routes, with 1 more beginner route needed to meet
-the 15-route target. Training Mode uses complete beta/approved curated routes
-first; automatic generation remains an explicitly labelled experimental
-fallback.
+`docs/phase-7-curated-route-pack.md`. The beta pack has reached the 15-route
+target with 5 beginner, 5 intermediate, and 5 advanced routes. Training Mode
+uses complete beta/approved curated routes first; automatic generation remains
+an explicitly labelled experimental fallback.
 
 ## Completed Phase 1: Prototype Foundation
 
@@ -774,7 +773,9 @@ Feature flags and internal gates:
 | `BETA_FEEDBACK_REVIEW_ENABLED` | Enables internal feedback review/export | Disabled |
 | `BETA_ATTEMPT_REVIEW_ENABLED` | Enables internal beta attempt review/repro export | Disabled |
 | `BETA_FEEDBACK_STORAGE=supabase` | Selects production Supabase feedback storage | Unset |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Production feedback storage credentials | Unset |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Server-only production feedback storage credentials | Unset |
+
+Do not use `NEXT_PUBLIC_` for service-role secrets.
 
 Validation commands for the Phase 5 beta-ready state:
 

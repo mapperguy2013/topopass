@@ -148,6 +148,20 @@ export type CuratedTrainingRouteExport = {
   roadIds: string[];
   nodeIds: string[];
   routeGeometry: Vec2[];
+  mapViewport?: {
+    defaultBounds: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    };
+    fullBounds: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    };
+  };
   validationSummary: Pick<
     LearnerRouteValidationResult,
     "status" | "valid" | "blockingErrors" | "advisoryWarnings" | "affectedRouteSegmentIds" | "ruleCodes" | "explanation"

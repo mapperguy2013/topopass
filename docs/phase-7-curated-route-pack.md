@@ -15,11 +15,11 @@ complete `beta` or `approved` curated routes first.
 - Pack version: `2026.07`
 - Storage: `data/training-routes/complete/`
 - Learner-facing statuses: `beta`, `approved`
-- Current status: initial beta route pack
+- Current status: target met beta route pack
 - Target pack size: 15 routes, with 5 beginner, 5 intermediate, and 5 advanced
   routes
-- Current pack size: 14 learner-facing routes
-- Remaining target gap: 1 beginner route
+- Current pack size: 15 learner-facing routes
+- Remaining target gap: 0 routes
 - Source map: `osm-real-london-pilot`
 - Source fixture: `realLondonPilotOverpass.json`
 
@@ -27,23 +27,22 @@ complete `beta` or `approved` curated routes first.
 
 | Difficulty | Current | Target | Remaining |
 | --- | ---: | ---: | ---: |
-| Beginner | 4 | 5 | 1 |
+| Beginner | 5 | 5 | 0 |
 | Intermediate | 5 | 5 | 0 |
 | Advanced | 5 | 5 | 0 |
 
-Total learner-facing curated routes: 14.
+Total learner-facing curated routes: 15.
 
 Checkpoint routes: 3.
 
-The pack is usable as the first beta learner-facing curated route pack, but it
-is intentionally documented as `initial-beta` until one more beginner route is
-authored, validated, reviewed, and added to the complete manifest.
+The pack is usable as the first beta learner-facing curated route pack and now
+meets the 5 beginner / 5 intermediate / 5 advanced target.
 
 ## Exercise Type Counts
 
 | Exercise type | Count |
 | --- | ---: |
-| Follow a planned route | 7 |
+| Follow a planned route | 8 |
 | Choose a legal route | 3 |
 | Identify the next safe turn | 1 |
 | Practise junction decision-making | 2 |
@@ -57,7 +56,7 @@ route QA support them.
 ## Difficulty Standards
 
 Beginner routes should be short, clear, low-decision routes with simple start
-and destination recognition. The first pack uses three direct Real London pilot
+and destination recognition. The first pack uses four direct Real London pilot
 route-following routes plus one identify-next-safe-turn route for early
 confidence. Some routes contain several OSM graph segments even though the
 learner-facing task is short; this is documented as a segmentation limitation
@@ -93,12 +92,16 @@ wrong checkpoint order.
 Training Mode filters curated routes by:
 
 - active map id
+- area name and route map metadata
 - selected difficulty
 - selected exercise type
 - learner-facing status (`beta` or `approved`)
 - complete lifecycle stage
 
-Draft and review exports are excluded from learner Training Mode.
+Draft and review exports are excluded from learner Training Mode. Complete
+routes for maps that `/practice/training` cannot load yet are also excluded
+with the diagnostic reason `unsupported-learner-map` instead of appearing as
+broken learner cards.
 
 This project currently uses the static manifest in
 `lib/training/curatedLearnerRoutePack.ts`. Saving a JSON route under
@@ -112,6 +115,7 @@ Learner visibility requires:
 - `lifecycleStage: "complete"`
 - `status: "beta"` or `status: "approved"` at the top level and in `metadata`
 - matching map/area metadata, especially `mapId` or `practiceMapId`
+- learner Training Mode support for the exported `mapId`
 - selected difficulty and exercise type matching the learner filters
 - start, destination, route geometry, route segment ids, and validation
   segments
@@ -146,6 +150,7 @@ validation errors.
 
 | Route file | Difficulty | Exercise type | Status | Area / map | Checkpoints | Validation | Learner-facing |
 | --- | --- | --- | --- | --- | ---: | --- | --- |
+| `real-london-beginner-follow-chenies-street.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | valid | yes |
 | `real-london-beginner-follow-goodge-tottenham.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
 | `real-london-beginner-follow-store-street.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | valid | yes |
 | `real-london-beginner-follow-torrington-byng.json` | Beginner | Follow a planned route | beta | Real London Pilot / `osm-real-london-pilot` | 0 optional | warning | yes |
@@ -181,8 +186,7 @@ The audit checks:
 - checkpoint-required routes include ordered checkpoints
 - checkpoint-optional routes remain learner-facing without checkpoints
 - learner-suitability warnings remain advisory and do not block visibility
-- route pack readiness records the 15-route target and the remaining beginner
-  route gap
+- route pack readiness records the 15-route target and target-met status
 - shortest-route comparison exists or is explicitly non-applicable/unknown
 - average complexity increases from beginner to intermediate to advanced
 - advanced routes are not accidentally tiny/simple
@@ -243,12 +247,14 @@ To confirm a saved route appears in learner Training Mode:
 1. Save or commit the route JSON under `data/training-routes/complete/`.
 2. Add the JSON import to `lib/training/curatedLearnerRoutePack.ts` if the
    project is still using the static manifest.
-3. Restart the dev server after adding the import.
-4. Open `/practice/training`.
-5. Select the matching map, difficulty, and exercise type.
-6. Confirm the curated route card shows title, area/map, route length or segment
+3. Confirm `LEARNER_TRAINING_SUPPORTED_CURATED_MAP_IDS` includes the route's
+   `mapId` only if `/practice/training` can load that map source.
+4. Restart the dev server after adding the import.
+5. Open `/practice/training`.
+6. Select the matching map, difficulty, and exercise type.
+7. Confirm the curated route card shows title, area/map, route length or segment
    count, checkpoint count, status, and skills practised.
-7. If the card is hidden, check
+8. If the card is hidden, check
    `buildCuratedTrainingRouteVisibilityDiagnostics()` for excluded routes and
    filter mismatches.
 
@@ -284,8 +290,8 @@ Before Stage 20 starts, these checks must pass:
 
 - The first pack focuses on the Real London pilot map. More areas are needed for
   broader learner coverage.
-- The current initial beta pack has 14 learner-facing routes, one route short of
-  the target 5 beginner / 5 intermediate / 5 advanced split.
+- The current beta pack meets the target 5 beginner / 5 intermediate /
+  5 advanced split.
 - Legal restrictions are enforced only where committed map metadata exposes
   them.
 - OSM-derived roads can be split into many short graph segments, so raw segment

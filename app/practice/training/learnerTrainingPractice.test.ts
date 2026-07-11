@@ -253,7 +253,7 @@ test("Stage 19.6 curated route filters expose matching routes and explain hidden
     curatedRoutes: CURATED_LEARNER_ROUTE_PACK
   });
 
-  assert.equal(beginnerFollowPanel.curatedRouteCards.length, 3);
+  assert.equal(beginnerFollowPanel.curatedRouteCards.length, 4);
   assert.ok(intermediateFollowPanel.curatedRouteCards.some((routeCard) => routeCard.checkpointCount > 0));
   assert.equal(missingPanel.curatedRouteAvailability.status, "unavailable");
   assert.match(missingPanel.curatedRouteAvailability.message ?? "", /No approved curated route is available/);

@@ -399,7 +399,7 @@ test("curated learner route cards render and curated generation starts a route",
   });
 
   assert.equal(setupModel.curatedRouteAvailability.status, "available");
-  assert.equal(setupModel.curatedRouteCards.length, 3);
+  assert.equal(setupModel.curatedRouteCards.length, 4);
   assert.equal(started.generation.routeSource, "curated-route-pack");
   assert.ok(started.generation.curatedRouteId);
   assert.equal(started.activeExercise?.tags?.includes("curated-training-route"), true);

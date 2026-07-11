@@ -3,6 +3,7 @@ import routeAdvancedJunctionMortimerGoodge from "../../data/training-routes/comp
 import routeAdvancedLegalTorringtonReverse from "../../data/training-routes/complete/real-london-advanced-legal-torrington-reverse.json" with { type: "json" };
 import routeAdvancedLegalTottenhamGower from "../../data/training-routes/complete/real-london-advanced-legal-tottenham-gower.json" with { type: "json" };
 import routeAdvancedReviewGoodgeByng from "../../data/training-routes/complete/real-london-advanced-review-goodge-byng.json" with { type: "json" };
+import routeBeginnerFollowCheniesStreet from "../../data/training-routes/complete/real-london-beginner-follow-chenies-street.json" with { type: "json" };
 import routeBeginnerFollowGoodgeTottenham from "../../data/training-routes/complete/real-london-beginner-follow-goodge-tottenham.json" with { type: "json" };
 import routeBeginnerFollowStoreStreet from "../../data/training-routes/complete/real-london-beginner-follow-store-street.json" with { type: "json" };
 import routeBeginnerFollowTorringtonByng from "../../data/training-routes/complete/real-london-beginner-follow-torrington-byng.json" with { type: "json" };
@@ -39,12 +40,26 @@ export const CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY: Record<
   advanced: 5
 };
 
+export const LEARNER_TRAINING_SUPPORTED_CURATED_MAP_IDS = new Set([
+  "osm-real-london-pilot",
+  "osm-real-london-pilot-2",
+  "osm-curated-piccadilly-circus",
+  "osm-curated-waterloo-bridge",
+  "osm-curated-one-way-system-area",
+  "osm-curated-quiet-residential-roads",
+  "osm-curated-kings-cross-euston"
+]);
+
 export type CuratedTrainingRoutePackManifestEntry = {
   filename: string;
   route: unknown;
 };
 
 export const CURATED_LEARNER_ROUTE_PACK_FILES: CuratedTrainingRoutePackManifestEntry[] = [
+  {
+    filename: "real-london-beginner-follow-chenies-street.json",
+    route: routeBeginnerFollowCheniesStreet
+  },
   {
     filename: "real-london-beginner-follow-goodge-tottenham.json",
     route: routeBeginnerFollowGoodgeTottenham
@@ -176,6 +191,7 @@ export type CuratedTrainingRoutePackAudit = {
 export type CuratedTrainingRouteVisibilityExclusionCode =
   | "not-complete"
   | "not-beta-or-approved"
+  | "unsupported-learner-map"
   | "missing-required-metadata"
   | "missing-route-data"
   | "checkpoint-requirement-invalid"
@@ -714,6 +730,10 @@ function learnerVisibilityExclusionReasons(
     reasons.push("missing-required-metadata");
   }
 
+  if (route.mapId.trim().length > 0 && !LEARNER_TRAINING_SUPPORTED_CURATED_MAP_IDS.has(route.mapId)) {
+    reasons.push("unsupported-learner-map");
+  }
+
   if (!hasRequiredLearnerRouteData(route)) {
     reasons.push("missing-route-data");
   }
@@ -775,6 +795,10 @@ function visibilityExclusionMessage(reasons: readonly CuratedTrainingRouteVisibi
 
   if (reasons.includes("missing-required-metadata")) {
     return "Route is missing learner-facing metadata required for Training Mode cards.";
+  }
+
+  if (reasons.includes("unsupported-learner-map")) {
+    return "Route belongs to a map that learner Training Mode cannot load yet.";
   }
 
   if (reasons.includes("missing-route-data")) {

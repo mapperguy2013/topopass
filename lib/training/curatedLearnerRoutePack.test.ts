@@ -39,21 +39,21 @@ test("Stage 20 curated learner route pack loads complete learner-facing routes",
   const summary = buildCuratedTrainingRoutePackSummary();
   const learnerRoutes = learnerFacingCuratedTrainingRoutes();
 
-  assert.equal(CURATED_LEARNER_ROUTE_PACK.length, 14);
-  assert.equal(learnerRoutes.length, 14);
-  assert.equal(summary.totalLearnerFacingRoutes, 14);
-  assert.equal(summary.countsByDifficulty.beginner, 4);
+  assert.equal(CURATED_LEARNER_ROUTE_PACK.length, 15);
+  assert.equal(learnerRoutes.length, 15);
+  assert.equal(summary.totalLearnerFacingRoutes, 15);
+  assert.equal(summary.countsByDifficulty.beginner, 5);
   assert.equal(summary.countsByDifficulty.intermediate, 5);
   assert.equal(summary.countsByDifficulty.advanced, 5);
   assert.deepEqual(summary.targetCountsByDifficulty, CURATED_LEARNER_ROUTE_PACK_TARGET_COUNTS_BY_DIFFICULTY);
   assert.deepEqual(summary.missingTargetCountsByDifficulty, {
-    beginner: 1,
+    beginner: 0,
     intermediate: 0,
     advanced: 0
   });
-  assert.equal(summary.routePackStatus, "initial-beta");
+  assert.equal(summary.routePackStatus, "target-met");
   assert.equal(summary.checkpointRouteCount, 3);
-  assert.equal(summary.countsByExerciseType["follow-planned-route"], 7);
+  assert.equal(summary.countsByExerciseType["follow-planned-route"], 8);
   assert.equal(summary.countsByExerciseType["identify-next-safe-turn"], 1);
   assert.ok(summary.countsByExerciseType["choose-legal-route"]);
   assert.ok(summary.countsByExerciseType["practise-junction-decision-making"]);
@@ -86,19 +86,19 @@ test("Stage 20 route file audit reports learner-facing visibility for every comp
   assert.ok(fileAudit.some((route) => route.checkpointCount === 0 && route.checkpointRequirement === "Optional"));
 });
 
-test("Stage 20 route pack readiness documents the missing beginner route target", () => {
+test("Stage 20 route pack readiness meets the beginner route target", () => {
   const readiness = buildCuratedTrainingRoutePackReadiness();
 
-  assert.equal(readiness.currentTotal, 14);
+  assert.equal(readiness.currentTotal, 15);
   assert.equal(readiness.targetTotal, 15);
-  assert.equal(readiness.status, "initial-beta");
+  assert.equal(readiness.status, "target-met");
   assert.deepEqual(readiness.missingTargetCountsByDifficulty, {
-    beginner: 1,
+    beginner: 0,
     intermediate: 0,
     advanced: 0
   });
-  assert.equal(readiness.missingTotal, 1);
-  assert.deepEqual(readiness.expansionTodo, ["Add 1 more beginner curated route."]);
+  assert.equal(readiness.missingTotal, 0);
+  assert.deepEqual(readiness.expansionTodo, []);
 });
 
 test("Stage 19.4 complete beta and approved route exports are loaded for learners", () => {
@@ -222,7 +222,7 @@ test("Stage 20 learner-facing routes pass metadata and validation audit", () => 
     mapById: routeMapById
   });
 
-  assert.equal(audit.validLearnerFacingRouteIds.length, 14);
+  assert.equal(audit.validLearnerFacingRouteIds.length, 15);
   assert.deepEqual(audit.issues.filter((issue) => issue.severity === "error"), []);
   assert.equal(
     audit.summary.averageComplexityByDifficulty.beginner <
@@ -283,7 +283,7 @@ test("Stage 20 route cards expose learner-useful curated route details", () => {
     activeRouteId: "real-london-beginner-follow-store-street"
   });
 
-  assert.equal(cards.length, 3);
+  assert.equal(cards.length, 4);
   assert.equal(cards.filter((card) => card.selected).length, 1);
   assert.ok(cards.every((card) => card.title && card.area === "Real London Pilot"));
   assert.ok(cards.every((card) => card.approximateLengthLabel.length > 0));
@@ -305,13 +305,14 @@ test("Stage 20 curated route selection avoids immediate repetition where alterna
     seed: "rotation",
     recentRouteIds: first.route ? [first.route.routeId] : []
   });
-  const exhausted = selectCuratedTrainingRoute({
+  const avoidsLastThree = selectCuratedTrainingRoute({
     mapId: realLondonOsmPilotRouteMap.id,
     difficulty: "beginner",
     exerciseType: "follow-planned-route",
     seed: "rotation",
     recentRouteIds: [
       "real-london-beginner-follow-goodge-tottenham",
+      "real-london-beginner-follow-chenies-street",
       "real-london-beginner-follow-store-street",
       "real-london-beginner-follow-torrington-byng"
     ]
@@ -320,8 +321,16 @@ test("Stage 20 curated route selection avoids immediate repetition where alterna
   assert.ok(first.route);
   assert.ok(second.route);
   assert.notEqual(second.route?.routeId, first.route?.routeId);
-  assert.ok(exhausted.route);
-  assert.equal(exhausted.repeatedRecentRoute, true);
+  assert.ok(avoidsLastThree.route);
+  assert.equal(
+    [
+      "real-london-beginner-follow-goodge-tottenham",
+      "real-london-beginner-follow-chenies-street",
+      "real-london-beginner-follow-store-street"
+    ].includes(avoidsLastThree.route?.routeId ?? ""),
+    false
+  );
+  assert.equal(avoidsLastThree.repeatedRecentRoute, false);
 });
 
 test("Stage 20 no curated route selection returns clear fallback messaging", () => {
@@ -470,6 +479,37 @@ test("Stage 19.4 curated route diagnostics identify hidden and excluded routes",
     }),
     /Available selections: Real London Pilot \/ beginner \/ follow-planned-route/
   );
+});
+
+test("Stage 20.1 learner Training Mode excludes curated routes on unsupported maps with diagnostics", () => {
+  const sourceRoute = CURATED_LEARNER_ROUTE_PACK[0];
+  const unsupportedRoute: CuratedTrainingRouteExport = {
+    ...sourceRoute,
+    routeId: "unsupported-map-copy",
+    mapId: "osm-curated-centralLondon",
+    practiceMapId: "osm-curated-centralLondon",
+    areaId: "osm-curated-centralLondon",
+    areaName: "Central London stress fixture",
+    metadata: {
+      ...sourceRoute.metadata,
+      routeId: "unsupported-map-copy",
+      practiceMapId: "osm-curated-centralLondon",
+      areaId: "osm-curated-centralLondon",
+      areaName: "Central London stress fixture",
+      area: "Central London stress fixture"
+    }
+  };
+  const diagnostics = buildCuratedTrainingRouteVisibilityDiagnostics({
+    routes: [unsupportedRoute],
+    mapId: "osm-curated-centralLondon",
+    difficulty: unsupportedRoute.difficulty,
+    exerciseType: unsupportedRoute.exerciseType
+  });
+
+  assert.equal(learnerFacingCuratedTrainingRoutes([unsupportedRoute]).length, 0);
+  assert.equal(diagnostics.learnerFacingRouteCount, 0);
+  assert.ok(diagnostics.excludedRoutes[0]?.reasons.includes("unsupported-learner-map"));
+  assert.match(diagnostics.excludedRoutes[0]?.message ?? "", /learner Training Mode cannot load yet/);
 });
 
 test("Stage 20 curated routes instantiate, hint, score, feedback, and progress end to end", () => {

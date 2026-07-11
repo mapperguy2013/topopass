@@ -43,6 +43,7 @@ import {
   isTrainingRouteAuthorMiddlePanPointer,
   removeLastTrainingRouteAuthorCheckpoint,
   resolveNearestTrainingRouteAuthorNodeSnap,
+  selectTrainingRouteAuthorArea,
   setTrainingRouteAuthorDestination,
   setTrainingRouteAuthorMode,
   setTrainingRouteAuthorStart,
@@ -54,6 +55,7 @@ import {
   TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
   TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   trainingRouteAuthorMapPointForClientPoint,
+  trainingRouteAuthorStateHasUnsavedChanges,
   trainingRouteAuthorViewportAspectRatioCss,
   trainingRouteAuthorWheelZoomFactor,
   undoTrainingRouteAuthorAction,
@@ -785,7 +787,9 @@ function renderComparison(label: string, comparison: CuratedShortestRouteCompari
 }
 
 export function TrainingRouteAuthorClient() {
-  const map = useMemo(() => getTrainingRouteAuthorMap(), []);
+  const [state, setState] = useState<TrainingRouteAuthorState>(() => createEmptyTrainingRouteAuthorState());
+  const selectedAreaId = state.metadata.areaId;
+  const map = useMemo(() => getTrainingRouteAuthorMap(selectedAreaId), [selectedAreaId]);
   const initialMapBounds = useMemo(
     () => getRouteRunnerMapViewportBounds(map, TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH, TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT),
     [map]
@@ -798,7 +802,6 @@ export function TrainingRouteAuthorClient() {
     [initialMapBounds]
   );
   const initialBounds = initialViewportLayout.mapBounds;
-  const [state, setState] = useState<TrainingRouteAuthorState>(() => createEmptyTrainingRouteAuthorState());
   const [viewBounds, setViewBounds] = useState<RouteRunnerMapBounds>(initialBounds);
   const [showRestrictions, setShowRestrictions] = useState(true);
   const [showClickDiagnostics, setShowClickDiagnostics] = useState(false);
@@ -817,6 +820,24 @@ export function TrainingRouteAuthorClient() {
   const dragStateRef = useRef<DragState>(null);
   const mapSvgRef = useRef<SVGSVGElement | null>(null);
   const model = useMemo(() => buildTrainingRouteAuthorModel({ state }), [state]);
+  const boundsForState = (nextState: TrainingRouteAuthorState): RouteRunnerMapBounds =>
+    getRouteRunnerMapViewportBounds(
+      getTrainingRouteAuthorMap(nextState),
+      TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+      TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+    );
+  const resetTransientAuthoringUi = (nextState: TrainingRouteAuthorState, message?: string) => {
+    setViewBounds(boundsForState(nextState));
+    setCopyStatus(null);
+    setClickDiagnostic(null);
+    setMapInteractionMessage(message ?? null);
+    setFileSaveStatus({
+      state: "idle",
+      message: "No file save has run in this session."
+    });
+    setLastSavedExportJson(null);
+    dragStateRef.current = null;
+  };
   const currentStep = model.authoringSteps.find((step) => step.current) ?? model.authoringSteps[0];
   const toolbarActionsById = useMemo(
     () => new Map(model.toolbarActions.map((action) => [action.id, action])),
@@ -892,6 +913,7 @@ export function TrainingRouteAuthorClient() {
     }
 
     setState(recovered.state);
+    setViewBounds(boundsForState(recovered.state));
     setLastAutosavedAt(recovered.savedAt);
     setAutosaveNotice(`Recovered autosaved route from ${readableTimestamp(recovered.savedAt)}.`);
   }, []);
@@ -1168,7 +1190,7 @@ export function TrainingRouteAuthorClient() {
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
 
-    const snap = resolveNearestTrainingRouteAuthorNodeSnap(conversion.mapPoint);
+    const snap = resolveNearestTrainingRouteAuthorNodeSnap(conversion.mapPoint, undefined, state);
 
     if (!snap) {
       const message = "Click closer to a road segment.";
@@ -1312,7 +1334,32 @@ export function TrainingRouteAuthorClient() {
   }
 
   function handleMetadataChange(field: TrainingRouteAuthorField, event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    if (field.id === "areaId") {
+      handleAreaSelectionChange(event.target.value);
+      return;
+    }
+
     setState((currentState) => updateTrainingRouteAuthorMetadataField(currentState, field.id, event.target.value));
+  }
+
+  function handleAreaSelectionChange(areaId: string) {
+    if (!areaId || areaId === state.metadata.areaId) {
+      return;
+    }
+
+    if (
+      trainingRouteAuthorStateHasUnsavedChanges(state) &&
+      !window.confirm("Changing map will clear the current route. Continue?")
+    ) {
+      return;
+    }
+
+    const nextState = selectTrainingRouteAuthorArea(state, areaId);
+
+    setState(nextState);
+    resetTransientAuthoringUi(nextState, "Map changed. Current route data has been cleared.");
+    setAutosaveNotice(null);
+    setLastAutosavedAt(null);
   }
 
   async function copyExportJson() {
@@ -1997,6 +2044,44 @@ export function TrainingRouteAuthorClient() {
         </div>
       </section>
 
+      <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4" data-testid="training-author-map-selector">
+        <label className="block text-sm font-bold text-slate-900" htmlFor="training-author-area-select">
+          Map / training area
+        </label>
+        <div className="mt-2 grid gap-3 lg:grid-cols-[minmax(18rem,28rem)_1fr] lg:items-start">
+          <select
+            className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-900"
+            id="training-author-area-select"
+            onChange={(event) => handleAreaSelectionChange(event.target.value)}
+            value={model.selectedArea?.areaId ?? ""}
+          >
+            {model.areaOptions.map((option) => (
+              <option key={option.areaId} value={option.areaId}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <dl className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <dt className="font-semibold text-slate-900">Map id</dt>
+              <dd className="font-mono">{model.selectedArea?.mapId ?? "unselected"}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-900">Area</dt>
+              <dd>{model.selectedArea?.areaName ?? "unselected"}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-900">Fixture</dt>
+              <dd>{model.selectedArea?.sourceFixture ?? "none"}</dd>
+            </div>
+            <div>
+              <dt className="font-semibold text-slate-900">Status</dt>
+              <dd>{model.selectedArea?.status ?? "unsupported"}</dd>
+            </div>
+          </dl>
+        </div>
+      </section>
+
       <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div
           aria-label="Training route authoring toolbar"
@@ -2017,10 +2102,10 @@ export function TrainingRouteAuthorClient() {
               <button
                 className="inline-flex min-h-11 items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-950 hover:bg-blue-100"
                 onClick={() => {
-                  setState(createSampleTrainingRouteAuthorState());
-                  setCopyStatus(null);
-                  setClickDiagnostic(null);
-                  setMapInteractionMessage(null);
+                  const nextState = createSampleTrainingRouteAuthorState(state.metadata.areaId);
+
+                  setState(nextState);
+                  resetTransientAuthoringUi(nextState);
                 }}
                 type="button"
               >
@@ -2029,10 +2114,10 @@ export function TrainingRouteAuthorClient() {
               <button
                 className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                 onClick={() => {
-                  setState(createEmptyTrainingRouteAuthorState());
-                  setCopyStatus(null);
-                  setClickDiagnostic(null);
-                  setMapInteractionMessage(null);
+                  const nextState = createEmptyTrainingRouteAuthorState(state.metadata.areaId);
+
+                  setState(nextState);
+                  resetTransientAuthoringUi(nextState);
                 }}
                 type="button"
               >
@@ -2126,7 +2211,7 @@ export function TrainingRouteAuthorClient() {
             <div className="bg-slate-100" data-testid="training-author-map-workspace">
             <div className="relative overflow-hidden" data-training-author-layer="map-viewport">
               <svg
-                aria-label="Interactive Real London training route authoring map"
+                aria-label={`Interactive ${model.sourceMapName} training route authoring map`}
                 className={`block h-auto w-full touch-none select-none overscroll-contain ${
                   model.activeMode === "pan" ? "cursor-grab" : model.activeMode === "draw-route" ? "cursor-crosshair" : "cursor-pointer"
                 }`}

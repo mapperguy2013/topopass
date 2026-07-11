@@ -71,6 +71,13 @@ const EXPECTED_REAL_LONDON_PILOT_METADATA = [
     "Very short A to B route across the Store Street connector."
   ],
   [
+    "osm-real-pilot-chenies-street-short-hop",
+    "easy",
+    "direct",
+    44.92,
+    "Short single-street A to B route for beginner endpoint control."
+  ],
+  [
     "osm-real-pilot-gower-to-torrington",
     "medium",
     "direct",
@@ -201,6 +208,7 @@ test("Stage 123 QA panel displays difficulty and route type metadata", () => {
       ["osm-real-pilot-longer-route", "hard", "direct", "Direct", "660.84 m"],
       ["osm-real-pilot-turn-choice", "medium", "direct", "Direct", "159.33 m"],
       ["osm-real-pilot-store-street-short-hop", "easy", "direct", "Direct", "21.48 m"],
+      ["osm-real-pilot-chenies-street-short-hop", "easy", "direct", "Direct", "44.92 m"],
       ["osm-real-pilot-gower-to-torrington", "medium", "direct", "Direct", "142.74 m"],
       ["osm-real-pilot-goodge-chenies-ridgmount", "medium", "checkpoint", "Checkpoint", "346.79 m"],
       ["osm-real-pilot-torrington-byng", "easy", "direct", "Direct", "49.89 m"],

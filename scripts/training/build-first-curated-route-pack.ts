@@ -94,6 +94,26 @@ const routePackConfigs: RoutePackConfig[] = [
     instructorQaNote: "Tiny, controlled route for start/destination accuracy before longer beginner practice."
   },
   {
+    sourceExerciseId: "osm-real-pilot-chenies-street-short-hop",
+    routeId: "real-london-beginner-follow-chenies-street",
+    title: "Chenies Street short route-following practice",
+    difficulty: "beginner",
+    exerciseType: "follow-planned-route",
+    description: "Short Chenies Street route using a committed map-backed segment for beginner route-following confidence.",
+    objective: "Follow Chenies Street from the west-side start to the Huntley Street-side destination without adding a detour.",
+    skillsPractised: ["route following", "endpoint accuracy", "single-street control"],
+    expectedLearnerMistakes: ["wrong start", "overrunning the destination", "unnecessary detour"],
+    hintSequence: [
+      "This is a short single-street route, so confirm the start before moving.",
+      "Keep the destination side of Chenies Street in view.",
+      "Stay on the planned Chenies Street segment and stop at the marker."
+    ],
+    scoringEmphasis: ["route adherence", "endpoint accuracy", "efficient completion"],
+    instructorFeedbackNotes: "Feedback should focus on whether the learner stayed on the marked Chenies Street segment and stopped accurately.",
+    routeChoiceJustification: "Beginner route uses a short legal map-backed segment with no checkpoint or route-choice pressure.",
+    instructorQaNote: "Short validated Chenies Street segment for beginner endpoint control."
+  },
+  {
     sourceExerciseId: "osm-real-pilot-torrington-byng",
     routeId: "real-london-beginner-follow-torrington-byng",
     title: "Torrington Place to Byng Place basics",
