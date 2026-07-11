@@ -97,7 +97,7 @@ wrong checkpoint order.
 Training Mode filters curated routes by:
 
 - active map id
-- area name and route map metadata
+- area name and route map metadata when a caller provides an area filter
 - selected difficulty
 - selected exercise type
 - learner-facing status (`beta` or `approved`)
@@ -107,6 +107,16 @@ Draft and review exports are excluded from learner Training Mode. Complete
 routes for maps that `/practice/training` cannot load yet are also excluded
 with the diagnostic reason `unsupported-learner-map` instead of appearing as
 broken learner cards.
+
+The current learner-supported curated map ids are:
+
+- `osm-real-london-pilot`
+- `osm-real-london-pilot-2`
+- `osm-curated-piccadilly-circus`
+- `osm-curated-waterloo-bridge`
+- `osm-curated-one-way-system-area`
+- `osm-curated-quiet-residential-roads`
+- `osm-curated-kings-cross-euston`
 
 This project currently uses the static manifest in
 `lib/training/curatedLearnerRoutePack.ts`. Saving a JSON route under
@@ -121,13 +131,16 @@ Learner visibility requires:
 - `status: "beta"` or `status: "approved"` at the top level and in `metadata`
 - matching map/area metadata, especially `mapId` or `practiceMapId`
 - learner Training Mode support for the exported `mapId`
+- `areaName` matching the selected area filter when one is provided
 - selected difficulty and exercise type matching the learner filters
 - start, destination, route geometry, route segment ids, and validation
   segments
 - no blocking validation errors
 
 `buildCuratedTrainingRouteVisibilityDiagnostics()` reports how many complete
-routes were found, how many are learner-facing, and why any route was excluded.
+routes were found, how many are learner-facing, how many were excluded by
+draft/review status, unsupported map id, missing metadata, or validation
+blockers, and why any route was excluded.
 Use it when a saved complete route does not appear in `/practice/training`.
 
 Generate / Next route avoids the last three curated route ids where possible. If

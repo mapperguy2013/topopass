@@ -306,7 +306,7 @@ function validateCuratedTrainingRouteDraftPayload(
   }
 
   if (!hasSelectedTrainingRouteAreaMetadata(metadata)) {
-    errors.push("Select a practice map or training area.");
+    errors.push("Select a map / training area.");
   }
 
   if (saveMode === "working-draft") {

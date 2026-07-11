@@ -15,8 +15,8 @@ import {
   TRAINING_ROUTE_AUTHOR_DESKTOP_HEIGHT_SCALE,
   TRAINING_ROUTE_AUTHOR_SNAP_TOLERANCE,
   TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
-  TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   TRAINING_ROUTE_AUTHOR_MAP_REGISTRY,
+  TRAINING_ROUTE_AUTHOR_MAP_LEGEND_ITEMS,
   addTrainingRouteAuthorCheckpoint,
   appendTrainingRouteAuthorStrokePoint,
   buildTrainingRouteAuthorViewportLayout,
@@ -170,6 +170,8 @@ test("curated training route author page renders the interactive authoring clien
   assert.match(clientSource, /buildTrainingRouteAuthorModel/);
   assert.match(clientSource, /Interactive \$\{model\.sourceMapName\} training route authoring map/);
   assert.match(clientSource, /data-testid="training-author-map-first-shell"/);
+  assert.match(clientSource, /data-testid="training-author-map-selector"/);
+  assert.match(clientSource, /Changing map will clear the current route\. Continue\?/);
   assert.match(clientSource, /data-testid="training-author-top-toolbar"/);
   assert.match(clientSource, /data-testid="training-author-map-workspace"/);
   assert.match(clientSource, /data-testid="training-author-bottom-drawer"/);
@@ -951,13 +953,16 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.equal(model.exportData.mapId, model.sourceMapId);
   assert.equal(model.exportData.practiceMapId, model.sourceMapId);
   assert.equal(model.exportData.areaId, model.sourceMapId);
-  assert.equal(model.exportData.areaName, "Real London");
+  assert.equal(model.exportData.areaName, "Goodge Street / Tottenham Court Road");
   assert.equal(model.exportData.sourceFixture, "realLondonPilotOverpass.json");
   assert.ok(model.exportData.metadata.routeId.length > 0);
   assert.equal(model.exportData.metadata.practiceMapId, model.sourceMapId);
   assert.equal(model.exportData.metadata.areaId, model.sourceMapId);
-  assert.equal(model.exportData.metadata.areaName, "Real London");
-  assert.equal(model.selectedArea?.areaName, "Real London");
+  assert.equal(model.exportData.metadata.areaName, "Goodge Street / Tottenham Court Road");
+  assert.equal(model.selectedArea?.areaName, "Goodge Street / Tottenham Court Road");
+  assert.equal(model.exportData.mapMetadata?.mapId, model.sourceMapId);
+  assert.equal(model.exportData.mapMetadata?.areaName, "Goodge Street / Tottenham Court Road");
+  assert.equal(model.exportData.mapMetadata?.sourceFixturePath, "lib/map-engine/osm/fixtures/realLondonPilotOverpass.json");
   assert.ok(model.exportData.start.nodeId.length > 0);
   assert.ok(model.exportData.destination.nodeId.length > 0);
   assert.ok(Array.isArray(model.exportData.checkpoints));
@@ -1007,6 +1012,79 @@ test("curated training route author sample can produce Stage 19 route contract m
   assert.match(checkpointRequirementField?.helpText ?? "", /Optional checkpoints do not block export/);
   assert.ok(["optional", "required"].includes(model.exportData.metadata.checkpointRequirement ?? ""));
   assert.equal(model.exportData.shortestRouteComparison.directComparison.comparisonStatus, "available");
+});
+
+test("Stage 20.1 training route author map registry exposes only supported real authoring maps", () => {
+  const supportedMapIds = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.map((option) => option.mapId);
+  const unsupportedEntries = TRAINING_ROUTE_AUTHOR_MAP_REGISTRY.filter((entry) => !entry.routeAuthoringSupported);
+  const supportedEntries = TRAINING_ROUTE_AUTHOR_MAP_REGISTRY.filter((entry) => entry.routeAuthoringSupported);
+
+  assert.ok(supportedMapIds.length > 1);
+  assert.ok(supportedMapIds.includes("osm-real-london-pilot"));
+  assert.ok(supportedMapIds.includes("osm-real-london-pilot-2"));
+  assert.ok(supportedMapIds.includes("osm-curated-piccadilly-circus"));
+  assert.ok(supportedMapIds.includes("osm-curated-waterloo-bridge"));
+  assert.ok(supportedMapIds.includes("osm-curated-one-way-system-area"));
+  assert.ok(supportedMapIds.includes("osm-curated-quiet-residential-roads"));
+  assert.equal(supportedMapIds.includes("marlowe-district-dev-map"), false);
+  assert.equal(supportedMapIds.includes("osm-tiny-london-prototype"), false);
+  assert.equal(supportedMapIds.includes("osm-large-london"), false);
+  assert.equal(supportedMapIds.includes("osm-curated-centralLondon"), false);
+  assert.equal(supportedMapIds.includes("osm-curated-kings-cross-euston"), false);
+  assert.ok(unsupportedEntries.some((entry) => entry.mapId === "osm-curated-kings-cross-euston" && /lazy-loaded/.test(entry.unsupportedReason ?? "")));
+  assert.ok(unsupportedEntries.some((entry) => entry.mapId === "osm-curated-centralLondon" && /visual QA|stress testing/.test(entry.unsupportedReason ?? "")));
+  assert.ok(supportedEntries.every((entry) => entry.areaOption?.sourceFixturePath));
+});
+
+test("Stage 20.1 selecting a training author map clears stale route state and changes export metadata", () => {
+  const targetArea = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.mapId === "osm-curated-piccadilly-circus");
+  const sample = compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(createSampleTrainingRouteAuthorState()));
+
+  assert.ok(targetArea);
+  assert.ok(sample.startNodeId);
+  assert.ok(sample.destinationNodeId);
+  assert.ok(sample.routeNodeIds.length > 0);
+  assert.equal(sample.validationHasRun, true);
+  assert.equal(sample.comparisonHasRun, true);
+
+  const switched = selectTrainingRouteAuthorArea(sample, targetArea.areaId);
+  const model = buildTrainingRouteAuthorModel({ state: switched });
+
+  assert.equal(switched.startNodeId, null);
+  assert.equal(switched.destinationNodeId, null);
+  assert.deepEqual(switched.checkpointNodeIds, []);
+  assert.equal(switched.routeDraft.strokes.length, 0);
+  assert.deepEqual(switched.routeNodeIds, []);
+  assert.deepEqual(switched.roadIds, []);
+  assert.deepEqual(switched.validationSegments, []);
+  assert.equal(switched.validationHasRun, false);
+  assert.equal(switched.comparisonHasRun, false);
+  assert.equal(model.sourceMapId, targetArea.mapId);
+  assert.equal(model.exportData.mapId, targetArea.mapId);
+  assert.equal(model.exportData.areaId, targetArea.areaId);
+  assert.equal(model.exportData.areaName, targetArea.areaName);
+  assert.equal(model.exportData.mapMetadata?.sourceFixture, targetArea.sourceFixture);
+  assert.equal(getTrainingRouteAuthorMap(switched).id, targetArea.mapId);
+});
+
+test("Stage 20.1 sample routes load from the selected training author map", () => {
+  const targetArea = TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.mapId === "osm-curated-waterloo-bridge");
+
+  assert.ok(targetArea);
+
+  const state = createSampleTrainingRouteAuthorState(targetArea.areaId);
+  const model = buildTrainingRouteAuthorModel({
+    state: compareTrainingRouteAuthorShortestRoute(validateTrainingRouteAuthorState(state))
+  });
+
+  assert.equal(model.sourceMapId, targetArea.mapId);
+  assert.equal(model.exportData.mapId, targetArea.mapId);
+  assert.equal(model.exportData.areaId, targetArea.areaId);
+  assert.equal(model.exportData.mapMetadata?.mapType, "curated-real-london");
+  assert.equal(model.exportData.mapMetadata?.sourceFixturePath, targetArea.sourceFixturePath);
+  assert.ok(model.exportData.start.nodeId.length > 0);
+  assert.ok(model.exportData.destination.nodeId.length > 0);
+  assert.ok(model.exportData.routeSegmentIds.length > 0);
 });
 
 test("curated route author exports ordered checkpoint metadata and can instantiate a learner exercise", () => {
@@ -1266,24 +1344,24 @@ test("curated route author suggests metadata-based route ids, filenames, and sav
   const reviewCandidate = model.saveTargets.find((target) => target.mode === "review-candidate");
   const completeRoute = model.saveTargets.find((target) => target.mode === "complete-route");
 
-  assert.equal(model.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(model.suggestedRouteId, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham");
   assert.equal(model.effectiveRouteId, model.suggestedRouteId);
   assert.equal(routeIdField?.value, model.suggestedRouteId);
   assert.match(routeIdField?.helpText ?? "", /Auto-suggested from metadata/);
-  assert.equal(workingDraft?.suggestedFilename, "real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json");
-  assert.equal(reviewCandidate?.suggestedFilename, "real-london-intermediate-follow-planned-route-goodge-to-tottenham.json");
-  assert.equal(completeRoute?.suggestedFilename, "real-london-intermediate-follow-planned-route-goodge-to-tottenham.json");
+  assert.equal(workingDraft?.suggestedFilename, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham-draft.json");
+  assert.equal(reviewCandidate?.suggestedFilename, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham.json");
+  assert.equal(completeRoute?.suggestedFilename, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham.json");
   assert.equal(
     workingDraft?.relativePath,
-    "data/training-routes/drafts/real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
+    "data/training-routes/drafts/goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
   );
   assert.equal(
     reviewCandidate?.relativePath,
-    "data/training-routes/review/real-london-intermediate-follow-planned-route-goodge-to-tottenham.json"
+    "data/training-routes/review/goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham.json"
   );
   assert.equal(
     completeRoute?.relativePath,
-    "data/training-routes/complete/real-london-intermediate-follow-planned-route-goodge-to-tottenham.json"
+    "data/training-routes/complete/goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham.json"
   );
 });
 
@@ -1306,7 +1384,7 @@ test("curated route author area selector updates metadata ids and filenames", ()
   assert.equal(missingAreaModel.saveTargets.find((target) => target.mode === "complete-route")?.ready, false);
   assert.match(
     missingAreaModel.saveTargets.find((target) => target.mode === "complete-route")?.unavailableMessage ?? "",
-    /Select a practice map or training area/
+    /Select a map \/ training area/
   );
 
   state = updateTrainingRouteAuthorMetadataField(state, "areaId", areaOption.areaId);
@@ -1320,16 +1398,16 @@ test("curated route author area selector updates metadata ids and filenames", ()
   assert.equal(model.exportData.areaId, areaOption.areaId);
   assert.equal(model.exportData.areaName, areaOption.areaName);
   assert.equal(model.exportData.area, areaOption.areaName);
-  assert.equal(model.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(model.suggestedRouteId, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham");
   assert.equal(
     model.saveTargets.find((target) => target.mode === "working-draft")?.suggestedFilename,
-    "real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
+    "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
   );
 
   const manualRouteState = updateTrainingRouteAuthorMetadataField(state, "routeId", "manual-goodge-training-route");
   const manualRouteModel = buildTrainingRouteAuthorModel({ state: manualRouteState });
 
-  assert.equal(manualRouteModel.suggestedRouteId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+  assert.equal(manualRouteModel.suggestedRouteId, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham");
   assert.equal(manualRouteModel.effectiveRouteId, "manual-goodge-training-route");
 });
 
@@ -1431,12 +1509,12 @@ test("curated route author blocks save readiness when no valid area is selected"
 
   assert.equal(model.exportReadiness.ready, false);
   assert.equal(
-    model.exportReadiness.checklist.find((item) => item.label === "Practice map or training area selected")?.complete,
+    model.exportReadiness.checklist.find((item) => item.label === "Map / training area selected")?.complete,
     false
   );
   assert.equal(model.draftSaveReadiness.ready, false);
   assert.equal(completeRoute?.ready, false);
-  assert.match(completeRoute?.unavailableMessage ?? "", /Select a practice map or training area/);
+  assert.match(completeRoute?.unavailableMessage ?? "", /Select a map \/ training area/);
 });
 
 test("curated route author working draft save allows incomplete routes but blocks approved status", () => {
@@ -1689,7 +1767,7 @@ test("curated route author can produce beginner intermediate and advanced sample
     assert.equal(model.comparisonRunStatus, "available");
     assert.equal(completeRoute?.ready, true);
     assert.equal(completeRoute?.learnerFacingLater, true);
-    assert.match(completeRoute?.relativePath ?? "", /^data\/training-routes\/complete\/real-london-/);
+    assert.match(completeRoute?.relativePath ?? "", /^data\/training-routes\/complete\/goodge-street-tottenham-court-road-/);
     assert.equal(exported.difficulty, variant.difficulty);
     assert.equal(exported.exerciseType, variant.exerciseType);
     assert.equal(exported.title, variant.title);

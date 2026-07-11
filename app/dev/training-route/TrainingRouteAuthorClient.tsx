@@ -919,6 +919,12 @@ export function TrainingRouteAuthorClient() {
   }, []);
 
   useEffect(() => {
+    setViewBounds(initialBounds);
+    setClickDiagnostic(null);
+    setMapInteractionMessage(null);
+  }, [initialBounds, model.sourceMapId]);
+
+  useEffect(() => {
     const savedAt = new Date().toISOString();
     const timeout = window.setTimeout(() => {
       try {
@@ -1334,12 +1340,14 @@ export function TrainingRouteAuthorClient() {
   }
 
   function handleMetadataChange(field: TrainingRouteAuthorField, event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    const nextValue = event.target.value;
+
     if (field.id === "areaId") {
-      handleAreaSelectionChange(event.target.value);
+      handleAreaSelectionChange(nextValue);
       return;
     }
 
-    setState((currentState) => updateTrainingRouteAuthorMetadataField(currentState, field.id, event.target.value));
+    setState((currentState) => updateTrainingRouteAuthorMetadataField(currentState, field.id, nextValue));
   }
 
   function handleAreaSelectionChange(areaId: string) {
@@ -2033,7 +2041,29 @@ export function TrainingRouteAuthorClient() {
                 : `No sample route is loaded. Author from scratch on ${model.sourceMapName} (${model.sourceMapId}).`}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-col gap-3 lg:max-w-sm">
+            <label className="text-sm font-semibold text-slate-700" htmlFor="training-author-map-selector">
+              Map / training area
+              <select
+                aria-label="Map / training area"
+                className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
+                data-testid="training-author-map-selector"
+                id="training-author-map-selector"
+                onChange={(event) => handleAreaSelectionChange(event.target.value)}
+                value={model.selectedArea?.areaId ?? state.metadata.areaId}
+              >
+                {model.areaOptions.map((option) => (
+                  <option key={option.areaId} value={option.areaId}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+              {model.selectedArea
+                ? `${model.selectedArea.areaName} - ${model.selectedArea.sourceFixture ?? "project map fixture"} - ${model.selectedArea.status}`
+                : "Select an authoring-supported map before drawing."}
+            </p>
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
               href="/dev"

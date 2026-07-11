@@ -59,6 +59,7 @@ import {
 import {
   getRealLondonPilotExerciseMetadata,
   realLondonOsmPilotRouteMap,
+  realLondonOsmPilotTwoRouteMap,
   type RouteRunnerMapOption
 } from "../route-runner/routeRunnerMaps.ts";
 import { ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON } from "../route-runner/curatedRealLondonRouteRunnerMaps.ts";
@@ -278,6 +279,7 @@ export type TrainingRouteAuthorAreaOption = {
   description: string;
   source: RouteRunnerMapOption["source"];
   sourceFixture?: string;
+  sourceFixturePath?: string;
   exerciseCount: number;
   mapVersion?: string | number;
   mapType: TrainingRouteAuthorMapType;
@@ -288,9 +290,9 @@ export type TrainingRouteAuthorAreaOption = {
 };
 
 export type TrainingRouteAuthorMapType =
-  | "real-london-osm-pilot"
-  | "real-london-curated-osm"
-  | "converted-osm-fixture"
+  | "real-london-pilot"
+  | "curated-real-london"
+  | "osm-prototype"
   | "synthetic-practice"
   | "visual-qa-fixture";
 
@@ -301,6 +303,7 @@ export type TrainingRouteAuthorMapRegistryEntry = {
   displayName: string;
   areaId: string;
   areaName: string;
+  sourceFixture?: string;
   sourceFixtureId?: string;
   sourceFixturePath?: string;
   mapType: TrainingRouteAuthorMapType;
@@ -311,6 +314,8 @@ export type TrainingRouteAuthorMapRegistryEntry = {
   exerciseCount: number;
   mapVersion?: string | number;
   unsupportedReason?: string;
+  option: RouteRunnerMapOption;
+  areaOption?: TrainingRouteAuthorAreaOption;
 };
 
 export type TrainingRouteAuthorExportReadiness = {
@@ -395,6 +400,7 @@ export type TrainingRouteAuthorModel = {
   effectiveRouteId: string;
   areaOptions: TrainingRouteAuthorAreaOption[];
   selectedArea: TrainingRouteAuthorAreaOption | null;
+  mapRegistry: TrainingRouteAuthorMapRegistryEntry[];
   metadataFields: TrainingRouteAuthorField[];
   validationRunStatus: "not-run" | LearnerRouteValidationResult["status"];
   comparisonRunStatus: "not-run" | CuratedShortestRouteComparisonDetail["comparisonStatus"];
@@ -409,37 +415,145 @@ export type TrainingRouteAuthorModel = {
   routeMatchMessage: string;
 };
 
-export const TRAINING_ROUTE_AUTHOR_MAP_REGISTRY: TrainingRouteAuthorMapRegistryEntry[] =
-  ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.map(routeRunnerMapOptionToTrainingRouteAuthorMapRegistryEntry);
+const TRAINING_ROUTE_AUTHOR_AUTHORABLE_BASE_MAP_IDS = new Set([
+  realLondonOsmPilotRouteMap.id,
+  realLondonOsmPilotTwoRouteMap.id
+]);
+const TRAINING_ROUTE_AUTHOR_CURATED_MAP_ID_PREFIX = "osm-curated-";
 
-export const TRAINING_ROUTE_AUTHOR_AREA_OPTIONS: TrainingRouteAuthorAreaOption[] =
-  ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
-    .filter(routeRunnerMapOptionSupportsTrainingRouteAuthoring)
-    .map(routeRunnerMapOptionToTrainingRouteAuthorAreaOption);
+function trainingRouteAuthorMapOptionIsScoreable(option: RouteRunnerMapOption): boolean {
+  if (option.scoreable !== undefined) {
+    return option.scoreable;
+  }
+
+  return option.fixtureUse === undefined || option.fixtureUse === "routableExercise";
+}
+
+function trainingRouteAuthorMapTypeForOption(option: RouteRunnerMapOption): TrainingRouteAuthorMapType {
+  if (option.source === "synthetic-dev") {
+    return "synthetic-practice";
+  }
+
+  if (option.fixtureUse === "visualQaOnly" || option.fixturePerformanceGate === "visualQaOnly") {
+    return "visual-qa-fixture";
+  }
+
+  if (option.map.id.startsWith(TRAINING_ROUTE_AUTHOR_CURATED_MAP_ID_PREFIX)) {
+    return "curated-real-london";
+  }
+
+  if (TRAINING_ROUTE_AUTHOR_AUTHORABLE_BASE_MAP_IDS.has(option.map.id)) {
+    return "real-london-pilot";
+  }
+
+  return "osm-prototype";
+}
+
+function trainingRouteAuthorMapStatusForOption(
+  option: RouteRunnerMapOption,
+  routeAuthoringSupported: boolean
+): TrainingRouteAuthorMapStatus {
+  if (!routeAuthoringSupported) {
+    return "unsupported";
+  }
+
+  if (option.devOnly || option.visibleInBeta || option.fixturePerformanceGate === "betaPracticeAllowed") {
+    return "beta";
+  }
+
+  return "active";
+}
+
+function trainingRouteAuthorUnsupportedReasonForOption(option: RouteRunnerMapOption): string | undefined {
+  if (option.source !== "converted-osm") {
+    return "Synthetic practice maps are loadable, but curated learner-driver routes must use real map-backed road metadata.";
+  }
+
+  if (option.fixtureUse === "visualQaOnly" || option.fixturePerformanceGate === "devOnlyStressTest" || !trainingRouteAuthorMapOptionIsScoreable(option)) {
+    return "This map is for visual QA, stress testing, or preview-only checks rather than route authoring.";
+  }
+
+  if (option.lazyLoadId) {
+    return "This map is lazy-loaded in Route Runner and is not synchronously available to the authoring tool yet.";
+  }
+
+  if (
+    !TRAINING_ROUTE_AUTHOR_AUTHORABLE_BASE_MAP_IDS.has(option.map.id) &&
+    !option.map.id.startsWith(TRAINING_ROUTE_AUTHOR_CURATED_MAP_ID_PREFIX)
+  ) {
+    return "Prototype OSM fixtures remain test data until promoted to a real authoring-supported training area.";
+  }
+
+  if (option.exercises.length === 0) {
+    return "No route-runner exercises are available for sample loading on this map.";
+  }
+
+  return undefined;
+}
+
+function trainingRouteAuthorMapOptionSupportsAuthoring(option: RouteRunnerMapOption): boolean {
+  return !trainingRouteAuthorUnsupportedReasonForOption(option);
+}
+
+function sourceFixturePathForMapOption(option: RouteRunnerMapOption): string | undefined {
+  return option.fixtureName ? `lib/map-engine/osm/fixtures/${option.fixtureName}` : undefined;
+}
+
+function buildTrainingRouteAuthorMapRegistryEntry(option: RouteRunnerMapOption): TrainingRouteAuthorMapRegistryEntry {
+  const routeAuthoringSupported = trainingRouteAuthorMapOptionSupportsAuthoring(option);
+  const mapType = trainingRouteAuthorMapTypeForOption(option);
+  const bounds = getRouteRunnerMapViewportBounds(
+    option.map,
+    TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+    TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+  );
+  const defaultViewport = { ...bounds };
+  const areaName = trainingRouteAuthorAreaNameForMapOption(option);
+  const areaOption = routeAuthoringSupported
+    ? routeRunnerMapOptionToTrainingRouteAuthorAreaOption(option, {
+        areaName,
+        bounds,
+        defaultViewport,
+        mapType,
+        status: trainingRouteAuthorMapStatusForOption(option, routeAuthoringSupported)
+      })
+    : undefined;
+
+  return {
+    mapId: option.map.id,
+    displayName: option.label,
+    areaId: option.id,
+    areaName,
+    sourceFixture: option.fixtureName,
+    sourceFixtureId: option.fixtureName,
+    sourceFixturePath: sourceFixturePathForMapOption(option),
+    mapType,
+    routeAuthoringSupported,
+    status: trainingRouteAuthorMapStatusForOption(option, routeAuthoringSupported),
+    defaultViewport,
+    bounds,
+    unsupportedReason: trainingRouteAuthorUnsupportedReasonForOption(option),
+    exerciseCount: option.exercises.length,
+    mapVersion: option.map.mapVersion ?? option.map.version,
+    option,
+    areaOption
+  };
+}
+
+export const TRAINING_ROUTE_AUTHOR_MAP_REGISTRY: TrainingRouteAuthorMapRegistryEntry[] =
+  ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.map(buildTrainingRouteAuthorMapRegistryEntry);
+
+export const TRAINING_ROUTE_AUTHOR_AREA_OPTIONS: TrainingRouteAuthorAreaOption[] = TRAINING_ROUTE_AUTHOR_MAP_REGISTRY
+  .map((entry) => entry.areaOption)
+  .filter((option): option is TrainingRouteAuthorAreaOption => Boolean(option));
 
 const DEFAULT_TRAINING_ROUTE_AUTHOR_AREA =
   TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.mapId === realLondonOsmPilotRouteMap.id) ??
-  routeRunnerMapOptionToTrainingRouteAuthorAreaOption({
-    id: realLondonOsmPilotRouteMap.id,
-    label: realLondonOsmPilotRouteMap.name,
-    description: realLondonOsmPilotRouteMap.description ?? "Real London authoring map.",
-    source: "converted-osm",
-    map: realLondonOsmPilotRouteMap,
-    exercises: [],
-    defaultExerciseId: "",
-    fixtureName: "realLondonPilotOverpass.json"
-  });
-const DEFAULT_TRAINING_ROUTE_AUTHOR_MAP_OPTION =
-  ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find(
-    (option) => option.id === DEFAULT_TRAINING_ROUTE_AUTHOR_AREA.areaId
-  );
+  TRAINING_ROUTE_AUTHOR_AREA_OPTIONS[0];
 
-const EMPTY_VALIDATION = validateLearnerRoute({
-  map: realLondonOsmPilotRouteMap,
-  routeSegments: [],
-  difficulty: "beginner"
-});
-
+if (!DEFAULT_TRAINING_ROUTE_AUTHOR_AREA) {
+  throw new Error("No authoring-supported training route map is available.");
+}
 const ARRAY_METADATA_FIELDS = new Set<keyof CuratedTrainingRouteMetadata>([
   "skillsPractised",
   "expectedLearnerMistakes",
@@ -501,14 +615,26 @@ export function buildTrainingRouteAuthorMapLegendModel(input: {
 }
 
 function routeRunnerMapOptionToTrainingRouteAuthorAreaOption(
-  option: RouteRunnerMapOption
+  option: RouteRunnerMapOption,
+  input?: {
+    areaName?: string;
+    bounds?: TrainingRouteAuthorMapBounds;
+    defaultViewport?: TrainingRouteAuthorMapBounds;
+    mapType?: TrainingRouteAuthorMapType;
+    status?: TrainingRouteAuthorMapStatus;
+  }
 ): TrainingRouteAuthorAreaOption {
-  const areaName = trainingRouteAuthorAreaNameForMapOption(option);
-  const bounds = getRouteRunnerMapViewportBounds(
-    option.map,
-    TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
-    TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
-  );
+  const areaName = input?.areaName ?? trainingRouteAuthorAreaNameForMapOption(option);
+  const bounds =
+    input?.bounds ??
+    getRouteRunnerMapViewportBounds(
+      option.map,
+      TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
+      TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
+    );
+  const defaultViewport = input?.defaultViewport ?? bounds;
+  const mapType = input?.mapType ?? trainingRouteAuthorMapTypeForOption(option);
+  const status = input?.status ?? trainingRouteAuthorMapStatusForOption(option, true);
 
   return {
     areaId: option.id,
@@ -520,117 +646,39 @@ function routeRunnerMapOptionToTrainingRouteAuthorAreaOption(
     description: option.description,
     source: option.source,
     sourceFixture: option.fixtureName,
+    sourceFixturePath: sourceFixturePathForMapOption(option),
     exerciseCount: option.exercises.length,
     mapVersion: option.map.mapVersion ?? option.map.version,
-    mapType: trainingRouteAuthorMapTypeForMapOption(option),
-    status: trainingRouteAuthorMapStatusForMapOption(option),
-    defaultViewport: bounds,
+    mapType,
+    defaultViewport,
     bounds,
+    status,
     readiness: "authoring-ready"
   };
 }
 
-function routeRunnerMapOptionToTrainingRouteAuthorMapRegistryEntry(
-  option: RouteRunnerMapOption
-): TrainingRouteAuthorMapRegistryEntry {
-  const areaName = trainingRouteAuthorAreaNameForMapOption(option);
-  const bounds = getRouteRunnerMapViewportBounds(
-    option.map,
-    TRAINING_ROUTE_AUTHOR_CANVAS_WIDTH,
-    TRAINING_ROUTE_AUTHOR_CANVAS_HEIGHT
-  );
-  const unsupportedReason = trainingRouteAuthorUnsupportedReasonForMapOption(option);
-
-  return {
-    mapId: option.map.id,
-    displayName: option.label,
-    areaId: option.id,
-    areaName,
-    sourceFixtureId: option.fixtureName,
-    sourceFixturePath: option.fixtureName
-      ? `lib/map-engine/osm/fixtures/${option.fixtureName}`
-      : undefined,
-    mapType: trainingRouteAuthorMapTypeForMapOption(option),
-    routeAuthoringSupported: !unsupportedReason,
-    defaultViewport: bounds,
-    bounds,
-    status: unsupportedReason ? "unsupported" : trainingRouteAuthorMapStatusForMapOption(option),
-    exerciseCount: option.exercises.length,
-    mapVersion: option.map.mapVersion ?? option.map.version,
-    unsupportedReason
-  };
-}
-
-function routeRunnerMapOptionSupportsTrainingRouteAuthoring(option: RouteRunnerMapOption): boolean {
-  return !trainingRouteAuthorUnsupportedReasonForMapOption(option);
-}
-
-function trainingRouteAuthorUnsupportedReasonForMapOption(option: RouteRunnerMapOption): string | undefined {
-  if (option.source === "synthetic-dev") {
-    return "Synthetic practice maps are not used for real curated route authoring.";
-  }
-
-  if (option.fixtureUse === "visualQaOnly" || option.scoreable === false) {
-    return "Visual QA and unscoreable maps are not suitable for route authoring.";
-  }
-
-  if (option.fixturePerformanceGate === "devOnlyStressTest") {
-    return "Stress-test fixtures are intentionally excluded from route authoring.";
-  }
-
-  if (option.lazyLoadId || option.sourceOverpassFixture === undefined) {
-    return "The full map fixture is not loaded in this authoring surface.";
-  }
-
-  if (option.exercises.length === 0) {
-    return "No routable exercises are available for this map.";
-  }
-
-  return undefined;
-}
-
-function trainingRouteAuthorMapTypeForMapOption(option: RouteRunnerMapOption): TrainingRouteAuthorMapType {
-  if (option.fixtureUse === "visualQaOnly" || option.scoreable === false) {
-    return "visual-qa-fixture";
-  }
-
-  if (option.source === "synthetic-dev") {
-    return "synthetic-practice";
-  }
-
-  if (option.map.id === realLondonOsmPilotRouteMap.id || option.map.id === "osm-real-london-pilot-2") {
-    return "real-london-osm-pilot";
-  }
-
-  if (option.map.id.startsWith("osm-curated-")) {
-    return "real-london-curated-osm";
-  }
-
-  return "converted-osm-fixture";
-}
-
-function trainingRouteAuthorMapStatusForMapOption(option: RouteRunnerMapOption): TrainingRouteAuthorMapStatus {
-  if (option.map.id === realLondonOsmPilotRouteMap.id) {
-    return "active";
-  }
-
-  if (option.visibleInBeta) {
-    return "beta";
-  }
-
-  return "dev-only";
-}
-
 function trainingRouteAuthorAreaNameForMapOption(option: RouteRunnerMapOption): string {
   if (option.map.id === realLondonOsmPilotRouteMap.id) {
-    return "Real London";
+    return "Goodge Street / Tottenham Court Road";
   }
 
-  if (option.map.id === "osm-real-london-pilot-2") {
+  if (option.map.id === realLondonOsmPilotTwoRouteMap.id) {
     return "Euston / Bloomsbury";
   }
 
-  return option.map.name;
+  return option.label.replace(/\s+curated OSM$/i, "");
+}
+
+function getTrainingRouteAuthorRegistryEntry(
+  areaId: string | null | undefined
+): TrainingRouteAuthorMapRegistryEntry | null {
+  const trimmedAreaId = areaId?.trim();
+
+  if (!trimmedAreaId) {
+    return null;
+  }
+
+  return TRAINING_ROUTE_AUTHOR_MAP_REGISTRY.find((entry) => entry.option.id === trimmedAreaId) ?? null;
 }
 
 export function getTrainingRouteAuthorAreaOption(
@@ -645,26 +693,34 @@ export function getTrainingRouteAuthorAreaOption(
   return TRAINING_ROUTE_AUTHOR_AREA_OPTIONS.find((option) => option.areaId === trimmedAreaId) ?? null;
 }
 
-function getTrainingRouteAuthorMapOptionForAreaId(areaId: string | null | undefined): RouteRunnerMapOption {
-  const selectedArea = getTrainingRouteAuthorAreaOption(areaId) ?? DEFAULT_TRAINING_ROUTE_AUTHOR_AREA;
-  const option = ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON.find(
-    (candidate) => candidate.id === selectedArea.areaId && routeRunnerMapOptionSupportsTrainingRouteAuthoring(candidate)
-  );
+function getTrainingRouteAuthorMapOption(
+  areaId: string | null | undefined
+): RouteRunnerMapOption | null {
+  const entry = getTrainingRouteAuthorRegistryEntry(areaId);
 
-  return option ?? DEFAULT_TRAINING_ROUTE_AUTHOR_MAP_OPTION ?? {
-    id: realLondonOsmPilotRouteMap.id,
-    label: realLondonOsmPilotRouteMap.name,
-    description: realLondonOsmPilotRouteMap.description ?? "Real London authoring map.",
-    source: "converted-osm",
-    map: realLondonOsmPilotRouteMap,
-    exercises: [],
-    defaultExerciseId: "",
-    fixtureName: "realLondonPilotOverpass.json"
-  };
+  if (!entry?.routeAuthoringSupported) {
+    return null;
+  }
+
+  return entry.option;
 }
 
 function getTrainingRouteAuthorMapOptionForState(state: TrainingRouteAuthorState): RouteRunnerMapOption {
-  return getTrainingRouteAuthorMapOptionForAreaId(state.metadata.areaId);
+  const option = getTrainingRouteAuthorMapOption(state.metadata.areaId) ?? getTrainingRouteAuthorMapOption(DEFAULT_TRAINING_ROUTE_AUTHOR_AREA.areaId);
+
+  if (!option) {
+    throw new Error("No authoring-supported training route map option is available.");
+  }
+
+  return option;
+}
+
+function emptyValidationForMap(map: MapDefinition): LearnerRouteValidationResult {
+  return validateLearnerRoute({
+    map,
+    routeSegments: [],
+    difficulty: "beginner"
+  });
 }
 
 function metadataAreaFieldsForOption(option: TrainingRouteAuthorAreaOption): Pick<
@@ -724,20 +780,20 @@ function trainingRouteAuthorAreaSelectionIsValid(metadata: CuratedTrainingRouteM
 
 function trainingRouteAuthorAreaHelpText(option: TrainingRouteAuthorAreaOption | null): string {
   if (!option) {
-    return "Select a practice map or training area.";
+    return "Select a real map source or training area.";
   }
 
   const details = [
     `Map id: ${option.mapId}`,
     option.sourceFixture ? `Source fixture: ${option.sourceFixture}` : null,
     `Map type: ${option.mapType.replaceAll("-", " ")}`,
-    `Status: ${option.status}`,
     `Exercises: ${option.exerciseCount}`,
     option.mapVersion ? `Map version: ${option.mapVersion}` : null,
+    `Status: ${option.status}`,
     "Readiness: authoring ready"
   ].filter((detail): detail is string => Boolean(detail));
 
-  return details.join(" · ");
+  return details.join(" | ");
 }
 
 function uniqueSortedStrings(values: readonly string[]): string[] {
@@ -1349,12 +1405,11 @@ function metadataForNewRoute(areaOption: TrainingRouteAuthorAreaOption = DEFAULT
   };
 }
 
-function metadataForExercise(input: {
-  exercise: RouteExercise;
-  map: MapDefinition;
-  areaOption: TrainingRouteAuthorAreaOption;
-}): CuratedTrainingRouteMetadata {
-  const { exercise, map, areaOption } = input;
+function metadataForExercise(
+  exercise: RouteExercise,
+  map: MapDefinition,
+  areaOption: TrainingRouteAuthorAreaOption = DEFAULT_TRAINING_ROUTE_AUTHOR_AREA
+): CuratedTrainingRouteMetadata {
   const metadata = getRealLondonPilotExerciseMetadata(exercise);
   const routeType = metadata?.routeType ?? "direct";
   const hasIntermediateStops = selectedStopNodeIds(exercise, map).length > 2;
@@ -1428,7 +1483,7 @@ function buildMetadataFields(input: {
       value: metadata.areaId,
       options: areaOptions,
       optionLabels: {
-        "": "Select a practice map or training area",
+        "": "Select a map / training area",
         ...areaOptionLabels
       },
       helpText: trainingRouteAuthorAreaHelpText(selectedArea)
@@ -1602,7 +1657,7 @@ function authoringValidationIssues(input: {
     issues.push(
       trainingRouteAuthorIssue({
         code: "author-metadata-incomplete",
-        explanation: "Select a practice map or training area."
+        explanation: "Select a map / training area."
       })
     );
   }
@@ -2048,7 +2103,7 @@ function refreshRouteMatch(state: TrainingRouteAuthorState): TrainingRouteAuthor
     return {
       ...invalidateReviewState(state),
       routeMatchStatus: "snapping-failed",
-      routeMatchMessage: snappedRoute.diagnostics[0]?.message ?? "The drawn route could not be snapped to the selected map roads.",
+      routeMatchMessage: snappedRoute.diagnostics[0]?.message ?? `The drawn route could not be snapped to ${map.name} roads.`,
       routeNodeIds: [],
       roadIds: [],
       validationSegments: [],
@@ -2114,11 +2169,14 @@ export function createEmptyTrainingRouteAuthorState(areaId?: string | null): Tra
 }
 
 export function createSampleTrainingRouteAuthorState(areaId?: string | null): TrainingRouteAuthorState {
-  const mapOption = getTrainingRouteAuthorMapOptionForAreaId(areaId);
-  const areaOption = getTrainingRouteAuthorAreaOption(mapOption.id) ?? DEFAULT_TRAINING_ROUTE_AUTHOR_AREA;
-  const exercise = mapOption.exercises.find((candidate) => candidate.stops.length >= 2) ?? mapOption.exercises[0];
+  const areaOption = getTrainingRouteAuthorAreaOption(areaId) ?? DEFAULT_TRAINING_ROUTE_AUTHOR_AREA;
+  const mapOption = getTrainingRouteAuthorMapOption(areaOption.areaId) ?? getTrainingRouteAuthorMapOption(DEFAULT_TRAINING_ROUTE_AUTHOR_AREA.areaId);
+  const exercise =
+    mapOption?.exercises.find((candidate) => candidate.id === mapOption.defaultExerciseId && candidate.stops.length >= 2) ??
+    mapOption?.exercises.find((candidate) => candidate.stops.length >= 2) ??
+    mapOption?.exercises[0];
 
-  if (!exercise) {
+  if (!mapOption || !exercise) {
     return createEmptyTrainingRouteAuthorState(areaOption.areaId);
   }
 
@@ -2134,8 +2192,8 @@ export function createSampleTrainingRouteAuthorState(areaId?: string | null): Tr
   const roadIds = shortestRoute.found ? shortestRoute.roadIds : [];
   const routePoints = pointsForNodeIds(map, nodeIds);
   const state: TrainingRouteAuthorState = {
-    ...createEmptyTrainingRouteAuthorState(),
-    metadata: metadataForExercise({ exercise, map, areaOption }),
+    ...createEmptyTrainingRouteAuthorState(areaOption.areaId),
+    metadata: metadataForExercise(exercise, map, areaOption),
     startNodeId: stopNodeIds[0] ?? null,
     destinationNodeId: stopNodeIds.at(-1) ?? null,
     checkpointNodeIds: stopNodeIds.slice(1, -1),
@@ -2156,11 +2214,11 @@ export function createSampleTrainingRouteAuthorState(areaId?: string | null): Tr
 }
 
 export function getTrainingRouteAuthorMap(stateOrAreaId?: TrainingRouteAuthorState | string | null): MapDefinition {
-  const areaId = typeof stateOrAreaId === "string" || stateOrAreaId === null
-    ? stateOrAreaId
-    : stateOrAreaId?.metadata.areaId;
+  if (typeof stateOrAreaId === "object" && stateOrAreaId !== null) {
+    return getTrainingRouteAuthorMapOptionForState(stateOrAreaId).map;
+  }
 
-  return getTrainingRouteAuthorMapOptionForAreaId(areaId).map;
+  return getTrainingRouteAuthorMapOption(stateOrAreaId ?? DEFAULT_TRAINING_ROUTE_AUTHOR_AREA.areaId)?.map ?? realLondonOsmPilotRouteMap;
 }
 
 export function resolveNearestTrainingRouteAuthorNodeSnap(
@@ -2367,19 +2425,27 @@ export function compareTrainingRouteAuthorShortestRoute(state: TrainingRouteAuth
   };
 }
 
+export function trainingRouteAuthorStateHasRouteContent(state: TrainingRouteAuthorState): boolean {
+  return Boolean(
+    state.startNodeId ||
+      state.destinationNodeId ||
+      state.checkpointNodeIds.length > 0 ||
+      state.routeDraft.strokes.length > 0 ||
+      state.routeNodeIds.length > 0 ||
+      state.roadIds.length > 0 ||
+      state.validationSegments.length > 0 ||
+      state.snappedRoutePoints.length > 0 ||
+      state.validationHasRun ||
+      state.comparisonHasRun ||
+      state.sampleLoaded
+  );
+}
+
 export function trainingRouteAuthorStateHasUnsavedChanges(state: TrainingRouteAuthorState): boolean {
   const defaultMetadata = metadataForNewRoute(getTrainingRouteAuthorAreaOption(state.metadata.areaId) ?? DEFAULT_TRAINING_ROUTE_AUTHOR_AREA);
 
   return (
-    Boolean(state.startNodeId) ||
-    Boolean(state.destinationNodeId) ||
-    state.checkpointNodeIds.length > 0 ||
-    state.routeDraft.strokes.length > 0 ||
-    state.routeNodeIds.length > 0 ||
-    state.validationSegments.length > 0 ||
-    state.validationHasRun ||
-    state.comparisonHasRun ||
-    state.sampleLoaded ||
+    trainingRouteAuthorStateHasRouteContent(state) ||
     state.metadata.routeId !== defaultMetadata.routeId ||
     state.metadata.title !== defaultMetadata.title ||
     state.metadata.difficulty !== defaultMetadata.difficulty ||
@@ -2393,27 +2459,29 @@ export function selectTrainingRouteAuthorArea(
 ): TrainingRouteAuthorState {
   const selectedArea = getTrainingRouteAuthorAreaOption(areaId);
 
-  if (!selectedArea) {
-    return {
-      ...state,
-      metadata: {
-        ...state.metadata,
-        areaId,
-        practiceMapId: "",
-        areaName: "",
-        area: "",
-        sourceFixture: undefined
-      },
-      validationHasRun: false,
-      comparisonHasRun: false
-    };
-  }
-
-  if (selectedArea.areaId === state.metadata.areaId) {
+  if (selectedArea?.areaId === state.metadata.areaId || (!selectedArea && areaId === state.metadata.areaId)) {
     return state;
   }
 
-  return createEmptyTrainingRouteAuthorState(selectedArea.areaId);
+  const preservedMetadata: CuratedTrainingRouteMetadata = {
+    ...state.metadata,
+    ...(selectedArea
+      ? metadataAreaFieldsForOption(selectedArea)
+      : {
+          area: "",
+          practiceMapId: "",
+          areaId,
+          areaName: "",
+          sourceFixture: undefined
+        })
+  };
+  const clearedState = createEmptyTrainingRouteAuthorState(selectedArea?.areaId ?? null);
+
+  return {
+    ...clearedState,
+    metadata: preservedMetadata,
+    sampleLoaded: false
+  };
 }
 
 export function updateTrainingRouteAuthorMetadataField(
@@ -2429,6 +2497,15 @@ export function updateTrainingRouteAuthorMetadataField(
       .map((item) => item.trim())
       .filter(Boolean);
   } else if (fieldId === "areaId") {
+    if (value === state.metadata.areaId) {
+      return {
+        ...state,
+        metadata,
+        validationHasRun: false,
+        comparisonHasRun: false
+      };
+    }
+
     return selectTrainingRouteAuthorArea(state, value);
   } else if (fieldId === "difficulty") {
     metadata.difficulty = value as CuratedTrainingRouteMetadata["difficulty"];
@@ -2583,7 +2660,7 @@ function buildExportReadiness(input: {
     { label: "Destination selected", complete: input.hasDestination },
     { label: "Required checkpoints selected", complete: !input.checkpointsRequired || input.checkpointCount > 0 },
     { label: "Route drawn and matched", complete: input.hasRoute },
-    { label: "Practice map or training area selected", complete: hasSelectedArea },
+    { label: "Map / training area selected", complete: hasSelectedArea },
     { label: "Required metadata complete", complete: hasRequiredMetadata },
     { label: "Validation has run", complete: input.validationHasRun },
     {
@@ -2630,7 +2707,7 @@ function buildSaveTarget(input: {
   const baseChecklist = [
     { label: "Route id is safe and present", complete: Boolean(input.metadata.routeId.trim()) },
     { label: "Title is present", complete: Boolean(input.metadata.title.trim()) },
-    { label: "Practice map or training area selected", complete: hasSelectedArea }
+    { label: "Map / training area selected", complete: hasSelectedArea }
   ];
   const workingDraftChecklist = [
     ...baseChecklist,
@@ -2708,8 +2785,8 @@ function unavailableMessageForSaveMode(
     return null;
   }
 
-  if (missingItem.label === "Practice map or training area selected") {
-    return `${CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[mode]} unavailable: Select a practice map or training area.`;
+  if (missingItem.label === "Map / training area selected") {
+    return `${CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[mode]} unavailable: Select a map / training area.`;
   }
 
   return `${CURATED_TRAINING_ROUTE_SAVE_MODE_LABELS[mode]} unavailable: ${missingItem.label.charAt(0).toLowerCase()}${missingItem.label.slice(1)}.`;
@@ -2810,9 +2887,6 @@ export function buildTrainingRouteAuthorModel(input?: {
   difficultyOverride?: Exclude<ExerciseDifficulty, "easy">;
 }): TrainingRouteAuthorModel {
   const baseState = input?.state ?? createEmptyTrainingRouteAuthorState();
-  const mapOption = getTrainingRouteAuthorMapOptionForState(baseState);
-  const sourceMap = mapOption.map;
-  const graph = buildMapGraph(sourceMap);
   const baseMetadata = normaliseTrainingRouteAuthorMetadataArea(baseState.metadata);
   const metadata: CuratedTrainingRouteMetadata = {
     ...baseMetadata,
@@ -2822,6 +2896,17 @@ export function buildTrainingRouteAuthorModel(input?: {
     status: input?.statusOverride ?? baseMetadata.status
   };
   const selectedArea = getTrainingRouteAuthorAreaOption(metadata.areaId);
+  const selectedMapOption = getTrainingRouteAuthorMapOption(metadata.areaId) ?? getTrainingRouteAuthorMapOptionForState(baseState);
+  const selectedRegistryEntry = getTrainingRouteAuthorRegistryEntry(metadata.areaId);
+  const sourceMap = selectedMapOption.map;
+  const graph = buildMapGraph(sourceMap);
+  const sourceExercise =
+    baseState.sampleLoaded
+      ? selectedMapOption.exercises.find((exercise) => exercise.id === selectedMapOption.defaultExerciseId) ??
+        selectedMapOption.exercises.find((exercise) => selectedStopNodeIds(exercise, sourceMap).length >= 2) ??
+        selectedMapOption.exercises[0] ??
+        null
+      : null;
   const suggestedRouteId = suggestCuratedTrainingRouteId(metadata);
   const effectiveRouteId = effectiveCuratedTrainingRouteId(metadata);
   const exportMetadata: CuratedTrainingRouteMetadata = {
@@ -2849,8 +2934,8 @@ export function buildTrainingRouteAuthorModel(input?: {
       checkpointsRequired
     })
   });
-  const validationForDisplay = baseState.validationHasRun ? validation : EMPTY_VALIDATION;
-  const selectedStopNodeIds = [
+  const validationForDisplay = baseState.validationHasRun ? validation : emptyValidationForMap(sourceMap);
+  const selectedRouteStopNodeIds = [
     baseState.startNodeId,
     ...baseState.checkpointNodeIds,
     baseState.destinationNodeId
@@ -2858,7 +2943,7 @@ export function buildTrainingRouteAuthorModel(input?: {
   const shortestRouteComparison = buildShortestRouteComparison({
     map: sourceMap,
     graph,
-    stopNodeIds: selectedStopNodeIds,
+    stopNodeIds: selectedRouteStopNodeIds,
     authoredValidation: validation,
     authoredRouteIsValid: validation.valid && baseState.validationSegments.length > 0,
     difficulty: exportMetadata.difficulty,
@@ -2951,7 +3036,7 @@ export function buildTrainingRouteAuthorModel(input?: {
   const shortestPoints = shortestRoutePoints({
     map: sourceMap,
     graph,
-    stopNodeIds: selectedStopNodeIds,
+    stopNodeIds: selectedRouteStopNodeIds,
     comparisonHasRun: baseState.comparisonHasRun
   });
   const mapModel: TrainingRouteAuthorMapModel = {
@@ -3023,10 +3108,37 @@ export function buildTrainingRouteAuthorModel(input?: {
     metadata: exportMetadata,
     mapId: sourceMap.id,
     mapVersion: sourceMap.mapVersion ?? sourceMap.version,
-    sourceRouteExerciseId: baseState.sampleLoaded ? mapOption.defaultExerciseId || undefined : undefined,
-    sourceRouteExerciseVersion: baseState.sampleLoaded
-      ? mapOption.exercises.find((exercise) => exercise.id === mapOption.defaultExerciseId)?.exerciseVersion
-      : undefined,
+    mapMetadata: selectedArea
+      ? {
+          mapId: selectedArea.mapId,
+          areaId: selectedArea.areaId,
+          areaName: selectedArea.areaName,
+          mapName: selectedArea.mapName,
+          mapType: selectedArea.mapType,
+          sourceFixture: selectedArea.sourceFixture,
+          sourceFixturePath: selectedArea.sourceFixturePath,
+          mapVersion: selectedArea.mapVersion,
+          defaultViewport: selectedArea.defaultViewport,
+          bounds: selectedArea.bounds,
+          status: selectedArea.status
+        }
+      : selectedRegistryEntry
+        ? {
+            mapId: selectedRegistryEntry.mapId,
+            areaId: metadata.areaId,
+            areaName: selectedRegistryEntry.areaName,
+            mapName: selectedRegistryEntry.option.map.name,
+            mapType: selectedRegistryEntry.mapType,
+            sourceFixture: selectedRegistryEntry.sourceFixture,
+            sourceFixturePath: selectedRegistryEntry.sourceFixturePath,
+            mapVersion: selectedRegistryEntry.option.map.mapVersion ?? selectedRegistryEntry.option.map.version,
+            defaultViewport: selectedRegistryEntry.defaultViewport,
+            bounds: selectedRegistryEntry.bounds,
+            status: selectedRegistryEntry.status
+          }
+        : undefined,
+    sourceRouteExerciseId: sourceExercise?.id,
+    sourceRouteExerciseVersion: sourceExercise?.exerciseVersion,
     start: curatedStopForNode({
       map: sourceMap,
       nodeId: baseState.startNodeId,
@@ -3080,7 +3192,7 @@ export function buildTrainingRouteAuthorModel(input?: {
       "Dev/admin only. Create, validate, compare, and export curated learner-driver training routes from real map interaction.",
     sourceMapId: sourceMap.id,
     sourceMapName: sourceMap.name,
-    sourceExerciseId: baseState.sampleLoaded && mapOption.defaultExerciseId ? mapOption.defaultExerciseId : "none",
+    sourceExerciseId: sourceExercise?.id ?? "none",
     sampleLoaded: baseState.sampleLoaded,
     activeMode: baseState.activeMode,
     toolbarActions: buildToolbarActions({
@@ -3102,6 +3214,7 @@ export function buildTrainingRouteAuthorModel(input?: {
     effectiveRouteId,
     areaOptions: TRAINING_ROUTE_AUTHOR_AREA_OPTIONS,
     selectedArea,
+    mapRegistry: TRAINING_ROUTE_AUTHOR_MAP_REGISTRY,
     metadataFields: buildMetadataFields({
       metadata,
       effectiveRouteId,
@@ -3120,7 +3233,7 @@ export function buildTrainingRouteAuthorModel(input?: {
     routeMatchStatus: baseState.routeMatchStatus,
     routeMatchMessage: baseState.routeMatchMessage,
     authoringWorkflow: [
-      `Open ${selectedArea?.areaName ?? sourceMap.name}.`,
+      "Choose the map / training area.",
       "Set a start point by clicking a valid road/node.",
       "Draw the intended learner route on the roads.",
       "Add optional ordered checkpoints.",

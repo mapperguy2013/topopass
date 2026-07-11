@@ -13,6 +13,7 @@ import {
   buildCuratedTrainingRoutePackReadiness,
   buildCuratedTrainingRoutePackSummary,
   buildCuratedTrainingRouteVisibilityDiagnostics,
+  curatedLearnerTrainingMapIsSupported,
   curatedTrainingRouteUnavailableMessage,
   curatedTrainingRouteToGeneratedLearnerExercise,
   generateLearnerAttemptFeedback,
@@ -378,20 +379,39 @@ test("Stage 19.4 dev training-route exports are normalised for curated route vis
 });
 
 test("Stage 19.4 Training Mode route cards include matching complete route options", () => {
+  const sourceRoute = CURATED_LEARNER_ROUTE_PACK.find(
+    (route) => route.routeId === "real-london-beginner-identify-next-safe-turn-store-street"
+  );
   const cards = buildCuratedTrainingRouteCards({
     mapId: realLondonOsmPilotRouteMap.id,
     difficulty: "beginner",
     exerciseType: "identify-next-safe-turn",
     activeRouteId: "real-london-beginner-identify-next-safe-turn-store-street"
   });
+  const areaMatchedCards = buildCuratedTrainingRouteCards({
+    mapId: realLondonOsmPilotRouteMap.id,
+    areaName: sourceRoute?.areaName,
+    difficulty: "beginner",
+    exerciseType: "identify-next-safe-turn"
+  });
+  const areaMismatchCards = buildCuratedTrainingRouteCards({
+    mapId: realLondonOsmPilotRouteMap.id,
+    areaName: "Different training area",
+    difficulty: "beginner",
+    exerciseType: "identify-next-safe-turn"
+  });
   const selection = selectCuratedTrainingRoute({
     mapId: realLondonOsmPilotRouteMap.id,
+    areaName: sourceRoute?.areaName,
     difficulty: "beginner",
     exerciseType: "identify-next-safe-turn",
     seed: "stage-19-4"
   });
 
+  assert.ok(sourceRoute);
   assert.equal(cards.length, 1);
+  assert.equal(areaMatchedCards.length, 1);
+  assert.equal(areaMismatchCards.length, 0);
   assert.equal(cards[0]?.routeId, "real-london-beginner-identify-next-safe-turn-store-street");
   assert.equal(cards[0]?.selected, true);
   assert.equal(selection.route?.routeId, "real-london-beginner-identify-next-safe-turn-store-street");
@@ -481,35 +501,41 @@ test("Stage 19.4 curated route diagnostics identify hidden and excluded routes",
   );
 });
 
-test("Stage 20.1 learner Training Mode excludes curated routes on unsupported maps with diagnostics", () => {
-  const sourceRoute = CURATED_LEARNER_ROUTE_PACK[0];
-  const unsupportedRoute: CuratedTrainingRouteExport = {
-    ...sourceRoute,
+test("Stage 20.1 learner route visibility excludes unsupported map ids with diagnostics", () => {
+  const betaRoute = CURATED_LEARNER_ROUTE_PACK[0];
+  const unsupportedMapRoute: CuratedTrainingRouteExport = {
+    ...betaRoute,
     routeId: "unsupported-map-copy",
-    mapId: "osm-curated-centralLondon",
-    practiceMapId: "osm-curated-centralLondon",
-    areaId: "osm-curated-centralLondon",
-    areaName: "Central London stress fixture",
+    mapId: "osm-large-london",
+    practiceMapId: "osm-large-london",
+    areaId: "osm-large-london",
+    areaName: "OSM Large London",
     metadata: {
-      ...sourceRoute.metadata,
+      ...betaRoute.metadata,
       routeId: "unsupported-map-copy",
-      practiceMapId: "osm-curated-centralLondon",
-      areaId: "osm-curated-centralLondon",
-      areaName: "Central London stress fixture",
-      area: "Central London stress fixture"
+      practiceMapId: "osm-large-london",
+      areaId: "osm-large-london",
+      areaName: "OSM Large London",
+      area: "OSM Large London"
     }
   };
   const diagnostics = buildCuratedTrainingRouteVisibilityDiagnostics({
-    routes: [unsupportedRoute],
-    mapId: "osm-curated-centralLondon",
-    difficulty: unsupportedRoute.difficulty,
-    exerciseType: unsupportedRoute.exerciseType
+    routes: [betaRoute, unsupportedMapRoute]
   });
 
-  assert.equal(learnerFacingCuratedTrainingRoutes([unsupportedRoute]).length, 0);
-  assert.equal(diagnostics.learnerFacingRouteCount, 0);
-  assert.ok(diagnostics.excludedRoutes[0]?.reasons.includes("unsupported-learner-map"));
-  assert.match(diagnostics.excludedRoutes[0]?.message ?? "", /learner Training Mode cannot load yet/);
+  assert.equal(curatedLearnerTrainingMapIsSupported(realLondonOsmPilotRouteMap.id), true);
+  assert.equal(curatedLearnerTrainingMapIsSupported("osm-large-london"), false);
+  assert.equal(learnerFacingCuratedTrainingRoutes([unsupportedMapRoute]).length, 0);
+  assert.equal(diagnostics.learnerFacingRouteCount, 1);
+  assert.equal(diagnostics.excludedUnsupportedMapCount, 1);
+  assert.ok(
+    diagnostics.excludedRoutes.some(
+      (route) =>
+        route.routeId === "unsupported-map-copy" &&
+        route.reasons.includes("unsupported-learner-map") &&
+        /cannot load yet/.test(route.message)
+    )
+  );
 });
 
 test("Stage 20 curated routes instantiate, hint, score, feedback, and progress end to end", () => {

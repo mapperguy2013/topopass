@@ -138,6 +138,29 @@ export type CuratedTrainingRouteExport = {
   metadata: CuratedTrainingRouteMetadata;
   mapId: string;
   mapVersion?: string | number;
+  mapMetadata?: {
+    mapId: string;
+    areaId: string;
+    areaName: string;
+    mapName: string;
+    mapType: string;
+    sourceFixture?: string;
+    sourceFixturePath?: string;
+    mapVersion?: string | number;
+    defaultViewport?: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    };
+    bounds?: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    };
+    status: string;
+  };
   sourceRouteExerciseId?: string;
   sourceRouteExerciseVersion?: string | number;
   start: CuratedTrainingRouteStop;

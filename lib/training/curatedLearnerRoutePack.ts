@@ -208,11 +208,13 @@ export type CuratedTrainingRouteVisibilityDiagnostics = {
   completeRouteCount: number;
   learnerFacingRouteCount: number;
   excludedDraftOrReviewCount: number;
+  excludedUnsupportedMapCount: number;
   excludedMissingMetadataCount: number;
   excludedValidationBlockingCount: number;
   excludedRoutes: CuratedTrainingRouteVisibilityExcludedRoute[];
   filter?: {
     mapId: string;
+    areaName?: string;
     difficulty: ExerciseDifficulty;
     exerciseType: ExerciseType;
     matchingRouteCount: number;
@@ -255,6 +257,10 @@ export function isLearnerFacingCuratedTrainingRoute(route: CuratedTrainingRouteE
   return learnerVisibilityExclusionReasons(normaliseCuratedTrainingRouteExport(route)).length === 0;
 }
 
+export function curatedLearnerTrainingMapIsSupported(mapId: string): boolean {
+  return LEARNER_TRAINING_SUPPORTED_CURATED_MAP_IDS.has(mapId);
+}
+
 export function learnerFacingCuratedTrainingRoutes(
   routes: readonly CuratedTrainingRouteExport[] = CURATED_LEARNER_ROUTE_PACK
 ): CuratedTrainingRouteExport[] {
@@ -263,26 +269,40 @@ export function learnerFacingCuratedTrainingRoutes(
     .filter(isLearnerFacingCuratedTrainingRoute);
 }
 
+function routeMatchesCuratedTrainingFilters(
+  route: CuratedTrainingRouteExport,
+  input: {
+    mapId: string;
+    areaName?: string;
+    difficulty: ExerciseDifficulty;
+    exerciseType: ExerciseType;
+  }
+): boolean {
+  return (
+    route.mapId === input.mapId &&
+    (!input.areaName || route.areaName === input.areaName) &&
+    route.difficulty === input.difficulty &&
+    route.exerciseType === input.exerciseType
+  );
+}
+
 export function buildCuratedTrainingRouteCards(input: {
   routes?: readonly CuratedTrainingRouteExport[];
   mapId: string;
+  areaName?: string;
   difficulty: ExerciseDifficulty;
   exerciseType: ExerciseType;
   activeRouteId?: string | null;
 }): CuratedTrainingRouteCardModel[] {
   return learnerFacingCuratedTrainingRoutes(input.routes)
-    .filter(
-      (route) =>
-        route.mapId === input.mapId &&
-        route.difficulty === input.difficulty &&
-        route.exerciseType === input.exerciseType
-    )
+    .filter((route) => routeMatchesCuratedTrainingFilters(route, input))
     .map((route) => curatedRouteCard(route, route.routeId === input.activeRouteId));
 }
 
 export function selectCuratedTrainingRoute(input: {
   routes?: readonly CuratedTrainingRouteExport[];
   mapId: string;
+  areaName?: string;
   difficulty: ExerciseDifficulty;
   exerciseType: ExerciseType;
   recentRouteIds?: readonly string[];
@@ -293,11 +313,8 @@ export function selectCuratedTrainingRoute(input: {
   message: string | null;
   repeatedRecentRoute: boolean;
 } {
-  const availableRoutes = learnerFacingCuratedTrainingRoutes(input.routes).filter(
-    (route) =>
-      route.mapId === input.mapId &&
-      route.difficulty === input.difficulty &&
-      route.exerciseType === input.exerciseType
+  const availableRoutes = learnerFacingCuratedTrainingRoutes(input.routes).filter((route) =>
+    routeMatchesCuratedTrainingFilters(route, input)
   );
 
   if (availableRoutes.length === 0) {
@@ -326,6 +343,7 @@ export function selectCuratedTrainingRoute(input: {
 export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
   routes?: readonly CuratedTrainingRouteExport[];
   mapId?: string;
+  areaName?: string;
   difficulty?: ExerciseDifficulty;
   exerciseType?: ExerciseType;
 } = {}): CuratedTrainingRouteVisibilityDiagnostics {
@@ -359,6 +377,7 @@ export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
     excludedDraftOrReviewCount: excludedRoutes.filter((route) =>
       route.reasons.some((reason) => reason === "not-complete" || reason === "not-beta-or-approved")
     ).length,
+    excludedUnsupportedMapCount: excludedRoutes.filter((route) => route.reasons.includes("unsupported-learner-map")).length,
     excludedMissingMetadataCount: excludedRoutes.filter((route) => route.reasons.includes("missing-required-metadata")).length,
     excludedValidationBlockingCount: excludedRoutes.filter((route) => route.reasons.includes("validation-blocking-error")).length,
     excludedRoutes,
@@ -366,17 +385,24 @@ export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
   };
 
   if (input.mapId && input.difficulty && input.exerciseType) {
+    const filterMapId = input.mapId;
+    const filterAreaName = input.areaName;
+    const filterDifficulty = input.difficulty;
+    const filterExerciseType = input.exerciseType;
     const matchingRouteCount = learnerRoutes.filter(
-      (route) =>
-        route.mapId === input.mapId &&
-        route.difficulty === input.difficulty &&
-        route.exerciseType === input.exerciseType
+      (route) => routeMatchesCuratedTrainingFilters(route, {
+        mapId: filterMapId,
+        areaName: filterAreaName,
+        difficulty: filterDifficulty,
+        exerciseType: filterExerciseType
+      })
     ).length;
 
     diagnostics.filter = {
-      mapId: input.mapId,
-      difficulty: input.difficulty,
-      exerciseType: input.exerciseType,
+      mapId: filterMapId,
+      ...(filterAreaName ? { areaName: filterAreaName } : {}),
+      difficulty: filterDifficulty,
+      exerciseType: filterExerciseType,
       matchingRouteCount,
       hiddenByFilterCount: Math.max(0, learnerRoutes.length - matchingRouteCount)
     };
@@ -388,6 +414,7 @@ export function buildCuratedTrainingRouteVisibilityDiagnostics(input: {
 export function curatedTrainingRouteUnavailableMessage(input: {
   routes?: readonly CuratedTrainingRouteExport[];
   mapId?: string;
+  areaName?: string;
   difficulty?: ExerciseDifficulty;
   exerciseType?: ExerciseType;
 }): string {
@@ -730,7 +757,7 @@ function learnerVisibilityExclusionReasons(
     reasons.push("missing-required-metadata");
   }
 
-  if (route.mapId.trim().length > 0 && !LEARNER_TRAINING_SUPPORTED_CURATED_MAP_IDS.has(route.mapId)) {
+  if (route.mapId.trim().length > 0 && !curatedLearnerTrainingMapIsSupported(route.mapId)) {
     reasons.push("unsupported-learner-map");
   }
 

@@ -62,11 +62,11 @@ For maps and areas, keep the Stage 20.1 distinction: a map source is the actual 
 
 The authoring page reuses:
 
-- the existing Real London map data
+- the existing Route Runner map data for supported real/curated OSM areas
 - the learner route validation engine
 - Phase 7 exercise difficulty and exercise type models
 
-Author fields include route id, title, practice map / area, difficulty, exercise type, description, objective, skills practised, expected learner mistakes, hint sequence, scoring emphasis, instructor feedback notes, route choice justification, and route lifecycle status.
+Author fields include route id, title, map / training area, difficulty, exercise type, description, objective, skills practised, expected learner mistakes, hint sequence, scoring emphasis, instructor feedback notes, route choice justification, and route lifecycle status.
 
 Stage 18.6 adds a `Route choice justification` field. Use it when the authored route is intentionally longer than the shortest legal route that the project can prove from current map data.
 
@@ -102,54 +102,46 @@ Stage 18.20 keeps the map full-width but reduces the authoring viewport height f
 
 Stage 19.1 makes checkpoint behaviour explicit. Checkpoints added in `Add checkpoint` mode are numbered required stops when route metadata says the exercise needs checkpoint order. Validation checks the matched route visits them as Start -> Checkpoint 1 -> Checkpoint 2 -> Destination. Missed checkpoints and out-of-order checkpoints become blocking authoring validation issues for complete routes, and exports include checkpoint ids, order, labels, snapped node metadata, related route segment or road ids where available, marker display metadata, and an ordered `checkpointRequirements` block.
 
-Stage 20.1 adds the real map selector. `/dev/training-route` builds `TRAINING_ROUTE_AUTHOR_MAP_REGISTRY` from `ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON`, then exposes only entries that can already load in the authoring workspace. A map is authoring-supported when it has a loaded map definition, committed source fixture, routable exercises, and scoreable route matching. Synthetic practice maps, lazy-load placeholders, visual QA fixtures, stress-test fixtures, unscoreable maps, and maps without routable exercises stay in the registry with an unsupported reason but do not appear in the authoring selector.
+## Authoring Map Registry
 
-## Authoring Maps
+`/dev/training-route` does not invent maps. The selector is built from the existing Route Runner map options plus the curated Real London map options. A map appears in the authoring selector only when it is synchronously loadable by the app, backed by converted OSM map data, scoreable/routable, and promoted for curated training authoring.
 
-The authoring map selector is labelled `Map / training area`. It is dev-only and is not linked from learner navigation.
+Authoring-supported maps and areas:
 
-Available authoring sources come from:
+| Selector option | Map id | Source fixture | Notes |
+| --- | --- | --- | --- |
+| Real London pilot map | `osm-real-london-pilot` | `realLondonPilotOverpass.json` | Default Goodge Street / Tottenham Court Road authoring area used by the first route pack. |
+| Real London pilot map 2 | `osm-real-london-pilot-2` | `realLondonPilotTwoOverpass.json` | Second real London pilot fixture. |
+| Piccadilly Circus curated OSM | `osm-curated-piccadilly-circus` | `piccadillyCircusOverpass.json` | Dense central London curated area. |
+| Waterloo Bridge curated OSM | `osm-curated-waterloo-bridge` | `waterlooBridgeOverpass.json` | Thames / bridge / station curated area. |
+| One-way system curated OSM | `osm-curated-one-way-system-area` | `oneWaySystemAreaOverpass.json` | One-way and restriction-focused curated area. |
+| Quiet residential curated OSM | `osm-curated-quiet-residential-roads` | `quietResidentialRoadsOverpass.json` | Quieter learner-driver suburban road context. |
 
-- `app/dev/route-runner/routeRunnerMaps.ts` for practice, converted OSM, Real London pilot, larger OSM, and Phase 6 visual QA fixtures
-- `app/dev/route-runner/curatedRealLondonRouteRunnerMaps.ts` for curated real OSM area fixtures
-- `app/dev/training-route/trainingRouteAuthor.ts` for the authoring registry and selector filtering rules
+Loadable but not shown for authoring:
 
-Actually loadable for route authoring:
+| Map/source | Reason |
+| --- | --- |
+| Marlowe District fictional map | Loadable synthetic practice map, but curated learner-driver routes must use real map-backed road metadata. |
+| Tiny, medium, and large OSM prototype fixtures | Useful for tests and map QA, but not promoted as curated training authoring sources. |
+| Phase 6 visual QA scenario | Visual QA fixture, not real-world learner route authoring data. |
+| King's Cross / Euston curated OSM placeholder | Lazy-loaded in Route Runner and not synchronously available to `/dev/training-route` yet. |
+| Central London stress-test placeholder | Visual/stress fixture, not a learner route authoring source. |
 
-- `osm-real-london-pilot` - Real London pilot, fixture `realLondonPilotOverpass.json`, active
-- `osm-real-london-pilot-2` - Euston / Bloomsbury pilot, fixture `realLondonPilotTwoOverpass.json`, dev-only
-- `osm-tiny-london-prototype` - Tiny converted OSM fixture, fixture `tinyLondonOverpass.json`, dev-only
-- `osm-medium-london-prototype` - Medium converted OSM fixture, fixture `mediumLondonOverpass.json`, dev-only
-- `osm-large-london` - Larger converted OSM fixture, fixture `largeLondonOverpass.json`, dev-only
-- `osm-curated-piccadilly-circus` - Piccadilly Circus curated OSM, fixture `piccadillyCircusOverpass.json`, beta
-- `osm-curated-waterloo-bridge` - Waterloo Bridge curated OSM, fixture `waterlooBridgeOverpass.json`, beta
-- `osm-curated-one-way-system-area` - one-way system curated OSM, fixture `oneWaySystemAreaOverpass.json`, beta
-- `osm-curated-quiet-residential-roads` - quiet residential curated OSM, fixture `quietResidentialRoadsOverpass.json`, beta
+Map source versus area preset:
 
-Known exclusions:
+- `mapId` identifies the actual Route Runner map graph used for snapping, validation, shortest-route comparison, and learner Training Mode loading.
+- `areaId` currently matches the selected Route Runner option id.
+- `areaName` is learner-facing area text for route cards and filtering.
+- Real London pilot areas are map options rather than fake separate maps. If a future large map needs internal area presets, add presets to the registry with real bounds/viewport data while keeping the same underlying `mapId`.
 
-- `marlowe-district-dev-map` is a synthetic practice map, so it is not used for real curated route authoring.
-- `osm-phase-6-real-london-visual-qa` is a visual QA scenario and must not become a learner route source.
-- `osm-curated-kings-cross-euston` is a lazy-load placeholder in the route-runner catalogue; the full map is not loaded in `/dev/training-route` yet.
-- `osm-curated-centralLondon` is a lazy stress-test / visual QA fixture and remains unsupported for route authoring.
-- Test-only unit fixtures and visual QA fixtures are not shown unless they meet the same loaded, routable, scoreable fixture contract.
-
-A map source is the actual route graph and fixture used for snapping, validation, matching, shortest-route comparison, and learner replay. An area preset is only a viewport/bounds selection within an existing map source. Do not create a separate map entry for a neighbourhood unless the project has a separate committed map fixture or a real viewport preset tied to an existing source.
-
-To add a new authoring-supported map:
-
-1. Add or reuse a real route-runner map option with a committed fixture, loaded map definition, routable exercises, and stable map id.
-2. Keep `fixtureUse` as `routableExercise`, leave `scoreable` enabled, and avoid `lazyLoadId` until `/dev/training-route` can load that fixture directly.
-3. Confirm `TRAINING_ROUTE_AUTHOR_MAP_REGISTRY` reports the entry as supported and the selector lists it.
-4. Author a sample route, run validation and shortest-route comparison, and confirm export metadata includes the selected `mapId`, `areaId`, `areaName`, `sourceFixture`, `mapVersion`, and viewport metadata.
-5. Add learner loader support before expecting `/practice/training` to show complete routes from that map.
+Exports include `practiceMapId`, `areaId`, `areaName`, `sourceFixture`, `mapVersion`, viewport metadata, and a `mapMetadata` block with map type, source fixture path, bounds, default viewport, and registry status. Learner Training Mode supports curated routes only for map ids in the current learner-supported map allowlist; unsupported complete routes are excluded with `unsupported-learner-map` diagnostics.
 
 ## Authoring Workflow
 
 Use `/dev/training-route` for curated route creation:
 
 1. Set the start point on the map by choosing `Set start` and clicking a valid road/node.
-2. Draw the learner route in driving order with `Draw route`; the tool snaps and matches the trace to Real London road segments.
+2. Draw the learner route in driving order with `Draw route`; the tool snaps and matches the trace to the selected map road segments.
 3. Add numbered checkpoints with `Add checkpoint` if the learner must visit them. They are validated in the order shown on the map and in the Route state tab.
 4. Set the destination by choosing `Set destination` and clicking the final valid road/node.
 5. Use the bottom drawer's `Authoring steps` tab for the compact seven-step route workflow.
@@ -209,9 +201,9 @@ Export should remain blocked until start, destination, matched route geometry, r
 
 Save targets:
 
-- `Save working draft` is for incomplete or in-progress routes. It requires a safe route id, title, and selected practice map / area, stores JSON status as `draft`, and writes to `data/training-routes/drafts/`.
-- `Save review candidate` is for routes ready for dev or instructor review. It requires route id, title, selected practice map / area, start, destination, matched route, required metadata, and a validation run. It stores JSON status as `draft`, lifecycle stage as `review`, and writes to `data/training-routes/review/`.
-- `Save complete route` is for routes ready to become curated learner training routes. It requires route id, title, selected practice map / area, difficulty, exercise type, start, destination, matched route, required metadata, validation run, no blocking validation errors, shortest-route comparison run or unknown, required route choice justification, and beta or approved status. It writes to `data/training-routes/complete/`.
+- `Save working draft` is for incomplete or in-progress routes. It requires a safe route id, title, and selected map / training area, stores JSON status as `draft`, and writes to `data/training-routes/drafts/`.
+- `Save review candidate` is for routes ready for dev or instructor review. It requires route id, title, selected map / training area, start, destination, matched route, required metadata, and a validation run. It stores JSON status as `draft`, lifecycle stage as `review`, and writes to `data/training-routes/review/`.
+- `Save complete route` is for routes ready to become curated learner training routes. It requires route id, title, selected map / training area, difficulty, exercise type, start, destination, matched route, required metadata, validation run, no blocking validation errors, shortest-route comparison run or unknown, required route choice justification, and beta or approved status. It writes to `data/training-routes/complete/`.
 
 The suggested filename is based on route metadata:
 
@@ -256,8 +248,8 @@ Current pack status:
 - Pack id: `real-london-pilot-route-pack-1`
 - Storage: `data/training-routes/complete/`
 - Source map: `osm-real-london-pilot`
-- Learner-facing routes: 13 beta routes
-- Beginner routes: 3
+- Learner-facing routes: 14 beta/approved routes
+- Beginner routes: 4
 - Intermediate routes: 5
 - Advanced routes: 5
 - Checkpoint routes: 3
@@ -275,9 +267,9 @@ Run the app locally and check:
 5. Confirm the bottom drawer opens on the `Authoring steps` tab and can be collapsed and expanded.
 6. Click `Validate route` with no authored route and confirm the bottom drawer opens validation details explaining the missing start, destination, and route.
 7. Confirm the `Route state` tab shows compact route status cards and the authoring steps do not mark route, validation, comparison, or export complete from the empty default state.
-8. Confirm the top `Map / training area` field is a selector, lists only authoring-supported map sources from the registry, and shows map id, area, source fixture, status, and readiness details.
+8. Confirm the header `Map / training area` selector and the Metadata tab selector list only authoring-supported map sources from the registry and show map id, area, source fixture, status, and readiness details.
 9. Confirm the suggested route id and filename continue to use the selected area and update while the route id is still auto-generated.
-10. Confirm removing or invalidating the selected map / area blocks save readiness with `Select a practice map or training area.`
+10. Confirm removing or invalidating the selected map / training area blocks save readiness with `Select a map / training area.`
 11. Confirm the map legend is collapsed by default and appears as a `Map legend` control, not a permanent row below the map.
 12. Open `Map legend` and confirm the authoring entries are visible: Raw drawing, Matched route, Shortest overlay, One-way arrows, START, DESTINATION, and Checkpoint.
 13. On mobile, confirm the legend button is easy to tap, the expanded legend is easy to close, and it does not cover the map badly.
@@ -340,7 +332,7 @@ Before curated route loading begins in Stage 19, use `/dev/training-route` to pr
 3. Create a route manually: `Set start`, `Draw route`, optional or required `Add checkpoint`, and `Set destination`. The route state cards should change from missing to selected or matched only after real map interaction.
 4. Run `Validate route`. Empty and partial routes should show blocking errors for missing start, destination, route, or required checkpoints. Complete routes should show valid, warning, or invalid based on the current authored geometry, ordered checkpoints, and available map restrictions.
 5. Run `Compare shortest route`. If enough route data exists, confirm authored length, direct shortest length, checkpoint-constrained shortest length when checkpoints exist, percentage longer, and verdict are shown. If the route is a major detour, add a route choice justification before marking it beta or approved.
-6. Complete the `Metadata` tab. Route id plus filename suggestions should update from selected map/area, difficulty, exercise type, and title while remaining editable.
+6. Complete the `Metadata` tab. The `Map / training area` selector should use only authoring-supported map options, and route id plus filename suggestions should update from selected map/area, difficulty, exercise type, and title while remaining editable.
 7. Use `Save working draft` for incomplete authoring work under `data/training-routes/drafts/`. Use `Save review candidate` for validated instructor review files under `data/training-routes/review/`. Use `Save complete route` only for beta or approved routes that pass validation, shortest-route comparison, and route choice checks under `data/training-routes/complete/`.
 8. Confirm the exported JSON contains authored start, destination, ordered checkpoints, checkpoint requirements, route geometry, route segment ids, map/area metadata, metadata, validation summary, complexity summary, shortest-route comparison, and lifecycle data. It must not contain placeholder route geometry from a hidden fixture unless `Load sample route` was clicked explicitly.
 9. Verify one beginner, one intermediate, and one advanced route can reach export readiness. They can remain draft or review candidates during this gate; do not create the full curated route pack until Stage 19.

@@ -60,7 +60,7 @@ test("working draft saves incomplete authoring JSON under drafts with draft stat
     assert.equal(result.status, 200);
     assert.equal(
       result.relativePath,
-      "data/training-routes/drafts/real-london-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
+      "data/training-routes/drafts/goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham-draft.json"
     );
     assert.match(result.message, /Working draft saved/);
     assert.match(result.message, /data\/training-routes\/drafts\//);
@@ -71,21 +71,21 @@ test("working draft saves incomplete authoring JSON under drafts with draft stat
 
     assert.equal(savedRoute.createdAt, "2026-07-09T09:30:00.000Z");
     assert.equal(savedRoute.updatedAt, "2026-07-09T09:30:00.000Z");
-    assert.equal(savedRoute.routeId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
-    assert.equal(savedRoute.metadata.routeId, "real-london-intermediate-follow-planned-route-goodge-to-tottenham");
+    assert.equal(savedRoute.routeId, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham");
+    assert.equal(savedRoute.metadata.routeId, "goodge-street-tottenham-court-road-intermediate-follow-planned-route-goodge-to-tottenham");
     assert.equal(savedRoute.status, "draft");
     assert.equal(savedRoute.metadata.status, "draft");
     assert.equal(savedRoute.saveMode, "working-draft");
     assert.equal(savedRoute.lifecycleStage, "draft");
     assert.equal(savedRoute.title, "Goodge to Tottenham");
-    assert.equal(savedRoute.area, "Real London");
+    assert.equal(savedRoute.area, "Goodge Street / Tottenham Court Road");
     assert.equal(savedRoute.practiceMapId, "osm-real-london-pilot");
     assert.equal(savedRoute.areaId, "osm-real-london-pilot");
-    assert.equal(savedRoute.areaName, "Real London");
+    assert.equal(savedRoute.areaName, "Goodge Street / Tottenham Court Road");
     assert.equal(savedRoute.sourceFixture, "realLondonPilotOverpass.json");
     assert.equal(savedRoute.metadata.practiceMapId, "osm-real-london-pilot");
     assert.equal(savedRoute.metadata.areaId, "osm-real-london-pilot");
-    assert.equal(savedRoute.metadata.areaName, "Real London");
+    assert.equal(savedRoute.metadata.areaName, "Goodge Street / Tottenham Court Road");
     assert.equal(savedRoute.difficulty, "intermediate");
     assert.equal(savedRoute.exerciseType, "follow-planned-route");
     assert.deepEqual(savedRoute.routeSegmentIds, []);
@@ -350,7 +350,7 @@ test("complete route save blocks missing practice map or area metadata", async (
     assert.equal(result.ok, false);
     assert.equal(result.status, 400);
     assert.equal(result.reasonCode, "curated-training-route-draft-invalid");
-    assert.ok(result.errors?.includes("Select a practice map or training area."));
+    assert.ok(result.errors?.includes("Select a map / training area."));
   } finally {
     await rm(workspaceRoot, { recursive: true, force: true });
   }
@@ -413,7 +413,7 @@ function incompleteWorkingDraftRoute(route: CuratedTrainingRouteExport): Curated
     ...route,
     routeId: "curated-training-route-draft",
     title: "Goodge to Tottenham",
-    area: "Real London",
+    area: route.area,
     difficulty: "intermediate",
     exerciseType: "follow-planned-route",
     status: "beta",
@@ -421,7 +421,7 @@ function incompleteWorkingDraftRoute(route: CuratedTrainingRouteExport): Curated
       ...route.metadata,
       routeId: "curated-training-route-draft",
       title: "Goodge to Tottenham",
-      area: "Real London",
+      area: route.metadata.area,
       difficulty: "intermediate",
       exerciseType: "follow-planned-route",
       status: "beta"
