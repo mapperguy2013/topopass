@@ -5,6 +5,11 @@ The pack is stored as complete route exports under
 `data/training-routes/complete/` and loaded by
 `lib/training/curatedLearnerRoutePack.ts`.
 
+Stage 7P pauses Phase 7 without marking it complete. This document describes
+the first beta curated pack, not a finished Phase 7 learner curriculum. See
+`docs/phase-7-paused-state.md` for the remaining work before Phase 7 can be
+called complete.
+
 Automatic route generation remains available only as a clearly labelled
 experimental fallback. The normal learner-facing Generate action selects from
 complete `beta` or `approved` curated routes first.
@@ -15,7 +20,7 @@ complete `beta` or `approved` curated routes first.
 - Pack version: `2026.07`
 - Storage: `data/training-routes/complete/`
 - Learner-facing statuses: `beta`, `approved`
-- Current status: target met beta route pack
+- Current status: first beta target met; Phase 7 still paused and incomplete
 - Target pack size: 15 routes, with 5 beginner, 5 intermediate, and 5 advanced
   routes
 - Current pack size: 15 learner-facing routes

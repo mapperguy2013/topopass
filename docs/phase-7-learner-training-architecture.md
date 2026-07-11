@@ -1,5 +1,10 @@
 # Phase 7 Learner Training System
 
+Stage 7P pauses Phase 7 without marking it complete. See
+`docs/phase-7-paused-state.md` for the current working state, incomplete work,
+known risks, completion criteria, and the reason Phase 8 cartography work is
+starting while Phase 7 remains paused.
+
 Phase 7 turns the completed Phase 6 London route-runner map into a learner-driver
 training system. It adds training domain modules around the existing map,
 routing, route review, overlays, and local/Supabase fallback storage. It does
@@ -347,9 +352,10 @@ Regression tests protect:
 - Map zoom, pan, restriction overlays, road hierarchy, labels, and review
   markers continue through the existing map test suite.
 
-## Final Review
+## Current Regression Review
 
-The final Phase 7 review covered:
+The current Phase 7 regression review covers the implemented beta surface. This
+is not a Phase 7 completion sign-off.
 
 - Map rendering: protected by the Phase 6 route-runner, synthetic renderer,
   visual semantics, restriction overlay, zoom/pan, and mobile QA tests.
@@ -374,6 +380,9 @@ The final Phase 7 review covered:
 No pixel-perfect visual regression test was added because the project does not
 currently use screenshot or pixel regression testing for this route-runner
 surface.
+
+Phase 7 remains paused until the completion criteria in
+`docs/phase-7-paused-state.md` are met.
 ## Manual Training Mode Check
 
 To open Training Mode locally:
