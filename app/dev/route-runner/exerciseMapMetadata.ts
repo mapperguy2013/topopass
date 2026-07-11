@@ -403,6 +403,95 @@ export function exerciseMetadataCatalogueToAdaptivePracticeExercises(
   return exercises.map((metadata) => exerciseMetadataToAdaptivePracticeExercise(metadata));
 }
 
+type RouteExerciseWithRealLondonMetadata = RouteExercise & {
+  realLondonPilotMetadata?: {
+    difficulty?: RouteExercise["difficulty"];
+    routeType?: string;
+    estimatedDistanceMeters?: number;
+    expectedComplexity?: string;
+  };
+};
+
+export function routeExerciseToAdaptivePracticeExercise(
+  exercise: RouteExerciseWithRealLondonMetadata
+): AdaptivePracticeExerciseCatalogueItem {
+  const metadata = exercise.realLondonPilotMetadata;
+  const routeType = metadata?.routeType ?? "";
+  const searchableText = [
+    exercise.title,
+    exercise.description,
+    routeType,
+    metadata?.expectedComplexity
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .toLowerCase();
+  const focusAreas = new Set<string>([
+    "route-planning",
+    "map-reading",
+    "route-drawing-focus",
+    "disconnected-drawing",
+    "insufficient-drawing",
+    "start-destination-accuracy",
+    "wrong-start",
+    "wrong-destination"
+  ]);
+
+  if (exercise.stops.length > 2 || /checkpoint|multi-stop|ordered stop/.test(searchableText)) {
+    focusAreas.add("checkpoint-focus");
+    focusAreas.add("checkpoint-ordering");
+    focusAreas.add("missed-checkpoint");
+  }
+
+  if (/one-way|one way|wrong-way|wrong way/.test(searchableText)) {
+    focusAreas.add("restriction-focus");
+    focusAreas.add("one-way-compliance");
+    focusAreas.add("one-way-direction");
+  }
+
+  if (/no-entry|no entry/.test(searchableText)) {
+    focusAreas.add("restriction-focus");
+    focusAreas.add("no-entry-compliance");
+    focusAreas.add("no-entry");
+  }
+
+  if (/prohibited turn|turn restriction|no left|no right|u-turn|u turn/.test(searchableText)) {
+    focusAreas.add("restriction-focus");
+    focusAreas.add("prohibited-turn-compliance");
+    focusAreas.add("prohibited-turn");
+  }
+
+  if (/restricted road|restricted-road|closed road|restricted access|local-access|access restriction/.test(searchableText)) {
+    focusAreas.add("restriction-focus");
+    focusAreas.add("restricted-road-compliance");
+    focusAreas.add("restricted-road");
+  }
+
+  if (/shortest|efficient|efficiency|detour|longer|direct route|legal route|route legally/.test(searchableText)) {
+    focusAreas.add("efficiency-focus");
+    focusAreas.add("shortest-legal-route");
+    focusAreas.add("route-efficiency");
+  }
+
+  if (metadata?.difficulty === "hard" || exercise.difficulty === "hard") {
+    focusAreas.add("advanced-route");
+    focusAreas.add("mixed-practice");
+  }
+
+  return {
+    id: exercise.id,
+    title: exercise.title,
+    focusAreas: [...focusAreas].sort(),
+    difficulty: adaptiveDifficulty(metadata?.difficulty ?? exercise.difficulty ?? "medium")
+  };
+}
+
+export function routeExercisesToAdaptivePracticeExercises(
+  exercises: readonly RouteExercise[]
+): AdaptivePracticeExerciseCatalogueItem[] {
+  return exercises.map((exercise) => routeExerciseToAdaptivePracticeExercise(exercise));
+}
+
 export function validateExerciseMapMetadata(input: {
   maps: readonly MapMetadata[];
   exercises: readonly ExerciseMetadata[];

@@ -54,12 +54,14 @@ import {
   type AdaptivePracticeSourceSignals
 } from "./adaptivePracticeQueue";
 import {
-  buildCompactAdaptiveRecommendationDisplay
+  buildCompactAdaptiveRecommendationDisplay,
+  buildLearnerAdaptiveCoachingCard
 } from "./adaptiveRecommendationDisplay";
 import {
   MARLOWE_DISTRICT_EXERCISE_METADATA,
   MARLOWE_DISTRICT_METADATA_CATALOGUE,
   exerciseMetadataCatalogueToAdaptivePracticeExercises,
+  routeExercisesToAdaptivePracticeExercises,
   getExerciseMetadata,
   getMapMetadataForExercise
 } from "./exerciseMapMetadata";
@@ -362,7 +364,7 @@ const RESTRICTION_MAP_LEGEND_ITEMS = buildRestrictionLegendItems();
 const LEARNER_RESTRICTION_MAP_LEGEND_ITEMS = buildLearnerRestrictionLegendItems();
 const WEAK_AREA_PROFILE_STORAGE_KEY = "topopass.devRouteRunner.weakAreaProfile";
 const LEARNER_TRAINING_PROGRESS_LEARNER_ID = "route-runner-local-learner";
-const ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
+const MARLOWE_ADAPTIVE_PRACTICE_EXERCISES: AdaptivePracticeExercise[] =
   exerciseMetadataCatalogueToAdaptivePracticeExercises(MARLOWE_DISTRICT_EXERCISE_METADATA);
 const REAL_LONDON_BETA_ENABLED = isRealLondonBetaAccessEnabled();
 const MARLOWE_BETA_MAP_SUMMARY_LABEL = "Marlowe District — Fictional practice";
@@ -1205,9 +1207,47 @@ function syntheticLegendToneClass(tone: SyntheticStreetMapLegendItem["tone"]): s
   return "border-slate-200 bg-white text-slate-800";
 }
 
-function linkedAdaptiveExercise(item: AdaptivePracticeQueueItem): AdaptivePracticeExercise | null {
+function mergeAdaptivePracticeExercises(
+  exerciseGroups: readonly (readonly AdaptivePracticeExercise[])[]
+): AdaptivePracticeExercise[] {
+  const exercisesById = new Map<string, AdaptivePracticeExercise>();
+
+  for (const exercises of exerciseGroups) {
+    for (const exercise of exercises) {
+      if (!exercisesById.has(exercise.id)) {
+        exercisesById.set(exercise.id, exercise);
+      }
+    }
+  }
+
+  return [...exercisesById.values()];
+}
+
+function adaptivePracticeExercisesForRouteRunnerOptions(input: {
+  selectedMapOption: RouteRunnerMapOption;
+  mapOptions: readonly RouteRunnerMapOption[];
+}): AdaptivePracticeExercise[] {
+  const orderedMapOptions = [
+    input.selectedMapOption,
+    ...input.mapOptions.filter((option) => option.id !== input.selectedMapOption.id)
+  ];
+  const routeExerciseGroups = orderedMapOptions
+    .filter((option) => routeRunnerMapOptionIsScoreable(option))
+    .map((option) =>
+      option.map.id === DEFAULT_ROUTE_RUNNER_MAP_ID
+        ? MARLOWE_ADAPTIVE_PRACTICE_EXERCISES
+        : routeExercisesToAdaptivePracticeExercises(option.exercises)
+    );
+
+  return mergeAdaptivePracticeExercises([routeExerciseGroups.flat(), MARLOWE_ADAPTIVE_PRACTICE_EXERCISES]);
+}
+
+function linkedAdaptiveExercise(
+  item: AdaptivePracticeQueueItem,
+  adaptivePracticeExercises: readonly AdaptivePracticeExercise[]
+): AdaptivePracticeExercise | null {
   for (const exerciseId of item.relatedExerciseIds) {
-    const exercise = ADAPTIVE_PRACTICE_EXERCISES.find((candidate) => candidate.id === exerciseId);
+    const exercise = adaptivePracticeExercises.find((candidate) => candidate.id === exerciseId);
 
     if (exercise) {
       return exercise;
@@ -1219,10 +1259,16 @@ function linkedAdaptiveExercise(item: AdaptivePracticeQueueItem): AdaptivePracti
 
 function launchableRouteExerciseId(
   item: AdaptivePracticeQueueItem,
-  mapOptions: readonly RouteRunnerMapOption[]
+  mapOptions: readonly RouteRunnerMapOption[],
+  preferredMapOptionId?: string
 ): string | null {
+  const orderedMapOptions = [
+    ...mapOptions.filter((option) => option.id === preferredMapOptionId),
+    ...mapOptions.filter((option) => option.id !== preferredMapOptionId)
+  ];
+
   for (const exerciseId of item.relatedExerciseIds) {
-    if (mapOptions.some((option) => option.exercises.some((exercise) => exercise.id === exerciseId))) {
+    if (orderedMapOptions.some((option) => option.exercises.some((exercise) => exercise.id === exerciseId))) {
       return exerciseId;
     }
   }
@@ -4291,6 +4337,14 @@ export function RouteRunnerClient({
   const activeExercises = selectedMapOption.exercises;
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
   const selectedMapIsScoreable = routeRunnerMapOptionIsScoreable(selectedMapOption);
+  const adaptivePracticeExercises = useMemo(
+    () =>
+      adaptivePracticeExercisesForRouteRunnerOptions({
+        selectedMapOption,
+        mapOptions: visibleMapOptions
+      }),
+    [selectedMapOption, visibleMapOptions]
+  );
   const selectedExerciseId = useMemo(
     () =>
       resolveRouteRunnerExerciseSelection({
@@ -5017,10 +5071,11 @@ export function RouteRunnerClient({
         attemptHistoryInsights,
         savedAttempts: savedAttemptHistory.attempts,
         outcomeFeedbackHistory: adaptiveLauncherState.outcomeFeedbackHistory,
-        availableExercises: ADAPTIVE_PRACTICE_EXERCISES
+        availableExercises: adaptivePracticeExercises
       }),
     [
       adaptiveLauncherState.outcomeFeedbackHistory,
+      adaptivePracticeExercises,
       attemptHistoryInsights,
       drawnAttemptReview,
       savedAttemptHistory.attempts,
@@ -5052,25 +5107,46 @@ export function RouteRunnerClient({
       ),
     [adaptiveLauncherState, adaptivePracticeQueue.items]
   );
-  const recommendedAdaptivePracticeStatusById = useMemo<Record<string, AdaptivePracticeLauncherItemStatus>>(
+  const adaptivePracticeStatusById = useMemo<Record<string, AdaptivePracticeLauncherItemStatus>>(
     () =>
       Object.fromEntries(
-        recommendedAdaptivePracticeItems.map((item) => [
+        adaptivePracticeQueue.items.map((item) => [
           item.id,
           getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id)
         ])
       ),
-    [adaptiveLauncherState, recommendedAdaptivePracticeItems]
+    [adaptiveLauncherState, adaptivePracticeQueue.items]
   );
   const compactAdaptiveRecommendationDisplay = useMemo(
     () =>
       buildCompactAdaptiveRecommendationDisplay({
         items: recommendedAdaptivePracticeItems,
         selectedItemId: selectedAdaptiveRecommendationId,
-        availableExercises: ADAPTIVE_PRACTICE_EXERCISES,
-        itemStatuses: recommendedAdaptivePracticeStatusById
+        availableExercises: adaptivePracticeExercises,
+        itemStatuses: adaptivePracticeStatusById
       }),
-    [recommendedAdaptivePracticeItems, recommendedAdaptivePracticeStatusById, selectedAdaptiveRecommendationId]
+    [
+      adaptivePracticeExercises,
+      adaptivePracticeStatusById,
+      recommendedAdaptivePracticeItems,
+      selectedAdaptiveRecommendationId
+    ]
+  );
+  const learnerAdaptiveCoachingCard = useMemo(
+    () =>
+      buildLearnerAdaptiveCoachingCard({
+        queue: adaptivePracticeQueue,
+        availableExercises: adaptivePracticeExercises,
+        itemStatuses: adaptivePracticeStatusById
+      }),
+    [adaptivePracticeExercises, adaptivePracticeQueue, adaptivePracticeStatusById]
+  );
+  const learnerAdaptivePracticeItem = useMemo(
+    () =>
+      learnerAdaptiveCoachingCard
+        ? adaptivePracticeQueue.items.find((item) => item.id === learnerAdaptiveCoachingCard.itemId) ?? null
+        : null,
+    [adaptivePracticeQueue.items, learnerAdaptiveCoachingCard]
   );
   const skippedAdaptivePracticeItems = useMemo(
     () =>
@@ -5813,9 +5889,9 @@ export function RouteRunnerClient({
 
   function handleStartAdaptivePractice(item: AdaptivePracticeQueueItem) {
     const nowIso = new Date().toISOString();
-    const linkedExerciseId = launchableRouteExerciseId(item, mapOptions);
+    const linkedExerciseId = launchableRouteExerciseId(item, effectiveMapOptions, selectedMapOption.id);
     const linkedMapOption = linkedExerciseId
-      ? mapOptions.find((option) => option.exercises.some((exercise) => exercise.id === linkedExerciseId))
+      ? effectiveMapOptions.find((option) => option.exercises.some((exercise) => exercise.id === linkedExerciseId))
       : null;
     const linkedExercise = linkedMapOption?.exercises.find((exercise) => exercise.id === linkedExerciseId) ?? null;
 
@@ -5830,6 +5906,9 @@ export function RouteRunnerClient({
       setMapViewportState(resetMapViewport(activeMapZoomLimits));
       setMapOptionId(linkedMapOption?.id ?? DEFAULT_ROUTE_RUNNER_MAP_ID);
       setExerciseId(linkedExercise.id);
+      if (isStudentBetaRouteRunner) {
+        updateStudentBetaRouteRunnerUrl(linkedMapOption?.id ?? DEFAULT_ROUTE_RUNNER_MAP_ID, linkedExercise.id);
+      }
       setAdaptiveLauncherMessage(
         `Starting: ${item.title}. Chosen because ${item.reasons[0] ?? item.explanation} Focus: ${item.practiceFocus}`
       );
@@ -5855,7 +5934,7 @@ export function RouteRunnerClient({
     const completedAt = new Date().toISOString();
     const feedback = buildAdaptivePracticeOutcomeFeedback({
       practiceItem: item,
-      exerciseId: launchableRouteExerciseId(item, mapOptions) ?? selectedExerciseId,
+      exerciseId: launchableRouteExerciseId(item, effectiveMapOptions, selectedMapOption.id) ?? selectedExerciseId,
       completedAt,
       review: drawnAttemptReview
     });
@@ -6364,8 +6443,8 @@ export function RouteRunnerClient({
   function renderAdaptivePracticeLauncherItem(item: AdaptivePracticeQueueItem, label: string) {
     const status = getAdaptivePracticeItemStatus(adaptiveLauncherState, item.id);
     const sourceLabels = adaptiveSourceSignalLabels(item.sourceSignals);
-    const linkedExercise = linkedAdaptiveExercise(item);
-    const linkedExerciseId = launchableRouteExerciseId(item, mapOptions);
+    const linkedExercise = linkedAdaptiveExercise(item, adaptivePracticeExercises);
+    const linkedExerciseId = launchableRouteExerciseId(item, effectiveMapOptions, selectedMapOption.id);
     const difficulty = linkedExercise?.difficulty ?? null;
 
     return (
@@ -8856,6 +8935,73 @@ export function RouteRunnerClient({
                   <div className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Try next</p>
                     <p className="mt-1 leading-6">{drawnAttemptReview.correctionHints[0]}</p>
+                  </div>
+                ) : null}
+
+                {learnerAdaptiveCoachingCard ? (
+                  <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-3 text-indigo-950">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                          Personal practice plan
+                        </p>
+                        <h4 className="mt-1 text-sm font-semibold">{learnerAdaptiveCoachingCard.title}</h4>
+                        <p className="mt-1 text-sm leading-6">{learnerAdaptiveCoachingCard.explanation}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptivePriorityClass(
+                            learnerAdaptiveCoachingCard.priority
+                          )}`}
+                        >
+                          {learnerAdaptiveCoachingCard.priority}
+                        </span>
+                        <span className="rounded-full border border-indigo-200 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900">
+                          {learnerAdaptiveCoachingCard.confidenceLabel}
+                        </span>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${adaptiveLauncherStatusClass(
+                            learnerAdaptiveCoachingCard.status
+                          )}`}
+                        >
+                          {adaptiveLauncherStatusLabel(learnerAdaptiveCoachingCard.status)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-2">
+                      <div className="rounded-md bg-white/80 px-3 py-2">
+                        <dt className="font-semibold uppercase tracking-wide text-indigo-700">Focus</dt>
+                        <dd className="mt-1">{learnerAdaptiveCoachingCard.practiceFocus}</dd>
+                      </div>
+                      <div className="rounded-md bg-white/80 px-3 py-2">
+                        <dt className="font-semibold uppercase tracking-wide text-indigo-700">Weak area</dt>
+                        <dd className="mt-1">{learnerAdaptiveCoachingCard.weakAreaLabel}</dd>
+                      </div>
+                      <div className="rounded-md bg-white/80 px-3 py-2">
+                        <dt className="font-semibold uppercase tracking-wide text-indigo-700">Suggested route</dt>
+                        <dd className="mt-1">{learnerAdaptiveCoachingCard.linkedExerciseLabel}</dd>
+                      </div>
+                      <div className="rounded-md bg-white/80 px-3 py-2">
+                        <dt className="font-semibold uppercase tracking-wide text-indigo-700">Why this</dt>
+                        <dd className="mt-1">{learnerAdaptiveCoachingCard.reason}</dd>
+                      </div>
+                    </dl>
+
+                    <p className="mt-3 text-xs leading-5 text-indigo-900">{learnerAdaptiveCoachingCard.signalSummary}</p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (learnerAdaptivePracticeItem) {
+                          handleStartAdaptivePractice(learnerAdaptivePracticeItem);
+                        }
+                      }}
+                      disabled={!learnerAdaptivePracticeItem}
+                      className="mt-3 min-h-11 rounded-md border border-indigo-300 bg-white px-3 py-2 text-sm font-semibold text-indigo-950 shadow-sm transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {learnerAdaptiveCoachingCard.actionLabel}
+                    </button>
                   </div>
                 ) : null}
               </div>

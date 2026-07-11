@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildCompactAdaptiveRecommendationDisplay,
+  buildLearnerAdaptiveCoachingCard,
   selectCompactAdaptiveRecommendationId
 } from "./adaptiveRecommendationDisplay.ts";
 import type {
@@ -56,7 +57,7 @@ const recommendations: AdaptivePracticeQueueItem[] = [
     priority: "medium",
     score: 52,
     reasons: ["Your legal route was much longer than the shortest route."],
-    relatedWeakAreas: ["inefficient-route"],
+    relatedWeakAreas: ["route-efficiency"],
     relatedExerciseIds: ["exercise-efficiency"],
     sourceSignals: {
       latestReview: true,
@@ -112,7 +113,7 @@ test("compact adaptive recommendation rows contain summary data without full det
         number: 2,
         title: "Shorten legal routes",
         summary: "Compare your route with the shortest legal route before submitting.",
-        weakAreaLabel: "inefficient route",
+        weakAreaLabel: "route efficiency",
         priority: "medium",
         status: "recommended",
         difficulty: "medium",
@@ -132,7 +133,7 @@ test("compact adaptive recommendation detail changes when another row is selecte
   assert.equal(model.selectedId, "adaptive-route-efficiency");
   assert.equal(model.detail?.title, "Shorten legal routes");
   assert.equal(model.detail?.practiceFocus, "Compare your route with the shortest legal route before submitting.");
-  assert.equal(model.detail?.weakAreaLabel, "inefficient route");
+  assert.equal(model.detail?.weakAreaLabel, "route efficiency");
   assert.deepEqual(model.detail?.reasons, ["Your legal route was much longer than the shortest route."]);
   assert.equal(model.rows[0].isSelected, false);
   assert.equal(model.rows[1].isSelected, true);
@@ -155,4 +156,71 @@ test("compact adaptive recommendation model preserves statuses for detail action
 
   assert.equal(model.rows[0].status, "active");
   assert.equal(model.detail?.status, "active");
+});
+
+test("learner adaptive coaching card presents the top recommendation without internal exercise ids", () => {
+  const model = buildLearnerAdaptiveCoachingCard({
+    queue: {
+      items: recommendations,
+      summary: {
+        primaryFocus: "Practise no-entry roads",
+        reason: "You entered a no-entry road.",
+        confidenceLevel: "high"
+      }
+    },
+    availableExercises
+  });
+
+  assert.ok(model);
+  assert.equal(model.itemId, "adaptive-no-entry-roads");
+  assert.equal(model.title, "Practise no-entry roads");
+  assert.equal(model.weakAreaLabel, "no entry");
+  assert.equal(model.priority, "high");
+  assert.equal(model.status, "recommended");
+  assert.equal(model.confidenceLabel, "high confidence");
+  assert.equal(model.difficulty, "easy");
+  assert.equal(model.linkedExerciseTitle, "No-entry focus route");
+  assert.equal(model.linkedExerciseLabel, "No-entry focus route");
+  assert.equal(model.actionLabel, "Start focused practice");
+  assert.match(model.signalSummary, /this route review/);
+  assert.doesNotMatch(model.linkedExerciseLabel, /exercise-no-entry/);
+});
+
+test("learner adaptive coaching card prefers an active focused practice item", () => {
+  const model = buildLearnerAdaptiveCoachingCard({
+    queue: {
+      items: recommendations,
+      summary: {
+        primaryFocus: "Practise no-entry roads",
+        reason: "You entered a no-entry road.",
+        confidenceLevel: "medium"
+      }
+    },
+    availableExercises,
+    itemStatuses: {
+      "adaptive-route-efficiency": "active"
+    }
+  });
+
+  assert.ok(model);
+  assert.equal(model.itemId, "adaptive-route-efficiency");
+  assert.equal(model.status, "active");
+  assert.equal(model.actionLabel, "Restart focused practice");
+  assert.equal(model.linkedExerciseLabel, "Efficient legal route");
+  assert.doesNotMatch(model.linkedExerciseLabel, /exercise-efficiency/);
+});
+
+test("learner adaptive coaching card returns null without queue items", () => {
+  const model = buildLearnerAdaptiveCoachingCard({
+    queue: {
+      items: [],
+      summary: {
+        primaryFocus: "Continue with mixed route practice",
+        reason: "No dominant weakness signal was available.",
+        confidenceLevel: "low"
+      }
+    }
+  });
+
+  assert.equal(model, null);
 });

@@ -13,6 +13,7 @@ import {
   findExerciseMetadataByWeakArea,
   getExerciseMetadata,
   getMapMetadataForExercise,
+  routeExerciseToAdaptivePracticeExercise,
   validateExerciseMapMetadata,
   type ExerciseMetadata,
   type MapMetadata
@@ -138,6 +139,70 @@ test("metadata catalogue conversion preserves stable exercise order", () => {
     ),
     MARLOWE_DISTRICT_EXERCISE_METADATA.map((metadata) => metadata.exerciseId)
   );
+});
+
+test("route exercises convert into adaptive candidates for Real London route metadata", () => {
+  const adaptiveExercise = routeExerciseToAdaptivePracticeExercise({
+    id: "osm-curated-one-way-system-area-short-one-way-route",
+    mapId: "osm-curated-one-way-system-area",
+    title: "One-way system: short legal route",
+    description: "Short beta route for one-way and restriction cartography.",
+    difficulty: "medium",
+    stops: [
+      {
+        type: "node",
+        nodeId: "start"
+      },
+      {
+        type: "node",
+        nodeId: "finish"
+      }
+    ],
+    realLondonPilotMetadata: {
+      difficulty: "medium",
+      routeType: "one-way-awareness",
+      estimatedDistanceMeters: 520,
+      expectedComplexity: "Medium one-way-awareness route where the legal path checks traffic flow."
+    }
+  });
+
+  assert.equal(adaptiveExercise.id, "osm-curated-one-way-system-area-short-one-way-route");
+  assert.equal(adaptiveExercise.difficulty, "medium");
+  assert.ok(adaptiveExercise.focusAreas.includes("one-way-direction"));
+  assert.ok(adaptiveExercise.focusAreas.includes("restriction-focus"));
+  assert.ok(adaptiveExercise.focusAreas.includes("route-drawing-focus"));
+  assert.ok(adaptiveExercise.focusAreas.includes("route-efficiency"));
+});
+
+test("route exercise adaptive conversion recognises checkpoint and no-entry language", () => {
+  const adaptiveExercise = routeExerciseToAdaptivePracticeExercise({
+    id: "real-london-checkpoint-no-entry",
+    mapId: "osm-real-london-pilot",
+    title: "Checkpoint route around no-entry roads",
+    description: "Visit the checkpoint in order, avoid no-entry approaches, and choose the shortest legal route.",
+    difficulty: "hard",
+    stops: [
+      {
+        type: "node",
+        nodeId: "start"
+      },
+      {
+        type: "node",
+        nodeId: "checkpoint"
+      },
+      {
+        type: "node",
+        nodeId: "finish"
+      }
+    ]
+  });
+
+  assert.equal(adaptiveExercise.difficulty, "hard");
+  assert.ok(adaptiveExercise.focusAreas.includes("checkpoint-focus"));
+  assert.ok(adaptiveExercise.focusAreas.includes("missed-checkpoint"));
+  assert.ok(adaptiveExercise.focusAreas.includes("no-entry"));
+  assert.ok(adaptiveExercise.focusAreas.includes("route-efficiency"));
+  assert.ok(adaptiveExercise.focusAreas.includes("advanced-route"));
 });
 
 test("metadata validation reports duplicate ids unknown maps missing route coverage and invalid durations", () => {

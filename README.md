@@ -1371,6 +1371,17 @@ disables Submit while the map is being prepared. Smaller curated beta fixtures
 remain immediately available; oversized/dev-only stress fixtures remain blocked
 from scored practice by fixture budget metadata and are not included in the
 normal beta practice startup catalogue.
+Stage 162 begins Phase 7 by turning submitted Real London route attempts into a
+learner-facing adaptive coaching step. The existing route review, weak-area
+profile, saved attempt history, and adaptive queue now feed a compact
+`Personal practice plan` card inside the beta Route feedback drawer. The card
+shows one focused next practice, the weak area, confidence, learner-safe linked
+route title, and a focused-practice launch action. Adaptive exercise matching
+now includes the currently available scored Real London route exercises before
+falling back to Marlowe metadata, while preserving Marlowe's hand-authored
+catalogue. This is Phase 7 training-system wiring only: Phase 6 map styling,
+mobile map usability, road hierarchy, labels, overlays, cartographic rendering,
+route matching, scoring, and existing route review behaviour remain unchanged.
 
 ## Current Feature Set
 
@@ -1419,6 +1430,8 @@ normal beta practice startup catalogue.
 - Map-click practice with selected marker feedback and distance scoring
 - Route-drawing practice with continuous line drawing, pan/zoom, undo, clear,
   reset, and route scoring
+- Real London beta route practice with post-submit adaptive coaching, weak-area
+  focus, saved-attempt signals, and linked focused-practice launch actions
 - Focused practice filters for topic and difficulty
 - End-of-session practice summaries with wrong-answer review prompts
 - Mixed mock exam modes and timed exam simulation

@@ -2,7 +2,8 @@ import type {
   AdaptivePracticeExercise,
   AdaptivePracticeExerciseDifficulty,
   AdaptivePracticeQueueItem,
-  AdaptivePracticeQueuePriority
+  AdaptivePracticeQueuePriority,
+  AdaptivePracticeQueueResult
 } from "./adaptivePracticeQueue";
 import type { AdaptivePracticeLauncherItemStatus } from "./adaptivePracticeLauncher";
 
@@ -45,6 +46,29 @@ export interface CompactAdaptiveRecommendationDisplayModel {
 export interface BuildCompactAdaptiveRecommendationDisplayInput {
   items: readonly AdaptivePracticeQueueItem[];
   selectedItemId?: string | null;
+  availableExercises?: readonly AdaptivePracticeExercise[];
+  itemStatuses?: Readonly<Record<string, AdaptivePracticeLauncherItemStatus>>;
+}
+
+export interface LearnerAdaptiveCoachingCardModel {
+  itemId: string;
+  title: string;
+  explanation: string;
+  practiceFocus: string;
+  weakAreaLabel: string;
+  priority: AdaptivePracticeQueuePriority;
+  status: AdaptivePracticeLauncherItemStatus;
+  confidenceLabel: string;
+  difficulty: AdaptivePracticeExerciseDifficulty | null;
+  linkedExerciseTitle: string | null;
+  linkedExerciseLabel: string;
+  reason: string;
+  signalSummary: string;
+  actionLabel: string;
+}
+
+export interface BuildLearnerAdaptiveCoachingCardInput {
+  queue: Pick<AdaptivePracticeQueueResult, "items" | "summary">;
   availableExercises?: readonly AdaptivePracticeExercise[];
   itemStatuses?: Readonly<Record<string, AdaptivePracticeLauncherItemStatus>>;
 }
@@ -100,6 +124,44 @@ function sourceSignalLabel(item: AdaptivePracticeQueueItem): string {
   }
 
   return signals.length > 0 ? signals.join(", ") : "default queue item";
+}
+
+function learnerSignalSummary(item: AdaptivePracticeQueueItem): string {
+  const signals: string[] = [];
+
+  if (item.sourceSignals.latestReview) {
+    signals.push("this route review");
+  }
+
+  if (item.sourceSignals.weakAreaProfile) {
+    signals.push("your weak-area pattern");
+  }
+
+  if (item.sourceSignals.attemptHistory) {
+    signals.push("recent attempts");
+  }
+
+  if (item.sourceSignals.savedAttempts) {
+    signals.push("saved attempts");
+  }
+
+  if (item.sourceSignals.outcomeFeedback) {
+    signals.push("completed focused practice");
+  }
+
+  return signals.length > 0 ? `Based on ${signals.join(", ")}.` : "Based on the current route practice queue.";
+}
+
+function selectLearnerCoachingItem(
+  items: readonly AdaptivePracticeQueueItem[],
+  itemStatuses?: Readonly<Record<string, AdaptivePracticeLauncherItemStatus>>
+): AdaptivePracticeQueueItem | null {
+  return (
+    items.find((item) => itemStatuses?.[item.id] === "active") ??
+    items.find((item) => (itemStatuses?.[item.id] ?? "recommended") === "recommended") ??
+    items[0] ??
+    null
+  );
 }
 
 export function selectCompactAdaptiveRecommendationId(
@@ -167,5 +229,37 @@ export function buildCompactAdaptiveRecommendationDisplay(
       signalLabel: sourceSignalLabel(selectedItem),
       reasons: [...selectedItem.reasons]
     }
+  };
+}
+
+export function buildLearnerAdaptiveCoachingCard(
+  input: BuildLearnerAdaptiveCoachingCardInput
+): LearnerAdaptiveCoachingCardModel | null {
+  const availableExercises = input.availableExercises ?? [];
+  const selectedItem = selectLearnerCoachingItem(input.queue.items, input.itemStatuses);
+
+  if (!selectedItem) {
+    return null;
+  }
+
+  const status = input.itemStatuses?.[selectedItem.id] ?? "recommended";
+  const linkedExercise = findLinkedExercise(selectedItem, availableExercises);
+  const weakAreaLabel = labelFromSlugs(selectedItem.relatedWeakAreas, "Mixed route practice");
+
+  return {
+    itemId: selectedItem.id,
+    title: selectedItem.title,
+    explanation: selectedItem.explanation,
+    practiceFocus: selectedItem.practiceFocus,
+    weakAreaLabel,
+    priority: selectedItem.priority,
+    status,
+    confidenceLabel: `${input.queue.summary.confidenceLevel} confidence`,
+    difficulty: linkedExercise?.difficulty ?? null,
+    linkedExerciseTitle: linkedExercise?.title ?? null,
+    linkedExerciseLabel: linkedExercise?.title ?? "Choose any scored route and apply this focus.",
+    reason: selectedItem.reasons[0] ?? input.queue.summary.reason,
+    signalSummary: learnerSignalSummary(selectedItem),
+    actionLabel: status === "active" ? "Restart focused practice" : "Start focused practice"
   };
 }
