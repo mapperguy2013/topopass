@@ -92,6 +92,16 @@ target with 5 beginner, 5 intermediate, and 5 advanced routes. Training Mode
 uses complete beta/approved curated routes first; automatic generation remains
 an explicitly labelled experimental fallback.
 
+Phase 8 has started as **Examination Atlas Cartography Redesign**. Its approved
+visual master is
+`docs/phase-8/references/phase-8-approved-exam-atlas-visual-master.png`.
+Phase 8 is intended to replace the first-generation Phase 6 Real London visual
+target with a denser examination-atlas target while keeping the implementation
+original and using only permitted attributed geography. Phase 7 is paused and
+retains its current status rather than being declared complete. Route
+generation, legality, matching, scoring, hints, feedback, learner progress, and
+deployment are outside this visual setup stage.
+
 ## Completed Phase 1: Prototype Foundation
 
 Phase 1 established the core product shape and working prototype flows:
