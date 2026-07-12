@@ -101,8 +101,9 @@ original and using only permitted attributed geography. Phase 7 is paused and
 retains its current status rather than being declared complete. Route
 generation, legality, matching, scoring, hints, feedback, learner progress, and
 deployment remain outside the completed Phase 8 setup, audit, and adapter
-stages. Stages 8.1 through 8.3 are complete; Stage 8.4 is next for printed-atlas
-road hierarchy and major-road corridor work.
+stages. Stages 8.1 through 8.3 are complete. Stage 8.4's production
+printed-atlas road hierarchy is implemented, with manual screenshot and
+interaction acceptance still pending before the stage is marked complete.
 
 ## Completed Phase 1: Prototype Foundation
 

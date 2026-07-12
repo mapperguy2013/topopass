@@ -85,8 +85,8 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#987044");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#a96532");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#f2ca3d");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#f2ca3d");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe8c6");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#647184");
@@ -333,7 +333,7 @@ test("Stage 160 atlas identity tokens keep hierarchy calm and original", () => {
   assert.ok(style.roads.osm.primary.casingWidth > style.roads.osm.secondary.casingWidth);
   assert.ok(style.roads.osm.secondary.casingWidth > style.roads.osm.residential.casingWidth);
   assert.ok(style.roads.osm.residential.strokeWidth > style.roads.osm.service.strokeWidth);
-  assert.ok(style.roads.osm.primary.strokeWidth < style.routeOverlays.matchedRoute.strokeWidth);
+  assert.notEqual(style.roads.osm.primary.strokeColor, style.routeOverlays.matchedRoute.strokeColor);
   assert.ok(style.roads.osm.primary.strokeColor !== style.routeOverlays.rawRoute.strokeColor);
   assert.ok((style.roads.osm.service.alpha ?? 1) < 0.75);
   assert.ok((style.roads.osm.pedestrian.alpha ?? 1) < (style.roads.osm.service.alpha ?? 1));
@@ -446,8 +446,11 @@ test("Stage 142 zoom and decluttering tokens are ordered finite and used by help
   assert.ok(thresholds.wheelSensitivity > 0);
   assert.ok(thresholds.panMargin >= 0);
   assert.ok(cartographicScale.referenceViewportScale > 0);
-  assert.ok(cartographicScale.roadGain.local >= cartographicScale.roadGain.major);
-  assert.ok(cartographicScale.roadMaxMultiplier.local >= 10);
+  assert.ok(cartographicScale.roadGain.major > cartographicScale.roadGain.secondary);
+  assert.ok(cartographicScale.roadGain.secondary > cartographicScale.roadGain.local);
+  assert.ok(cartographicScale.roadGain.local > cartographicScale.roadGain.service);
+  assert.ok(cartographicScale.roadMaxMultiplier.major > cartographicScale.roadMaxMultiplier.local);
+  assert.ok(cartographicScale.roadMaxMultiplier.local >= 4);
   assert.ok(cartographicScale.roadMaxMultiplier.service < cartographicScale.roadMaxMultiplier.local);
   assert.ok(cartographicScale.labelGain.minor >= cartographicScale.labelGain.major);
   assert.ok(cartographicScale.labelMaxMultiplier.minor >= 6);
@@ -546,10 +549,10 @@ test("Stage 161.6.21 route review issue symbols default to icon-only learner map
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#f2dfb7",
-    strokeColor: "#987044",
-    casingWidth: 16.8,
-    strokeWidth: 6.8
+    casingColor: "#474239",
+    strokeColor: "#f2ca3d",
+    casingWidth: 18,
+    strokeWidth: 13.2
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -739,6 +742,28 @@ test("converted OSM hierarchy maps to expected road style widths", () => {
   assert.ok(roadStyleForOsmHierarchy("residential").strokeWidth > roadStyleForOsmHierarchy("service").strokeWidth);
   assert.ok(roadStyleForOsmHierarchy("service").strokeWidth > roadStyleForOsmHierarchy("pedestrian").strokeWidth);
   assert.ok((roadStyleForOsmHierarchy("inactive").alpha ?? 1) < (roadStyleForOsmHierarchy("residential").alpha ?? 1));
+});
+
+test("Stage 8.4 printed-atlas tokens define dark-edged flat-yellow principal corridors", () => {
+  const primary = roadStyleForOsmHierarchy("primary");
+  const secondary = roadStyleForOsmHierarchy("secondary");
+  const tertiary = roadStyleForOsmHierarchy("tertiary");
+  const residential = roadStyleForOsmHierarchy("residential");
+  const service = roadStyleForOsmHierarchy("service");
+
+  assert.equal(primary.casingColor, "#474239");
+  assert.equal(primary.strokeColor, "#f2ca3d");
+  assert.ok(primary.casingWidth > primary.strokeWidth);
+  assert.ok((primary.casingWidth - primary.strokeWidth) / 2 >= 2);
+  assert.ok(primary.strokeWidth > secondary.strokeWidth);
+  assert.ok(secondary.strokeWidth > tertiary.strokeWidth);
+  assert.ok(tertiary.strokeWidth > residential.strokeWidth);
+  assert.ok(residential.strokeWidth > service.strokeWidth);
+  assert.notEqual(residential.strokeColor, primary.strokeColor);
+  assert.notEqual(service.strokeColor, primary.strokeColor);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.lineCap, "butt");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.lineJoin, "round");
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.miterLimit <= 2);
 });
 
 function mapNodeBounds(map: MapDefinition): { minX: number; minY: number; maxX: number; maxY: number } {
@@ -993,7 +1018,10 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   assert.ok(bridgeLabels.has("Waterloo Bridge"));
   assert.ok(bridgeLabels.has("Blackfriars Bridge"));
   assert.ok(thameslinkLabels.length <= 1, "Repeated rail labels should be deduplicated");
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth < TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute.strokeWidth);
+  assert.notEqual(
+    TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor,
+    TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute.strokeColor
+  );
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 5);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.minorLowZoomAlphaMultiplier >= 0.9);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha <= 0.3);
@@ -1109,6 +1137,32 @@ test("Stage 145.5 road render passes keep all casings below all fills in hierarc
   assert.deepEqual(passes.slice(0, visuals.length).map((pass) => pass.visual.roadId), ordered.map((visual) => visual.roadId));
 });
 
+test("Stage 8.4 split OSM corridor segments retain shared hierarchy and continuity metadata", () => {
+  const mapBefore = structuredClone(mediumLondonOsmRouteMap);
+  const visuals = buildSyntheticRoadVisuals(mediumLondonOsmRouteMap);
+  const segmentsByWay = new Map<string, SyntheticRoadVisual[]>();
+
+  for (const visual of visuals) {
+    if (!visual.osmWayId) {
+      continue;
+    }
+
+    const segments = segmentsByWay.get(visual.osmWayId) ?? [];
+    segments.push(visual);
+    segmentsByWay.set(visual.osmWayId, segments);
+  }
+
+  const corridor = [...segmentsByWay.values()].find(
+    (segments) => segments.length > 1 && segments.every((segment) => segment.osmHierarchy === "primary")
+  );
+
+  assert.ok(corridor);
+  assert.ok(corridor.every((segment) => segment.roadClass === "major"));
+  assert.ok(corridor.every((segment) => segment.osmWayId === corridor[0].osmWayId));
+  assert.ok(corridor.every((segment) => JSON.stringify(segment.style) === JSON.stringify(corridor[0].style)));
+  assert.deepEqual(mediumLondonOsmRouteMap, mapBefore);
+});
+
 test("Stage 145.5 low-zoom road styling thins minor roads without weakening major roads", () => {
   const primary = roadVisual({
     roadClass: "major",
@@ -1168,9 +1222,9 @@ test("Stage 161.6.9 road strokes scale with zoom while preserving base hierarchy
   const serviceHigh = roadStyleForViewport(service, veryHighZoomRoadViewport);
 
   assert.equal(roadStyleForViewport(primary, lowZoomRoadViewport).strokeWidth, primary.style.strokeWidth);
-  assert.ok(primaryHigh.strokeWidth > primary.style.strokeWidth * 3.8);
-  assert.ok(residentialHigh.strokeWidth > residential.style.strokeWidth * 3.8);
-  assert.ok(serviceHigh.strokeWidth > service.style.strokeWidth * 2.7);
+  assert.ok(primaryHigh.strokeWidth > primary.style.strokeWidth * 3);
+  assert.ok(residentialHigh.strokeWidth > residential.style.strokeWidth * 2.4);
+  assert.ok(serviceHigh.strokeWidth > service.style.strokeWidth * 1.9);
   assert.ok(serviceHigh.strokeWidth < residentialHigh.strokeWidth);
   assert.ok(primaryHigh.strokeWidth > residentialHigh.strokeWidth);
   assert.ok(residentialHigh.casingWidth > residential.style.casingWidth);
@@ -1202,18 +1256,18 @@ test("Stage 161.6.8.2 explicit semantic zoom scales rendered roads strongly when
   const highService = roadStyleForViewport(service, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom);
   const maxedResidential = roadStyleForViewport(residential, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom * 10);
 
-  assertClose(highPrimary.strokeWidth / basePrimary.strokeWidth, 16, 0.000001, "primary road should render at the 16x cap");
+  assertClose(highPrimary.strokeWidth / basePrimary.strokeWidth, 6.5, 0.000001, "primary road should render at the 6.5x cap");
   assertClose(
     highResidential.strokeWidth / baseResidential.strokeWidth,
-    17,
+    4.5,
     0.000001,
-    "local road should render at the 17x cap"
+    "local road should render at the 4.5x cap"
   );
-  assertClose(highResidential.casingWidth / baseResidential.casingWidth, 17, 0.000001, "local casing should follow stroke scale");
-  assertClose(highService.strokeWidth / baseService.strokeWidth, 9, 0.000001, "service road should render at the lower 9x cap");
+  assertClose(highResidential.casingWidth / baseResidential.casingWidth, 4.5, 0.000001, "local casing should follow stroke scale");
+  assertClose(highService.strokeWidth / baseService.strokeWidth, 3.2, 0.000001, "service road should render at the lower 3.2x cap");
   assert.ok(highService.strokeWidth < highResidential.strokeWidth);
   assert.equal(maxedResidential.strokeWidth, highResidential.strokeWidth);
-  assert.ok(highResidential.strokeWidth / baseResidential.strokeWidth > highPrimary.strokeWidth / basePrimary.strokeWidth);
+  assert.ok(highPrimary.strokeWidth / basePrimary.strokeWidth > highResidential.strokeWidth / baseResidential.strokeWidth);
 });
 
 test("Stage 161.6.8.2 zoom style scale follows stronger capped TOPOPASS cartography tokens", () => {
@@ -1228,10 +1282,10 @@ test("Stage 161.6.8.2 zoom style scale follows stronger capped TOPOPASS cartogra
 
   assert.equal(base.localRoad, 1);
   assertClose(getZoomStyleScale(1, scaleTokens.roadGain.local, scaleTokens.roadMaxMultiplier.local), 1, 0.000001, "1x road scale");
-  assertClose(zoom250.localRoad, 1.99, 0.06, "250 percent road scale");
-  assertClose(zoom500.localRoad, 3.34, 0.08, "500 percent road scale");
-  assertClose(zoom1000.localRoad, 5.62, 0.1, "1000 percent road scale");
-  assertClose(zoom2500.localRoad, 11.18, 0.12, "2500 percent road scale");
+  assertClose(zoom250.localRoad, 1.43, 0.04, "250 percent road scale");
+  assertClose(zoom500.localRoad, 1.87, 0.05, "500 percent road scale");
+  assertClose(zoom1000.localRoad, 2.45, 0.06, "1000 percent road scale");
+  assertClose(zoom2500.localRoad, 3.51, 0.08, "2500 percent road scale");
   assert.equal(max.localRoad, scaleTokens.roadMaxMultiplier.local);
   assert.equal(max.majorRoad, scaleTokens.roadMaxMultiplier.major);
   assert.equal(beyondMax.localRoad, max.localRoad);
@@ -1317,6 +1371,61 @@ test("Stage 145.5 junction and interaction tokens make major and selected roads 
   assert.ok(roadJunctionRadiusForVisual(primary, lowZoomRoadViewport, "casing") > roadJunctionRadiusForVisual(service, lowZoomRoadViewport, "casing"));
   assert.ok(selected.haloWidth > hovered.haloWidth);
   assert.notEqual(selected.strokeColor, hovered.strokeColor);
+});
+
+test("Stage 8.4 junction caps cover half of each road pass width without changing geometry", () => {
+  const primary = roadVisual({
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const viewport = {
+    width: 1000,
+    height: 1000,
+    mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 }
+  };
+  const pointsBefore = structuredClone(primary.points);
+  const style = roadStyleForViewport(primary, viewport, 1);
+
+  assert.equal(roadJunctionRadiusForVisual(primary, viewport, "casing", 1), style.casingWidth / 2);
+  assert.equal(roadJunctionRadiusForVisual(primary, viewport, "fill", 1), style.strokeWidth / 2);
+  assert.deepEqual(primary.points, pointsBefore);
+});
+
+test("Stage 8.4 maximum zoom caps preserve principal corridor dominance", () => {
+  const primary = roadVisual({
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const secondary = roadVisual({
+    roadClass: "secondary",
+    osmHighway: "secondary",
+    osmHierarchy: "secondary",
+    style: roadStyleForOsmHierarchy("secondary")
+  });
+  const residential = roadVisual({
+    roadClass: "local",
+    osmHighway: "residential",
+    osmHierarchy: "residential",
+    style: roadStyleForOsmHierarchy("residential")
+  });
+  const service = roadVisual({
+    roadClass: "service",
+    osmHighway: "service",
+    osmHierarchy: "service",
+    style: roadStyleForOsmHierarchy("service")
+  });
+  const atMaximum = [primary, secondary, residential, service].map((visual) =>
+    roadStyleForViewport(visual, labelTestViewport, ROUTE_RUNNER_MAP_ZOOM_LIMITS.maxZoom)
+  );
+
+  assert.ok(atMaximum[0].strokeWidth > atMaximum[1].strokeWidth);
+  assert.ok(atMaximum[1].strokeWidth > atMaximum[2].strokeWidth);
+  assert.ok(atMaximum[2].strokeWidth > atMaximum[3].strokeWidth);
+  assert.ok(atMaximum[0].strokeWidth / atMaximum[2].strokeWidth > 3);
 });
 
 test("Stage 145.5 dense road rendering helpers are deterministic", () => {
@@ -1988,6 +2097,22 @@ test("converted OSM road labels are optional and deduplicated by road name", () 
   assert.equal(eustonRoadLabels[0].osmHierarchy, "primary");
   assert.equal(eustonRoadLabels[0].source, "osm");
   assert.ok((eustonRoadLabels[0].roadLengthMeters ?? 0) > 0);
+});
+
+test("Stage 8.4 does not render source A/B references as road labels", () => {
+  const sourceRefs = new Set(
+    realLondonOsmPilotRouteMap.roads.flatMap((road) => {
+      const ref = road.metadata.rawTags.ref?.trim().toUpperCase();
+
+      return ref && /^[AB]\d/.test(ref) ? [ref] : [];
+    })
+  );
+  const labels = buildSyntheticMapLabels(realLondonOsmPilotRouteMap, undefined, {
+    includeOsmRoadLabels: true
+  });
+
+  assert.ok(sourceRefs.size > 0);
+  assert.equal(labels.some((label) => sourceRefs.has(label.text.toUpperCase())), false);
 });
 
 test("unnamed converted OSM roads do not crash label generation", () => {

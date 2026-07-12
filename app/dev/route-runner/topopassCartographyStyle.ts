@@ -680,16 +680,16 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     synthetic: {
       major: {
-        casingColor: "#f8e4b0",
-        strokeColor: "#a96532",
-        casingWidth: 19.2,
-        strokeWidth: 9.6
+        casingColor: "#474239",
+        strokeColor: "#f2ca3d",
+        casingWidth: 19.4,
+        strokeWidth: 14.2
       },
       secondary: {
-        casingColor: "#fff0bf",
-        strokeColor: "#c59b45",
-        casingWidth: 15.4,
-        strokeWidth: 7.4
+        casingColor: "#6c6457",
+        strokeColor: "#f5dda0",
+        casingWidth: 15,
+        strokeWidth: 10.2
       },
       oneWay: {
         casingColor: "#dcebf2",
@@ -713,50 +713,50 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         alpha: 0.72
       },
       service: {
-        casingColor: "#d8d0c3",
+        casingColor: "#c8c0b4",
         strokeColor: "#eee8dc",
-        casingWidth: 5.2,
-        strokeWidth: 1.9,
-        alpha: 0.62
+        casingWidth: 5.4,
+        strokeWidth: 2.2,
+        alpha: 0.64
       },
       local: {
-        casingColor: "#bfb8ad",
+        casingColor: "#aaa195",
         strokeColor: "#fffefa",
         casingWidth: 9.2,
-        strokeWidth: 5
+        strokeWidth: 5.8
       }
     },
     osm: {
       primary: {
-        casingColor: "#f2dfb7",
-        strokeColor: "#987044",
-        casingWidth: 16.8,
-        strokeWidth: 6.8
+        casingColor: "#474239",
+        strokeColor: "#f2ca3d",
+        casingWidth: 18,
+        strokeWidth: 13.2
       },
       secondary: {
-        casingColor: "#f7e9c4",
-        strokeColor: "#b68d52",
-        casingWidth: 13.8,
-        strokeWidth: 5.9
+        casingColor: "#6c6457",
+        strokeColor: "#f5dda0",
+        casingWidth: 14.2,
+        strokeWidth: 9.8
       },
       tertiary: {
-        casingColor: "#fbf0cf",
-        strokeColor: "#c1a361",
+        casingColor: "#8a8173",
+        strokeColor: "#fff8e7",
         casingWidth: 11.4,
-        strokeWidth: 5.65
+        strokeWidth: 7.2
       },
       residential: {
         casingColor: "#aaa195",
         strokeColor: "#fffefa",
-        casingWidth: 10.8,
-        strokeWidth: 5.5
+        casingWidth: 9.2,
+        strokeWidth: 5.8
       },
       service: {
-        casingColor: "#d0c7ba",
+        casingColor: "#c8c0b4",
         strokeColor: "#f2eadc",
-        casingWidth: 5.8,
-        strokeWidth: 2.25,
-        alpha: 0.7
+        casingWidth: 5.4,
+        strokeWidth: 2.2,
+        alpha: 0.66
       },
       pedestrian: {
         casingColor: "#d6cec0",
@@ -795,35 +795,35 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       restrictedColor: "#e2caa6"
     },
     geometry: {
-      lineCap: "round",
+      lineCap: "butt",
       lineJoin: "round",
       miterLimit: 2,
       lowZoomViewportScale: 0.5,
-      minorLowZoomWidthMultiplier: 0.96,
-      minorLowZoomAlphaMultiplier: 0.98,
+      minorLowZoomWidthMultiplier: 0.9,
+      minorLowZoomAlphaMultiplier: 0.9,
       serviceLowZoomWidthMultiplier: 0.68,
       serviceLowZoomAlphaMultiplier: 0.58,
       restrictedLowZoomAlphaMultiplier: 0.72
     },
     junctions: {
       majorRadiusMultiplier: 0.5,
-      secondaryRadiusMultiplier: 0.48,
-      minorRadiusMultiplier: 0.44,
-      quietRadiusMultiplier: 0.38
+      secondaryRadiusMultiplier: 0.5,
+      minorRadiusMultiplier: 0.5,
+      quietRadiusMultiplier: 0.5
     },
     interaction: {
       selected: {
         haloColor: "rgba(14,165,233,0.2)",
-        haloWidth: 13,
+        haloWidth: 20,
         strokeColor: "rgba(2,132,199,0.58)",
-        strokeWidth: 5.6,
+        strokeWidth: 7,
         alpha: 1
       },
       hovered: {
         haloColor: "rgba(56,189,248,0.16)",
-        haloWidth: 9,
+        haloWidth: 16,
         strokeColor: "rgba(14,165,233,0.4)",
-        strokeWidth: 4,
+        strokeWidth: 5,
         alpha: 1
       }
     },
@@ -2110,18 +2110,18 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       referenceViewportScale: 1,
       roadMinMultiplier: 1,
       roadGain: {
-        major: 0.75,
-        secondary: 0.75,
-        local: 0.75,
-        service: 0.58,
-        restricted: 0.58
+        major: 0.48,
+        secondary: 0.44,
+        local: 0.39,
+        service: 0.3,
+        restricted: 0.3
       },
       roadMaxMultiplier: {
-        major: 16,
-        secondary: 16,
-        local: 17,
-        service: 9,
-        restricted: 9
+        major: 6.5,
+        secondary: 5.5,
+        local: 4.5,
+        service: 3.2,
+        restricted: 3.2
       },
       routeOverlayGain: 0.2,
       routeOverlayMaxMultiplier: 2.25,

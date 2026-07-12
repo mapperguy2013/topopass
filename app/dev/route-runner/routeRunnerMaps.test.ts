@@ -862,6 +862,21 @@ test("Stage 158 final Phase 6 layer stack preserves visual overlay order", () =>
   assert.ok(layerIndex("review-callouts") < layerIndex("selected-focused-overlays"));
 });
 
+test("Stage 8.4 road corridors stay below labels restrictions and learner overlays", () => {
+  const layerIndex = (layer: RealLondonFinalPhase6Layer) => FINAL_PHASE_6_REAL_LONDON_LAYER_STACK.indexOf(layer);
+
+  assert.ok(layerIndex("land-background") < layerIndex("road-casings"));
+  assert.ok(layerIndex("road-casings") < layerIndex("road-fills"));
+  assert.ok(layerIndex("road-fills") < layerIndex("street-labels"));
+  assert.ok(layerIndex("street-labels") < layerIndex("one-way-arrows"));
+  assert.ok(layerIndex("one-way-arrows") < layerIndex("restriction-symbols"));
+  assert.ok(layerIndex("restriction-symbols") < layerIndex("correct-reference-route"));
+  assert.ok(layerIndex("correct-reference-route") < layerIndex("attempted-route"));
+  assert.ok(layerIndex("attempted-route") < layerIndex("illegal-warning-overlays"));
+  assert.ok(layerIndex("illegal-warning-overlays") < layerIndex("start-destination-markers"));
+  assert.ok(layerIndex("start-destination-markers") < layerIndex("review-callouts"));
+});
+
 test("Stage 156 responsive visual scenarios register deterministic mobile and tablet viewports", () => {
   const comparisonSummary = buildRealLondonVisualComparisonScenarioSummary();
 

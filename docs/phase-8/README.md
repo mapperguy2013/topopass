@@ -50,6 +50,7 @@ stages may be split if implementation audit shows that a stage is too large.
 3. Stage 8.3: Atlas render-data adapter for buildings, land use, institutions,
    places, transport context and road references. Completed.
 4. Stage 8.4: Printed-atlas road hierarchy and major-road corridor system.
+   Implemented; manual visual acceptance pending.
 5. Stage 8.5: Buildings, built-up fabric, institutional areas, parks and water.
 6. Stage 8.6: Compact atlas typography and dense road-label placement.
 7. Stage 8.7: Road references and compact original symbols.
@@ -63,11 +64,12 @@ stages may be split if implementation audit shows that a stage is too large.
 
 ## Current Status
 
-Stages 8.1 through 8.3 are complete. Stage 8.3 adds typed, deterministic
-render-data contracts for building footprints, institutional areas, land-use
-blocks, and genuine A/B road references without adding renderer styling or
-changing gameplay. The next stage is Stage 8.4: printed-atlas road hierarchy
-and major-road corridor work.
+Stages 8.1 through 8.3 are complete. Stage 8.4 is implemented in the production
+renderer with typed road-hierarchy tokens, flat-yellow principal corridors,
+dark casings, deterministic pass order, split-segment continuity metadata, and
+bounded semantic zoom scaling. Manual production screenshot and interaction QA
+was unavailable during implementation, so Stage 8.4 visual acceptance remains
+pending and the stage is not marked complete.
 
 ## Documents
 
@@ -75,4 +77,5 @@ and major-road corridor work.
 - [Phase 8 baseline audit](phase-8-baseline-audit.md)
 - [Phase 8 geographic render-data audit](phase-8-geographic-render-data-audit.md)
 - [Stage 8.3 render-data adapter](stage-8-3-render-data-adapter.md)
+- [Stage 8.4 printed-atlas road hierarchy](stage-8-4-printed-atlas-road-hierarchy.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

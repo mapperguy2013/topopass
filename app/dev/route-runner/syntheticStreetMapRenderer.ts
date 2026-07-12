@@ -143,6 +143,7 @@ export type SyntheticRoadVisual = {
   source: "synthetic" | "osm";
   osmHighway?: string;
   osmHierarchy?: OsmRoadVisualHierarchy;
+  osmWayId?: string;
   points: Vec2[];
   midpoint: Vec2;
   labelAngleRadians: number;
@@ -647,6 +648,7 @@ export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisu
         source: osmMetadata ? "osm" : "synthetic",
         ...(osmMetadata?.highway ? { osmHighway: osmMetadata.highway } : {}),
         ...(osmMetadata ? { osmHierarchy: osmMetadata.hierarchy } : {}),
+        ...(osmMetadata?.osmWayId ? { osmWayId: osmMetadata.osmWayId } : {}),
         points: [endpoints.from, endpoints.to],
         midpoint: midpoint(endpoints.from, endpoints.to),
         labelAngleRadians: label?.angleRadians ?? 0,
