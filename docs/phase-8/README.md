@@ -45,8 +45,8 @@ weakened by Phase 8 visual setup work.
 This sequence is the Phase 8 starting plan. It is not irreversible. Later
 stages may be split if implementation audit shows that a stage is too large.
 
-1. Stage 8.1: Visual-master lock and baseline setup.
-2. Stage 8.2: Existing geographic and render-data coverage audit.
+1. Stage 8.1: Visual-master lock and baseline setup. Completed.
+2. Stage 8.2: Existing geographic and render-data coverage audit. Completed.
 3. Stage 8.3: Atlas render-data adapter for buildings, land use, institutions,
    places, transport context and road references.
 4. Stage 8.4: Printed-atlas road hierarchy and major-road corridor system.
@@ -63,14 +63,19 @@ stages may be split if implementation audit shows that a stage is too large.
 
 ## Current Status
 
-Stage 8.1 has started as documentation and inspection only. The approved visual
-master has been found at the documented path and visually inspected. This stage
-does not change production map rendering, road colours, widths, label logic,
-OSM conversion, route generation, scoring, hints, feedback, learner progress,
-or deployment.
+Stage 8.1 is complete as documentation and inspection only. Stage 8.2 is
+complete as deterministic audit code, tests, command output, and evidence
+documentation. The next stage is Stage 8.3: atlas render-data adapter work for
+buildings, land use, institutions, places, transport context, piers where
+sourced, and genuine road references.
+
+Stages 8.1 and 8.2 do not intentionally change production map rendering, road
+colours, widths, label logic, OSM conversion, route generation, scoring, hints,
+feedback, learner progress, or deployment.
 
 ## Documents
 
 - [Phase 8 cartography acceptance](phase-8-cartography-acceptance.md)
 - [Phase 8 baseline audit](phase-8-baseline-audit.md)
+- [Phase 8 geographic render-data audit](phase-8-geographic-render-data-audit.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

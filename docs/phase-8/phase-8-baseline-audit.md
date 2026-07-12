@@ -5,6 +5,12 @@ production map behaviour. The approved visual master at
 `docs/phase-8/references/phase-8-approved-exam-atlas-visual-master.png` was
 found and visually inspected before this audit was written.
 
+Stage 8.2 adds the deterministic fixture-by-fixture evidence report in
+[`phase-8-geographic-render-data-audit.md`](phase-8-geographic-render-data-audit.md).
+This Stage 8.1 document remains a historical baseline inventory; use the Stage
+8.2 audit for source-versus-route-graph-versus-context-versus-renderer coverage
+claims.
+
 Where visual proof is not available, this audit records: Requires
 representative production screenshot review.
 
@@ -174,8 +180,8 @@ representative production screenshot review.
 
 | Data needed for Phase 8 | Baseline finding | Distinction |
 | --- | --- | --- |
-| Road references | `ref` is preserved by curated enrichment and raw tags, but not rendered as atlas references. | Data can exist but render-ready reference data is not drawn. |
-| Buildings | `building` tags may be present and whitelisted; selected public/civic buildings can become landmark points. | Data exists in some fixtures but general footprints are discarded or not adapted into render-ready polygons. |
+| Road references | `ref` is preserved by curated enrichment and raw route-road tags, but not rendered as atlas references. | Source or route metadata can exist while displayed reference output is still absent. |
+| Buildings | `building` tags may be present and whitelisted; selected public/civic buildings can become landmark points. | Source polygons can exist, but general footprints are not adapted into render-ready building polygons. |
 | Institutional building classification | Some `amenity` and `building=public/civic` tags become public-building landmarks. | Feature exists only as point-like landmark classification; institutional polygons are absent. |
 | Estates | No estate-specific adapter was found. Generic area labels support selected `place` values only. | Data may be absent or discarded depending on source tags; requires later audit and visual QA. |
 | Neighbourhoods | `place=neighbourhood/suburb/quarter/locality/square` labels are supported. | Render-ready labels exist but density and typography are insufficient for Phase 8. |
