@@ -11,6 +11,10 @@ import type {
 } from "../../../lib/map-engine/osm/index.ts";
 
 export type RealLondonContextFeatureKind =
+  | "land-use"
+  | "building"
+  | "institution"
+  | "road-reference"
   | "rail"
   | "station"
   | "bridge"
@@ -81,7 +85,36 @@ export type RealLondonAreaContextFeature = RealLondonContextFeatureBase & {
   point: Vec2;
 };
 
+export type RealLondonBuildingContextFeature = RealLondonContextFeatureBase & {
+  kind: "building";
+  subtype: "residential" | "commercial" | "retail" | "industrial" | "education" | "healthcare" | "civic" | "religious" | "other";
+  points: Vec2[];
+};
+
+export type RealLondonInstitutionContextFeature = RealLondonContextFeatureBase & {
+  kind: "institution";
+  subtype: "education" | "healthcare" | "civic" | "religious";
+  points: Vec2[];
+};
+
+export type RealLondonLandUseContextFeature = RealLondonContextFeatureBase & {
+  kind: "land-use";
+  subtype: "residential" | "commercial" | "retail" | "industrial";
+  points: Vec2[];
+};
+
+export type RealLondonRoadReferenceContextFeature = RealLondonContextFeatureBase & {
+  kind: "road-reference";
+  subtype: "a-road" | "b-road";
+  reference: string;
+  points: Vec2[];
+};
+
 export type RealLondonContextFeature =
+  | RealLondonLandUseContextFeature
+  | RealLondonBuildingContextFeature
+  | RealLondonInstitutionContextFeature
+  | RealLondonRoadReferenceContextFeature
   | RealLondonRailContextFeature
   | RealLondonStationContextFeature
   | RealLondonBridgeContextFeature
@@ -93,6 +126,20 @@ export type RealLondonContextFeature =
   | RealLondonAreaContextFeature;
 
 export type RealLondonContextCoverageCounts = {
+  buildingFootprintFeatures: number;
+  institutionalAreaFeatures: number;
+  educationInstitutionalAreaFeatures: number;
+  healthcareInstitutionalAreaFeatures: number;
+  civicInstitutionalAreaFeatures: number;
+  religiousInstitutionalAreaFeatures: number;
+  landUseBlockFeatures: number;
+  residentialLandUseBlockFeatures: number;
+  commercialLandUseBlockFeatures: number;
+  retailLandUseBlockFeatures: number;
+  industrialLandUseBlockFeatures: number;
+  roadReferenceFeatures: number;
+  aRoadReferenceFeatures: number;
+  bRoadReferenceFeatures: number;
   railFeatures: number;
   subwayRailFeatures: number;
   stationFeatures: number;
@@ -120,6 +167,20 @@ type OverpassContext = {
 };
 
 const orderedCoverageKeys: Array<keyof RealLondonContextCoverageCounts> = [
+  "buildingFootprintFeatures",
+  "institutionalAreaFeatures",
+  "educationInstitutionalAreaFeatures",
+  "healthcareInstitutionalAreaFeatures",
+  "civicInstitutionalAreaFeatures",
+  "religiousInstitutionalAreaFeatures",
+  "landUseBlockFeatures",
+  "residentialLandUseBlockFeatures",
+  "commercialLandUseBlockFeatures",
+  "retailLandUseBlockFeatures",
+  "industrialLandUseBlockFeatures",
+  "roadReferenceFeatures",
+  "aRoadReferenceFeatures",
+  "bRoadReferenceFeatures",
   "railFeatures",
   "subwayRailFeatures",
   "stationFeatures",
@@ -135,6 +196,10 @@ const orderedCoverageKeys: Array<keyof RealLondonContextCoverageCounts> = [
 ];
 
 const contextKindOrder: Record<RealLondonContextFeatureKind, number> = {
+  "land-use": 2,
+  building: 4,
+  institution: 6,
+  "road-reference": 8,
   rail: 10,
   station: 20,
   bridge: 30,
@@ -148,6 +213,20 @@ const contextKindOrder: Record<RealLondonContextFeatureKind, number> = {
 
 function emptyCoverageCounts(): RealLondonContextCoverageCounts {
   return {
+    buildingFootprintFeatures: 0,
+    institutionalAreaFeatures: 0,
+    educationInstitutionalAreaFeatures: 0,
+    healthcareInstitutionalAreaFeatures: 0,
+    civicInstitutionalAreaFeatures: 0,
+    religiousInstitutionalAreaFeatures: 0,
+    landUseBlockFeatures: 0,
+    residentialLandUseBlockFeatures: 0,
+    commercialLandUseBlockFeatures: 0,
+    retailLandUseBlockFeatures: 0,
+    industrialLandUseBlockFeatures: 0,
+    roadReferenceFeatures: 0,
+    aRoadReferenceFeatures: 0,
+    bRoadReferenceFeatures: 0,
     railFeatures: 0,
     subwayRailFeatures: 0,
     stationFeatures: 0,
@@ -174,6 +253,15 @@ export function auditRealLondonContextCoverage(fixture: unknown): RealLondonCont
 
     for (const way of context.ways) {
       applyContextCoverageCounts(counts, way.tags ?? {});
+      applyAtlasAreaCoverageCounts(counts, way.tags ?? {}, isClosedWay(way));
+    }
+
+    for (const relation of context.relations) {
+      applyAtlasAreaCoverageCounts(
+        counts,
+        relation.tags ?? {},
+        tagValue(relation.tags ?? {}, "type") === "multipolygon"
+      );
     }
   }
 
@@ -258,6 +346,44 @@ function applyContextCoverageCounts(counts: RealLondonContextCoverageCounts, tag
   if (areaLabelSupported(tags) && namedContextLabel(tags)) {
     counts.areaContextLabelFeatures += 1;
   }
+
+  for (const roadReference of roadReferencesForTags(tags)) {
+    counts.roadReferenceFeatures += 1;
+
+    if (roadReference.subtype === "a-road") {
+      counts.aRoadReferenceFeatures += 1;
+    } else {
+      counts.bRoadReferenceFeatures += 1;
+    }
+  }
+}
+
+function applyAtlasAreaCoverageCounts(
+  counts: RealLondonContextCoverageCounts,
+  tags: OverpassTags,
+  polygonCapable: boolean
+): void {
+  if (!polygonCapable) {
+    return;
+  }
+
+  if (buildingSubtypeForTags(tags)) {
+    counts.buildingFootprintFeatures += 1;
+  }
+
+  const institutionSubtype = institutionSubtypeForTags(tags);
+
+  if (institutionSubtype) {
+    counts.institutionalAreaFeatures += 1;
+    counts[`${institutionSubtype}InstitutionalAreaFeatures`] += 1;
+  }
+
+  const landUseSubtype = landUseSubtypeForTags(tags);
+
+  if (landUseSubtype) {
+    counts.landUseBlockFeatures += 1;
+    counts[`${landUseSubtype}LandUseBlockFeatures`] += 1;
+  }
 }
 
 function contextFeaturesFromNode(node: OverpassNodeElement, projection: OsmLocalProjection): RealLondonContextFeature[] {
@@ -336,8 +462,23 @@ function contextFeaturesFromWay(
   const points = projectedWayPoints({ way, nodesById, projection });
   const features: RealLondonContextFeature[] = [];
   const closed = isClosedWay(way);
+  const polygonReady = closed && points.length === way.nodes.length && points.length >= 4;
 
   if (points.length >= 2) {
+    for (const roadReference of roadReferencesForTags(tags)) {
+      features.push({
+        id: `road-reference-way-${way.id}-${roadReference.reference.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`,
+        kind: "road-reference",
+        subtype: roadReference.subtype,
+        reference: roadReference.reference,
+        name: namedContextLabel(tags),
+        points,
+        sourceElementType: "way",
+        sourceElementId: way.id,
+        sourceTags: { ...tags }
+      });
+    }
+
     const railSubtype = railSubtypeForTags(tags);
 
     if (railSubtype && !closed) {
@@ -379,7 +520,14 @@ function contextFeaturesFromWay(
     });
   }
 
-  if (closed && points.length >= 4) {
+  if (polygonReady) {
+    features.push(...atlasPolygonFeatures({
+      elementType: "way",
+      elementId: way.id,
+      tags,
+      points
+    }));
+
     const parkSubtype = parkSubtypeForTags(tags);
 
     if (parkSubtype) {
@@ -488,22 +636,90 @@ function contextFeaturesFromRelation(
   projection: OsmLocalProjection
 ): RealLondonContextFeature[] {
   const tags = relation.tags ?? {};
-  const waterSubtype = waterSubtypeForTags(tags);
 
-  if (!waterSubtype || tagValue(tags, "type") !== "multipolygon") {
+  if (tagValue(tags, "type") !== "multipolygon") {
     return [];
   }
 
-  return buildRelationOuterRings(relation, waysById, nodesById, projection).map((points, index) => ({
-    id: `water-relation-${relation.id}-ring-${index + 1}`,
-    kind: "water" as const,
-    subtype: waterSubtype === "waterway" ? "basin" : waterSubtype,
+  const waterSubtype = waterSubtypeForTags(tags);
+
+  return buildRelationOuterRings(relation, waysById, nodesById, projection).flatMap((points, index) => {
+    const ring = index + 1;
+    const features = atlasPolygonFeatures({
+      elementType: "relation",
+      elementId: relation.id,
+      idSuffix: `-ring-${ring}`,
+      tags,
+      points
+    });
+
+    if (waterSubtype) {
+      features.push({
+        id: `water-relation-${relation.id}-ring-${ring}`,
+        kind: "water",
+        subtype: waterSubtype === "waterway" ? "basin" : waterSubtype,
+        name: namedContextLabel(tags),
+        points,
+        sourceElementType: "relation",
+        sourceElementId: relation.id,
+        sourceTags: { ...tags }
+      });
+    }
+
+    return features;
+  });
+}
+
+function atlasPolygonFeatures(input: {
+  elementType: "way" | "relation";
+  elementId: OverpassElementId;
+  idSuffix?: string;
+  tags: OverpassTags;
+  points: Vec2[];
+}): RealLondonContextFeature[] {
+  const { elementType, elementId, idSuffix = "", tags, points } = input;
+  const features: RealLondonContextFeature[] = [];
+  const source = {
     name: namedContextLabel(tags),
     points,
-    sourceElementType: "relation" as const,
-    sourceElementId: relation.id,
+    sourceElementType: elementType,
+    sourceElementId: elementId,
     sourceTags: { ...tags }
-  }));
+  };
+  const landUseSubtype = landUseSubtypeForTags(tags);
+
+  if (landUseSubtype) {
+    features.push({
+      ...source,
+      id: `land-use-${elementType}-${elementId}${idSuffix}`,
+      kind: "land-use",
+      subtype: landUseSubtype
+    });
+  }
+
+  const buildingSubtype = buildingSubtypeForTags(tags);
+
+  if (buildingSubtype) {
+    features.push({
+      ...source,
+      id: `building-${elementType}-${elementId}${idSuffix}`,
+      kind: "building",
+      subtype: buildingSubtype
+    });
+  }
+
+  const institutionSubtype = institutionSubtypeForTags(tags);
+
+  if (institutionSubtype) {
+    features.push({
+      ...source,
+      id: `institution-${elementType}-${elementId}${idSuffix}`,
+      kind: "institution",
+      subtype: institutionSubtype
+    });
+  }
+
+  return features;
 }
 
 function dedupeContextFeatures(features: readonly RealLondonContextFeature[]): RealLondonContextFeature[] {
@@ -522,6 +738,15 @@ function dedupeContextFeatures(features: readonly RealLondonContextFeature[]): R
 }
 
 function contextFeatureDedupeKey(feature: RealLondonContextFeature): string {
+  if (
+    feature.kind === "building" ||
+    feature.kind === "institution" ||
+    feature.kind === "land-use" ||
+    feature.kind === "road-reference"
+  ) {
+    return feature.id;
+  }
+
   const name = feature.name?.toLowerCase() ?? "";
   const point =
     "point" in feature
@@ -537,6 +762,119 @@ function compareContextFeatures(left: RealLondonContextFeature, right: RealLondo
     left.sourceElementId - right.sourceElementId ||
     left.id.localeCompare(right.id)
   );
+}
+
+function landUseSubtypeForTags(tags: OverpassTags): RealLondonLandUseContextFeature["subtype"] | null {
+  const landUse = tagValue(tags, "landuse");
+
+  if (landUse === "residential" || landUse === "commercial" || landUse === "retail" || landUse === "industrial") {
+    return landUse;
+  }
+
+  return null;
+}
+
+function institutionSubtypeForTags(tags: OverpassTags): RealLondonInstitutionContextFeature["subtype"] | null {
+  const amenity = tagValue(tags, "amenity");
+  const building = tagValue(tags, "building");
+  const healthcare = tagValue(tags, "healthcare");
+  const landUse = tagValue(tags, "landuse");
+
+  if (
+    ["school", "college", "university", "kindergarten", "childcare"].includes(amenity) ||
+    landUse === "education" ||
+    ["school", "college", "university", "kindergarten"].includes(building)
+  ) {
+    return "education";
+  }
+
+  if (
+    ["hospital", "clinic", "doctors", "dentist", "pharmacy", "nursing_home"].includes(amenity) ||
+    Boolean(healthcare) ||
+    landUse === "healthcare" ||
+    ["hospital", "healthcare"].includes(building)
+  ) {
+    return "healthcare";
+  }
+
+  if (
+    amenity === "place_of_worship" ||
+    landUse === "religious" ||
+    ["church", "chapel", "cathedral", "mosque", "synagogue", "temple", "religious"].includes(building)
+  ) {
+    return "religious";
+  }
+
+  if (
+    ["townhall", "courthouse", "police", "fire_station", "library", "community_centre", "social_facility"].includes(amenity) ||
+    ["civic", "public", "government"].includes(building) ||
+    landUse === "civic" ||
+    tagValue(tags, "office") === "government" ||
+    tagValue(tags, "government")
+  ) {
+    return "civic";
+  }
+
+  return null;
+}
+
+function buildingSubtypeForTags(tags: OverpassTags): RealLondonBuildingContextFeature["subtype"] | null {
+  const building = tagValue(tags, "building");
+
+  if (!building || building === "no") {
+    return null;
+  }
+
+  const institutionSubtype = institutionSubtypeForTags(tags);
+
+  if (institutionSubtype) {
+    return institutionSubtype;
+  }
+
+  if (["apartments", "detached", "house", "residential", "semidetached_house", "terrace"].includes(building)) {
+    return "residential";
+  }
+
+  if (["commercial", "office"].includes(building)) {
+    return "commercial";
+  }
+
+  if (["retail", "supermarket", "kiosk"].includes(building)) {
+    return "retail";
+  }
+
+  if (["industrial", "warehouse", "manufacture"].includes(building)) {
+    return "industrial";
+  }
+
+  return "other";
+}
+
+function roadReferencesForTags(
+  tags: OverpassTags
+): Array<{ reference: string; subtype: RealLondonRoadReferenceContextFeature["subtype"] }> {
+  if (!tagValue(tags, "highway")) {
+    return [];
+  }
+
+  const references = (tags.ref ?? "")
+    .split(/[;,]/)
+    .map((reference) => reference.trim().toUpperCase())
+    .filter(Boolean);
+  const uniqueReferences = new Set<string>();
+
+  for (const reference of references) {
+    if (/^A\d{1,4}[A-Z]?(?:\([A-Z0-9]+\))?$/.test(reference) || /^B\d{1,4}[A-Z]?$/.test(reference)) {
+      uniqueReferences.add(reference);
+    }
+  }
+
+  return Array.from(uniqueReferences)
+    .sort((left, right) => left.localeCompare(right))
+    .map((reference) => ({
+      reference,
+      subtype: reference.startsWith("A") ? "a-road" : "b-road"
+    }));
 }
 
 function railSubtypeForTags(tags: OverpassTags): RealLondonRailContextFeature["subtype"] | null {

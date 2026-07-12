@@ -171,7 +171,7 @@ test("Phase 8 road ref classification accepts valid A/B refs without fabricating
   assert.equal(classifyPhase8RoadReferenceValue("Road A"), "other");
 });
 
-test("Phase 8 synthetic edge report separates raw route refs from displayed refs", () => {
+test("Phase 8 synthetic edge report separates adapted road refs from displayed refs", () => {
   const edgeReport = buildPhase8AuditReportForFixture(buildEdgeFixture(), {
     mapId: "phase-8-edge-fixture",
     name: "Phase 8 edge fixture",
@@ -184,11 +184,12 @@ test("Phase 8 synthetic edge report separates raw route refs from displayed refs
   assert.equal(edgeReport.sourceCoverage.bRoadRefWays, 1);
   assert.equal(edgeReport.sourceCoverage.otherRoadRefWays, 1);
   assert.equal(edgeReport.routeGraphCoverage.roadsWithRawRefTags, 3);
+  assert.equal(edgeReport.contextAdapterCoverage.roadReferenceFeatures, 2);
   assert.equal(edgeReport.rendererConsumedCoverage.displayedRoadReferences, 0);
-  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "road-references")?.state, "route-metadata-only");
+  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "road-references")?.state, "context-ready-no-renderer-consumer");
 });
 
-test("Phase 8 audit does not report source building geometry as render-ready", () => {
+test("Phase 8 audit reports adapted building geometry separately from renderer consumption", () => {
   const edgeReport = buildPhase8AuditReportForFixture(buildEdgeFixture(), {
     mapId: "phase-8-building-fixture",
     name: "Phase 8 building fixture",
@@ -197,12 +198,12 @@ test("Phase 8 audit does not report source building geometry as render-ready", (
   });
 
   assert.equal(edgeReport.sourceCoverage.usableClosedBuildingPolygons, 1);
-  assert.equal(edgeReport.contextAdapterCoverage.generalBuildingPolygons, 0);
+  assert.equal(edgeReport.contextAdapterCoverage.generalBuildingPolygons, 1);
   assert.equal(edgeReport.rendererConsumedCoverage.generalBuildingPolygons, 0);
-  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "buildings-built-fabric")?.state, "source-present-geometry-discarded");
+  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "buildings-built-fabric")?.state, "context-ready-no-renderer-consumer");
 });
 
-test("Phase 8 audit keeps point landmarks separate from institutional polygons", () => {
+test("Phase 8 audit keeps point landmarks separate from adapted institutional polygons", () => {
   const edgeReport = buildPhase8AuditReportForFixture(buildEdgeFixture(), {
     mapId: "phase-8-institution-fixture",
     name: "Phase 8 institution fixture",
@@ -211,9 +212,10 @@ test("Phase 8 audit keeps point landmarks separate from institutional polygons",
   });
 
   assert.ok(edgeReport.contextAdapterCoverage.institutionalPointLandmarks > 0);
-  assert.equal(edgeReport.contextAdapterCoverage.institutionalPolygons, 0);
+  assert.equal(edgeReport.contextAdapterCoverage.institutionalPolygons, 1);
+  assert.equal(edgeReport.contextAdapterCoverage.landUsePolygons, 1);
   assert.equal(edgeReport.rendererConsumedCoverage.institutionalPolygons, 0);
-  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "land-use-institutions")?.state, "point-landmark-only");
+  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "land-use-institutions")?.state, "context-ready-no-renderer-consumer");
 });
 
 test("Phase 8 audit reports missing whitelist blockers for future atlas tags", () => {

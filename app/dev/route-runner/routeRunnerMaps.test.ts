@@ -630,6 +630,20 @@ test("Stage 151 visual QA scenario provides context features for visual inspecti
   });
 
   assert.deepEqual(audit.counts, {
+    buildingFootprintFeatures: 0,
+    institutionalAreaFeatures: 0,
+    educationInstitutionalAreaFeatures: 0,
+    healthcareInstitutionalAreaFeatures: 0,
+    civicInstitutionalAreaFeatures: 0,
+    religiousInstitutionalAreaFeatures: 0,
+    landUseBlockFeatures: 0,
+    residentialLandUseBlockFeatures: 0,
+    commercialLandUseBlockFeatures: 0,
+    retailLandUseBlockFeatures: 0,
+    industrialLandUseBlockFeatures: 0,
+    roadReferenceFeatures: 0,
+    aRoadReferenceFeatures: 0,
+    bRoadReferenceFeatures: 0,
     railFeatures: 1,
     subwayRailFeatures: 0,
     stationFeatures: 1,

@@ -52,6 +52,10 @@ test("Stage 160.5 curated London OSM zones stay bounded and representative", () 
   assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("highway"));
   assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("restriction"));
   assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("public_transport"));
+  assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("healthcare"));
+  assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("government"));
+  assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("office"));
+  assert.ok(CURATED_LONDON_OSM_TAG_WHITELIST.includes("religion"));
 });
 
 test("Stage 160.5 current fixture audit records the pre-enrichment context gaps", () => {

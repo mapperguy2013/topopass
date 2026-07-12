@@ -12,6 +12,11 @@ The command audits committed fixtures and current code paths only. It does not
 fetch live Overpass data and does not use the approved visual master as
 geography.
 
+Stage 8.3 subsequently added typed building, institutional-area, land-use, and
+road-reference context features. The source totals below remain the Stage 8.2
+baseline; adapter counts and pipeline-state output now reflect the current
+Stage 8.3 code. Renderer-consumed counts remain unchanged.
+
 ## Scope And Methodology
 
 The audit distinguishes:
@@ -38,12 +43,12 @@ area.
 | Fixture | Classification | Elements | Road-ref ways | Building polygons | Institutional source | Water multipolygons | Context features | Renderer labels | Gate |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | `centralLondonOverpass.json` | Real OSM | 251273 | 5960 | 602 | 635 | 15 | 0 | 0 | `devOnlyStressTest` |
-| `kingsCrossEustonOverpass.json` | Real OSM | 25746 | 830 | 56 | 66 | 1 | 835 | 228 | `betaPracticeAllowedWithLoading` |
-| `oneWaySystemAreaOverpass.json` | Real OSM | 13404 | 268 | 11 | 32 | 0 | 623 | 61 | `betaPracticeAllowed` |
-| `piccadillyCircusOverpass.json` | Real OSM | 5269 | 73 | 9 | 10 | 0 | 220 | 16 | `betaPracticeAllowed` |
-| `quietResidentialRoadsOverpass.json` | Real OSM | 3339 | 39 | 3 | 8 | 0 | 69 | 8 | `betaPracticeAllowed` |
-| `realLondonPilotOverpass.json` | Real OSM | 559 | 26 | 0 | 0 | 0 | 0 | 0 | legacy route-runner fixture |
-| `waterlooBridgeOverpass.json` | Real OSM | 17367 | 196 | 15 | 13 | 1 | 528 | 36 | `betaPracticeAllowed` |
+| `kingsCrossEustonOverpass.json` | Real OSM | 25746 | 830 | 56 | 66 | 1 | 1909 | 228 | `betaPracticeAllowedWithLoading` |
+| `oneWaySystemAreaOverpass.json` | Real OSM | 13404 | 268 | 11 | 32 | 0 | 920 | 61 | `betaPracticeAllowed` |
+| `piccadillyCircusOverpass.json` | Real OSM | 5269 | 73 | 9 | 10 | 0 | 305 | 16 | `betaPracticeAllowed` |
+| `quietResidentialRoadsOverpass.json` | Real OSM | 3339 | 39 | 3 | 8 | 0 | 119 | 8 | `betaPracticeAllowed` |
+| `realLondonPilotOverpass.json` | Real OSM | 559 | 26 | 0 | 0 | 0 | 26 | 0 | legacy route-runner fixture |
+| `waterlooBridgeOverpass.json` | Real OSM | 17367 | 196 | 15 | 13 | 1 | 748 | 36 | `betaPracticeAllowed` |
 
 Synthetic controls are audited separately and excluded from real-geography
 aggregate conclusions: `largeLondonOverpass.json`, `mediumLondonOverpass.json`,
@@ -60,10 +65,10 @@ dev-only stress fixture.
 | Category | Current source evidence | Current render-ready status | Stage 8.3 implication |
 | --- | --- | --- | --- |
 | Dense road network | Present across curated and legacy real fixtures. | Road graph and current road rendering exist. | Preserve routing while adding atlas density rules later. |
-| A/B road references | 7392 real source road-ref ways aggregate. | `0` displayed road references. Raw refs survive as metadata only. | Add typed road-reference render data and renderer support. |
-| Buildings | 696 usable closed building polygons aggregate. | `0` general building polygons rendered. | Add building polygon or simplified block adapter. |
-| Land use | 1436 real land-use source features aggregate. | `0` land-use polygons rendered. | Add land-use polygon contracts. |
-| Institutions | 764 civic/institutional source features aggregate. | Public buildings are point landmarks only; `0` institutional polygons. | Add institutional polygon adapter separate from landmarks. |
+| A/B road references | 7392 real source road-ref ways aggregate. | Typed context features exist; `0` displayed road references. | Add renderer placement and styling. |
+| Buildings | 696 usable closed building polygons aggregate. | Typed context footprints exist where fixtures are converted; `0` rendered. | Add simplification and renderer consumption. |
+| Land use | 1436 real land-use source features aggregate. | Typed supported polygons exist where geometry is retained; `0` rendered. | Add renderer consumption. |
+| Institutions | 764 civic/institutional source features aggregate. | Typed area features are separate from point landmarks; `0` rendered polygons. | Add renderer consumption. |
 | Places and estates | Supported `place=*` labels exist; named residential areas are ambiguous. | Area labels render where adapted. Estates are not safely classified. | Add explicit place/neighbourhood/estate-candidate contract. |
 | Parks and gardens | Present in several fixtures. | Supported closed polygons can render as park/open-space backgrounds. | Restyle in later visual stages. |
 | Water and river | Water polygons, waterways, and relation rings are present. | Supported water polygons and waterways render where adapted. | Preserve multipolygon handling and add pier support only where sourced. |
@@ -72,11 +77,12 @@ dev-only stress fixture.
 
 ## Aggregate Findings
 
-The current real fixture set can support road-network hierarchy, local-road
-texture, genuine road-reference source detection, parks, water, rail, stations,
-area labels, and point landmarks. It cannot yet support the approved visual
-master's building fabric, muted institutional blocks, land-use colour fields,
-prominent A/B road references, estate treatment, or pier symbols.
+The current real fixture set and Stage 8.3 adapter can support road-network
+hierarchy, local-road texture, building fabric, institutional and land-use
+areas, genuine road-reference data, parks, water, rail, stations, area labels,
+and point landmarks. The renderer still cannot display the approved visual
+master's building fabric, institutional blocks, land-use fields, prominent A/B
+references, estate treatment, or pier symbols.
 
 The approved visual master therefore remains an appearance target only. Stage
 8.2 does not claim visual completion and does not change production map
@@ -84,15 +90,14 @@ styling.
 
 ## Pipeline Losses
 
-- Road `ref` tags are present and can survive route conversion as raw road
-  metadata, but no current renderer path displays them.
-- Building-tagged ways and relations are present, including closed polygons,
-  but the route graph discards them and the context adapter has no general
-  building polygon output.
+- Valid A/B road `ref` tags now become typed context features, but no current
+  renderer path displays them.
+- Building-tagged closed ways and multipolygon outer rings now become typed
+  footprints, while the route graph and renderer still ignore them.
 - Public/civic buildings can become point landmarks when named and recognised;
-  they do not become institutional polygons.
-- Residential, retail/commercial, and industrial land-use tags are source
-  evidence only today.
+  supported closed geometry separately becomes an institutional-area feature.
+- Supported residential, retail/commercial, and industrial polygons now become
+  typed land-use blocks where fixture geometry is available, but are not drawn.
 - Pier-like source features require whitelist and adapter work before any
   symbol can be claimed.
 - `public_transport=station` without `railway=station` is source-present but
@@ -124,9 +129,9 @@ progress, authentication, payments, deployment, or production rendering.
 ## Performance Considerations
 
 The Central London fixture is 251273 elements and remains a dev-only stress
-case. Stage 8.3 must define simplification, lazy loading, tiling, or other
-limits before building/land-use/institutional fabric is rendered for this
-extent.
+case. A later renderer stage must define simplification, lazy loading, tiling,
+or other limits before building/land-use/institutional fabric is rendered for
+this extent.
 
 The King's Cross / Euston fixture remains behind the existing lazy-loading
 gate. The audit command can inspect it without running route-generation
@@ -151,22 +156,17 @@ Remaining:
 - Confirm route drawing, scoring, pan/zoom, learner overlays, route-review
   overlays, and OSM attribution remain visible in the live UI.
 
-## Stage 8.3 Handoff
+## Stage 8.3 Handoff Status
 
-Stage 8.3 should implement data contracts only after preserving these audit
-distinctions:
+Stage 8.3 completed the building, supported land-use, institutional-area, road
+reference, whitelist, outer-ring multipolygon, and traceability contracts while
+preserving these audit distinctions. Remaining later-stage work includes:
 
-- Typed building polygons or simplified building blocks.
-- Land-use polygons for residential, retail/commercial, and industrial source
-  data.
-- Institutional polygons separate from public-building point landmarks.
 - Place, neighbourhood, and estate-candidate data that does not silently
   promote ambiguous residential names to estates.
-- Road-reference render data sourced only from genuine `ref` tags.
 - Transport and public-feature candidates for compact atlas symbols.
 - Pier whitelist, adapter, and symbol support only if committed source tags
   warrant it.
-- Missing whitelist tags needed by regenerated atlas fixtures.
-- Multipolygon and geometry-handling requirements.
-- Renderer contracts for each new render-ready feature type.
+- Inner-ring multipolygon geometry where holes affect later fills.
+- Renderer consumption, styling, and placement for each new feature type.
 - Central London performance limits before dense fabric is enabled.

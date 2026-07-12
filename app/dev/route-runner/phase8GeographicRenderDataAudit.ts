@@ -526,7 +526,12 @@ function auditFixture(input: Phase8AuditFixtureInput): Phase8FixtureAuditReport 
     unsupportedCoverage,
     categoryAudits,
     sourceAbsences: sourceAbsences(sourceCoverage),
-    stage83Requirements: stage83RequirementsForFixture(sourceCoverage, routeGraphCoverage, unsupportedCoverage)
+    stage83Requirements: stage83RequirementsForFixture(
+      sourceCoverage,
+      routeGraphCoverage,
+      contextAdapterCoverage,
+      unsupportedCoverage
+    )
   };
 }
 
@@ -919,11 +924,11 @@ function countContextAdapterCoverage(features: readonly RealLondonContextFeature
       (feature) => feature.kind === "landmark" && Boolean(feature.sourceTags?.building)
     ).length,
     institutionalPointLandmarks: features.filter((feature) => feature.kind === "landmark" && isInstitutionalSource(feature.sourceTags ?? {})).length,
-    institutionalPolygons: 0,
-    generalBuildingPolygons: 0,
-    landUsePolygons: 0,
+    institutionalPolygons: features.filter((feature) => feature.kind === "institution").length,
+    generalBuildingPolygons: features.filter((feature) => feature.kind === "building").length,
+    landUsePolygons: features.filter((feature) => feature.kind === "land-use").length,
     pierFeatures: 0,
-    roadReferenceFeatures: 0
+    roadReferenceFeatures: features.filter((feature) => feature.kind === "road-reference").length
   };
 }
 
@@ -983,12 +988,26 @@ function countUnsupportedCoverage(
       (feature) => feature.kind === "landmark" && Boolean(feature.sourceTags?.building)
     ).length,
     sourceBuildingPolygonsWithoutRendererPath: source.usableClosedBuildingPolygons,
-    institutionalPolygonsWithoutAdapter: source.polygonCapableInstitutionalFeatures,
-    landUsePolygonsWithoutAdapter:
+    institutionalPolygonsWithoutAdapter: Math.max(
+      0,
+      source.polygonCapableInstitutionalFeatures - contextFeatures.filter((feature) => feature.kind === "institution").length
+    ),
+    landUsePolygonsWithoutAdapter: Math.max(
+      0,
       source.residentialLanduseFeatures +
-      source.retailCommercialLanduseFeatures +
-      source.industrialLanduseFeatures,
-    roadRefsMetadataOnly: routeGraphCoverage.roadsWithRawRefTags,
+        source.retailCommercialLanduseFeatures +
+        source.industrialLanduseFeatures -
+        contextFeatures.filter((feature) => feature.kind === "land-use").length
+    ),
+    roadRefsMetadataOnly: Math.max(
+      0,
+      routeGraphCoverage.roadsWithRawRefTags -
+        new Set(
+          contextFeatures
+            .filter((feature) => feature.kind === "road-reference")
+            .map((feature) => feature.sourceElementId)
+        ).size
+    ),
     pierLikeFeaturesMissingWhitelistOrAdapter: source.pierLikeSourceFeatures,
     publicTransportStationsWithoutCurrentAdapter: Math.max(0, source.publicTransportStations - source.railwayStations),
     missingWhitelistTags: missingWhitelistTags(elements)
@@ -1028,8 +1047,10 @@ function buildCategoryAudits(input: {
       return categoryAudit({
         id,
         state: sourceCoverage.sourceRoadRefWays > 0
-          ? routeGraphCoverage.roadsWithRawRefTags > 0
-            ? "route-metadata-only"
+          ? contextAdapterCoverage.roadReferenceFeatures > 0
+            ? "context-ready-no-renderer-consumer"
+            : routeGraphCoverage.roadsWithRawRefTags > 0
+              ? "route-metadata-only"
             : "source-present-geometry-discarded"
           : "source-absent",
         sourceCount: sourceCoverage.sourceRoadRefWays,
@@ -1046,14 +1067,18 @@ function buildCategoryAudits(input: {
     if (id === "buildings-built-fabric") {
       return categoryAudit({
         id,
-        state: sourceCoverage.usableClosedBuildingPolygons > 0 ? "source-present-geometry-discarded" : "source-absent",
+        state: contextAdapterCoverage.generalBuildingPolygons > 0
+          ? "context-ready-no-renderer-consumer"
+          : sourceCoverage.usableClosedBuildingPolygons > 0
+            ? "source-present-geometry-discarded"
+            : "source-absent",
         sourceCount: sourceCoverage.buildingTaggedWays + sourceCoverage.buildingTaggedRelations,
         retainedCount: sourceCoverage.buildingTaggedWays + sourceCoverage.buildingTaggedRelations,
         routeGraphCount: 0,
         contextAdapterCount: contextAdapterCoverage.generalBuildingPolygons,
         rendererConsumedCount: rendererConsumedCoverage.generalBuildingPolygons,
         blockerCount: unsupportedCoverage.sourceBuildingPolygonsWithoutRendererPath,
-        notes: ["Closed building polygons in source data are not render-ready general building fabric. Some building-tagged features can become point landmarks only."],
+        notes: ["Closed building polygons are normalised as render-data context features, but the current renderer does not consume them. Some building-tagged features also become point landmarks."],
         evidence: evidenceFor(elements, (tags) => Boolean(tagValue(tags, "building")))
       });
     }
@@ -1061,18 +1086,30 @@ function buildCategoryAudits(input: {
     if (id === "land-use-institutions") {
       return categoryAudit({
         id,
-        state: sourceCoverage.civicInstitutionalSourceFeatures > 0 ? "point-landmark-only" : "source-absent",
+        state: contextAdapterCoverage.institutionalPolygons + contextAdapterCoverage.landUsePolygons > 0
+          ? "context-ready-no-renderer-consumer"
+          : sourceCoverage.civicInstitutionalSourceFeatures > 0
+            ? "point-landmark-only"
+            : "source-absent",
         sourceCount:
           sourceCoverage.residentialLanduseFeatures +
           sourceCoverage.retailCommercialLanduseFeatures +
           sourceCoverage.industrialLanduseFeatures +
           sourceCoverage.civicInstitutionalSourceFeatures,
-        retainedCount: sourceCoverage.civicInstitutionalSourceFeatures,
+        retainedCount:
+          sourceCoverage.residentialLanduseFeatures +
+          sourceCoverage.retailCommercialLanduseFeatures +
+          sourceCoverage.industrialLanduseFeatures +
+          sourceCoverage.civicInstitutionalSourceFeatures,
         routeGraphCount: 0,
-        contextAdapterCount: contextAdapterCoverage.institutionalPointLandmarks,
-        rendererConsumedCount: rendererConsumedCoverage.institutionalPolygons,
+        contextAdapterCount:
+          contextAdapterCoverage.institutionalPointLandmarks +
+          contextAdapterCoverage.institutionalPolygons +
+          contextAdapterCoverage.landUsePolygons,
+        rendererConsumedCount:
+          rendererConsumedCoverage.institutionalPolygons + rendererConsumedCoverage.landUsePolygons,
         blockerCount: unsupportedCoverage.institutionalPolygonsWithoutAdapter + unsupportedCoverage.landUsePolygonsWithoutAdapter,
-        notes: ["Institutional and land-use source polygons do not have current polygon adapters. Recognised public buildings are point landmarks, not institutional areas."],
+        notes: ["Institutional and land-use polygons now have typed context adapters. The current renderer still consumes recognised public buildings only as point landmarks."],
         evidence: evidenceFor(elements, (tags) => Boolean(tagValue(tags, "landuse")) || isInstitutionalSource(tags))
       });
     }
@@ -1284,9 +1321,9 @@ function buildAggregateReport(fixtureReports: readonly Phase8FixtureAuditReport[
     totals,
     conclusions: [
       "Committed real OSM fixtures provide road-network, park, water, rail, station, area-label, and point-landmark evidence for Phase 8.",
-      "Road ref values survive as raw route-road metadata where matching source roads are converted, but there is no current displayed road-reference renderer path.",
-      "Building, land-use, and institutional source polygons are not render-ready and are not consumed by the renderer as atlas fabric.",
-      "Public buildings and other landmarks currently render as point features, not institutional areas.",
+      "Valid A/B road refs now have typed context features, but there is no current displayed road-reference renderer path.",
+      "Building, land-use, and institutional source polygons now have render-data adapter contracts but are not consumed by the renderer as atlas fabric.",
+      "Public buildings and other landmarks still render only as point features; institutional area rendering remains a later stage.",
       "Synthetic fixtures are listed as controls and excluded from real-geography aggregate conclusions."
     ],
     stage83Requirements: aggregateStage83Requirements(realReports)
@@ -1308,28 +1345,32 @@ function aggregateStage83Requirements(reports: readonly Phase8FixtureAuditReport
 function stage83RequirementsForFixture(
   source: Phase8SourceCoverageCounts,
   routeGraph: Phase8RouteGraphCoverageCounts,
+  context: Phase8ContextAdapterCoverageCounts,
   unsupported: Phase8UnsupportedCoverageCounts
 ): string[] {
   const requirements: string[] = [];
 
-  if (source.usableClosedBuildingPolygons > 0) {
-    requirements.push("Add a typed building polygon or simplified building-block adapter and renderer contract.");
+  if (source.usableClosedBuildingPolygons > 0 && context.generalBuildingPolygons === 0) {
+    requirements.push("Hydrate or performance-gate this fixture before verifying its typed building adapter output.");
   }
 
-  if (source.residentialLanduseFeatures + source.retailCommercialLanduseFeatures + source.industrialLanduseFeatures > 0) {
-    requirements.push("Add land-use polygon adapter support with explicit residential, retail/commercial, and industrial classifications.");
+  if (
+    source.residentialLanduseFeatures + source.retailCommercialLanduseFeatures + source.industrialLanduseFeatures > 0 &&
+    context.landUsePolygons === 0
+  ) {
+    requirements.push("Hydrate or performance-gate this fixture before verifying its typed land-use adapter output.");
   }
 
-  if (source.polygonCapableInstitutionalFeatures > 0) {
-    requirements.push("Add institutional polygon adapter support separate from point public-building landmarks.");
+  if (source.polygonCapableInstitutionalFeatures > 0 && context.institutionalPolygons === 0) {
+    requirements.push("Hydrate or performance-gate this fixture before verifying its typed institutional-area adapter output.");
   }
 
   if (source.neighbourhoods + source.suburbs + source.quarters + source.localities + source.squares + source.namedResidentialAreas > 0) {
     requirements.push("Add place, neighbourhood, and ambiguous estate-candidate contracts without silently classifying named residential polygons as estates.");
   }
 
-  if (routeGraph.roadsWithRawRefTags > 0) {
-    requirements.push("Add road-reference render data and renderer support for genuine source ref tags.");
+  if (routeGraph.roadsWithRawRefTags > 0 && context.roadReferenceFeatures === 0) {
+    requirements.push("Hydrate or performance-gate this fixture before verifying its typed road-reference adapter output.");
   }
 
   if (source.railWays + source.lightRailWays + source.subwayWays + source.railwayStations + source.publicTransportStations > 0) {

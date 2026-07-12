@@ -48,7 +48,7 @@ stages may be split if implementation audit shows that a stage is too large.
 1. Stage 8.1: Visual-master lock and baseline setup. Completed.
 2. Stage 8.2: Existing geographic and render-data coverage audit. Completed.
 3. Stage 8.3: Atlas render-data adapter for buildings, land use, institutions,
-   places, transport context and road references.
+   places, transport context and road references. Completed.
 4. Stage 8.4: Printed-atlas road hierarchy and major-road corridor system.
 5. Stage 8.5: Buildings, built-up fabric, institutional areas, parks and water.
 6. Stage 8.6: Compact atlas typography and dense road-label placement.
@@ -63,19 +63,16 @@ stages may be split if implementation audit shows that a stage is too large.
 
 ## Current Status
 
-Stage 8.1 is complete as documentation and inspection only. Stage 8.2 is
-complete as deterministic audit code, tests, command output, and evidence
-documentation. The next stage is Stage 8.3: atlas render-data adapter work for
-buildings, land use, institutions, places, transport context, piers where
-sourced, and genuine road references.
-
-Stages 8.1 and 8.2 do not intentionally change production map rendering, road
-colours, widths, label logic, OSM conversion, route generation, scoring, hints,
-feedback, learner progress, or deployment.
+Stages 8.1 through 8.3 are complete. Stage 8.3 adds typed, deterministic
+render-data contracts for building footprints, institutional areas, land-use
+blocks, and genuine A/B road references without adding renderer styling or
+changing gameplay. The next stage is Stage 8.4: printed-atlas road hierarchy
+and major-road corridor work.
 
 ## Documents
 
 - [Phase 8 cartography acceptance](phase-8-cartography-acceptance.md)
 - [Phase 8 baseline audit](phase-8-baseline-audit.md)
 - [Phase 8 geographic render-data audit](phase-8-geographic-render-data-audit.md)
+- [Stage 8.3 render-data adapter](stage-8-3-render-data-adapter.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)
