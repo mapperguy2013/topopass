@@ -1,6 +1,8 @@
 import type { ImportedOsmRoad } from "./overpassImport.ts";
 
 export type OsmRouteGraphHighway =
+  | "trunk"
+  | "trunk_link"
   | "primary"
   | "primary_link"
   | "secondary"
@@ -41,6 +43,8 @@ export type OsmRoadFilterDecision =
     };
 
 export const DEFAULT_OSM_ROUTE_GRAPH_HIGHWAYS: readonly OsmRouteGraphHighway[] = [
+  "trunk",
+  "trunk_link",
   "primary",
   "primary_link",
   "secondary",

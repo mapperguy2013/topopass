@@ -1333,7 +1333,7 @@ test("medium converted OSM fixture is larger than tiny but compact for dev tests
   assert.ok(mediumLondonOsmRouteMap.nodes.length > tinyLondonOsmRouteMap.nodes.length);
   assert.ok(mediumLondonOsmRouteMap.roads.length > tinyLondonOsmRouteMap.roads.length);
   assert.equal(mediumLondonOsmRouteMap.nodes.length, 25);
-  assert.equal(mediumLondonOsmRouteMap.roads.length, 48);
+  assert.equal(mediumLondonOsmRouteMap.roads.length, 49);
   assert.ok(mediumLondonOsmRouteMap.nodes.length <= 60);
   assert.ok(mediumLondonOsmRouteMap.roads.length <= 120);
 });
@@ -1987,7 +1987,7 @@ test("invalid converted OSM exercise fixtures fail solvability validation", () =
     mapId: tinyLondonOsmRouteMap.id,
     stops: [
       { type: "node", nodeId: "osm-node-1001" },
-      { type: "node", nodeId: "osm-node-1010" }
+      { type: "node", nodeId: "osm-node-9999" }
     ]
   };
   const availability = validateExerciseReachability({
@@ -2004,7 +2004,7 @@ test("invalid converted OSM exercise fixtures fail solvability validation", () =
   });
 
   assert.equal(availability.isValid, false);
-  assert.ok(availability.errors.some((error) => error.includes("No legal route")));
+  assert.ok(availability.errors.some((error) => error.includes("references missing nodeId")));
   assert.equal(overlay.status, "unavailable");
 });
 

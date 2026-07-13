@@ -75,14 +75,14 @@ const committedFixtureSpecs: FixtureSpec[] = [
     mapId: "osm-tiny-london",
     name: "OSM Tiny London",
     expectedNodeCount: 10,
-    expectedRoadCount: 9
+    expectedRoadCount: 10
   },
   {
     fixtureName: "mediumLondonOverpass.json",
     mapId: "osm-medium-london",
     name: "OSM Medium London",
     expectedNodeCount: 25,
-    expectedRoadCount: 48
+    expectedRoadCount: 49
   },
   {
     fixtureName: "realLondonPilotOverpass.json",

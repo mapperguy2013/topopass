@@ -34,6 +34,8 @@ export type OverpassJsonResponse = {
 };
 
 export type OsmAcceptedHighway =
+  | "trunk"
+  | "trunk_link"
   | "primary"
   | "primary_link"
   | "secondary"
@@ -90,6 +92,8 @@ export type OverpassRoadImportResult = {
 };
 
 const acceptedHighways = new Set<OsmAcceptedHighway>([
+  "trunk",
+  "trunk_link",
   "primary",
   "primary_link",
   "secondary",
@@ -103,12 +107,7 @@ const acceptedHighways = new Set<OsmAcceptedHighway>([
   "road"
 ]);
 
-const unsupportedHighways = new Set([
-  "motorway",
-  "motorway_link",
-  "trunk",
-  "trunk_link"
-]);
+const unsupportedHighways = new Set(["motorway", "motorway_link"]);
 
 const ignoredHighways = new Set([
   "footway",

@@ -80,7 +80,7 @@ test("converts OSM nodes into internal route graph nodes with metadata", () => {
 test("converts OSM way node pairs into connected internal road segments", () => {
   const map = convertFixture();
 
-  assert.equal(map.roads.length, 9);
+  assert.equal(map.roads.length, 10);
   assert.deepEqual(
     map.roads.map((road) => road.id),
     [
@@ -92,6 +92,7 @@ test("converts OSM way node pairs into connected internal road segments", () => 
       "osm-way-2004-segment-0",
       "osm-way-2004-segment-1",
       "osm-way-2004-segment-2",
+      "osm-way-2010-segment-0",
       "osm-way-2014-segment-0"
     ]
   );
@@ -278,7 +279,7 @@ test("converter accepts Stage 102 highway classes from Stage 101 parser output",
         type: "way",
         id: 1,
         nodes: [1, 2],
-        tags: { highway: "primary_link", name: "Primary Link" }
+        tags: { highway: "trunk_link", name: "Trunk Link" }
       },
       {
         type: "way",
@@ -294,7 +295,7 @@ test("converter accepts Stage 102 highway classes from Stage 101 parser output",
   if (result.ok) {
     assert.deepEqual(
       result.map.roads.map((road) => road.metadata.highway),
-      ["primary_link", "road"]
+      ["trunk_link", "road"]
     );
   }
 });
@@ -304,12 +305,12 @@ test("medium London fixture converts into a compact route graph", () => {
   const mediumMap = convertMediumFixture();
 
   assert.equal(mediumMap.nodes.length, 25);
-  assert.equal(mediumMap.roads.length, 48);
+  assert.equal(mediumMap.roads.length, 49);
   assert.ok(mediumMap.nodes.length > tinyMap.nodes.length);
   assert.ok(mediumMap.roads.length > tinyMap.roads.length);
   assert.ok(mediumMap.roads.length <= 120);
-  assert.equal(mediumMap.metadata.sourceRoadCount, 13);
-  assert.equal(mediumMap.metadata.convertedRoadSegmentCount, 48);
+  assert.equal(mediumMap.metadata.sourceRoadCount, 14);
+  assert.equal(mediumMap.metadata.convertedRoadSegmentCount, 49);
   assert.deepEqual(mediumMap.metadata.blockedOsmWayIds, [6016]);
 });
 

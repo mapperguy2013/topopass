@@ -43,7 +43,7 @@ test("parses Overpass nodes and accepted road-like ways", () => {
   assert.equal(result.nodeCount, 10);
   assert.deepEqual(
     result.roads.map((road) => road.osmWayId),
-    [2001, 2002, 2003, 2004, 2014]
+    [2001, 2002, 2003, 2004, 2010, 2014]
   );
 
   const road = roadByWayId(2001);
@@ -68,7 +68,7 @@ test("filters accepted road types into deterministic output", () => {
 
   assert.deepEqual(
     result.roads.map((road) => road.highway),
-    ["primary", "residential", "tertiary", "secondary", "service"]
+    ["primary", "residential", "tertiary", "secondary", "trunk", "service"]
   );
 });
 
@@ -79,9 +79,9 @@ test("excludes footways, cycleways, proposed ways, and buildings", () => {
   assert.equal(excludedByWayId(2013).reason, "ignored_non_road");
 });
 
-test("excludes motorway and trunk roads for learner route planning", () => {
+test("excludes motorway roads but keeps trunk corridors for learner route planning context", () => {
   assert.equal(excludedByWayId(2009).reason, "unsupported_highway");
-  assert.equal(excludedByWayId(2010).reason, "unsupported_highway");
+  assert.equal(roadByWayId(2010).highway, "trunk");
 });
 
 test("detects OSM one-way, reverse one-way, and roundabout directions", () => {
@@ -162,7 +162,7 @@ test("medium London fixture parses as a larger deterministic road extract", () =
   assert.equal(mediumResult.nodeCount, 25);
   assert.deepEqual(
     mediumResult.roads.map((road) => road.osmWayId),
-    [6001, 6002, 6003, 6004, 6005, 6006, 6007, 6008, 6009, 6010, 6011, 6012, 6013]
+    [6001, 6002, 6003, 6004, 6005, 6006, 6007, 6008, 6009, 6010, 6011, 6012, 6013, 6017]
   );
   assert.ok(mediumResult.roads.length > tinyResult.roads.length);
   assert.ok(mediumResult.roads.length <= 20);
@@ -171,8 +171,7 @@ test("medium London fixture parses as a larger deterministic road extract", () =
     [
       [6014, "ignored_non_road"],
       [6015, "ignored_non_road"],
-      [6016, "blocked_access"],
-      [6017, "unsupported_highway"]
+      [6016, "blocked_access"]
     ]
   );
   assert.deepEqual(mediumResult.ignoredRelationIds, [7001]);

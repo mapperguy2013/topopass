@@ -52,12 +52,12 @@ test("medium OSM debug summary is deterministic", () => {
   assert.equal(summary.sourceFixtureName, "mediumLondonOverpass.json");
   assert.equal(summary.sourceKind, "osm");
   assert.equal(summary.nodeCount, 25);
-  assert.equal(summary.roadSegmentCount, 48);
-  assert.equal(summary.directedEdgeCount, 76);
+  assert.equal(summary.roadSegmentCount, 49);
+  assert.equal(summary.directedEdgeCount, 78);
   assert.equal(summary.oneWayRoadSegmentCount, 20);
-  assert.equal(summary.twoWayRoadSegmentCount, 28);
+  assert.equal(summary.twoWayRoadSegmentCount, 29);
   assert.equal(summary.oneWayDirectedEdgeCount, 20);
-  assert.equal(summary.twoWayDirectedEdgeCount, 56);
+  assert.equal(summary.twoWayDirectedEdgeCount, 58);
   assert.equal(summary.blockedOsmWayCount, 1);
   assert.deepEqual(summary.blockedOsmWayIds, ["6016"]);
   assert.deepEqual(summary.bounds, {

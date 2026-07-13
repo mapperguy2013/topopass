@@ -448,7 +448,7 @@ export function deriveOsmRoadVisualHierarchy(road: MapRoad): OsmRoadVisualHierar
     return osmRoadMetadata(road) ? "unknown" : null;
   }
 
-  if (highway === "primary" || highway === "primary_link") {
+  if (highway === "trunk" || highway === "trunk_link" || highway === "primary" || highway === "primary_link") {
     return "primary";
   }
 
@@ -964,7 +964,7 @@ export function buildSyntheticMapLabels(
     });
   }
 
-  labels.push(...buildOsmContextLabels(contextFeatures));
+  labels.push(...buildOsmContextLabels(contextFeatures, roadVisuals));
 
   const labelledLandmarks = buildSyntheticLandmarkVisuals(map, exercise, {
     sourceOverpassFixture: options.sourceOverpassFixture
@@ -2520,8 +2520,12 @@ function slugifyLabelId(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unnamed";
 }
 
-function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): SyntheticAtlasLabelCandidate[] {
+function buildOsmContextLabels(
+  features: readonly RealLondonContextFeature[],
+  roadVisuals: readonly SyntheticRoadVisual[] = []
+): SyntheticAtlasLabelCandidate[] {
   const roadReferencesByElement = new Map<string, string[]>();
+  const renderedRoadReferencesByWay = buildRenderedRoadReferenceIndex(roadVisuals);
 
   for (const feature of features) {
     if (feature.kind !== "road-reference") continue;
@@ -2539,6 +2543,10 @@ function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): S
     .flatMap((feature) => {
       if (feature.kind === "road-reference") {
         if (!isValidRoadReferenceSource(feature)) {
+          return [];
+        }
+
+        if (!hasRenderedRoadReferenceSource(feature, renderedRoadReferencesByWay)) {
           return [];
         }
 
@@ -2606,6 +2614,40 @@ function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): S
       return [];
     })
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+function buildRenderedRoadReferenceIndex(roadVisuals: readonly SyntheticRoadVisual[]): Map<string, Set<string>> {
+  const referencesByWay = new Map<string, Set<string>>();
+
+  for (const visual of roadVisuals) {
+    if (!visual.osmWayId || visual.source !== "osm" || visual.points.length < 2) {
+      continue;
+    }
+
+    const references = roadReferencesFromRawRef(visual.osmSourceTags?.ref);
+
+    if (references.length === 0) {
+      continue;
+    }
+
+    const existing = referencesByWay.get(visual.osmWayId) ?? new Set<string>();
+
+    references.forEach((reference) => existing.add(reference));
+    referencesByWay.set(visual.osmWayId, existing);
+  }
+
+  return referencesByWay;
+}
+
+function hasRenderedRoadReferenceSource(
+  feature: Extract<RealLondonContextFeature, { kind: "road-reference" }>,
+  renderedRoadReferencesByWay: ReadonlyMap<string, ReadonlySet<string>>
+): boolean {
+  if (feature.sourceElementType !== "way") {
+    return false;
+  }
+
+  return renderedRoadReferencesByWay.get(String(feature.sourceElementId))?.has(feature.reference) ?? false;
 }
 
 function contextCandidate(
@@ -3640,9 +3682,7 @@ function polylineLength(points: readonly Vec2[]): number {
 
 function isValidRoadReferenceSource(feature: Extract<RealLondonContextFeature, { kind: "road-reference" }>): boolean {
   const highway = feature.sourceTags?.highway?.trim();
-  const references = (feature.sourceTags?.ref ?? "")
-    .split(/[;,]/)
-    .map((reference) => reference.trim().toUpperCase());
+  const references = roadReferencesFromRawRef(feature.sourceTags?.ref);
 
   if (!highway || !references.includes(feature.reference)) {
     return false;
@@ -3651,6 +3691,13 @@ function isValidRoadReferenceSource(feature: Extract<RealLondonContextFeature, {
   return feature.subtype === "a-road"
     ? /^A\d{1,4}[A-Z]?(?:\([A-Z0-9]+\))?$/.test(feature.reference)
     : /^B\d{1,4}[A-Z]?$/.test(feature.reference);
+}
+
+function roadReferencesFromRawRef(ref: string | undefined): string[] {
+  return (ref ?? "")
+    .split(/[;,]/)
+    .map((reference) => reference.trim().toUpperCase())
+    .filter(Boolean);
 }
 
 function mapBounds(map: MapDefinition): { minX: number; minY: number; maxX: number; maxY: number } {

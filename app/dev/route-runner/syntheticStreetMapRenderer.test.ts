@@ -74,6 +74,34 @@ function assertClose(actual: number, expected: number, tolerance: number, messag
   assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: expected ${expected}, got ${actual}`);
 }
 
+function distanceToSegment(point: { x: number; y: number }, from: { x: number; y: number }, to: { x: number; y: number }): number {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const lengthSquared = dx * dx + dy * dy;
+  const ratio = lengthSquared === 0
+    ? 0
+    : Math.max(0, Math.min(1, ((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSquared));
+  const projected = {
+    x: from.x + dx * ratio,
+    y: from.y + dy * ratio
+  };
+
+  return Math.hypot(point.x - projected.x, point.y - projected.y);
+}
+
+function distanceToVisualGeometry(point: { x: number; y: number }, visual: SyntheticRoadVisual): number {
+  if (visual.points.length < 2) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return visual.points
+    .slice(1)
+    .reduce(
+      (minimum, current, index) => Math.min(minimum, distanceToSegment(point, visual.points[index], current)),
+      Number.POSITIVE_INFINITY
+    );
+}
+
 function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
   if (Array.isArray(value)) {
     assert.ok(value.length > 0, `${path} should not be an empty token array`);
@@ -2882,6 +2910,61 @@ test("Stage 8.7 correction keeps genuine A501 source metadata and selects it at 
   assert.ok((a501.angleRadians ?? Math.PI) >= -Math.PI / 2 && (a501.angleRadians ?? -Math.PI) <= Math.PI / 2);
   assert.equal(new Set(accepted.map((label) => label.text)).size, accepted.length);
   assert.deepEqual(second, first);
+});
+
+test("Stage 8.7 correction renders displayed King's Cross A501 refs on matching major road geometry", () => {
+  const fixture = kingsCrossEustonOsmRouteRunnerMapOption.sourceOverpassFixture;
+  const map = kingsCrossEustonOsmRouteRunnerMapOption.map;
+  const baseViewport = {
+    width: 1920,
+    height: 912,
+    mapBounds: getRouteRunnerMapViewportBounds(map, 1920, 912)
+  };
+  const viewport = buildZoomedMapViewport(
+    baseViewport,
+    createDefaultMapViewportState(ROUTE_RUNNER_MAP_ZOOM_LIMITS),
+    ROUTE_RUNNER_MAP_ZOOM_LIMITS
+  );
+  const labels = buildSyntheticMapLabels(map, kingsCrossEustonOsmRouteRunnerMapOption.exercises[0], {
+    sourceOverpassFixture: fixture
+  });
+  const acceptedA501References = filterSyntheticMapLabelsForViewport({ labels, viewport, currentZoom: 1 })
+    .filter((label) => label.kind === "road_reference" && label.text === "A501");
+  const roadVisuals = buildSyntheticRoadVisuals(map);
+  const passes = buildRoadRenderPasses(roadVisuals);
+  const a501Visuals = roadVisuals.filter((visual) => visual.osmSourceTags?.ref?.split(/[;,]/).some((ref) => ref.trim() === "A501"));
+  const tunnelA501 = a501Visuals.find((visual) => visual.osmSourceTags?.tunnel === "yes");
+
+  assert.ok(a501Visuals.length > 200);
+  assert.ok(acceptedA501References.length > 0);
+  assert.ok(a501Visuals.every((visual) => visual.roadClass === "major"));
+  assert.ok(a501Visuals.every((visual) => visual.osmHierarchy === "primary"));
+  assert.ok(tunnelA501);
+
+  if (tunnelA501) {
+    const tunnelStyle = roadStyleForViewport(tunnelA501, viewport, 1);
+
+    assert.equal(tunnelA501.osmHighway, "trunk");
+    assert.ok(tunnelStyle.casingWidth >= TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.casingWidth);
+    assert.ok(tunnelStyle.strokeWidth >= TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth);
+    assert.equal(tunnelStyle.strokeColor, TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor);
+  }
+
+  for (const reference of acceptedA501References) {
+    const sourceWayId = String(reference.sourceMetadata?.elementId);
+    const matchingVisuals = a501Visuals.filter((visual) => visual.osmWayId === sourceWayId);
+    const finalPasses = passes
+      .filter((pass) => pass.visual.osmWayId === sourceWayId)
+      .map((pass) => pass.layer);
+
+    assert.ok(matchingVisuals.length > 0, `${reference.id} should have rendered road geometry for way ${sourceWayId}`);
+    assert.ok(finalPasses.includes("casing"), `${reference.id} should reach the casing pass`);
+    assert.ok(finalPasses.includes("fill"), `${reference.id} should reach the fill pass`);
+    assert.ok(
+      matchingVisuals.some((visual) => distanceToVisualGeometry(reference.point, visual) <= 0.001),
+      `${reference.id} should sit on rendered geometry for way ${sourceWayId}`
+    );
+  }
 });
 
 test("Stage 8.7 correction repositions edge references, bounds repetition, and preserves road-name coexistence", () => {

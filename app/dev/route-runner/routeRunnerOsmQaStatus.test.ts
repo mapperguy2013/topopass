@@ -54,7 +54,7 @@ test("OSM QA status panel data is generated for the medium converted OSM map", (
   assert.equal(model.mapId, mediumLondonOsmRouteMap.id);
   assert.equal(model.mapName, "Medium London OSM Prototype");
   assert.equal(model.nodeCount, 25);
-  assert.equal(model.directedEdgeCount, 76);
+  assert.equal(model.directedEdgeCount, 78);
   assert.equal(model.exerciseCount, 5);
   assert.equal(model.qaState, "pass");
   assert.equal(model.passedExerciseCount, 5);
