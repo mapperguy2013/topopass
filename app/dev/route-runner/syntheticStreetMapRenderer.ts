@@ -292,6 +292,7 @@ export type SyntheticMapLabel = {
   source?: "synthetic" | "osm";
   roadLengthMeters?: number;
   roadReferenceClass?: "a-road" | "b-road";
+  sourceGeometry?: Vec2[];
   symbolKind?: TopopassAtlasSymbolKind;
   category?: SyntheticAtlasLabelCategory;
   sourceMetadata?: SyntheticAtlasLabelSourceMetadata;
@@ -1202,44 +1203,49 @@ export function filterSyntheticMapLabelsForViewport(
   const acceptedRoadReferenceCounts = new Map<"a-road" | "b-road", number>();
   const viewportScale = syntheticMapViewportScale(options.viewport);
   let acceptedRoadReferenceCount = 0;
+  const sortedLabels = [...options.labels].sort(compareLabelsForLayout);
+  const roadReferenceLabels = sortedLabels.filter((label) => label.kind === "road_reference");
+  const otherLabels = sortedLabels.filter((label) => label.kind !== "road_reference");
 
-  for (const label of [...options.labels].sort(compareLabelsForLayout)) {
+  const acceptLabel = (label: SyntheticMapLabel): boolean => {
     if (
       label.kind === "road" &&
       !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText, options.currentZoom)
     ) {
-      continue;
+      return false;
     }
 
     if (isContextMapLabelKind(label.kind) && !shouldShowContextLabel(label, viewportScale)) {
-      continue;
+      return false;
     }
 
     if (label.kind === "road_reference") {
       const roadReferenceClass = label.roadReferenceClass ?? (label.text.startsWith("B") ? "b-road" : "a-road");
       const collision = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
       const maxForViewport = roadReferenceBudgetForViewport(options.currentZoom, viewportScale);
+      const acceptedForText = roadReferencePointsByText.get(label.text.toLowerCase())?.length ?? 0;
 
       if (
         acceptedRoadReferenceCount >= maxForViewport ||
-        (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) >= collision.roadReferenceMaxPerClass[roadReferenceClass]
+        (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) >= collision.roadReferenceMaxPerClass[roadReferenceClass] ||
+        acceptedForText >= collision.roadReferenceMaxPerText
       ) {
-        continue;
+        return false;
       }
 
       if (!shouldShowRoadReferenceLabel(label, options.viewport, roadReferencePointsByText)) {
-        continue;
+        return false;
       }
     }
 
     const box = labelCollisionBox(label, options.viewport, options.currentZoom);
 
     if (!boxFitsWithinViewport(box, options.viewport)) {
-      continue;
+      return false;
     }
 
     if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
-      continue;
+      return false;
     }
 
     placedBoxes.push(box);
@@ -1264,6 +1270,53 @@ export function filterSyntheticMapLabelsForViewport(
       const roadReferenceClass = label.roadReferenceClass ?? (label.text.startsWith("B") ? "b-road" : "a-road");
       acceptedRoadReferenceCounts.set(roadReferenceClass, (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) + 1);
     }
+    return true;
+  };
+
+  const referenceGroups = buildRoadReferenceLayoutGroups(
+    roadReferenceLabels,
+    options.viewport,
+    options.currentZoom
+  );
+
+  for (const group of referenceGroups) {
+    for (const candidate of group.candidates) {
+      candidate.attempted = true;
+      const accepted = candidate.placements.some((placement) => acceptLabel(placement.label));
+
+      if (accepted) {
+        candidate.accepted = true;
+        break;
+      }
+    }
+  }
+
+  const collision = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
+  let repeatPassAttemptedCandidate = true;
+
+  while (
+    repeatPassAttemptedCandidate &&
+    acceptedRoadReferenceCount < roadReferenceBudgetForViewport(options.currentZoom, viewportScale)
+  ) {
+    repeatPassAttemptedCandidate = false;
+
+    for (const group of referenceGroups) {
+      if ((roadReferencePointsByText.get(group.key)?.length ?? 0) >= collision.roadReferenceMaxPerText) continue;
+
+      const candidate = group.candidates.find(
+        (item) => !item.attempted && item.maxVisibleSegmentLength >= collision.roadReferenceRepeatMinimumVisibleSegmentLength
+      );
+
+      if (!candidate) continue;
+
+      candidate.attempted = true;
+      candidate.accepted = candidate.placements.some((placement) => acceptLabel(placement.label));
+      repeatPassAttemptedCandidate = true;
+    }
+  }
+
+  for (const label of otherLabels) {
+    acceptLabel(label);
   }
 
   return acceptedLabels.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
@@ -1278,7 +1331,7 @@ export function filterSyntheticLandmarkVisualsForViewport(
   const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? []), ...criticalLabelBoxes];
   const acceptedVisuals: SyntheticLandmarkVisual[] = [];
   const acceptedByKind = new Map<TopopassAtlasSymbolKind, number>();
-  const maxForViewport = options.viewport.width <= 520
+  const maxForViewport = isPhoneAtlasViewport(options.viewport)
     ? TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.mobileMaxPerViewport
     : TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.maxPerViewport;
 
@@ -1853,7 +1906,7 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
   const symbolOffsetX = syntheticMapLabelSymbolOffsetX(label, viewport, currentZoom, width, padding);
   const height = fontSize + padding * 2;
   const angle = (label.kind === "road" || label.kind === "road_reference") && typeof label.angleRadians === "number"
-    ? readableLabelAngle(label.angleRadians)
+    ? readableSyntheticLabelAngle(label.angleRadians)
     : 0;
   const rotatedWidth = Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height;
   const rotatedHeight = Math.abs(Math.sin(angle)) * width + Math.abs(Math.cos(angle)) * height;
@@ -1875,7 +1928,7 @@ function landmarkVisualCollisionBox(
   const point = mapToScreenPoint(visual.point, viewport);
   const style = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[atlasSymbolKindForVisual(visual)];
   const scale = atlasSymbolSemanticScale(currentZoom, syntheticMapViewportScale(viewport));
-  const radius = style.size * scale + style.collisionPadding;
+  const radius = (style.size + style.haloWidth) * scale + style.collisionPadding;
 
   return {
     id: `landmark-marker-${visual.id}`,
@@ -1935,12 +1988,14 @@ function labelStyleCacheKey(style: TopopassLabelStyle | TopopassRoadLabelStyle |
   return `${style.font}|${fontSize}|${approximateCharacterWidth}`;
 }
 
-function readableLabelAngle(angleRadians: number): number {
-  if (angleRadians > Math.PI / 2 || angleRadians < -Math.PI / 2) {
-    return angleRadians + Math.PI;
-  }
+export function readableSyntheticLabelAngle(angleRadians: number): number {
+  const fullTurn = Math.PI * 2;
+  let normalized = ((angleRadians + Math.PI) % fullTurn + fullTurn) % fullTurn - Math.PI;
 
-  return angleRadians;
+  if (normalized > Math.PI / 2) normalized -= Math.PI;
+  if (normalized < -Math.PI / 2) normalized += Math.PI;
+
+  return normalized;
 }
 
 function boxesIntersect(left: SyntheticLabelCollisionBox, right: SyntheticLabelCollisionBox): boolean {
@@ -1968,7 +2023,7 @@ export function syntheticMapLabelSymbolOffsetX(
 
   const style = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[label.symbolKind];
   const scale = atlasSymbolSemanticScale(currentZoom, syntheticMapViewportScale(viewport));
-  const symbolRadius = style.size * scale + style.collisionPadding;
+  const symbolRadius = (style.size + style.haloWidth) * scale + style.collisionPadding;
 
   return symbolRadius + labelPadding + estimatedTextWidth / 2 + 1;
 }
@@ -1983,7 +2038,7 @@ function roadReferenceBudgetForViewport(currentZoom: number | undefined, viewpor
   const zoom = currentZoom ?? viewportScale;
   const budgets = TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceZoomBudgets;
 
-  if (zoom < 0.8) return budgets.low;
+  if (zoom <= 0.8) return budgets.low;
   if (zoom < 1.8) return budgets.principal;
   if (zoom < 3.2) return budgets.high;
   return budgets.veryHigh;
@@ -1993,10 +2048,186 @@ export function atlasSymbolSemanticScale(currentZoom: number | undefined, viewpo
   const zoom = currentZoom ?? viewportScale;
   const scales = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.semanticScale;
 
-  if (zoom < 0.8) return scales.low;
+  if (zoom <= 0.8) return scales.low;
   if (zoom < 1.8) return scales.principal;
   if (zoom < 3.2) return scales.high;
   return scales.veryHigh;
+}
+
+export function isPhoneAtlasViewport(viewport: Pick<ScreenMapViewport, "width" | "height">): boolean {
+  return viewport.width <= 1000 && viewport.height >= viewport.width * 1.5;
+}
+
+type RoadReferencePlacement = {
+  label: SyntheticMapLabel;
+  visibleSegmentLength: number;
+};
+
+type RoadReferenceLayoutCandidate = {
+  attempted: boolean;
+  accepted: boolean;
+  maxVisibleSegmentLength: number;
+  placements: RoadReferencePlacement[];
+};
+
+type RoadReferenceLayoutGroup = {
+  key: string;
+  candidates: RoadReferenceLayoutCandidate[];
+};
+
+function buildRoadReferenceLayoutGroups(
+  labels: readonly SyntheticMapLabel[],
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): RoadReferenceLayoutGroup[] {
+  const groups = new Map<string, RoadReferenceLayoutCandidate[]>();
+
+  for (const label of labels) {
+    const placements = roadReferencePlacementCandidatesForViewport(label, viewport, currentZoom);
+
+    if (placements.length === 0) continue;
+
+    const key = label.text.trim().toLowerCase();
+    const candidates = groups.get(key) ?? [];
+    candidates.push({
+      attempted: false,
+      accepted: false,
+      maxVisibleSegmentLength: Math.max(...placements.map((placement) => placement.visibleSegmentLength)),
+      placements
+    });
+    groups.set(key, candidates);
+  }
+
+  return Array.from(groups, ([key, candidates]) => ({
+    key,
+    candidates: candidates.sort(
+      (left, right) => right.maxVisibleSegmentLength - left.maxVisibleSegmentLength ||
+        left.placements[0].label.id.localeCompare(right.placements[0].label.id)
+    )
+  })).sort(
+    (left, right) =>
+      right.candidates[0].maxVisibleSegmentLength - left.candidates[0].maxVisibleSegmentLength ||
+      left.key.localeCompare(right.key)
+  );
+}
+
+export function roadReferencePlacementCandidatesForViewport(
+  label: SyntheticMapLabel,
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): RoadReferencePlacement[] {
+  if (label.kind !== "road_reference" || !label.sourceGeometry || label.sourceGeometry.length < 2) {
+    return [{
+      label: {
+        ...label,
+        ...(typeof label.angleRadians === "number"
+          ? { angleRadians: readableSyntheticLabelAngle(label.angleRadians) }
+          : {})
+      },
+      visibleSegmentLength: Number.POSITIVE_INFINITY
+    }];
+  }
+
+  const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
+  const collision = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
+  const textWidth = estimatedLabelTextWidth(label.text, style);
+  const padding = "collisionPadding" in style ? style.collisionPadding : collision.defaultPadding;
+  const requiredLength = Math.max(
+    collision.roadReferenceMinimumVisibleSegmentLength,
+    (textWidth + padding * 2) / collision.roadReferenceMaxTextToSegmentRatio
+  );
+  const edgePadding = collision.viewportEdgePadding;
+  const bounds = {
+    minX: edgePadding,
+    minY: edgePadding,
+    maxX: viewport.width - edgePadding,
+    maxY: viewport.height - edgePadding
+  };
+  const screenPoints = label.sourceGeometry.map((point) => mapToScreenPoint(point, viewport));
+  const segments: Array<{ start: Vec2; end: Vec2; length: number }> = [];
+
+  for (let index = 1; index < screenPoints.length; index += 1) {
+    const segment = clipLineToBounds(screenPoints[index - 1], screenPoints[index], bounds);
+
+    if (!segment) continue;
+
+    const length = distanceBetweenPoints(segment.start, segment.end);
+    if (length > 0) segments.push({ ...segment, length });
+  }
+
+  const visibleSegmentLength = segments.reduce((sum, segment) => sum + segment.length, 0);
+
+  if (visibleSegmentLength < requiredLength) return [];
+
+  const placements = [0.5, 0.35, 0.65].map((fraction) => {
+    const targetLength = visibleSegmentLength * fraction;
+    let travelled = 0;
+    const segment = segments.find((candidate) => {
+      if (travelled + candidate.length >= targetLength) return true;
+      travelled += candidate.length;
+      return false;
+    }) ?? segments.at(-1)!;
+    const segmentFraction = Math.min(1, Math.max(0, (targetLength - travelled) / segment.length));
+    const screenPoint = {
+      x: segment.start.x + (segment.end.x - segment.start.x) * segmentFraction,
+      y: segment.start.y + (segment.end.y - segment.start.y) * segmentFraction
+    };
+
+    return {
+      label: {
+        ...label,
+        point: screenPointToMapPoint(screenPoint, viewport),
+        angleRadians: readableSyntheticLabelAngle(
+          Math.atan2(segment.end.y - segment.start.y, segment.end.x - segment.start.x)
+        )
+      },
+      visibleSegmentLength
+    };
+  });
+
+  return placements;
+}
+
+function clipLineToBounds(
+  start: Vec2,
+  end: Vec2,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number }
+): { start: Vec2; end: Vec2 } | null {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const p = [-deltaX, deltaX, -deltaY, deltaY];
+  const q = [start.x - bounds.minX, bounds.maxX - start.x, start.y - bounds.minY, bounds.maxY - start.y];
+  let minimum = 0;
+  let maximum = 1;
+
+  for (let index = 0; index < p.length; index += 1) {
+    if (p[index] === 0) {
+      if (q[index] < 0) return null;
+      continue;
+    }
+
+    const ratio = q[index] / p[index];
+
+    if (p[index] < 0) minimum = Math.max(minimum, ratio);
+    else maximum = Math.min(maximum, ratio);
+
+    if (minimum > maximum) return null;
+  }
+
+  return {
+    start: { x: start.x + minimum * deltaX, y: start.y + minimum * deltaY },
+    end: { x: start.x + maximum * deltaX, y: start.y + maximum * deltaY }
+  };
+}
+
+function screenPointToMapPoint(point: Vec2, viewport: ScreenMapViewport): Vec2 {
+  const mapWidth = viewport.mapBounds.maxX - viewport.mapBounds.minX;
+  const mapHeight = viewport.mapBounds.maxY - viewport.mapBounds.minY;
+
+  return {
+    x: viewport.mapBounds.minX + (point.x / viewport.width) * mapWidth,
+    y: viewport.mapBounds.minY + (point.y / viewport.height) * mapHeight
+  };
 }
 
 function shouldShowRoadReferenceLabel(
@@ -2320,7 +2551,8 @@ function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): S
           ? [{
               ...contextCandidate(feature, "road_reference", "road-reference", feature.reference, pose.point, pose.angleRadians),
               roadLengthMeters: polylineLength(feature.points),
-              roadReferenceClass: feature.subtype
+              roadReferenceClass: feature.subtype,
+              sourceGeometry: feature.points.map((point) => ({ ...point }))
             }]
           : [];
       }

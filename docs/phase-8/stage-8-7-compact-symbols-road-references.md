@@ -2,7 +2,7 @@
 
 ## Status
 
-Complete. The production `/practice/real-london` renderer was inspected at
+Complete, including the focused visual-QA correction. The production `/practice/real-london` renderer was inspected at
 1440 by 900 and 390 by 844 across the required fixture, zoom, learner-route,
 restriction and review states. Stage 8.8 was not started.
 
@@ -34,15 +34,21 @@ Placement is deterministic and source-coordinate anchored. Symbol filtering
 reserves learner markers, routes, restrictions, road names, road references and
 district labels. Accepted symbols then reserve space from their coordinated
 context labels; a labelled feature's text is offset beside its own symbol.
-Viewport padding rejects clipped edge symbols and labels. Learner and review
+Viewport padding rejects clipped edge symbols and labels. Corrected base sizes
+are 7.1 to 8.8 canvas pixels with restrained cream halos, stronger outlines,
+and semantic scaling capped at 1.18. The exact 80% tier uses the lower scale and
+mobile production canvases use the mobile symbol budget. Learner and review
 overlays retain their existing draw-order dominance.
 
 ## Road References
 
 A/B references are validated against source highway and `ref` tags. Multiple
 supported refs on one road receive deterministic source-geometry positions.
-Longer source segments win ties, split-way repetition retains a 360-pixel
-spacing rule, and labels remain upright, red and aligned to yellow corridors.
+Visible source geometry is clipped to the padded viewport before placement.
+Distinct references are selected before controlled repeats, short visible
+segments cannot consume the viewport budget, and long corridors may repeat at
+most twice when their visible geometry and separation allow it. Labels remain
+upright, red and aligned to yellow corridors.
 
 Reference budgets are three at low zoom, six at principal zoom, seven at high
 zoom and eight at very high zoom. Principal zoom also caps A-road references at
@@ -98,12 +104,66 @@ attribution remains visible; and mobile budgets avoid an icon cloud. Lower zoom
 thins detail, principal zoom provides useful context, and higher zoom remains
 bounded rather than scaling symbols aggressively.
 
+## Focused Visual-QA Correction
+
+The committed Stage 8.7 baseline made genuine references and compact symbols
+too weak after the 1920-pixel canvas was displayed at desktop CSS size. A501
+was present end to end in the King's Cross source, adapter output and label
+candidates, but the previous 13-pixel intrinsic label, yellow halo and
+duplicate-first selection made the accepted result visually weak or placed it
+near an edge.
+
+The correction uses a 19-pixel heavy condensed reference face, darker red ink,
+a restrained cream halo and padded visible-geometry placement. It groups split
+source ways by reference text, gives each distinct eligible reference one
+selection opportunity before repeats, tries alternate source segments when the
+best candidate cannot fit, and preserves deterministic class and viewport
+budgets. No road reference is hard-coded; A501 remains tied to OSM way 330341
+(`Penton Rise`) in the principal King's Cross acceptance view.
+
+The compact symbol family received modestly larger minimum sizes, stronger
+outlines and internal marks, and a light halo. Existing silhouettes, category
+priorities, source provenance, collision reservations and learner-overlay draw
+order remain intact.
+
+Correction screenshots are under `screenshots/stage-8-7-correction/`:
+
+| Scenario | Viewport | Zoom/state | Screenshot |
+| --- | --- | --- | --- |
+| Committed King's Cross baseline | 1440 by 900 | 100%, idle | `before-desktop-kings-cross-100.png` |
+| King's Cross reference-rich view | 1440 by 900 | 100%, idle | `after-desktop-kings-cross-100.png` |
+| King's Cross lower tier | 1440 by 900 | 80%, idle | `after-desktop-kings-cross-80.png` |
+| King's Cross higher tier | 1440 by 900 | 125%, idle | `after-desktop-kings-cross-125.png` |
+| Piccadilly dense junction | 1440 by 900 | 100%, idle | `after-desktop-piccadilly-100.png` |
+| Waterloo bridge/water context | 1440 by 900 | 100%, idle | `after-desktop-waterloo-100.png` |
+| Active learner route | 1440 by 900 | 100%, active | `after-desktop-active-route-100.png` |
+| Correct submitted review | 1440 by 900 | 100%, pass | `after-desktop-correct-review-100.png` |
+| Incorrect submitted review | 1440 by 900 | 100%, fail | `after-desktop-incorrect-review-100.png` |
+| Committed mobile baseline | 390 by 844 | 100%, idle | `before-mobile-kings-cross-100.png` |
+| King's Cross mobile reference view | 390 by 844 | 100%, idle | `after-mobile-kings-cross-100.png` |
+| Mobile active learner route | 390 by 844 | 100%, active | `after-mobile-active-route-100.png` |
+
+Side-by-side inspection against the approved visual master found that A/B
+references now carry intentional printed-atlas authority, while road names,
+district labels and source-backed symbols remain subordinate to learner and
+review overlays. A501 is clear at displayed 100%; edge candidates are fully
+inside the map; Piccadilly demonstrates distinct references without repeated
+split-way noise; Waterloo preserves bridge, water and pier context; and mobile
+retains readable references and bounded symbol density. The screenshots also
+confirm displayed zoom values, attribution, route alignment, marker alignment,
+review alignment and unchanged pan/reset framing.
+
+Known limitations remain source-driven: named parking and pier coverage is
+sparse, compact symbols do not attempt exhaustive POI coverage, and reference
+availability depends on valid A/B tags and enough visible source geometry. The
+correction does not fabricate missing context.
+
 ## Validation
 
-- Focused Stage 8.7 tests: 113 passed, 0 failed.
+- Focused Stage 8.7 correction tests: 115 passed, 0 failed, 0 skipped.
 - Phase 8 geographic/render-data audit: completed for seven real fixtures.
 - `npm.cmd run lint`: passed.
-- `npm.cmd run test:map`: 1,213 passed, 0 failed, 0 skipped.
+- `npm.cmd run test:map`: 1,215 passed, 0 failed, 0 skipped.
 - `npm.cmd test`: all eight required sub-suites passed with no failed command.
 - `npm.cmd run build`: passed; 70 static pages generated.
 - `git diff --check`: passed.

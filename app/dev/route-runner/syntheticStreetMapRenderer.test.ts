@@ -31,7 +31,10 @@ import {
   getZoomStyleScale,
   getSyntheticLabelMeasurementCacheStats,
   labelStyleForSyntheticMapLabel,
+  isPhoneAtlasViewport,
+  readableSyntheticLabelAngle,
   resetSyntheticLabelMeasurementCache,
+  roadReferencePlacementCandidatesForViewport,
   roadInteractionStyleForState,
   roadJunctionRadiusForVisual,
   roadRenderRank,
@@ -51,7 +54,7 @@ import {
   type SyntheticLandmarkVisual,
   type SyntheticRoadVisual
 } from "./syntheticStreetMapRenderer.ts";
-import { ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
+import { buildZoomedMapViewport, createDefaultMapViewportState, ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
 import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "./restrictionMapVisuals.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 import {
@@ -213,6 +216,10 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "markerPadding",
     "viewportEdgePadding",
     "roadReferenceRepeatDistance",
+    "roadReferenceMinimumVisibleSegmentLength",
+    "roadReferenceRepeatMinimumVisibleSegmentLength",
+    "roadReferenceMaxTextToSegmentRatio",
+    "roadReferenceMaxPerText",
     "roadReferenceMaxPerViewport",
     "roadReferenceMaxPerClass",
     "roadReferenceZoomBudgets"
@@ -2600,7 +2607,7 @@ test("Stage 8.5 renders only source-backed A/B references with atlas-red styling
   assert.ok(referenceLabels.every((label) => sourceRefs.has(label.text.toUpperCase())));
   assert.ok(referenceLabels.every((label) => label.sourceMetadata?.provider === "openstreetmap"));
   assert.ok(referenceLabels.every((label) => label.sourceMetadata?.tags?.ref));
-  assert.equal(labelStyleForSyntheticMapLabel(referenceLabels[0]).color, "#d41726");
+  assert.equal(labelStyleForSyntheticMapLabel(referenceLabels[0]).color, "#c8102e");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceMaxPerViewport, 6);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceRepeatDistance >= 360);
 });
@@ -2755,13 +2762,32 @@ test("Stage 8.7 compact symbols obey bounded semantic sizes, viewport edges, mob
   };
   const stationVisual = visual("station", "station", "station", 200, 400, 1);
   const stationReservations = syntheticLandmarkReservationBoxes([stationVisual], viewport, 1);
+  const phoneCanvasViewport = { width: 900, height: 2160, mapBounds: viewport.mapBounds };
 
-  assert.ok(Object.values(style.styles).every((symbolStyle) => symbolStyle.size <= 6.4 && symbolStyle.strokeWidth <= 1.4));
-  assert.deepEqual([0.6, 1, 2, 4].map((zoom) => atlasSymbolSemanticScale(zoom, zoom)), [0.82, 1, 1.08, 1.12]);
+  assert.ok(Object.values(style.styles).every((symbolStyle) =>
+    symbolStyle.size >= 7.1 &&
+    symbolStyle.size <= 8.8 &&
+    symbolStyle.strokeWidth >= 1.5 &&
+    symbolStyle.strokeWidth <= 1.9 &&
+    symbolStyle.haloWidth > 0 &&
+    symbolStyle.haloColor.includes("rgba")
+  ));
+  assert.deepEqual([0.8, 1, 2, 4].map((zoom) => atlasSymbolSemanticScale(zoom, zoom)), [0.94, 1.08, 1.14, 1.18]);
   assert.ok(filterSyntheticLandmarkVisualsForViewport({ visuals: crowded, viewport, currentZoom: 1 }).length <= style.mobileMaxPerViewport);
+  assert.equal(isPhoneAtlasViewport(phoneCanvasViewport), true);
+  assert.ok(filterSyntheticLandmarkVisualsForViewport({ visuals: crowded, viewport: phoneCanvasViewport, currentZoom: 1 }).length <= style.mobileMaxPerViewport);
   assert.deepEqual(filterSyntheticLandmarkVisualsForViewport({ visuals: [edge], viewport, currentZoom: 1 }), []);
   assert.deepEqual(
     filterSyntheticLandmarkVisualsForViewport({ visuals: [colliding], viewport, currentZoom: 1, reservedLabels: [roadLabel] }),
+    []
+  );
+  assert.deepEqual(
+    filterSyntheticLandmarkVisualsForViewport({
+      visuals: [colliding],
+      viewport,
+      currentZoom: 1,
+      reservedBoxes: [{ id: "learner-marker", minX: 180, minY: 380, maxX: 220, maxY: 420 }]
+    }),
     []
   );
   assert.ok(syntheticMapLabelSymbolOffsetX(stationLabel, viewport, 1, 78, 3) > style.styles.station.size);
@@ -2793,6 +2819,11 @@ test("Stage 8.7 road references validate source tags, separate multiple refs, an
   assert.deepEqual(candidates.map((label) => [label.text, label.roadReferenceClass]), [["A10", "a-road"], ["B100", "b-road"]]);
   assert.notDeepEqual(candidates[0].point, candidates[1].point);
   assert.ok(candidates.every((label) => label.sourceMetadata?.elementId === 100 && (label.roadLengthMeters ?? 0) > 0));
+  assert.ok(candidates.every((label) => label.sourceGeometry?.length === 3));
+  const referenceStyle = labelStyleForSyntheticMapLabel(candidates[0]);
+  assert.equal(referenceStyle.color, "#c8102e");
+  assert.ok(referenceStyle.font.startsWith("900 19px"));
+  assert.ok(referenceStyle.haloColor.includes("255,252,244"));
 
   const viewport = { width: 6000, height: 900, mapBounds: { minX: 0, minY: 0, maxX: 6000, maxY: 900 } };
   const labels: SyntheticMapLabel[] = [
@@ -2802,6 +2833,7 @@ test("Stage 8.7 road references validate source tags, separate multiple refs, an
   const accepted = filterSyntheticMapLabelsForViewport({ labels, viewport, currentZoom: 1 });
 
   assert.equal(accepted.length, TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceZoomBudgets.principal);
+  assert.equal(new Set(accepted.map((label) => label.text)).size, accepted.length);
   assert.ok(accepted.filter((label) => label.roadReferenceClass === "a-road").length <= 5);
   assert.ok(accepted.some((label) => label.roadReferenceClass === "b-road"));
 
@@ -2814,6 +2846,98 @@ test("Stage 8.7 road references validate source tags, separate multiple refs, an
     currentZoom: 1
   });
   assert.equal(split.length, 1);
+});
+
+test("Stage 8.7 correction keeps genuine A501 source metadata and selects it at the King's Cross principal view", () => {
+  const fixture = kingsCrossEustonOsmRouteRunnerMapOption.sourceOverpassFixture;
+  const map = kingsCrossEustonOsmRouteRunnerMapOption.map;
+  const baseViewport = {
+    width: 1920,
+    height: 912,
+    mapBounds: getRouteRunnerMapViewportBounds(map, 1920, 912)
+  };
+  const viewport = buildZoomedMapViewport(
+    baseViewport,
+    createDefaultMapViewportState(ROUTE_RUNNER_MAP_ZOOM_LIMITS),
+    ROUTE_RUNNER_MAP_ZOOM_LIMITS
+  );
+  const first = buildSyntheticMapLabels(map, kingsCrossEustonOsmRouteRunnerMapOption.exercises[0], {
+    sourceOverpassFixture: fixture
+  });
+  const second = buildSyntheticMapLabels(map, kingsCrossEustonOsmRouteRunnerMapOption.exercises[0], {
+    sourceOverpassFixture: fixture
+  });
+  const candidates = first.filter((label) => label.kind === "road_reference" && label.text === "A501");
+  const accepted = filterSyntheticMapLabelsForViewport({ labels: first, viewport, currentZoom: 1 })
+    .filter((label) => label.kind === "road_reference");
+  const a501 = accepted.find((label) => label.text === "A501");
+
+  assert.ok(candidates.length > 100);
+  assert.ok(candidates.every((label) => label.sourceMetadata?.provider === "openstreetmap"));
+  assert.ok(candidates.every((label) => label.sourceMetadata?.tags?.ref?.includes("A501")));
+  assert.ok(candidates.every((label) => label.sourceGeometry && label.sourceGeometry.length >= 2));
+  assert.ok(a501);
+  assert.equal(a501.sourceMetadata?.elementId, 330341);
+  assert.equal(a501.sourceMetadata?.tags?.name, "Penton Rise");
+  assert.ok((a501.angleRadians ?? Math.PI) >= -Math.PI / 2 && (a501.angleRadians ?? -Math.PI) <= Math.PI / 2);
+  assert.equal(new Set(accepted.map((label) => label.text)).size, accepted.length);
+  assert.deepEqual(second, first);
+});
+
+test("Stage 8.7 correction repositions edge references, bounds repetition, and preserves road-name coexistence", () => {
+  const viewport = { width: 1200, height: 600, mapBounds: { minX: 0, minY: 0, maxX: 1200, maxY: 600 } };
+  const reference = (
+    id: string,
+    text: string,
+    sourceGeometry: Array<{ x: number; y: number }>,
+    point = sourceGeometry[0]
+  ): SyntheticMapLabel => ({
+    id,
+    kind: "road_reference",
+    text,
+    point,
+    angleRadians: Math.PI,
+    priority: 1,
+    roadReferenceClass: text.startsWith("B") ? "b-road" : "a-road",
+    roadLengthMeters: 400,
+    sourceGeometry
+  });
+  const nearEdge = reference("a10-edge", "A10", [{ x: -120, y: 120 }, { x: 520, y: 120 }], { x: 2, y: 120 });
+  const tooShort = reference("a11-short", "A11", [{ x: 0, y: 70 }, { x: 40, y: 70 }]);
+  const placements = roadReferencePlacementCandidatesForViewport(nearEdge, viewport, 1);
+
+  assert.ok(placements.length >= 1);
+  assert.ok(placements[0].label.point.x > 100);
+  assert.ok(Math.abs(placements[0].label.angleRadians ?? Math.PI) <= Math.PI / 2);
+  assert.deepEqual(filterSyntheticMapLabelsForViewport({ labels: [tooShort], viewport, currentZoom: 1 }), []);
+  assert.equal(readableSyntheticLabelAngle(Math.PI * 0.8) < Math.PI / 2, true);
+  assert.equal(readableSyntheticLabelAngle(-Math.PI * 0.8) > -Math.PI / 2, true);
+
+  const labels: SyntheticMapLabel[] = [
+    nearEdge,
+    reference("a10-middle", "A10", [{ x: 610, y: 120 }, { x: 930, y: 120 }]),
+    reference("a10-far", "A10", [{ x: 940, y: 120 }, { x: 1190, y: 120 }]),
+    reference("b20", "B20", [{ x: 200, y: 300 }, { x: 520, y: 300 }]),
+    {
+      id: "road-name",
+      kind: "road",
+      text: "Atlas Corridor",
+      point: { x: 750, y: 260 },
+      angleRadians: 0,
+      priority: 3,
+      roadClass: "major",
+      roadLengthMeters: 1000
+    }
+  ];
+  const first = filterSyntheticMapLabelsForViewport({ labels, viewport, currentZoom: 1 });
+  const second = filterSyntheticMapLabelsForViewport({ labels, viewport, currentZoom: 1 });
+
+  assert.deepEqual(second, first);
+  assert.ok(first.some((label) => label.text === "A10"));
+  assert.ok(first.some((label) => label.text === "B20"));
+  assert.ok(first.some((label) => label.text === "Atlas Corridor"));
+  assert.ok(first.filter((label) => label.text === "A10").length <= 2);
+  assert.ok(first.every((label) => label.kind !== "road_reference" || Math.abs(label.angleRadians ?? 0) <= Math.PI / 2));
 });
 
 test("buildSyntheticRouteOverlayVisuals creates route overlay visual models", () => {

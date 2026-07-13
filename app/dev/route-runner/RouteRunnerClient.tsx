@@ -160,6 +160,7 @@ import {
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
+  readableSyntheticLabelAngle,
   roadInteractionStyleForState,
   roadJunctionRadiusForVisual,
   roadStyleForViewport,
@@ -2075,7 +2076,12 @@ function drawSyntheticLandmarkVisual(
 
   context.beginPath();
   context.rect(point.x - size, point.y - size, size * 2, size * 2);
+  context.strokeStyle = style.haloColor;
+  context.lineWidth = (style.strokeWidth + style.haloWidth * 2) * scale;
+  context.stroke();
   context.fill();
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth * scale;
   context.stroke();
   context.strokeStyle = style.detailColor;
 
@@ -2091,7 +2097,7 @@ function drawSyntheticLandmarkVisual(
     context.lineTo(point.x + size * 0.34, point.y + size * 0.72);
     context.stroke();
   } else if (symbolKind === "hospital") {
-    context.lineWidth = 1.8 * scale;
+    context.lineWidth = 2.25 * scale;
     context.beginPath();
     context.moveTo(point.x - size * 0.62, point.y);
     context.lineTo(point.x + size * 0.62, point.y);
@@ -2150,7 +2156,7 @@ function drawSyntheticLandmarkVisual(
     context.lineTo(point.x + size * 0.55, point.y + size * 0.58);
     context.stroke();
   } else if (symbolKind === "parking") {
-    context.font = `700 ${Math.max(7, size * 1.65)}px Arial, sans-serif`;
+    context.font = `800 ${Math.max(9, size * 1.65)}px Arial, sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillStyle = style.detailColor;
@@ -2174,14 +2180,6 @@ function drawSyntheticLandmarkVisual(
   }
 
   context.restore();
-}
-
-function readableRoadLabelAngle(angleRadians: number): number {
-  if (angleRadians > Math.PI / 2 || angleRadians < -Math.PI / 2) {
-    return angleRadians + Math.PI;
-  }
-
-  return angleRadians;
 }
 
 function drawSyntheticMapLabel(
@@ -2215,7 +2213,7 @@ function drawSyntheticMapLabel(
   context.translate(point.x + symbolOffsetX, point.y);
 
   if (isRoadLabel && typeof label.angleRadians === "number") {
-    context.rotate(readableRoadLabelAngle(label.angleRadians));
+    context.rotate(readableSyntheticLabelAngle(label.angleRadians));
   }
 
   context.textAlign = "center";

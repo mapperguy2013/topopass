@@ -102,3 +102,18 @@ hierarchy, visible built/water context, aligned learner markers and visible OSM
 attribution. Mobile symbol budgets remained restrained, and pass/fail details
 fit their narrow layout without clipping. Visual inspection found no symbol,
 reference, route, marker, restriction or attribution alignment regression.
+
+## Stage 8.7 Correction Evidence
+
+Focused before/after and production-state captures are under
+`screenshots/stage-8-7-correction/`. Desktop 1440 by 900 evidence covers the
+King's Cross A501 corridor at displayed 80%, 100% and 125%, Piccadilly,
+Waterloo, an active route and correct/incorrect submitted reviews. Mobile 390
+by 844 evidence covers the committed and corrected King's Cross reference view
+plus an active route at displayed 100%.
+
+Inspection against the approved visual master confirmed stronger genuine red
+A/B references, clearer original compact symbols, padded edge placement,
+distinct-reference-first budgeting and controlled long-corridor repetition.
+Road names, routes, markers, attribution and review overlays remain aligned and
+visually dominant where required. Stage 8.8 was not started.

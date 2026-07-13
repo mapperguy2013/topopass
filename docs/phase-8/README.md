@@ -79,7 +79,10 @@ holes, viewport filtering and bounded semantic zoom. Its desktop/mobile visual
 QA and full local validation are complete. Stage 8.4's independent manual
 visual acceptance remains pending. Stage 8.7 now has a typed source-backed
 symbol pipeline, original compact marks, deterministic coordinated symbol and
-label placement, and class-aware A/B reference placement. Production evidence
+label placement, and class-aware A/B reference placement. Its focused visual-QA
+correction strengthens genuine references and compact marks, selects distinct
+references before controlled repeats, and suppresses clipped edge candidates.
+Production evidence
 covers the required fixtures, zoom tiers, active learner route and submitted
 correct/incorrect review states at desktop and mobile sizes. Stage 8.8 has not
 started.
