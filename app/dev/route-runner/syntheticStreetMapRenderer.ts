@@ -1169,7 +1169,7 @@ export function filterSyntheticMapLabelsForViewport(
 
     const box = labelCollisionBox(label, options.viewport, options.currentZoom);
 
-    if (!boxIntersectsViewport(box, options.viewport)) {
+    if (!boxFitsWithinViewport(box, options.viewport)) {
       continue;
     }
 
@@ -1867,8 +1867,15 @@ function shouldShowRoadReferenceLabel(
   return existingPoints.every((existingPoint) => distanceBetweenPoints(existingPoint, point) >= repeatDistance);
 }
 
-function boxIntersectsViewport(box: SyntheticLabelCollisionBox, viewport: ScreenMapViewport): boolean {
-  return box.maxX >= 0 && box.maxY >= 0 && box.minX <= viewport.width && box.minY <= viewport.height;
+function boxFitsWithinViewport(box: SyntheticLabelCollisionBox, viewport: ScreenMapViewport): boolean {
+  const edgePadding = TOPOPASS_STREET_ATLAS_STYLE.labels.collision.viewportEdgePadding;
+
+  return (
+    box.minX >= edgePadding &&
+    box.minY >= edgePadding &&
+    box.maxX <= viewport.width - edgePadding &&
+    box.maxY <= viewport.height - edgePadding
+  );
 }
 
 function distanceBetweenPoints(left: Vec2, right: Vec2): number {

@@ -419,23 +419,24 @@ export function restrictionMapVisualStyleForViewport(
   const tier = restrictionZoomTierForViewport(viewport);
   const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
   const cartographicScale = cartographicRestrictionSymbolScaleForViewport(viewport, currentZoom);
+  const alphaMultiplier = item.kind === "one-way" ? decluttering.oneWayArrowAlphaMultiplier : 1;
 
   if (tier === "low") {
     return {
-      alpha: decluttering.lowRestrictionSymbolAlpha,
+      alpha: decluttering.lowRestrictionSymbolAlpha * alphaMultiplier,
       scale: decluttering.lowRestrictionSymbolScale * cartographicScale
     };
   }
 
   if (tier === "medium") {
     return {
-      alpha: decluttering.mediumRestrictionSymbolAlpha,
+      alpha: decluttering.mediumRestrictionSymbolAlpha * alphaMultiplier,
       scale: decluttering.mediumRestrictionSymbolScale * cartographicScale
     };
   }
 
   return {
-    alpha: decluttering.highRestrictionSymbolAlpha,
+    alpha: decluttering.highRestrictionSymbolAlpha * alphaMultiplier,
     scale: decluttering.highRestrictionSymbolScale * cartographicScale
   };
 }

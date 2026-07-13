@@ -53,7 +53,7 @@ test("Stage 131 reduces repeated one-way arrows on the same road under the token
     oneWayOverlay({ roadId: "same-road", from: { x: 30, y: 0 }, to: { x: 70, y: 0 } })
   ]);
 
-  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 56);
+  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 76);
   assert.deepEqual(
     items.map((item) => item.id),
     ["one-way:same-road:0"]
@@ -96,7 +96,7 @@ test("Stage 131 applies one-way arrow spacing to the same rendered road group", 
 
   assert.deepEqual(
     items.map((item) => item.id),
-    ["one-way:osm-way-1-segment-0:0", "one-way:osm-way-1-segment-2:0"]
+    ["one-way:osm-way-1-segment-0:0"]
   );
 });
 

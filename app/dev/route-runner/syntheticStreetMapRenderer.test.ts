@@ -204,6 +204,7 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "defaultPadding",
     "routePadding",
     "markerPadding",
+    "viewportEdgePadding",
     "roadReferenceRepeatDistance",
     "roadReferenceMaxPerViewport"
   ]);
@@ -237,7 +238,7 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "openSpaceMarker",
     "learnerReferenceMarker"
   ]);
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 56);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 76);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
 });
 
@@ -818,12 +819,15 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
   const minimumVisibleRoadLabelsByMapId = new Map([
     ["osm-curated-piccadilly-circus", 3],
     ["osm-curated-waterloo-bridge", 1],
-    ["osm-curated-one-way-system-area", 9],
+    ["osm-curated-one-way-system-area", 8],
     ["osm-curated-quiet-residential-roads", 13],
     ["osm-curated-kings-cross-euston", 1]
   ]);
   const minimumVisibleLandmarksByMapId = new Map([
     ["osm-curated-kings-cross-euston", 0]
+  ]);
+  const minimumVisibleContextLabelsByMapId = new Map([
+    ["osm-curated-waterloo-bridge", 0]
   ]);
 
   const routableRenderOptions = [
@@ -873,7 +877,11 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
         (minimumVisibleRoadLabelsByMapId.get(option.id) ?? 1),
       option.id
     );
-    assert.ok(learnerLabels.some((label) => label.kind !== "road"), option.id);
+    assert.ok(
+      learnerLabels.filter((label) => label.kind !== "road").length >=
+        (minimumVisibleContextLabelsByMapId.get(option.id) ?? 1),
+      option.id
+    );
     assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 12, option.id);
   }
 });
@@ -1648,8 +1656,22 @@ test("Stage 145 label visibility reduces minor roads at low zoom", () => {
     }
   };
   const labels = [
-    roadLabel({ id: "major", text: "Euston Road", roadClass: "major", osmHierarchy: "primary", roadLengthMeters: 1000 }),
-    roadLabel({ id: "minor", text: "Store Street", roadClass: "local", osmHierarchy: "residential", roadLengthMeters: 1000 })
+    roadLabel({
+      id: "major",
+      text: "Euston Road",
+      point: { x: 500, y: 500 },
+      roadClass: "major",
+      osmHierarchy: "primary",
+      roadLengthMeters: 1000
+    }),
+    roadLabel({
+      id: "minor",
+      text: "Store Street",
+      point: { x: 500, y: 500 },
+      roadClass: "local",
+      osmHierarchy: "residential",
+      roadLengthMeters: 1000
+    })
   ];
 
   assert.deepEqual(
@@ -1703,10 +1725,33 @@ test("Stage 145 label visibility rejects text that cannot fit its road segment",
   );
 });
 
+test("Stage 8.5 correction label filtering requires padded full-viewport fit", () => {
+  const labels = [
+    roadLabel({
+      id: "edge-crossing",
+      text: "Edge Street",
+      point: { x: 12, y: 50 },
+      roadLengthMeters: 500
+    }),
+    roadLabel({
+      id: "inside",
+      text: "Inside Street",
+      point: { x: 108, y: 50 },
+      roadLengthMeters: 500
+    })
+  ];
+
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.viewportEdgePadding, 6);
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["inside"]
+  );
+});
+
 test("Stage 145 label layout throttles repeated road names", () => {
   const labels = [
-    roadLabel({ id: "first", text: "Euston Road", point: { x: 20, y: 40 }, roadLengthMeters: 300 }),
-    roadLabel({ id: "near-repeat", text: "Euston Road", point: { x: 80, y: 40 }, roadLengthMeters: 300 })
+    roadLabel({ id: "first", text: "Euston Road", point: { x: 80, y: 50 }, roadLengthMeters: 300 }),
+    roadLabel({ id: "near-repeat", text: "Euston Road", point: { x: 140, y: 50 }, roadLengthMeters: 300 })
   ];
 
   assert.deepEqual(
@@ -1718,7 +1763,7 @@ test("Stage 145 label layout throttles repeated road names", () => {
 test("Stage 145 label layout avoids reserved route and marker areas", () => {
   const labels = [
     roadLabel({ id: "blocked", point: { x: 50, y: 50 }, roadLengthMeters: 300 }),
-    roadLabel({ id: "clear", point: { x: 160, y: 80 }, roadLengthMeters: 300 })
+    roadLabel({ id: "clear", text: "Clear", point: { x: 150, y: 50 }, roadLengthMeters: 300 })
   ];
 
   assert.deepEqual(
@@ -1766,11 +1811,21 @@ test("Stage 157 label filtering reuses cached text measurements on repeated view
 });
 
 test("Stage 146 repeated road labels are allowed when sufficiently separated", () => {
+  const wideLabelViewport = {
+    width: 400,
+    height: 100,
+    mapBounds: {
+      minX: 0,
+      minY: 0,
+      maxX: 400,
+      maxY: 100
+    }
+  };
   const labels = [
     roadLabel({
       id: "first",
       text: "Grafton Place",
-      point: { x: 2, y: 2 },
+      point: { x: 80, y: 50 },
       roadClass: "local",
       osmHierarchy: "residential",
       roadLengthMeters: 300
@@ -1778,7 +1833,7 @@ test("Stage 146 repeated road labels are allowed when sufficiently separated", (
     roadLabel({
       id: "far-repeat",
       text: "Grafton Place",
-      point: { x: 198, y: 98 },
+      point: { x: 300, y: 50 },
       roadClass: "local",
       osmHierarchy: "residential",
       roadLengthMeters: 300
@@ -1786,7 +1841,10 @@ test("Stage 146 repeated road labels are allowed when sufficiently separated", (
   ];
 
   assert.deepEqual(
-    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    filterSyntheticMapLabelsForViewport({
+      labels,
+      viewport: wideLabelViewport
+    }).map((label) => label.id),
     ["far-repeat", "first"]
   );
 });
@@ -1823,14 +1881,14 @@ test("Stage 146 context labels use category styles and low-zoom decluttering", (
       id: "station-label",
       kind: "station",
       text: "Euston Station",
-      point: { x: 40, y: 30 },
+      point: { x: 64, y: 36 },
       priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.station
     },
     {
       id: "park-label",
       kind: "open_space",
       text: "Gordon Square",
-      point: { x: 160, y: 80 },
+      point: { x: 140, y: 72 },
       priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.openSpace
     }
   ];
@@ -2123,10 +2181,10 @@ test("Stage 149 area and landmark labels respect zoom and learner overlay priori
     width: 160,
     height: 160,
     mapBounds: {
-      minX: 0,
-      minY: 0,
-      maxX: 1000,
-      maxY: 1000
+      minX: -400,
+      minY: -450,
+      maxX: 600,
+      maxY: 550
     }
   };
   const reservedBoxes = [{ id: "exercise-stop", minX: 72, minY: 28, maxX: 128, maxY: 72 }];
@@ -2368,7 +2426,9 @@ test("Stage 8.5 renders only source-backed A/B references with atlas-red styling
   assert.ok(referenceLabels.every((label) => sourceRefs.has(label.text.toUpperCase())));
   assert.ok(referenceLabels.every((label) => label.sourceMetadata?.provider === "openstreetmap"));
   assert.ok(referenceLabels.every((label) => label.sourceMetadata?.tags?.ref));
-  assert.equal(labelStyleForSyntheticMapLabel(referenceLabels[0]).color, "#c5202f");
+  assert.equal(labelStyleForSyntheticMapLabel(referenceLabels[0]).color, "#d41726");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceMaxPerViewport, 4);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceRepeatDistance >= 360);
 });
 
 test("unnamed converted OSM roads do not crash label generation", () => {

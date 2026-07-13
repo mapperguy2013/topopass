@@ -301,7 +301,7 @@ test("Stage 157 restriction visual generation can be keyed by zoom tier instead 
   assert.deepEqual(tierItems, viewportItems);
   assert.deepEqual(
     tierItems.map((item) => item.kind),
-    ["one-way", "one-way", "no-entry", "restricted-road", "prohibited-turn", "missed-restriction", "illegal-movement"]
+    ["one-way", "no-entry", "restricted-road", "prohibited-turn", "missed-restriction", "illegal-movement"]
   );
 });
 
@@ -315,6 +315,7 @@ test("Stage 147 zoom tier helper classifies restriction detail deterministically
     "longRoadArrowThresholdMeters",
     "mediumOneWayArrowSpacingMultiplier",
     "highOneWayArrowSpacingMultiplier",
+    "oneWayArrowAlphaMultiplier",
     "lowDetailViewportScale",
     "highDetailViewportScale",
     "mediumOneWayMinRoadLengthMeters",
@@ -393,11 +394,24 @@ test("Stage 150 one-way arrows prefer deterministic decision-point placement and
   assert.ok(highItems[1].point.x > 220 * 0.7);
   assert.deepEqual(
     mediumItems.map((item) => item.id),
-    ["one-way:long-decision-road:0", "one-way:long-decision-road:1"]
+    ["one-way:long-decision-road:0"]
   );
   assert.equal(
     TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.mediumSpacingMultiplier,
     TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.mediumOneWayArrowSpacingMultiplier
+  );
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering.oneWayArrowAlphaMultiplier < 1);
+});
+
+test("Stage 8.5 correction makes one-way arrows subordinate to other restriction symbols", () => {
+  const oneWayItem = buildOneWayVisualItems(roadRestrictionOverlays, { viewport: highZoomViewport })[0];
+  const noEntryItem = buildNoEntryVisualItems(roadRestrictionOverlays)[0];
+
+  assert.ok(oneWayItem);
+  assert.ok(noEntryItem);
+  assert.ok(
+    restrictionMapVisualStyleForViewport(oneWayItem, highZoomViewport).alpha <
+      restrictionMapVisualStyleForViewport(noEntryItem, highZoomViewport).alpha
   );
 });
 
@@ -437,7 +451,7 @@ test("Stage 150 medium zoom spacing suppresses repeated one-way arrows on dense 
 
   assert.deepEqual(
     buildOneWayVisualItems(overlays, { viewport: highZoomViewport }).map((item) => item.id),
-    ["one-way:osm-way-1-segment-0:0", "one-way:osm-way-1-segment-1:0"]
+    ["one-way:osm-way-1-segment-0:0"]
   );
   assert.deepEqual(
     buildOneWayVisualItems(overlays, { viewport: mediumZoomViewport }).map((item) => item.id),

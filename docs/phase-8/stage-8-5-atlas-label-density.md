@@ -5,7 +5,9 @@
 Complete for Stage 8.5. Implemented in the production Real London canvas
 renderer, visually accepted against the Phase 8 visual master for label
 density and place-name character, and validated with the full required local
-suite.
+suite. A focused Stage 8.5 visual-QA correction later tightened the displayed
+100% exam baseline, label edge filtering, one-way arrow dominance, and A/B
+reference emphasis without starting Stage 8.6.
 
 ## Goal And Educational Purpose
 
@@ -44,7 +46,9 @@ proprietary font, artwork, or reference-image text was copied.
 Layout priority is learner reservations, road references, districts, major
 roads, stations and landmarks, local roads, then contextual land-use labels.
 The base-label filter consumes existing learner route and marker reservation
-boxes, rejects fully off-viewport labels, and uses deterministic ID tie breaks.
+boxes, requires label boxes to fit within a padded viewport, and uses
+deterministic ID tie breaks. Edge-crossing labels are suppressed rather than
+drawn visibly clipped.
 
 Road references use a bounded per-viewport budget and repeat distance so red
 references remain prominent without replacing the street-name field. Road-name
@@ -52,6 +56,11 @@ repeats are distance-throttled, collision boxes follow road angle, and only
 labels that fit useful road geometry are accepted. Lower zoom suppresses minor
 labels; principal exam zoom remains dense; higher zoom reveals service and
 shorter-road labels. Canvas letter spacing is explicitly zero.
+
+The displayed 100% exam view maps to the closer visual scale previously reached
+only by zooming in manually. The UI still reports 100% at reset/default, and
+route drawing, pan, zoom, marker placement, and coordinate conversion continue
+to use the shared viewport transform.
 
 ## Fixture Coverage
 
@@ -121,6 +130,27 @@ Accepted visual findings:
 - Mobile 390 by 844 screenshots remain readable: labels are not clipped,
   route markers stay aligned, attribution remains visible, and the four-road
   reference budget does not overwhelm the view.
+
+Focused correction screenshots are committed under
+`screenshots/stage-8-5-correction/`:
+
+| Scenario | Viewport | Screenshot |
+| --- | --- | --- |
+| Dense central labels and A/B references at displayed 100% | 1440 by 900 | `desktop-piccadilly-100.png` |
+| One-way/restriction context at displayed 100% | 1440 by 900 | `desktop-one-way-100.png` |
+| Dense central labels and A/B references at displayed 100% | 390 by 844 | `mobile-piccadilly-100.png` |
+| One-way/restriction context at displayed 100% | 390 by 844 | `mobile-one-way-100.png` |
+
+Correction findings:
+
+- Displayed 100% now opens at the useful closer exam scale while retaining the
+  100% UI indicator.
+- Red A/B references are stronger at principal exam zoom but remain capped by
+  the four-reference viewport budget and a larger repeat distance.
+- Repeated blue one-way arrows are more subordinate to street labels and no
+  longer dominate dense one-way areas.
+- Labels that would cross the map edge are rejected, so rendered street and
+  context labels are not visibly clipped in the corrected desktop/mobile views.
 
 ## Non-Goals And Known Limitations
 

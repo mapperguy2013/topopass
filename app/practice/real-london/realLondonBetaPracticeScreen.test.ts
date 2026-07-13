@@ -517,7 +517,7 @@ test("Stage 161.6.28 mobile header scrolls away and phone canvas avoids CSS stre
 test("Stage 139 one-way arrow visual thinning remains presentation-only", () => {
   const model = requireAvailableModel();
 
-  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 56);
+  assert.equal(ONE_WAY_ARROW_MIN_SPACING_METERS, 76);
   assert.equal(model.mobileLayout.oneWayArrowMinSpacingMeters, ONE_WAY_ARROW_MIN_SPACING_METERS);
   assert.equal(model.routeFlow.shortestRouteFound, true);
   assert.equal(model.routeFlow.existingRunnerScorePassed, true);
