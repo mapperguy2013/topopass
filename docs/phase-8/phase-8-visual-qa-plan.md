@@ -116,4 +116,22 @@ Inspection against the approved visual master confirmed stronger genuine red
 A/B references, clearer original compact symbols, padded edge placement,
 distinct-reference-first budgeting and controlled long-corridor repetition.
 Road names, routes, markers, attribution and review overlays remain aligned and
-visually dominant where required. Stage 8.8 was not started.
+visually dominant where required. Stage 8.8 evidence follows below.
+
+## Stage 8.8 Evidence
+
+Stage 8.8 production-renderer captures are under `screenshots/stage-8-8/` and
+are indexed in `stage-8-8-principal-scale-and-density.md`. The new Victoria /
+Westminster / Vauxhall benchmark was inspected at exact 1440 by 900, 1024 by
+768 and 390 by 844 viewports. Exact 1440 by 900 evidence also covers
+Piccadilly, Waterloo, King's Cross / Euston, quiet residential,
+one-way/restriction, active learner route and submitted correct/incorrect
+review states.
+
+Inspection against the approved visual master confirmed a denser principal
+exam view with numerous source-backed local names, continuous major-road
+corridors, bounded red A/B references, subordinate district/context labels and
+no broad collision-created blank fields. Learner routes, markers, submitted
+review overlays and attribution remain aligned. The development-only mobile QA
+toolbar still wraps beyond the narrow benchmark viewport; Stage 8.10 owns the
+broader mobile/accessibility layout pass. Stage 8.9 was not started.

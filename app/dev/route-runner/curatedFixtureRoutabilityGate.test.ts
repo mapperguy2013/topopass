@@ -373,12 +373,19 @@ test("Stage 160.6 route-runner options expose fixture use without pulling curate
   const scoreableCuratedOptions = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
     (option) => option.fixtureUse === "routableExercise"
   );
+  const visualQaOnlyOptions = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.filter(
+    (option) => option.fixtureUse === "visualQaOnly"
+  );
   const centralLondonOption = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
     (option) => option.id === CENTRAL_LONDON_OSM_MAP_ID
   );
 
   assert.equal(scoreableCuratedOptions.length, CURATED_PREFLIGHT_CASES.length);
-  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, CURATED_PREFLIGHT_CASES.length + 1);
+  assert.equal(visualQaOnlyOptions.length, 2);
+  assert.equal(
+    CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length,
+    scoreableCuratedOptions.length + visualQaOnlyOptions.length
+  );
   assert.ok(centralLondonOption);
   assert.equal(centralLondonOption.fixtureUse, "visualQaOnly");
   assert.equal(centralLondonOption.fixturePerformanceGate, "devOnlyStressTest");

@@ -61,6 +61,7 @@ import {
   marloweDistrictMap,
   marloweDistrictRouteExercises,
   getTurnRestrictionVisuals,
+  mapToScreenPoint,
   type MapDefinition
 } from "../../../lib/map-engine/index.ts";
 import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
@@ -69,6 +70,7 @@ import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondo
 import { kingsCrossEustonOsmRouteRunnerMapOption } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
 import { buildRoadRestrictionOverlays } from "./routeRunnerDisplay.ts";
 import { buildRestrictionMapVisualItems, filterRestrictionMapVisualItemsForViewport } from "./restrictionMapVisuals.ts";
+import { victoriaWestminsterVauxhallOsmRouteRunnerMapOption } from "./curatedVictoriaWestminsterVauxhallRouteRunnerMap.ts";
 
 function assertClose(actual: number, expected: number, tolerance: number, message: string): void {
   assert.ok(Math.abs(actual - expected) <= tolerance, `${message}: expected ${expected}, got ${actual}`);
@@ -282,7 +284,7 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "openSpaceMarker",
     "learnerReferenceMarker"
   ]);
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 76);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.minSpacingMeters, 88);
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.longRoadArrowThresholdMeters, 180);
 });
 
@@ -1091,7 +1093,7 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
         (minimumVisibleContextLabelsByMapId.get(option.id) ?? 1),
       option.id
     );
-    assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 12, option.id);
+    assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 14, option.id);
   }
 });
 
@@ -3021,6 +3023,96 @@ test("Stage 8.7 correction repositions edge references, bounds repetition, and p
   assert.ok(first.some((label) => label.text === "Atlas Corridor"));
   assert.ok(first.filter((label) => label.text === "A10").length <= 2);
   assert.ok(first.every((label) => label.kind !== "road_reference" || Math.abs(label.angleRadians ?? 0) <= Math.PI / 2));
+});
+
+test("Stage 8.8 benchmark renders principal atlas density from source-backed geometry", () => {
+  const option = victoriaWestminsterVauxhallOsmRouteRunnerMapOption;
+  const map = option.map;
+  const fixture = option.sourceOverpassFixture;
+  const backgroundFeatures = buildSyntheticBackgroundFeatures(map, {
+    sourceOverpassFixture: fixture
+  });
+  const linearFeatures = buildSyntheticLinearFeatures(map, {
+    sourceOverpassFixture: fixture
+  });
+  const labels = buildSyntheticMapLabels(map, undefined, {
+    includeOsmRoadLabels: true,
+    backgroundFeatures,
+    linearFeatures,
+    sourceOverpassFixture: fixture
+  });
+  const roadVisuals = buildSyntheticRoadVisuals(map);
+  const roadPasses = buildRoadRenderPasses(roadVisuals);
+  const desktopBaseViewport = {
+    width: 1440,
+    height: 900,
+    mapBounds: getRouteRunnerMapViewportBounds(map, 1440, 900)
+  };
+  const mobileBaseViewport = {
+    width: 390,
+    height: 844,
+    mapBounds: getRouteRunnerMapViewportBounds(map, 390, 844)
+  };
+  const viewport = buildZoomedMapViewport(
+    desktopBaseViewport,
+    createDefaultMapViewportState(ROUTE_RUNNER_MAP_ZOOM_LIMITS),
+    ROUTE_RUNNER_MAP_ZOOM_LIMITS
+  );
+  const mobileViewport = buildZoomedMapViewport(
+    mobileBaseViewport,
+    createDefaultMapViewportState(ROUTE_RUNNER_MAP_ZOOM_LIMITS),
+    ROUTE_RUNNER_MAP_ZOOM_LIMITS
+  );
+  const visibleLabels = filterSyntheticMapLabelsForViewport({ labels, viewport, currentZoom: 1 });
+  const visibleMobileLabels = filterSyntheticMapLabelsForViewport({ labels, viewport: mobileViewport, currentZoom: 1 });
+  const roadLabels = visibleLabels.filter((label) => label.kind === "road");
+  const roadReferences = visibleLabels.filter((label) => label.kind === "road_reference");
+  const districtLabels = visibleLabels.filter((label) => label.kind === "district");
+  const majorRoadVisualsByWay = new Map<string, SyntheticRoadVisual[]>();
+
+  for (const visual of roadVisuals) {
+    if (visual.osmWayId && visual.roadClass === "major" && visual.osmHierarchy === "primary") {
+      majorRoadVisualsByWay.set(visual.osmWayId, [...(majorRoadVisualsByWay.get(visual.osmWayId) ?? []), visual]);
+    }
+  }
+
+  assert.equal(option.fixtureUse, "visualQaOnly");
+  assert.equal(option.scoreable, false);
+  assert.ok(backgroundFeatures.filter((feature) => feature.kind === "building").length >= 50);
+  assert.ok(backgroundFeatures.filter((feature) => feature.kind === "institution").length >= 10);
+  assert.ok(backgroundFeatures.filter((feature) => feature.kind === "land-use").length >= 50);
+  assert.ok(backgroundFeatures.some((feature) => feature.kind === "park"));
+  assert.ok(backgroundFeatures.some((feature) => feature.kind === "water"));
+  assert.ok(linearFeatures.some((feature) => feature.kind === "rail"));
+  assert.ok(roadVisuals.filter((visual) => visual.roadClass === "major").length >= 700);
+  assert.ok(roadLabels.length >= 55, `visible road labels=${roadLabels.length}`);
+  assert.ok(roadReferences.length >= 4);
+  assert.ok(roadReferences.length <= TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceZoomBudgets.principal);
+  assert.ok(districtLabels.length >= 2);
+  assert.ok(new Set(roadLabels.map((label) => label.text)).size >= 30);
+  assert.ok(visibleMobileLabels.filter((label) => label.kind === "road").length >= 8);
+  assert.ok(visibleMobileLabels.every((label) => {
+    const box = roadReferencePlacementCandidatesForViewport(label, mobileViewport, 1)[0]?.label ?? label;
+    const point = mapToScreenPoint(box.point, mobileViewport);
+
+    return point.x >= -1 && point.x <= mobileViewport.width + 1 && point.y >= -1 && point.y <= mobileViewport.height + 1;
+  }));
+
+  for (const reference of roadReferences) {
+    const sourceWayId = String(reference.sourceMetadata?.elementId);
+    const matchingVisuals = majorRoadVisualsByWay.get(sourceWayId) ?? [];
+    const finalPasses = roadPasses
+      .filter((pass) => pass.visual.osmWayId === sourceWayId)
+      .map((pass) => pass.layer);
+
+    assert.ok(matchingVisuals.length > 0, `${reference.id} should have matching major-road geometry`);
+    assert.ok(finalPasses.includes("casing"), `${reference.id} should render a casing`);
+    assert.ok(finalPasses.includes("fill"), `${reference.id} should render a fill`);
+    assert.ok(
+      matchingVisuals.some((visual) => distanceToVisualGeometry(reference.point, visual) <= 0.001),
+      `${reference.id} should sit on its own rendered road geometry`
+    );
+  }
 });
 
 test("buildSyntheticRouteOverlayVisuals creates route overlay visual models", () => {

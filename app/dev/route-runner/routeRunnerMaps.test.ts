@@ -42,6 +42,8 @@ import {
   CENTRAL_LONDON_OSM_MAP_ID,
   KINGS_CROSS_EUSTON_LAZY_LOAD_ID,
   KINGS_CROSS_EUSTON_OSM_MAP_ID,
+  VICTORIA_WESTMINSTER_VAUXHALL_LAZY_LOAD_ID,
+  VICTORIA_WESTMINSTER_VAUXHALL_OSM_MAP_ID,
   centralLondonLazyPlaceholderRouteMap,
   kingsCrossEustonLazyPlaceholderRouteMap,
   oneWaySystemAreaOsmRouteExercises,
@@ -50,6 +52,7 @@ import {
   piccadillyCircusOsmRouteMap,
   quietResidentialRoadsOsmRouteExercises,
   quietResidentialRoadsOsmRouteMap,
+  victoriaWestminsterVauxhallLazyPlaceholderRouteMap,
   waterlooBridgeOsmRouteExercises,
   waterlooBridgeOsmRouteMap
 } from "./curatedRealLondonRouteRunnerMaps.ts";
@@ -59,6 +62,11 @@ import {
   kingsCrossEustonOsmRouteMap,
   kingsCrossEustonOsmRouteRunnerMapOption
 } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
+import {
+  VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING,
+  victoriaWestminsterVauxhallOsmRouteMap,
+  victoriaWestminsterVauxhallOsmRouteRunnerMapOption
+} from "./curatedVictoriaWestminsterVauxhallRouteRunnerMap.ts";
 import { routeRunnerMapOptionNeedsLazyLoad } from "./lazyRouteRunnerMapOptions.ts";
 import {
   ROUTE_EXERCISE_DIVERSITY_MAX_OVERLAP_RATIO,
@@ -75,6 +83,7 @@ import kingsCrossEustonOverpassFixture from "../../../lib/map-engine/osm/fixture
 import oneWaySystemAreaOverpassFixture from "../../../lib/map-engine/osm/fixtures/oneWaySystemAreaOverpass.json" with { type: "json" };
 import piccadillyCircusOverpassFixture from "../../../lib/map-engine/osm/fixtures/piccadillyCircusOverpass.json" with { type: "json" };
 import quietResidentialRoadsOverpassFixture from "../../../lib/map-engine/osm/fixtures/quietResidentialRoadsOverpass.json" with { type: "json" };
+import victoriaWestminsterVauxhallOverpassFixture from "../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallOverpass.json" with { type: "json" };
 import waterlooBridgeOverpassFixture from "../../../lib/map-engine/osm/fixtures/waterlooBridgeOverpass.json" with { type: "json" };
 import { auditRealLondonContextCoverage } from "./realLondonContextData.ts";
 import {
@@ -197,6 +206,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   const quietResidentialOption = getExtendedMapOption(quietResidentialRoadsOsmRouteMap.id);
   const kingsCrossEustonOption = getExtendedMapOption(KINGS_CROSS_EUSTON_OSM_MAP_ID);
   const centralLondonOption = getExtendedMapOption(CENTRAL_LONDON_OSM_MAP_ID);
+  const victoriaWestminsterVauxhallOption = getExtendedMapOption(VICTORIA_WESTMINSTER_VAUXHALL_OSM_MAP_ID);
   const phase6QaOption = getRouteRunnerMapOption(phase6RealLondonVisualQaRouteMap.id);
 
   assert.ok(syntheticOption);
@@ -211,6 +221,7 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.ok(quietResidentialOption);
   assert.ok(kingsCrossEustonOption);
   assert.ok(centralLondonOption);
+  assert.ok(victoriaWestminsterVauxhallOption);
   assert.ok(phase6QaOption);
   assert.equal(syntheticOption.source, "synthetic-dev");
   assert.equal(tinyOption.source, "converted-osm");
@@ -237,6 +248,15 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.equal(centralLondonOption.scoreable, false);
   assert.equal(routeRunnerMapOptionNeedsLazyLoad(centralLondonOption), true);
   assert.equal(centralLondonOption.sourceOverpassFixture, undefined);
+  assert.equal(victoriaWestminsterVauxhallOption.source, "converted-osm");
+  assert.equal(victoriaWestminsterVauxhallOption.map.id, victoriaWestminsterVauxhallLazyPlaceholderRouteMap.id);
+  assert.equal(victoriaWestminsterVauxhallOption.lazyLoadId, VICTORIA_WESTMINSTER_VAUXHALL_LAZY_LOAD_ID);
+  assert.equal(victoriaWestminsterVauxhallOption.fixtureUse, "visualQaOnly");
+  assert.equal(victoriaWestminsterVauxhallOption.fixturePerformanceGate, "visualQaOnly");
+  assert.equal(victoriaWestminsterVauxhallOption.visibleInBeta, false);
+  assert.equal(victoriaWestminsterVauxhallOption.scoreable, false);
+  assert.equal(routeRunnerMapOptionNeedsLazyLoad(victoriaWestminsterVauxhallOption), true);
+  assert.equal(victoriaWestminsterVauxhallOption.sourceOverpassFixture, undefined);
   assert.equal(phase6QaOption.source, "converted-osm");
   assert.equal(isDevOnlyRouteRunnerMapOption(piccadillyOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(waterlooOption), true);
@@ -244,10 +264,11 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.equal(isDevOnlyRouteRunnerMapOption(quietResidentialOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(kingsCrossEustonOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(centralLondonOption), true);
+  assert.equal(isDevOnlyRouteRunnerMapOption(victoriaWestminsterVauxhallOption), true);
   assert.equal(isDevOnlyRouteRunnerMapOption(phase6QaOption), true);
   assert.equal(convertedOptions.length, 6);
-  assert.equal(extendedConvertedOptions.length, 12);
-  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, 6);
+  assert.equal(extendedConvertedOptions.length, 13);
+  assert.equal(CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.length, 7);
   assert.equal(getRouteRunnerMapOption(piccadillyCircusOsmRouteMap.id), undefined);
   assert.deepEqual(
     [realPilotOption.id, realPilotTwoOption.id, largeOption.id],
@@ -265,7 +286,8 @@ test("converted OSM exercises only appear when the converted OSM map is selected
       oneWayOption.fixtureName,
       quietResidentialOption.fixtureName,
       kingsCrossEustonOption.fixtureName,
-      centralLondonOption.fixtureName
+      centralLondonOption.fixtureName,
+      victoriaWestminsterVauxhallOption.fixtureName
     ],
     [
       "piccadillyCircusOverpass.json",
@@ -273,7 +295,8 @@ test("converted OSM exercises only appear when the converted OSM map is selected
       "oneWaySystemAreaOverpass.json",
       "quietResidentialRoadsOverpass.json",
       "kingsCrossEustonOverpass.json",
-      "centralLondonOverpass.json"
+      "centralLondonOverpass.json",
+      "victoriaWestminsterVauxhallOverpass.json"
     ]
   );
   assert.deepEqual(
@@ -326,9 +349,19 @@ test("converted OSM exercises only appear when the converted OSM map is selected
     []
   );
   assert.deepEqual(
+    victoriaWestminsterVauxhallOption.exercises.map((exercise) => exercise.id),
+    []
+  );
+  assert.deepEqual(
     kingsCrossEustonOsmRouteRunnerMapOption.exercises.map((exercise) => exercise.id),
     kingsCrossEustonOsmRouteExercises.map((exercise) => exercise.id)
   );
+  assert.deepEqual(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.exercises, []);
+  assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.scoreable, false);
+  assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.fixtureUse, "visualQaOnly");
+  assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.fixturePerformanceGate, "visualQaOnly");
+  assert.equal(VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING.fixtureName, "victoriaWestminsterVauxhallOverpass.json");
+  assert.ok(VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING.osmConversionMs >= 0);
   assert.deepEqual(
     phase6QaOption.exercises.map((exercise) => exercise.id),
     phase6RealLondonVisualQaRouteExercises.map((exercise) => exercise.id)
@@ -365,6 +398,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       minNamedRoads: 400,
       minOneWayWays: 200,
       minTurnRestrictions: 10,
+      visualQaOnly: false,
       requiredHighways: ["primary", "secondary", "residential"],
       requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn"]
     },
@@ -375,6 +409,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       minNamedRoads: 700,
       minOneWayWays: 400,
       minTurnRestrictions: 40,
+      visualQaOnly: false,
       requiredHighways: ["primary", "residential", "service"],
       requiredCategories: ["majorRoad", "localRoad", "serviceRoad", "bridgeRoad", "oneWaySegment", "restrictedTurn", "park", "water", "rail", "station"]
     },
@@ -385,6 +420,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       minNamedRoads: 1000,
       minOneWayWays: 600,
       minTurnRestrictions: 50,
+      visualQaOnly: false,
       requiredHighways: ["primary", "secondary", "tertiary", "residential"],
       requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn", "park", "rail", "station"]
     },
@@ -395,6 +431,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       minNamedRoads: 170,
       minOneWayWays: 30,
       minTurnRestrictions: 10,
+      visualQaOnly: false,
       requiredHighways: ["primary", "tertiary", "residential"],
       requiredCategories: ["majorRoad", "secondaryRoad", "localRoad", "serviceRoad", "oneWaySegment", "restrictedTurn", "park", "water"]
     },
@@ -405,6 +442,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       minNamedRoads: 1900,
       minOneWayWays: 1000,
       minTurnRestrictions: 100,
+      visualQaOnly: false,
       requiredHighways: ["primary", "secondary", "tertiary", "residential"],
       requiredCategories: [
         "majorRoad",
@@ -420,6 +458,32 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
         "rail",
         "station"
       ]
+    },
+    {
+      metadataId: "victoriaWestminsterVauxhall",
+      fixture: victoriaWestminsterVauxhallOverpassFixture,
+      map: victoriaWestminsterVauxhallOsmRouteMap,
+      minNamedRoads: 600,
+      minOneWayWays: 380,
+      minTurnRestrictions: 50,
+      visualQaOnly: true,
+      requiredHighways: ["primary", "secondary", "tertiary", "residential"],
+      requiredCategories: [
+        "majorRoad",
+        "secondaryRoad",
+        "localRoad",
+        "serviceRoad",
+        "bridgeRoad",
+        "tunnelRoad",
+        "oneWaySegment",
+        "restrictedTurn",
+        "park",
+        "water",
+        "rail",
+        "station",
+        "landmark",
+        "areaLabel"
+      ]
     }
   ] as const;
 
@@ -431,6 +495,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       "oneWaySystemAreaOverpass.json",
       "quietResidentialRoadsOverpass.json",
       "kingsCrossEustonOverpass.json",
+      "victoriaWestminsterVauxhallOverpass.json",
       "centralLondonOverpass.json"
     ]
   );
@@ -444,16 +509,16 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
     assert.ok(metadata, fixture.metadataId);
     assert.equal(metadata.source, "OpenStreetMap via Overpass export");
     assert.equal(metadata.attribution.licence, "ODbL");
-    assert.match(metadata.importDate, /^2026-07-03T/);
+    assert.match(metadata.importDate, /^2026-07-\d{2}T/);
     assert.ok(metadata.areaPurpose.length > 0);
     assert.ok(metadata.knownLimitations.length > 0);
-    assert.equal(metadata.visibleInBeta, true, fixture.metadataId);
-    assert.equal(metadata.scoreable, true, fixture.metadataId);
-    assert.equal(metadata.visualQaOnly, false, fixture.metadataId);
+    assert.equal(metadata.visibleInBeta, !fixture.visualQaOnly, fixture.metadataId);
+    assert.equal(metadata.scoreable, !fixture.visualQaOnly, fixture.metadataId);
+    assert.equal(metadata.visualQaOnly, fixture.visualQaOnly, fixture.metadataId);
     assert.equal(metadata.routeReviewFixture, false, fixture.metadataId);
-    assert.equal(metadata.betaPracticeAllowed, true, fixture.metadataId);
+    assert.equal(metadata.betaPracticeAllowed, !fixture.visualQaOnly, fixture.metadataId);
     assert.equal(metadata.devOnlyStressTest, false, fixture.metadataId);
-    assert.equal(curatedRealLondonFixtureAllowedForBetaPractice(metadata), true, fixture.metadataId);
+    assert.equal(curatedRealLondonFixtureAllowedForBetaPractice(metadata), !fixture.visualQaOnly, fixture.metadataId);
 
     assert.ok(fixture.map.nodes.length > 0, fixture.metadataId);
     assert.ok(fixture.map.roads.length > 0, fixture.metadataId);

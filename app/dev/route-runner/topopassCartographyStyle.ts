@@ -945,10 +945,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowBlur: 0,
         shadowOffsetY: 0,
         minViewportScale: 0.14,
-        minRoadScreenLength: 52,
+        minRoadScreenLength: 48,
         maxTextToRoadRatio: 0.98,
-        repeatDistance: 230,
-        collisionPadding: 4
+        repeatDistance: 215,
+        collisionPadding: 3.5
       },
       secondary: {
         font: "700 10.5px 'Arial Narrow', Arial, sans-serif",
@@ -961,10 +961,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowBlur: 2,
         shadowOffsetY: 0,
         minViewportScale: 0.24,
-        minRoadScreenLength: 44,
+        minRoadScreenLength: 40,
         maxTextToRoadRatio: 0.96,
-        repeatDistance: 190,
-        collisionPadding: 3.5
+        repeatDistance: 178,
+        collisionPadding: 3
       },
       minor: {
         font: "600 9.5px 'Arial Narrow', Arial, sans-serif",
@@ -977,10 +977,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowBlur: 1.5,
         shadowOffsetY: 0,
         minViewportScale: 0.14,
-        minRoadScreenLength: 30,
+        minRoadScreenLength: 27,
         maxTextToRoadRatio: 0.97,
-        repeatDistance: 135,
-        collisionPadding: 2.5
+        repeatDistance: 122,
+        collisionPadding: 2.1
       },
       restricted: {
         font: "600 10px Arial, sans-serif",
@@ -1011,8 +1011,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         minViewportScale: 0.72,
         minRoadScreenLength: 52,
         maxTextToRoadRatio: 0.88,
-        repeatDistance: 170,
-        collisionPadding: 2.5
+        repeatDistance: 150,
+        collisionPadding: 2.1
       }
     },
     area: {
@@ -1182,7 +1182,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       yOffset: -18
     },
     collision: {
-      defaultPadding: 5,
+      defaultPadding: 4.5,
       routePadding: 10,
       markerPadding: 14,
       viewportEdgePadding: 6,
@@ -2142,7 +2142,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       tipDistance: 13.5,
       tailDistance: 11.5,
       longRoadArrowThresholdMeters: 180,
-      minSpacingMeters: 76,
+      minSpacingMeters: 88,
       mediumSpacingMultiplier: 1.55,
       highSpacingMultiplier: 1.2,
       shortRoadRatio: 0.62,
@@ -2283,11 +2283,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     decluttering: {
       osmRoadLabelsRequireQaOverlay: false,
-      oneWayArrowMinSpacingMeters: 76,
+      oneWayArrowMinSpacingMeters: 88,
       longRoadArrowThresholdMeters: 180,
       mediumOneWayArrowSpacingMultiplier: 1.55,
       highOneWayArrowSpacingMultiplier: 1.2,
-      oneWayArrowAlphaMultiplier: 0.72,
+      oneWayArrowAlphaMultiplier: 0.58,
       lowDetailViewportScale: 0.24,
       highDetailViewportScale: 0.95,
       mediumOneWayMinRoadLengthMeters: 180,

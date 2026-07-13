@@ -463,6 +463,34 @@ function hydrateStressFixtureOption(option: RouteRunnerMapOption, options: Phase
     };
   }
 
+  if (option.fixtureName === "victoriaWestminsterVauxhallOverpass.json" && !option.sourceOverpassFixture) {
+    const sourceOverpassFixture = loadVictoriaWestminsterVauxhallOverpassFixture();
+    const baseOption = {
+      ...option,
+      sourceOverpassFixture
+    };
+
+    if (options.includeLazyFixtureConversion === false) {
+      return baseOption;
+    }
+
+    const converted = convertOverpassJsonToRouteMap(sourceOverpassFixture, {
+      mapId: option.map.id,
+      name: option.map.name,
+      description: option.map.description,
+      version: 1
+    });
+
+    if (!converted.ok) {
+      return baseOption;
+    }
+
+    return {
+      ...baseOption,
+      map: converted.map
+    };
+  }
+
   return option;
 }
 
@@ -472,6 +500,10 @@ function loadCentralLondonOverpassFixture(): OverpassJsonResponse {
 
 function loadKingsCrossEustonOverpassFixture(): OverpassJsonResponse {
   return requireJson("../../../lib/map-engine/osm/fixtures/kingsCrossEustonOverpass.json") as OverpassJsonResponse;
+}
+
+function loadVictoriaWestminsterVauxhallOverpassFixture(): OverpassJsonResponse {
+  return requireJson("../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallOverpass.json") as OverpassJsonResponse;
 }
 
 function classifyFixture(option: RouteRunnerMapOption): Phase8FixtureClassification {

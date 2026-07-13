@@ -99,6 +99,8 @@ test("Stage 161.6 beta users can access curated Real London fixture maps", () =>
 
   assert.equal(visibleMapIds.includes("osm-curated-centralLondon"), false);
   assert.equal(nonBetaVisibleMapIds.includes("osm-curated-centralLondon"), false);
+  assert.equal(visibleMapIds.includes("osm-curated-victoria-westminster-vauxhall"), false);
+  assert.equal(nonBetaVisibleMapIds.includes("osm-curated-victoria-westminster-vauxhall"), false);
   assert.equal(visibleMapIds.includes(phase6RealLondonVisualQaRouteMap.id), false);
   assert.equal(access.state, "available");
   assert.equal(access.selectedMapOption.map.id, "osm-curated-waterloo-bridge");

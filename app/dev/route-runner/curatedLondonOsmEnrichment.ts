@@ -39,6 +39,7 @@ export type CuratedRealLondonOverpassFixtureId =
   | "one-way-system-area"
   | "quiet-residential-roads"
   | "kingsCrossEuston"
+  | "victoriaWestminsterVauxhall"
   | "centralLondon";
 
 export type CuratedRealLondonFixtureBudget = {
@@ -408,6 +409,39 @@ export const CURATED_REAL_LONDON_OVERPASS_FIXTURES: CuratedRealLondonOverpassFix
     betaPracticeAllowed: true,
     devOnlyStressTest: false,
     fixturePerformanceGate: "betaPracticeAllowedWithLoading"
+  },
+  {
+    id: "victoriaWestminsterVauxhall",
+    fixtureName: "victoriaWestminsterVauxhallOverpass.json",
+    label: "Victoria / Westminster / Vauxhall",
+    source: "OpenStreetMap via Overpass export",
+    importDate: "2026-07-13T16:48:15Z",
+    areaPurpose: "Phase 8.8 principal examination-atlas visual-QA benchmark for the approved Victoria, Westminster, Pimlico, Millbank, Vauxhall, Thames and major-corridor visual family.",
+    attribution: CURATED_LONDON_OSM_ATTRIBUTION,
+    knownLimitations: [
+      "Dev/visual-QA benchmark only; no scored learner route exercises are generated from this fixture.",
+      "Raw Overpass relation members include coordinates outside the displayed Victoria / Westminster / Vauxhall road projection bounds.",
+      "Turn restriction relation data is present in the source export, but the current route graph converter does not yet turn those relations into scored restrictions."
+    ],
+    fixtureBudget: {
+      totalElements: 26733,
+      nodes: 24574,
+      ways: 2083,
+      relations: 76,
+      roadSegments: 2389,
+      approximateRenderedFeatureCount: 3096,
+      directedEdges: 4778,
+      maxRoadSegments: 10000,
+      maxApproximateRenderedFeatureCount: 12000,
+      maxBetaPracticeElements: CURATED_REAL_LONDON_BETA_PRACTICE_MAX_ELEMENTS
+    },
+    visibleInBeta: false,
+    scoreable: false,
+    visualQaOnly: true,
+    routeReviewFixture: false,
+    betaPracticeAllowed: false,
+    devOnlyStressTest: false,
+    fixturePerformanceGate: "visualQaOnly"
   },
   {
     id: "centralLondon",

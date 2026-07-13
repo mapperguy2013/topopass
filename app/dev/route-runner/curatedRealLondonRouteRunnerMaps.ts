@@ -24,7 +24,8 @@ import {
 } from "./routeRunnerMaps.ts";
 import {
   CENTRAL_LONDON_LAZY_LOAD_ID,
-  KINGS_CROSS_EUSTON_LAZY_LOAD_ID
+  KINGS_CROSS_EUSTON_LAZY_LOAD_ID,
+  VICTORIA_WESTMINSTER_VAUXHALL_LAZY_LOAD_ID
 } from "./curatedRealLondonLazyIds.ts";
 
 const PICCADILLY_CIRCUS_OSM_MAP_ID = "osm-curated-piccadilly-circus";
@@ -32,10 +33,12 @@ const WATERLOO_BRIDGE_OSM_MAP_ID = "osm-curated-waterloo-bridge";
 const ONE_WAY_SYSTEM_AREA_OSM_MAP_ID = "osm-curated-one-way-system-area";
 const QUIET_RESIDENTIAL_ROADS_OSM_MAP_ID = "osm-curated-quiet-residential-roads";
 export const KINGS_CROSS_EUSTON_OSM_MAP_ID = "osm-curated-kings-cross-euston";
+export const VICTORIA_WESTMINSTER_VAUXHALL_OSM_MAP_ID = "osm-curated-victoria-westminster-vauxhall";
 export const CENTRAL_LONDON_OSM_MAP_ID = "osm-curated-centralLondon";
 export {
   CENTRAL_LONDON_LAZY_LOAD_ID,
-  KINGS_CROSS_EUSTON_LAZY_LOAD_ID
+  KINGS_CROSS_EUSTON_LAZY_LOAD_ID,
+  VICTORIA_WESTMINSTER_VAUXHALL_LAZY_LOAD_ID
 } from "./curatedRealLondonLazyIds.ts";
 
 export function buildCuratedRealLondonOsmMap(
@@ -120,6 +123,29 @@ export const centralLondonLazyPlaceholderRouteMap: MapDefinition = {
       distanceMeters: 120,
       isOneWay: false,
       name: "Loading Central London stress map"
+    }
+  ],
+  restrictions: [],
+  landmarks: []
+};
+
+export const victoriaWestminsterVauxhallLazyPlaceholderRouteMap: MapDefinition = {
+  id: VICTORIA_WESTMINSTER_VAUXHALL_OSM_MAP_ID,
+  name: "Victoria / Westminster / Vauxhall OSM - Phase 8.8 visual QA",
+  mapVersion: "lazy-placeholder-1.0.0",
+  description: "Phase 8.8 Victoria / Westminster / Vauxhall visual-QA benchmark placeholder. Full map loads after selection.",
+  nodes: [
+    { id: "osm-curated-victoria-westminster-vauxhall-loading-west", x: 0, y: 0, label: "Victoria / Westminster" },
+    { id: "osm-curated-victoria-westminster-vauxhall-loading-east", x: 140, y: 0, label: "Loading benchmark" }
+  ],
+  roads: [
+    {
+      id: "osm-curated-victoria-westminster-vauxhall-loading-road",
+      fromNodeId: "osm-curated-victoria-westminster-vauxhall-loading-west",
+      toNodeId: "osm-curated-victoria-westminster-vauxhall-loading-east",
+      distanceMeters: 140,
+      isOneWay: false,
+      name: "Loading Victoria / Westminster / Vauxhall benchmark"
     }
   ],
   restrictions: [],
@@ -526,6 +552,24 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     scoreable: false,
     lazyLoadId: CENTRAL_LONDON_LAZY_LOAD_ID,
     lazyLoadingLabel: "Loading Central London stress-test map..."
+  },
+  {
+    id: victoriaWestminsterVauxhallLazyPlaceholderRouteMap.id,
+    label: "Victoria / Westminster / Vauxhall OSM - Phase 8.8 visual QA",
+    description: getCuratedRealLondonFixtureMetadata("victoriaWestminsterVauxhall").areaPurpose,
+    source: "converted-osm",
+    map: victoriaWestminsterVauxhallLazyPlaceholderRouteMap,
+    exercises: [],
+    defaultExerciseId: "",
+    attribution: getCuratedRealLondonFixtureMetadata("victoriaWestminsterVauxhall").attribution.text,
+    fixtureName: "victoriaWestminsterVauxhallOverpass.json",
+    devOnly: true,
+    fixtureUse: "visualQaOnly",
+    fixturePerformanceGate: "visualQaOnly",
+    visibleInBeta: false,
+    scoreable: false,
+    lazyLoadId: VICTORIA_WESTMINSTER_VAUXHALL_LAZY_LOAD_ID,
+    lazyLoadingLabel: "Loading Victoria / Westminster / Vauxhall visual-QA benchmark..."
   }
 ];
 

@@ -57,6 +57,7 @@ stages may be split if implementation audit shows that a stage is too large.
 7. Stage 8.7: Compact original symbols and road-reference refinement.
    Completed.
 8. Stage 8.8: Principal examination-atlas scale and information-density rules.
+   Completed.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
@@ -84,8 +85,13 @@ correction strengthens genuine references and compact marks, selects distinct
 references before controlled repeats, and suppresses clipped edge candidates.
 Production evidence
 covers the required fixtures, zoom tiers, active learner route and submitted
-correct/incorrect review states at desktop and mobile sizes. Stage 8.8 has not
-started.
+correct/incorrect review states at desktop and mobile sizes. Stage 8.8 adds a
+lazy-loaded, source-backed Victoria / Westminster / Vauxhall visual-QA
+benchmark and reusable principal-scale density rules. Exact 1440 by 900, 1024
+by 768 and 390 by 844 benchmark captures plus representative fixture,
+active-route and submitted pass/fail evidence are visually accepted. The
+benchmark remains dev-only, unscoreable and absent from learner beta map
+catalogues. Stage 8.9 has not started.
 
 ## Documents
 
@@ -97,4 +103,5 @@ started.
 - [Stage 8.5 atlas label density](stage-8-5-atlas-label-density.md)
 - [Stage 8.6 built-up context](stage-8-6-built-up-context.md)
 - [Stage 8.7 compact symbols and road references](stage-8-7-compact-symbols-road-references.md)
+- [Stage 8.8 principal scale and density](stage-8-8-principal-scale-and-density.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

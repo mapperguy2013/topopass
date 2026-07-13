@@ -19,7 +19,9 @@ supported area geometry, including complete relation inner rings. The source
 totals below remain the Stage 8.2 baseline; adapter and renderer diagnostics
 reflect the current code. Stage 8.7 consumes named supported transport and
 public-feature candidates through a typed compact-symbol pipeline and refines
-source-validated A/B reference placement.
+source-validated A/B reference placement. Stage 8.8 adds a source-backed
+Victoria / Westminster / Vauxhall benchmark and uses it to gate principal-scale
+density without exposing the fixture to learner beta catalogues.
 
 ## Scope And Methodology
 
@@ -52,6 +54,7 @@ area.
 | `piccadillyCircusOverpass.json` | Real OSM | 5269 | 73 | 9 | 10 | 0 | 305 | 16 | `betaPracticeAllowed` |
 | `quietResidentialRoadsOverpass.json` | Real OSM | 3339 | 39 | 3 | 8 | 0 | 119 | 8 | `betaPracticeAllowed` |
 | `realLondonPilotOverpass.json` | Real OSM | 559 | 26 | 0 | 0 | 0 | 26 | 0 | legacy route-runner fixture |
+| `victoriaWestminsterVauxhallOverpass.json` | Real OSM | 26733 | 261 | 53 | 14 | 3 | 707 | 427 | `visualQaOnly` |
 | `waterlooBridgeOverpass.json` | Real OSM | 17367 | 196 | 15 | 13 | 1 | 748 | 36 | `betaPracticeAllowed` |
 
 Synthetic controls are audited separately and excluded from real-geography
@@ -69,10 +72,10 @@ dev-only stress fixture.
 | Category | Current source evidence | Current render-ready status | Current implication |
 | --- | --- | --- | --- |
 | Dense road network | Present across curated and legacy real fixtures. | Road graph and current road rendering exist. | Preserve routing while adding atlas density rules later. |
-| A/B road references | 7392 real source road-ref ways aggregate. | Typed context features now produce bounded red label candidates with source IDs and tags. | Verify placement and density through screenshots. |
-| Buildings | 696 usable closed building polygons aggregate. | 97 typed source-backed footprints render in the explicit audit; 38 render through normal non-lazy beta gates. | Keep Central London performance-gated and verify fixture gaps visually. |
-| Land use | 1436 real land-use source features aggregate. | 128 typed supported polygons render when King's Cross is safely hydrated; normal non-lazy beta fixtures currently render 0 because retained geometry is absent. | Do not fabricate fields to fill source gaps. |
-| Institutions | 764 civic/institutional source features aggregate. | 101 typed area polygons render in the explicit audit; 44 render through normal non-lazy beta gates. Point landmarks remain separate. | Keep fills subordinate to roads and labels. |
+| A/B road references | 7653 real source road-ref ways aggregate. | Typed context features now produce bounded red label candidates with source IDs and tags. | Verify placement and density through screenshots. |
+| Buildings | 749 usable closed building polygons aggregate. | 154 typed source-backed footprints render in the explicit audit; normal learner gates remain fixture-specific. | Keep Central London performance-gated and verify fixture gaps visually. |
+| Land use | 1492 real land-use source features aggregate. | 184 typed supported polygons render in the explicit audit; retained geometry remains fixture-specific. | Do not fabricate fields to fill source gaps. |
+| Institutions | 778 civic/institutional source features aggregate. | 113 typed area polygons render in the explicit audit. Point landmarks remain separate. | Keep fills subordinate to roads and labels. |
 | Places and estates | Supported `place=*` labels and named residential land-use polygons exist. | District labels render from supported places; estate labels require an explicitly named residential land-use feature. | Verify hierarchy and fixture gaps visually. |
 | Parks and gardens | Present in several fixtures. | Supported closed polygons render with Stage 8.6 park/open-space styles. | Keep roads, labels and learner overlays dominant. |
 | Water and river | Water polygons, waterways, relation rings and two named Waterloo pier ways are present. | Supported water geometry renders; the two named Waterloo piers reach the compact symbol pipeline. | Preserve multipolygon handling and reject unnamed or invalid pier geometry. |
@@ -89,7 +92,10 @@ those supported names and prominent A/B references. Stage 8.6 now renders the
 supported building fabric, institutional blocks, land-use fields, parks and
 water with deterministic background order and semantic-zoom limits. Stage 8.7
 adds source-backed compact symbols and class-aware A/B reference repetition
-without enabling the Central London stress fixture on learner paths.
+without enabling the Central London stress fixture on learner paths. Stage 8.8
+keeps its 3.9 MB benchmark behind an explicit lazy selection boundary and uses
+its dense road, reference, building, institution, land-use, park, water, rail,
+station and public-feature coverage only for development visual QA.
 
 The approved visual master therefore remains an appearance target only. Stage
 8.2 does not claim visual completion and does not change production map
@@ -161,9 +167,12 @@ Completed through Stage 8.7:
   residential and one-way states at lower, principal and higher zoom.
 - Captured desktop and mobile active-route and submitted correct/incorrect
   review states through the production learner route.
+- Inspected the Stage 8.8 Victoria / Westminster / Vauxhall benchmark at exact
+  desktop, tablet and mobile viewports plus current active-route and submitted
+  pass/fail states.
 
-Later Phase 8 work includes principal-density,
-overlay-rebalance, mobile/accessibility, performance and final acceptance
+Later Phase 8 work includes overlay rebalance, mobile/accessibility,
+performance and final acceptance
 stages. The dev-only Central London fixture remains a manual performance item.
 
 ## Stage 8.3 Handoff Status
@@ -179,4 +188,5 @@ preserving these audit distinctions. Remaining later-stage work includes:
 - Central London performance limits before dense fabric is enabled.
 
 Stage 8.7 implements and visually accepts compact symbols and road-reference
-refinement. Stage 8.8 was not started.
+refinement. Stage 8.8 implements and visually accepts the principal-scale
+density rules and visual-QA benchmark. Stage 8.9 was not started.
