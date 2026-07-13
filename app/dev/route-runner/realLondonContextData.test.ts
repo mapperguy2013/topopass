@@ -363,3 +363,47 @@ test("Stage 8.6 adapter preserves multipolygon outer and inner rings with relati
   assert.equal(building.innerRings?.length, 1);
   assert.deepEqual(building.innerRings?.[0][0], building.innerRings?.[0].at(-1));
 });
+
+test("Stage 8.7 adapter classifies only supported named symbol sources and preserves provenance", () => {
+  const fixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.5202, lon: -0.1397 },
+      { type: "node", id: 10, lat: 51.52005, lon: -0.13995, tags: { public_transport: "station", bus: "yes", name: "Atlas Interchange" } },
+      { type: "node", id: 11, lat: 51.52007, lon: -0.13992, tags: { amenity: "hospital", name: "Atlas Hospital" } },
+      { type: "node", id: 12, lat: 51.52009, lon: -0.13989, tags: { amenity: "place_of_worship", religion: "christian", name: "Atlas Church" } },
+      { type: "node", id: 13, lat: 51.52011, lon: -0.13986, tags: { amenity: "school", name: "Atlas School" } },
+      { type: "node", id: 14, lat: 51.52013, lon: -0.13983, tags: { amenity: "townhall", name: "Atlas Hall" } },
+      { type: "node", id: 15, lat: 51.52015, lon: -0.1398, tags: { tourism: "museum", name: "Atlas Museum" } },
+      { type: "node", id: 16, lat: 51.52017, lon: -0.13977, tags: { amenity: "marketplace", name: "Atlas Market" } },
+      { type: "node", id: 17, lat: 51.52019, lon: -0.13974, tags: { amenity: "parking", name: "Atlas Parking" } },
+      { type: "node", id: 18, lat: 51.52018, lon: -0.13975, tags: { amenity: "parking" } },
+      { type: "node", id: 19, lat: 51.52016, lon: -0.13978, tags: { amenity: "bench", name: "Unsupported Bench" } },
+      { type: "way", id: 100, nodes: [1, 2], tags: { highway: "residential", name: "Atlas Road" } },
+      { type: "way", id: 101, nodes: [1, 2], tags: { man_made: "pier", name: "Atlas Pier" } }
+    ]
+  };
+  const fixtureBefore = structuredClone(fixture);
+  const converted = convertOverpassJsonToRouteMap(fixture, { mapId: "stage-8-7-symbol-adapter", name: "Stage 8.7 symbols" });
+
+  assert.equal(converted.ok, true);
+  if (!converted.ok) return;
+
+  const features = buildRealLondonContextFeatures(converted.map, fixture);
+  const station = features.find((feature) => feature.kind === "station" && feature.name === "Atlas Interchange");
+  const symbols = features.filter((feature) => feature.kind === "landmark");
+
+  assert.ok(station && station.kind === "station");
+  assert.equal(station.subtype, "transport-interchange");
+  assert.equal(station.sourceElementId, 10);
+  assert.deepEqual(station.sourceTags, { public_transport: "station", bus: "yes", name: "Atlas Interchange" });
+  assert.equal(station.sourceGeometry.length, 1);
+  assert.deepEqual(
+    symbols.map((feature) => feature.symbolKind).sort(),
+    ["civic", "education", "hospital", "market", "museum", "parking", "pier", "religious"]
+  );
+  assert.equal(symbols.some((feature) => feature.name === "Unsupported Bench"), false);
+  assert.equal(symbols.filter((feature) => feature.symbolKind === "parking").length, 1);
+  assert.ok(symbols.find((feature) => feature.symbolKind === "pier")?.sourceGeometry.length === 2);
+  assert.deepEqual(fixture, fixtureBefore);
+});

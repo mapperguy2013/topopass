@@ -86,3 +86,19 @@ bridges, one-way context, an active learner route, correct/incorrect review
 states, desktop 1440 by 900, and mobile 390 by 844. This is Stage 8.6 evidence,
 not the final Phase 8 acceptance gate for later symbol, density, overlay,
 mobile/accessibility and regression stages.
+
+## Stage 8.7 Evidence
+
+Stage 8.7 production-renderer captures are under `screenshots/stage-8-7/`.
+Desktop 1440 by 900 captures cover King's Cross/Euston, Waterloo, Piccadilly,
+quiet residential, one-way/restriction, lower/principal/higher zoom, active
+route and submitted correct/incorrect review scenarios. Mobile 390 by 844
+captures cover King's Cross/Euston, Waterloo, one-way/restriction, active route
+and expanded correct/incorrect review details at displayed 100%.
+
+Inspection found compact hard-edged symbols integrated with the map field,
+prominent but bounded red A/B references, retained road-name and major-road
+hierarchy, visible built/water context, aligned learner markers and visible OSM
+attribution. Mobile symbol budgets remained restrained, and pass/fail details
+fit their narrow layout without clipping. Visual inspection found no symbol,
+reference, route, marker, restriction or attribution alignment regression.

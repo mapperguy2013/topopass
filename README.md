@@ -101,7 +101,9 @@ original and using only permitted attributed geography. Phase 7 is paused and
 retains its current status rather than being declared complete. Route
 generation, legality, matching, scoring, hints, feedback, learner progress, and
 deployment remain outside the completed Phase 8 cartography stages. Stages 8.1
-through 8.3, Stage 8.5, and Stage 8.6 are complete. Stage 8.4's production
+through 8.3 and Stages 8.5 through 8.7 are complete. Stage 8.7 adds compact
+source-backed symbols, coordinated symbol labels, and refined genuine A/B road
+references with desktop/mobile production visual evidence. Stage 8.4's production
 printed-atlas road hierarchy is implemented, with its independent manual visual
 acceptance still pending. Stage 8.6 adds source-backed buildings,
 institutional areas, land use, parks and water below the road, label,

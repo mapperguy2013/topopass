@@ -219,7 +219,7 @@ test("Phase 8 audit keeps point landmarks separate from adapted institutional po
   assert.equal(edgeReport.categoryAudits.find((category) => category.id === "land-use-institutions")?.state, "render-ready");
 });
 
-test("Phase 8 audit reports missing whitelist blockers for future atlas tags", () => {
+test("Stage 8.7 audit reports committed pier tags through adapter and renderer coverage", () => {
   const edgeReport = buildPhase8AuditReportForFixture(buildEdgeFixture(), {
     mapId: "phase-8-whitelist-fixture",
     name: "Phase 8 whitelist fixture",
@@ -227,10 +227,11 @@ test("Phase 8 audit reports missing whitelist blockers for future atlas tags", (
     fixtureName: "phase8WhitelistFixture.json"
   });
 
-  assert.equal(edgeReport.unsupportedCoverage.missingWhitelistTags.man_made, 1);
+  assert.equal(edgeReport.unsupportedCoverage.missingWhitelistTags.man_made, undefined);
   assert.equal(edgeReport.sourceCoverage.pierLikeSourceFeatures, 1);
-  assert.equal(edgeReport.contextAdapterCoverage.pierFeatures, 0);
-  assert.equal(edgeReport.rendererConsumedCoverage.piers, 0);
+  assert.equal(edgeReport.contextAdapterCoverage.pierFeatures, 1);
+  assert.equal(edgeReport.rendererConsumedCoverage.piers, 1);
+  assert.equal(edgeReport.unsupportedCoverage.pierLikeFeaturesMissingWhitelistOrAdapter, 0);
 });
 
 test("Phase 8 context feature totals agree with buildRealLondonContextFeatures", () => {

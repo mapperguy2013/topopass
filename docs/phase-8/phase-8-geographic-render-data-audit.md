@@ -17,7 +17,9 @@ road-reference context features. Stage 8.5 consumes supported names and road
 references through a typed label-candidate pipeline. Stage 8.6 consumes the
 supported area geometry, including complete relation inner rings. The source
 totals below remain the Stage 8.2 baseline; adapter and renderer diagnostics
-reflect the current code.
+reflect the current code. Stage 8.7 consumes named supported transport and
+public-feature candidates through a typed compact-symbol pipeline and refines
+source-validated A/B reference placement.
 
 ## Scope And Methodology
 
@@ -73,9 +75,9 @@ dev-only stress fixture.
 | Institutions | 764 civic/institutional source features aggregate. | 101 typed area polygons render in the explicit audit; 44 render through normal non-lazy beta gates. Point landmarks remain separate. | Keep fills subordinate to roads and labels. |
 | Places and estates | Supported `place=*` labels and named residential land-use polygons exist. | District labels render from supported places; estate labels require an explicitly named residential land-use feature. | Verify hierarchy and fixture gaps visually. |
 | Parks and gardens | Present in several fixtures. | Supported closed polygons render with Stage 8.6 park/open-space styles. | Keep roads, labels and learner overlays dominant. |
-| Water and river | Water polygons, waterways, and relation rings are present. | Supported water polygons and waterways render where adapted. | Preserve multipolygon handling and add pier support only where sourced. |
-| Rail and stations | Present in station-area and bridge fixtures. | Rail lines and `railway=station` point visuals can render. | Review compact transport-symbol contracts. |
-| Landmarks/facilities | Tourism, historic, hospital, public-building, market, museum/gallery candidates exist. | Current output is point-like landmark visuals. | Add atlas symbol contracts; do not treat these as areas. |
+| Water and river | Water polygons, waterways, relation rings and two named Waterloo pier ways are present. | Supported water geometry renders; the two named Waterloo piers reach the compact symbol pipeline. | Preserve multipolygon handling and reject unnamed or invalid pier geometry. |
+| Rail and stations | Present in station-area and bridge fixtures. | Rail lines plus named `railway=station` and `public_transport=station` candidates can render as compact original marks. | Keep symbols bounded and subordinate to learner overlays. |
+| Landmarks/facilities | Tourism, historic, hospital, religious, education, civic, named parking, market and museum/gallery candidates exist. | Supported named candidates retain source IDs, tags and geometry and render through category budgets. | Do not treat point symbols as areas or fabricate unsupported categories. |
 
 ## Aggregate Findings
 
@@ -85,8 +87,9 @@ areas, genuine road-reference data, parks, water, rail, stations, area labels,
 and point landmarks. Stage 8.5 now renders source-backed label candidates for
 those supported names and prominent A/B references. Stage 8.6 now renders the
 supported building fabric, institutional blocks, land-use fields, parks and
-water with deterministic background order and semantic-zoom limits. Pier
-symbols remain unsupported.
+water with deterministic background order and semantic-zoom limits. Stage 8.7
+adds source-backed compact symbols and class-aware A/B reference repetition
+without enabling the Central London stress fixture on learner paths.
 
 The approved visual master therefore remains an appearance target only. Stage
 8.2 does not claim visual completion and does not change production map
@@ -102,10 +105,10 @@ styling.
   supported closed geometry separately becomes an institutional-area feature.
 - Supported residential, retail/commercial, industrial and rail polygons become
   typed land-use blocks and render where retained fixture geometry is available.
-- Pier-like source features require whitelist and adapter work before any
-  symbol can be claimed.
-- `public_transport=station` without `railway=station` is source-present but
-  not equivalent to the current station renderer path.
+- Named `man_made=pier` ways with usable geometry can become pier symbols;
+  unnamed or invalid pier-like records remain rejected.
+- Named `public_transport=station` features can become station candidates;
+  duplicate nearby source records are suppressed deterministically.
 - Source place labels are adapted only for selected `place` values; named
   residential polygons remain ambiguous estate candidates.
 
@@ -125,7 +128,7 @@ too heavy for normal learner practice.
 
 ## Accuracy And Attribution
 
-All real OSM fixture reports record OpenStreetMap attribution. Stage 8.6 does
+All real OSM fixture reports record OpenStreetMap attribution. Stage 8.7 does
 not modify OSM names, road references, fixture geometry, attribution text,
 route generation, legality, matching, scoring, hints, feedback, learner
 progress, authentication, payments or deployment.
@@ -144,7 +147,7 @@ preflights.
 
 ## Manual QA
 
-Completed through Stage 8.6:
+Completed through Stage 8.7:
 
 - Inspected the approved visual master for intended cartographic character.
 - Read the Phase 8 README, cartography acceptance, baseline audit, and visual
@@ -154,8 +157,12 @@ Completed through Stage 8.6:
   residential and one-way fixtures at desktop and mobile sizes.
 - Exercised pan, wheel zoom, mobile pinch, reset, route drawing, markers,
   restrictions, correct/incorrect review overlays and OSM attribution.
+- Inspected Stage 8.7 King's Cross/Euston, Waterloo, Piccadilly, quiet
+  residential and one-way states at lower, principal and higher zoom.
+- Captured desktop and mobile active-route and submitted correct/incorrect
+  review states through the production learner route.
 
-Remaining Phase 8 work includes the later symbol, principal-density,
+Later Phase 8 work includes principal-density,
 overlay-rebalance, mobile/accessibility, performance and final acceptance
 stages. The dev-only Central London fixture remains a manual performance item.
 
@@ -167,11 +174,9 @@ preserving these audit distinctions. Remaining later-stage work includes:
 
 - Place, neighbourhood, and estate-candidate data that does not silently
   promote ambiguous residential names to estates.
-- Transport and public-feature candidates for compact atlas symbols.
-- Pier whitelist, adapter, and symbol support only if committed source tags
-  warrant it.
+- Continued source-coverage review for categories absent from committed
+  fixtures; unsupported categories must remain unrendered.
 - Central London performance limits before dense fabric is enabled.
 
-Stage 8.6 completed area renderer consumption, styling, viewport filtering,
-bounded semantic zoom and complete-ring courtyard holes. It did not start the
-compact-symbol and road-reference work assigned to Stage 8.7.
+Stage 8.7 implements and visually accepts compact symbols and road-reference
+refinement. Stage 8.8 was not started.

@@ -24,6 +24,7 @@ import {
   TOPOPASS_STREET_ATLAS_STYLE,
   type TopopassContextLabelStyle,
   type TopopassAreaPolygonStyle,
+  type TopopassAtlasSymbolKind,
   type TopopassLabelStyle,
   type TopopassMarkerAssetStyle,
   type TopopassRoadInteractionStyle,
@@ -77,6 +78,10 @@ export type SyntheticLandmarkVisualKind =
   | "civic"
   | "church"
   | "museum"
+  | "religious"
+  | "education"
+  | "parking"
+  | "pier"
   | "dock"
   | "generic";
 
@@ -255,7 +260,24 @@ export type SyntheticLandmarkVisual = {
   haloColor: string;
   priority: number;
   isExerciseStop: boolean;
+  symbolKind?: TopopassAtlasSymbolKind;
+  sourceGeometry?: Vec2[];
+  sourceMetadata?: SyntheticAtlasSymbolSourceMetadata;
   routable: false;
+};
+
+export type SyntheticAtlasSymbolSourceMetadata = {
+  provider: "map-definition" | "openstreetmap";
+  sourceFeatureId: string;
+  elementType?: "node" | "way" | "relation";
+  elementId?: OverpassElementId;
+  tags?: OverpassTags;
+};
+
+export type SyntheticAtlasSymbolCandidate = SyntheticLandmarkVisual & {
+  symbolKind: TopopassAtlasSymbolKind;
+  sourceGeometry: Vec2[];
+  sourceMetadata: SyntheticAtlasSymbolSourceMetadata;
 };
 
 export type SyntheticMapLabel = {
@@ -269,6 +291,8 @@ export type SyntheticMapLabel = {
   osmHierarchy?: OsmRoadVisualHierarchy;
   source?: "synthetic" | "osm";
   roadLengthMeters?: number;
+  roadReferenceClass?: "a-road" | "b-road";
+  symbolKind?: TopopassAtlasSymbolKind;
   category?: SyntheticAtlasLabelCategory;
   sourceMetadata?: SyntheticAtlasLabelSourceMetadata;
 };
@@ -325,6 +349,7 @@ export type FilterSyntheticLandmarkVisualsOptions = {
   visuals: readonly SyntheticLandmarkVisual[];
   viewport: ScreenMapViewport;
   reservedBoxes?: readonly SyntheticLabelCollisionBox[];
+  reservedLabels?: readonly SyntheticMapLabel[];
   currentZoom?: number;
 };
 
@@ -1174,6 +1199,7 @@ export function filterSyntheticMapLabelsForViewport(
   const acceptedLabels: SyntheticMapLabel[] = [];
   const roadLabelPointsByText = new Map<string, Vec2[]>();
   const roadReferencePointsByText = new Map<string, Vec2[]>();
+  const acceptedRoadReferenceCounts = new Map<"a-road" | "b-road", number>();
   const viewportScale = syntheticMapViewportScale(options.viewport);
   let acceptedRoadReferenceCount = 0;
 
@@ -1190,7 +1216,14 @@ export function filterSyntheticMapLabelsForViewport(
     }
 
     if (label.kind === "road_reference") {
-      if (acceptedRoadReferenceCount >= TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceMaxPerViewport) {
+      const roadReferenceClass = label.roadReferenceClass ?? (label.text.startsWith("B") ? "b-road" : "a-road");
+      const collision = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
+      const maxForViewport = roadReferenceBudgetForViewport(options.currentZoom, viewportScale);
+
+      if (
+        acceptedRoadReferenceCount >= maxForViewport ||
+        (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) >= collision.roadReferenceMaxPerClass[roadReferenceClass]
+      ) {
         continue;
       }
 
@@ -1228,6 +1261,8 @@ export function filterSyntheticMapLabelsForViewport(
       points.push(mapToScreenPoint(label.point, options.viewport));
       roadReferencePointsByText.set(key, points);
       acceptedRoadReferenceCount += 1;
+      const roadReferenceClass = label.roadReferenceClass ?? (label.text.startsWith("B") ? "b-road" : "a-road");
+      acceptedRoadReferenceCounts.set(roadReferenceClass, (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) + 1);
     }
   }
 
@@ -1237,8 +1272,15 @@ export function filterSyntheticMapLabelsForViewport(
 export function filterSyntheticLandmarkVisualsForViewport(
   options: FilterSyntheticLandmarkVisualsOptions
 ): SyntheticLandmarkVisual[] {
-  const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? [])];
+  const criticalLabelBoxes = (options.reservedLabels ?? [])
+    .filter((label) => label.kind === "road" || label.kind === "road_reference" || label.kind === "district")
+    .map((label) => labelCollisionBox(label, options.viewport, options.currentZoom));
+  const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? []), ...criticalLabelBoxes];
   const acceptedVisuals: SyntheticLandmarkVisual[] = [];
+  const acceptedByKind = new Map<TopopassAtlasSymbolKind, number>();
+  const maxForViewport = options.viewport.width <= 520
+    ? TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.mobileMaxPerViewport
+    : TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.maxPerViewport;
 
   for (const visual of [...options.visuals].sort(compareLandmarkVisualsForLayout)) {
     if (!shouldShowSyntheticLandmarkVisualForViewport(visual, options.viewport)) {
@@ -1246,6 +1288,31 @@ export function filterSyntheticLandmarkVisualsForViewport(
     }
 
     const box = landmarkVisualCollisionBox(visual, options.viewport, options.currentZoom);
+    const symbolKind = atlasSymbolKindForVisual(visual);
+    const style = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[symbolKind];
+
+    if (acceptedVisuals.length >= maxForViewport || (acceptedByKind.get(symbolKind) ?? 0) >= style.maxPerViewport) {
+      continue;
+    }
+
+    if (!symbolBoxFitsWithinViewport(box, options.viewport)) {
+      continue;
+    }
+
+    const screenPoint = mapToScreenPoint(visual.point, options.viewport);
+    const isTooClose = acceptedVisuals.some((accepted) => {
+      const acceptedKind = atlasSymbolKindForVisual(accepted);
+
+      if (acceptedKind !== symbolKind) {
+        return false;
+      }
+
+      return distanceBetweenPoints(screenPoint, mapToScreenPoint(accepted.point, options.viewport)) < style.minSpacingPixels;
+    });
+
+    if (isTooClose) {
+      continue;
+    }
 
     if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
       continue;
@@ -1253,6 +1320,7 @@ export function filterSyntheticLandmarkVisualsForViewport(
 
     placedBoxes.push(box);
     acceptedVisuals.push(visual);
+    acceptedByKind.set(symbolKind, (acceptedByKind.get(symbolKind) ?? 0) + 1);
   }
 
   return acceptedVisuals.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
@@ -1294,7 +1362,7 @@ export function shouldShowSyntheticLandmarkVisualForViewport(
     return true;
   }
 
-  return syntheticMapViewportScale(viewport) >= contextMarkerStyleForVisual(visual).minViewportScale;
+  return syntheticMapViewportScale(viewport) >= TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[atlasSymbolKindForVisual(visual)].minViewportScale;
 }
 
 export function syntheticLandmarkVisualAlphaForViewport(
@@ -1305,19 +1373,18 @@ export function syntheticLandmarkVisualAlphaForViewport(
     return 1;
   }
 
-  const style = contextMarkerStyleForVisual(visual);
   const scale = syntheticMapViewportScale(viewport);
   const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
 
   if (scale < decluttering.lowDetailViewportScale) {
-    return style.lowZoomAlpha;
+    return 0.7;
   }
 
   if (scale >= decluttering.highDetailViewportScale) {
-    return style.highZoomAlpha;
+    return 1;
   }
 
-  return style.mediumZoomAlpha;
+  return 0.9;
 }
 
 function compareLabelsForLayout(left: SyntheticMapLabel, right: SyntheticMapLabel): number {
@@ -1327,7 +1394,10 @@ function compareLabelsForLayout(left: SyntheticMapLabel, right: SyntheticMapLabe
     return priorityDifference;
   }
 
-  if (left.kind === "road" && right.kind === "road") {
+  if (
+    (left.kind === "road" && right.kind === "road") ||
+    (left.kind === "road_reference" && right.kind === "road_reference")
+  ) {
     const lengthDifference = (right.roadLengthMeters ?? 0) - (left.roadLengthMeters ?? 0);
 
     if (lengthDifference !== 0) {
@@ -1364,28 +1434,23 @@ function contextLineStyleForFeature(feature: SyntheticLinearFeature) {
   return TOPOPASS_STREET_ATLAS_STYLE.background.water.linear;
 }
 
-function contextMarkerStyleForVisual(visual: SyntheticLandmarkVisual) {
-  if (visual.kind === "station") {
-    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.stationMarker;
-  }
+export function atlasSymbolKindForVisual(visual: Pick<SyntheticLandmarkVisual, "kind" | "symbolKind">): TopopassAtlasSymbolKind {
+  return visual.symbolKind ?? atlasSymbolKindForVisualKind(visual.kind);
+}
 
-  if (visual.kind === "hospital" || visual.kind === "important-landmark") {
-    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.importantLandmarkMarker;
-  }
-
-  if (visual.kind === "public-building" || visual.kind === "civic" || visual.kind === "church" || visual.kind === "museum") {
-    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.publicBuildingMarker;
-  }
-
-  if (visual.kind === "open-space" || visual.kind === "park") {
-    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.openSpaceMarker;
-  }
-
-  if (visual.kind === "learner-reference" || visual.kind === "market" || visual.kind === "dock") {
-    return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.learnerReferenceMarker;
-  }
-
-  return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.landmarkMarker;
+function atlasSymbolKindForVisualKind(kind: SyntheticLandmarkVisualKind): TopopassAtlasSymbolKind {
+  if (kind === "station") return "station";
+  if (kind === "hospital") return "hospital";
+  if (kind === "religious" || kind === "church") return "religious";
+  if (kind === "education") return "education";
+  if (kind === "civic" || kind === "public-building") return "civic";
+  if (kind === "museum") return "museum";
+  if (kind === "market") return "market";
+  if (kind === "parking") return "parking";
+  if (kind === "pier" || kind === "dock") return "pier";
+  if (kind === "important-landmark" || kind === "learner-reference") return "landmark";
+  if (kind === "park" || kind === "open-space") return "open-space";
+  return "generic";
 }
 
 export function syntheticMapViewportScale(viewport: ScreenMapViewport): number {
@@ -1785,6 +1850,7 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
   const fontSize = labelFontSize(style);
   const padding = "collisionPadding" in style ? style.collisionPadding : TOPOPASS_STREET_ATLAS_STYLE.labels.collision.defaultPadding;
   const width = estimatedLabelTextWidth(label.text, style);
+  const symbolOffsetX = syntheticMapLabelSymbolOffsetX(label, viewport, currentZoom, width, padding);
   const height = fontSize + padding * 2;
   const angle = (label.kind === "road" || label.kind === "road_reference") && typeof label.angleRadians === "number"
     ? readableLabelAngle(label.angleRadians)
@@ -1794,9 +1860,9 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
 
   return {
     id: label.id,
-    minX: point.x - rotatedWidth / 2 - padding,
+    minX: point.x + symbolOffsetX - rotatedWidth / 2 - padding,
     minY: point.y + yOffset - rotatedHeight / 2 - padding,
-    maxX: point.x + rotatedWidth / 2 + padding,
+    maxX: point.x + symbolOffsetX + rotatedWidth / 2 + padding,
     maxY: point.y + yOffset + rotatedHeight / 2 + padding
   };
 }
@@ -1807,9 +1873,9 @@ function landmarkVisualCollisionBox(
   currentZoom?: number
 ): SyntheticLabelCollisionBox {
   const point = mapToScreenPoint(visual.point, viewport);
-  const markerStyle = contextMarkerStyleForVisual(visual);
-  const scale = cartographicMarkerScaleForViewport(viewport, currentZoom);
-  const radius = visual.radius * scale + markerStyle.collisionPadding;
+  const style = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[atlasSymbolKindForVisual(visual)];
+  const scale = atlasSymbolSemanticScale(currentZoom, syntheticMapViewportScale(viewport));
+  const radius = style.size * scale + style.collisionPadding;
 
   return {
     id: `landmark-marker-${visual.id}`,
@@ -1879,6 +1945,58 @@ function readableLabelAngle(angleRadians: number): number {
 
 function boxesIntersect(left: SyntheticLabelCollisionBox, right: SyntheticLabelCollisionBox): boolean {
   return left.minX <= right.maxX && left.maxX >= right.minX && left.minY <= right.maxY && left.maxY >= right.minY;
+}
+
+export function syntheticLandmarkReservationBoxes(
+  visuals: readonly SyntheticLandmarkVisual[],
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): SyntheticLabelCollisionBox[] {
+  return visuals.map((visual) => landmarkVisualCollisionBox(visual, viewport, currentZoom));
+}
+
+export function syntheticMapLabelSymbolOffsetX(
+  label: Pick<SyntheticMapLabel, "symbolKind">,
+  viewport: ScreenMapViewport,
+  currentZoom: number | undefined,
+  estimatedTextWidth: number,
+  labelPadding: number
+): number {
+  if (!label.symbolKind) {
+    return 0;
+  }
+
+  const style = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[label.symbolKind];
+  const scale = atlasSymbolSemanticScale(currentZoom, syntheticMapViewportScale(viewport));
+  const symbolRadius = style.size * scale + style.collisionPadding;
+
+  return symbolRadius + labelPadding + estimatedTextWidth / 2 + 1;
+}
+
+function symbolBoxFitsWithinViewport(box: SyntheticLabelCollisionBox, viewport: ScreenMapViewport): boolean {
+  const edgePadding = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.viewportEdgePadding;
+
+  return box.minX >= edgePadding && box.minY >= edgePadding && box.maxX <= viewport.width - edgePadding && box.maxY <= viewport.height - edgePadding;
+}
+
+function roadReferenceBudgetForViewport(currentZoom: number | undefined, viewportScale: number): number {
+  const zoom = currentZoom ?? viewportScale;
+  const budgets = TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceZoomBudgets;
+
+  if (zoom < 0.8) return budgets.low;
+  if (zoom < 1.8) return budgets.principal;
+  if (zoom < 3.2) return budgets.high;
+  return budgets.veryHigh;
+}
+
+export function atlasSymbolSemanticScale(currentZoom: number | undefined, viewportScale: number): number {
+  const zoom = currentZoom ?? viewportScale;
+  const scales = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.semanticScale;
+
+  if (zoom < 0.8) return scales.low;
+  if (zoom < 1.8) return scales.principal;
+  if (zoom < 3.2) return scales.high;
+  return scales.veryHigh;
 }
 
 function shouldShowRoadReferenceLabel(
@@ -2172,13 +2290,38 @@ function slugifyLabelId(label: string): string {
 }
 
 function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): SyntheticAtlasLabelCandidate[] {
+  const roadReferencesByElement = new Map<string, string[]>();
+
+  for (const feature of features) {
+    if (feature.kind !== "road-reference") continue;
+    const key = `${feature.sourceElementType}:${feature.sourceElementId}`;
+    const references = roadReferencesByElement.get(key) ?? [];
+    references.push(feature.reference);
+    roadReferencesByElement.set(key, references);
+  }
+
+  for (const [key, references] of roadReferencesByElement) {
+    roadReferencesByElement.set(key, Array.from(new Set(references)).sort((left, right) => left.localeCompare(right)));
+  }
+
   return features
     .flatMap((feature) => {
       if (feature.kind === "road-reference") {
-        const pose = polylineLabelPose(feature.points);
+        if (!isValidRoadReferenceSource(feature)) {
+          return [];
+        }
+
+        const references = roadReferencesByElement.get(`${feature.sourceElementType}:${feature.sourceElementId}`) ?? [feature.reference];
+        const index = Math.max(0, references.indexOf(feature.reference));
+        const fraction = references.length === 1 ? 0.5 : 0.38 + (0.24 * index) / Math.max(1, references.length - 1);
+        const pose = polylineLabelPoseAtFraction(feature.points, fraction);
 
         return pose
-          ? [contextCandidate(feature, "road_reference", "road-reference", feature.reference, pose.point, pose.angleRadians)]
+          ? [{
+              ...contextCandidate(feature, "road_reference", "road-reference", feature.reference, pose.point, pose.angleRadians),
+              roadLengthMeters: polylineLength(feature.points),
+              roadReferenceClass: feature.subtype
+            }]
           : [];
       }
 
@@ -2191,7 +2334,7 @@ function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): S
       }
 
       if (feature.kind === "station") {
-        return [contextCandidate(feature, "station", "station", feature.name, feature.point)];
+        return [contextCandidate(feature, "station", "station", feature.name, feature.point, undefined, "station")];
       }
 
       if (feature.kind === "landmark") {
@@ -2201,7 +2344,7 @@ function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): S
             ? "learner_reference"
             : "landmark";
 
-        return [contextCandidate(feature, kind, "landmark", feature.name, feature.point)];
+        return [contextCandidate(feature, kind, "landmark", feature.name, feature.point, undefined, feature.symbolKind)];
       }
 
       if (feature.kind === "institution") {
@@ -2239,7 +2382,8 @@ function contextCandidate(
   category: SyntheticAtlasLabelCategory,
   text: string,
   point: Vec2,
-  angleRadians?: number
+  angleRadians?: number,
+  symbolKind?: TopopassAtlasSymbolKind
 ): SyntheticAtlasLabelCandidate {
   return {
     id: `${kind}-label-${feature.id}`,
@@ -2247,6 +2391,7 @@ function contextCandidate(
     text,
     point: { ...point },
     ...(angleRadians === undefined ? {} : { angleRadians }),
+    ...(symbolKind === undefined ? {} : { symbolKind }),
     priority: contextLabelPriority(kind),
     category,
     source: "osm",
@@ -2260,36 +2405,94 @@ function contextCandidate(
   };
 }
 
-function buildOsmLandmarkVisuals(map: MapDefinition, fixture: unknown): SyntheticLandmarkVisual[] {
-  return buildRealLondonContextFeatures(map, fixture)
+function buildOsmLandmarkVisuals(map: MapDefinition, fixture: unknown): SyntheticAtlasSymbolCandidate[] {
+  const candidates = buildRealLondonContextFeatures(map, fixture)
     .flatMap((feature) => {
       const visual = landmarkVisualFromContextFeature(feature);
 
       return visual ? [visual] : [];
     })
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+
+  return dedupeAtlasSymbolCandidates(candidates);
 }
 
-function landmarkVisualFromContextFeature(feature: RealLondonContextFeature): SyntheticLandmarkVisual | null {
+function landmarkVisualFromContextFeature(feature: RealLondonContextFeature): SyntheticAtlasSymbolCandidate | null {
   if (feature.kind === "station") {
-    return feature.name ? buildLandmarkVisualFromPoint(`osm-${feature.id}`, "station", feature.name, feature.point) : null;
+    return feature.name
+      ? buildSourceBackedAtlasSymbol(feature, "station", "station", feature.name, feature.point, feature.sourceGeometry)
+      : null;
   }
 
   if (feature.kind === "park") {
     const name = feature.name;
 
-    return name ? buildLandmarkVisualFromPoint(`osm-${feature.id}`, "open-space", name, polygonCenter(feature.points)) : null;
+    return name
+      ? buildSourceBackedAtlasSymbol(feature, "open-space", "open-space", name, polygonCenter(feature.points), feature.points)
+      : null;
   }
 
   if (feature.kind === "landmark") {
-    return buildLandmarkVisualFromPoint(`osm-${feature.id}`, landmarkVisualKindForContextLandmark(feature), feature.name, feature.point);
+    const kind = landmarkVisualKindForContextLandmark(feature);
+    return buildSourceBackedAtlasSymbol(feature, kind, feature.symbolKind, feature.name, feature.point, feature.sourceGeometry);
   }
 
   return null;
 }
 
 function landmarkVisualKindForContextLandmark(feature: RealLondonLandmarkContextFeature): SyntheticLandmarkVisualKind {
+  if (feature.symbolKind === "religious") return "religious";
+  if (feature.symbolKind === "education") return "education";
+  if (feature.symbolKind === "civic") return "civic";
+  if (feature.symbolKind === "museum") return "museum";
+  if (feature.symbolKind === "market") return "market";
+  if (feature.symbolKind === "parking") return "parking";
+  if (feature.symbolKind === "pier") return "pier";
   return feature.landmarkKind;
+}
+
+function buildSourceBackedAtlasSymbol(
+  feature: RealLondonContextFeature,
+  kind: SyntheticLandmarkVisualKind,
+  symbolKind: TopopassAtlasSymbolKind,
+  label: string,
+  point: Vec2,
+  sourceGeometry: readonly Vec2[]
+): SyntheticAtlasSymbolCandidate {
+  const visual = buildLandmarkVisualFromPoint(`osm-${feature.id}`, kind, label, point);
+
+  return {
+    ...visual,
+    symbolKind,
+    sourceGeometry: sourceGeometry.map((sourcePoint) => ({ ...sourcePoint })),
+    sourceMetadata: {
+      provider: "openstreetmap",
+      sourceFeatureId: feature.id,
+      elementType: feature.sourceElementType,
+      elementId: feature.sourceElementId,
+      ...(feature.sourceTags ? { tags: { ...feature.sourceTags } } : {})
+    }
+  };
+}
+
+function dedupeAtlasSymbolCandidates(candidates: readonly SyntheticAtlasSymbolCandidate[]): SyntheticAtlasSymbolCandidate[] {
+  const accepted: SyntheticAtlasSymbolCandidate[] = [];
+
+  for (const candidate of [...candidates].sort(compareLandmarkVisualsForLayout)) {
+    const duplicate = accepted.some((existing) =>
+      existing.symbolKind === candidate.symbolKind &&
+      canonicalSymbolLabel(existing.label) === canonicalSymbolLabel(candidate.label) &&
+      distanceBetweenPoints(existing.point, candidate.point) <= 80
+    );
+
+    if (!duplicate) accepted.push(candidate);
+  }
+
+  return accepted;
+}
+
+function canonicalSymbolLabel(label: string): string {
+  return label.toLowerCase().replace(/\blondon\b|\brailway\b|\bstation\b/g, "").replace(/[^a-z0-9]+/g, "").trim();
 }
 
 function buildOsmBackgroundFeatures(map: MapDefinition, fixture: unknown): SyntheticBackgroundFeature[] {
@@ -2766,6 +2969,12 @@ export function buildSyntheticLandmarkVisuals(
         haloColor: visualStyle.haloColor,
         priority: visualStyle.priority,
         isExerciseStop,
+        symbolKind: atlasSymbolKindForVisualKind(kind),
+        sourceGeometry: [{ x: landmark.x, y: landmark.y }],
+        sourceMetadata: {
+          provider: "map-definition" as const,
+          sourceFeatureId: landmark.id
+        },
         routable: false as const
       };
     });
@@ -3149,12 +3358,19 @@ function polylineCenter(points: readonly Vec2[]): Vec2 {
 }
 
 function polylineLabelPose(points: readonly Vec2[]): { point: Vec2; angleRadians: number } | null {
+  return polylineLabelPoseAtFraction(points, 0.5);
+}
+
+function polylineLabelPoseAtFraction(
+  points: readonly Vec2[],
+  fraction: number
+): { point: Vec2; angleRadians: number } | null {
   if (points.length < 2) {
     return null;
   }
 
-  const totalLength = points.slice(1).reduce((sum, point, index) => sum + distanceBetweenPoints(points[index], point), 0);
-  const targetLength = totalLength / 2;
+  const totalLength = polylineLength(points);
+  const targetLength = totalLength * clampNumber(fraction, 0.08, 0.92);
   let travelledLength = 0;
 
   for (let index = 1; index < points.length; index += 1) {
@@ -3184,6 +3400,25 @@ function polylineLabelPose(points: readonly Vec2[]): { point: Vec2; angleRadians
     point: { ...to },
     angleRadians: Math.atan2(to.y - from.y, to.x - from.x)
   };
+}
+
+function polylineLength(points: readonly Vec2[]): number {
+  return points.slice(1).reduce((sum, point, index) => sum + distanceBetweenPoints(points[index], point), 0);
+}
+
+function isValidRoadReferenceSource(feature: Extract<RealLondonContextFeature, { kind: "road-reference" }>): boolean {
+  const highway = feature.sourceTags?.highway?.trim();
+  const references = (feature.sourceTags?.ref ?? "")
+    .split(/[;,]/)
+    .map((reference) => reference.trim().toUpperCase());
+
+  if (!highway || !references.includes(feature.reference)) {
+    return false;
+  }
+
+  return feature.subtype === "a-road"
+    ? /^A\d{1,4}[A-Z]?(?:\([A-Z0-9]+\))?$/.test(feature.reference)
+    : /^B\d{1,4}[A-Z]?$/.test(feature.reference);
 }
 
 function mapBounds(map: MapDefinition): { minX: number; minY: number; maxX: number; maxY: number } {
@@ -3249,18 +3484,22 @@ function landmarkVisualKind(landmark: Landmark): SyntheticLandmarkVisualKind {
   }
 
   if (landmark.type === "civic") {
-    return "public-building";
+    return "civic";
   }
 
   if (landmark.type === "place_of_worship") {
-    return "public-building";
+    return "religious";
   }
 
   if (landmark.type === "museum" || landmark.type === "entertainment") {
-    return "learner-reference";
+    return "museum";
   }
 
-  if (landmark.type === "school" || landmark.type === "library" || landmark.type === "office") {
+  if (landmark.type === "school") {
+    return "education";
+  }
+
+  if (landmark.type === "library" || landmark.type === "office") {
     return "public-building";
   }
 
@@ -3301,51 +3540,16 @@ function landmarkVisualStyle(kind: SyntheticLandmarkVisualKind): {
   haloColor: string;
   priority: number;
 } {
-  const style = TOPOPASS_STREET_ATLAS_STYLE;
+  const atlasKind = atlasSymbolKindForVisualKind(kind);
+  const atlasStyle = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[atlasKind];
 
-  if (kind === "station") {
-    return {
-      radius: style.station.radius,
-      fillColor: style.station.fillColor,
-      strokeColor: style.station.strokeColor,
-      haloColor: style.station.haloColor,
-      priority: style.station.priority
-    };
-  }
-
-  if (kind === "hospital") {
-    return { ...style.landmarks.hospital };
-  }
-
-  if (kind === "park") {
-    return { ...style.landmarks.park };
-  }
-
-  if (kind === "important-landmark") {
-    return { ...style.landmarks.important };
-  }
-
-  if (kind === "public-building") {
-    return { ...style.landmarks.publicBuilding };
-  }
-
-  if (kind === "open-space") {
-    return { ...style.landmarks.openSpace };
-  }
-
-  if (kind === "learner-reference") {
-    return { ...style.landmarks.learnerReference };
-  }
-
-  if (kind === "market" || kind === "dock") {
-    return { ...(kind === "market" ? style.landmarks.market : style.landmarks.dock) };
-  }
-
-  if (kind === "civic" || kind === "church" || kind === "museum") {
-    return { ...style.landmarks[kind] };
-  }
-
-  return { ...style.landmarks.generic };
+  return {
+    radius: atlasStyle.size,
+    fillColor: atlasStyle.fillColor,
+    strokeColor: atlasStyle.strokeColor,
+    haloColor: "rgba(255,252,244,0.76)",
+    priority: atlasStyle.priority
+  };
 }
 
 function shouldLabelLandmark(visual: SyntheticLandmarkVisual): boolean {

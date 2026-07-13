@@ -23,6 +23,7 @@ import {
   ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
 } from "./curatedRealLondonRouteRunnerMaps.ts";
 import {
+  atlasSymbolKindForVisual,
   buildSyntheticBackgroundFeatures,
   buildSyntheticLandmarkVisuals,
   buildSyntheticLinearFeatures,
@@ -927,7 +928,7 @@ function countContextAdapterCoverage(features: readonly RealLondonContextFeature
     institutionalPolygons: features.filter((feature) => feature.kind === "institution").length,
     generalBuildingPolygons: features.filter((feature) => feature.kind === "building").length,
     landUsePolygons: features.filter((feature) => feature.kind === "land-use").length,
-    pierFeatures: 0,
+    pierFeatures: features.filter((feature) => feature.kind === "landmark" && feature.symbolKind === "pier").length,
     roadReferenceFeatures: features.filter((feature) => feature.kind === "road-reference").length
   };
 }
@@ -947,13 +948,13 @@ function countRendererConsumedCoverage(option: RouteRunnerMapOption, fixture: un
   return {
     backgroundFeatures: sortedRecord(countBy(background, (feature) => feature.kind)),
     linearFeatures: sortedRecord(countBy(linear, (feature) => feature.kind)),
-    landmarkVisuals: sortedRecord(countBy(landmarks, (feature) => feature.kind)),
+    landmarkVisuals: sortedRecord(countBy(landmarks, atlasSymbolKindForVisual)),
     labels: sortedRecord(countBy(labels, (label) => label.kind)),
     displayedRoadReferences: labels.filter((label) => label.kind === "road_reference").length,
     generalBuildingPolygons: background.filter((feature) => feature.kind === "building").length,
     institutionalPolygons: background.filter((feature) => feature.kind === "institution").length,
     landUsePolygons: background.filter((feature) => feature.kind === "land-use").length,
-    piers: 0
+    piers: landmarks.filter((feature) => atlasSymbolKindForVisual(feature) === "pier").length
   };
 }
 
@@ -981,6 +982,14 @@ function countUnsupportedCoverage(
   contextFeatures: readonly RealLondonContextFeature[]
 ): Phase8UnsupportedCoverageCounts {
   const source = countSourceCoverage(elements);
+  const adaptedPierIds = new Set(
+    contextFeatures
+      .filter((feature) => feature.kind === "landmark" && feature.symbolKind === "pier")
+      .map((feature) => `${feature.sourceElementType}:${feature.sourceElementId}`)
+  );
+  const adaptedPublicTransportStationCount = contextFeatures.filter(
+    (feature) => feature.kind === "station" && feature.sourceTags?.public_transport === "station"
+  ).length;
 
   return {
     sourceBuildingsDiscardedByRouteConversion: source.buildingTaggedWays + source.buildingTaggedRelations,
@@ -1011,8 +1020,8 @@ function countUnsupportedCoverage(
             .map((feature) => feature.sourceElementId)
         ).size
     ),
-    pierLikeFeaturesMissingWhitelistOrAdapter: source.pierLikeSourceFeatures,
-    publicTransportStationsWithoutCurrentAdapter: Math.max(0, source.publicTransportStations - source.railwayStations),
+    pierLikeFeaturesMissingWhitelistOrAdapter: Math.max(0, source.pierLikeSourceFeatures - adaptedPierIds.size),
+    publicTransportStationsWithoutCurrentAdapter: Math.max(0, source.publicTransportStations - adaptedPublicTransportStationCount),
     missingWhitelistTags: missingWhitelistTags(elements)
   };
 }
@@ -1183,7 +1192,7 @@ function buildCategoryAudits(input: {
           (rendererConsumedCoverage.backgroundFeatures.water ?? 0) +
           (rendererConsumedCoverage.linearFeatures.waterway ?? 0),
         blockerCount: unsupportedCoverage.pierLikeFeaturesMissingWhitelistOrAdapter,
-        notes: ["Water polygons, waterways, and multipolygon outer rings have current adapter coverage. Pier-like tags are audited separately and have no symbol path."],
+        notes: ["Water polygons, waterways, and multipolygon outer rings have current adapter coverage. Named pier geometry can also reach the compact symbol pipeline."],
         evidence: evidenceFor(elements, (tags) => waterSource(tags) || pierLikeSource(tags))
       });
     }
@@ -1208,17 +1217,16 @@ function buildCategoryAudits(input: {
         contextAdapterCount: (contextAdapterCoverage.byKind.rail ?? 0) + (contextAdapterCoverage.byKind.station ?? 0),
         rendererConsumedCount: (rendererConsumedCoverage.linearFeatures.rail ?? 0) + (rendererConsumedCoverage.landmarkVisuals.station ?? 0),
         blockerCount: unsupportedCoverage.publicTransportStationsWithoutCurrentAdapter,
-        notes: ["Rail lines and railway=station features can render. public_transport=station without railway=station is counted as source-present but not fully adapted."],
+        notes: ["Rail lines plus named railway=station and public_transport=station features can reach the compact symbol pipeline."],
         evidence: evidenceFor(elements, (tags) => Boolean(tagValue(tags, "railway")) || tagValue(tags, "public_transport") === "station")
       });
     }
 
     return categoryAudit({
       id,
-      state: (rendererConsumedCoverage.landmarkVisuals.hospital ?? 0) +
-        (rendererConsumedCoverage.landmarkVisuals["public-building"] ?? 0) +
-        (rendererConsumedCoverage.landmarkVisuals["important-landmark"] ?? 0) +
-        (rendererConsumedCoverage.landmarkVisuals["learner-reference"] ?? 0) > 0
+      state: Object.entries(rendererConsumedCoverage.landmarkVisuals)
+        .filter(([kind]) => kind !== "station" && kind !== "open-space")
+        .some(([, count]) => count > 0)
         ? "point-landmark-only"
         : sourceCoverage.namedLandmarkCandidates + sourceCoverage.unnamedLandmarkCandidates > 0
           ? "context-ready-no-renderer-consumer"
@@ -1227,12 +1235,10 @@ function buildCategoryAudits(input: {
       retainedCount: sourceCoverage.namedLandmarkCandidates,
       routeGraphCount: 0,
       contextAdapterCount: contextAdapterCoverage.byKind.landmark ?? 0,
-      rendererConsumedCount:
-        (rendererConsumedCoverage.landmarkVisuals.hospital ?? 0) +
-        (rendererConsumedCoverage.landmarkVisuals["public-building"] ?? 0) +
-        (rendererConsumedCoverage.landmarkVisuals["important-landmark"] ?? 0) +
-        (rendererConsumedCoverage.landmarkVisuals["learner-reference"] ?? 0),
-      notes: ["Supported landmarks render as point symbols/labels only. They are not evidence of public-building or institutional polygons."],
+      rendererConsumedCount: Object.entries(rendererConsumedCoverage.landmarkVisuals)
+        .filter(([kind]) => kind !== "station" && kind !== "open-space")
+        .reduce((sum, [, count]) => sum + count, 0),
+      notes: ["Supported named public features render as compact source-backed symbols/labels only. They are not evidence of public-building or institutional polygons."],
       evidence: evidenceFor(elements, landmarkSource)
     });
   });
@@ -1386,8 +1392,8 @@ function stage83RequirementsForFixture(
     requirements.push("Review transport and public-feature candidate contracts for compact atlas symbols.");
   }
 
-  if (source.pierLikeSourceFeatures > 0) {
-    requirements.push("Add pier whitelist, adapter, and symbol support only where committed source tags warrant it.");
+  if (source.pierLikeSourceFeatures > 0 && unsupported.pierLikeFeaturesMissingWhitelistOrAdapter > 0) {
+    requirements.push("Keep unsupported pier-like source records out of the symbol pipeline until named geometry is retained by the adapter.");
   }
 
   if (Object.keys(unsupported.missingWhitelistTags).length > 0) {

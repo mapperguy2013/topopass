@@ -42,7 +42,9 @@ export type RealLondonRailContextFeature = RealLondonContextFeatureBase & {
 
 export type RealLondonStationContextFeature = RealLondonContextFeatureBase & {
   kind: "station";
+  subtype: "rail" | "underground" | "light-rail" | "transport-interchange";
   point: Vec2;
+  sourceGeometry: Vec2[];
 };
 
 export type RealLondonBridgeContextFeature = RealLondonContextFeatureBase & {
@@ -60,7 +62,18 @@ export type RealLondonLandmarkContextFeature = RealLondonContextFeatureBase & {
   kind: "landmark";
   name: string;
   landmarkKind: "hospital" | "important-landmark" | "public-building" | "learner-reference";
+  symbolKind:
+    | "hospital"
+    | "religious"
+    | "education"
+    | "civic"
+    | "museum"
+    | "market"
+    | "parking"
+    | "pier"
+    | "landmark";
   point: Vec2;
+  sourceGeometry: Vec2[];
 };
 
 export type RealLondonParkContextFeature = RealLondonContextFeatureBase & {
@@ -313,7 +326,7 @@ function applyContextCoverageCounts(counts: RealLondonContextCoverageCounts, tag
     counts.subwayRailFeatures += 1;
   }
 
-  if (railway === "station") {
+  if (stationSubtypeForTags(tags)) {
     counts.stationFeatures += 1;
 
     if (namedContextLabel(tags)) {
@@ -397,30 +410,35 @@ function contextFeaturesFromNode(node: OverpassNodeElement, projection: OsmLocal
   const point = projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection);
   const features: RealLondonContextFeature[] = [];
 
-  if (tagValue(tags, "railway") === "station") {
+  const stationSubtype = stationSubtypeForTags(tags);
+
+  if (stationSubtype) {
     features.push({
       id: `station-node-${node.id}`,
       kind: "station",
+      subtype: stationSubtype,
       name: namedContextLabel(tags),
       point,
+      sourceGeometry: [{ ...point }],
       sourceElementType: "node",
       sourceElementId: node.id,
       sourceTags: { ...tags }
     });
   }
 
-  const landmarkKind = landmarkKindForTags(tags);
+  const landmarkClassification = landmarkClassificationForTags(tags);
 
-  if (landmarkKind) {
+  if (landmarkClassification) {
     const name = namedContextLabel(tags);
 
     if (name) {
       features.push({
         id: `landmark-node-${node.id}`,
         kind: "landmark",
-        landmarkKind,
+        ...landmarkClassification,
         name,
         point,
+        sourceGeometry: [{ ...point }],
         sourceElementType: "node",
         sourceElementId: node.id,
         sourceTags: { ...tags }
@@ -576,28 +594,33 @@ function contextFeaturesFromWay(
       });
     }
 
-    if (tagValue(tags, "railway") === "station") {
+    const stationSubtype = stationSubtypeForTags(tags);
+
+    if (stationSubtype) {
       features.push({
         id: `station-way-${way.id}`,
         kind: "station",
+        subtype: stationSubtype,
         name: namedContextLabel(tags),
         point: polygonCenter(points),
+        sourceGeometry: points.map((point) => ({ ...point })),
         sourceElementType: "way",
         sourceElementId: way.id,
         sourceTags: { ...tags }
       });
     }
 
-    const landmarkKind = landmarkKindForTags(tags);
+    const landmarkClassification = landmarkClassificationForTags(tags);
     const landmarkName = namedContextLabel(tags);
 
-    if (landmarkKind && landmarkName) {
+    if (landmarkClassification && landmarkName) {
       features.push({
         id: `landmark-way-${way.id}`,
         kind: "landmark",
-        landmarkKind,
+        ...landmarkClassification,
         name: landmarkName,
         point: polygonCenter(points),
+        sourceGeometry: points.map((point) => ({ ...point })),
         sourceElementType: "way",
         sourceElementId: way.id,
         sourceTags: { ...tags }
@@ -618,6 +641,23 @@ function contextFeaturesFromWay(
           sourceTags: { ...tags }
         });
       }
+    }
+  } else if (points.length >= 2 && tagValue(tags, "man_made") === "pier") {
+    const name = namedContextLabel(tags);
+
+    if (name) {
+      features.push({
+        id: `landmark-way-${way.id}`,
+        kind: "landmark",
+        landmarkKind: "learner-reference",
+        symbolKind: "pier",
+        name,
+        point: polygonCenter(points),
+        sourceGeometry: points.map((point) => ({ ...point })),
+        sourceElementType: "way",
+        sourceElementId: way.id,
+        sourceTags: { ...tags }
+      });
     }
   } else if (points.length >= 2 && tagValue(tags, "waterway")) {
     features.push({
@@ -914,7 +954,33 @@ function railSubtypeForTags(tags: OverpassTags): RealLondonRailContextFeature["s
   return null;
 }
 
+function stationSubtypeForTags(tags: OverpassTags): RealLondonStationContextFeature["subtype"] | null {
+  if (tagValue(tags, "railway") === "station") {
+    if (tagValue(tags, "station") === "subway" || tagValue(tags, "subway") === "yes") {
+      return "underground";
+    }
+
+    if (tagValue(tags, "station") === "light_rail") {
+      return "light-rail";
+    }
+
+    return "rail";
+  }
+
+  if (tagValue(tags, "public_transport") === "station") {
+    return "transport-interchange";
+  }
+
+  return null;
+}
+
+type LandmarkClassification = Pick<RealLondonLandmarkContextFeature, "landmarkKind" | "symbolKind">;
+
 function landmarkKindForTags(tags: OverpassTags): RealLondonLandmarkContextFeature["landmarkKind"] | null {
+  return landmarkClassificationForTags(tags)?.landmarkKind ?? null;
+}
+
+function landmarkClassificationForTags(tags: OverpassTags): LandmarkClassification | null {
   const amenity = tagValue(tags, "amenity");
   const tourism = tagValue(tags, "tourism");
   const historic = tagValue(tags, "historic");
@@ -922,30 +988,47 @@ function landmarkKindForTags(tags: OverpassTags): RealLondonLandmarkContextFeatu
   const shop = tagValue(tags, "shop");
 
   if (amenity === "hospital") {
-    return "hospital";
+    return { landmarkKind: "hospital", symbolKind: "hospital" };
+  }
+
+  if (amenity === "place_of_worship") {
+    return { landmarkKind: "public-building", symbolKind: "religious" };
+  }
+
+  if (amenity === "school" || amenity === "university" || amenity === "college") {
+    return { landmarkKind: "public-building", symbolKind: "education" };
+  }
+
+  if (tourism === "museum" || tourism === "gallery") {
+    return { landmarkKind: "learner-reference", symbolKind: "museum" };
+  }
+
+  if (amenity === "marketplace" || shop === "mall") {
+    return { landmarkKind: "learner-reference", symbolKind: "market" };
+  }
+
+  if (amenity === "parking") {
+    return { landmarkKind: "learner-reference", symbolKind: "parking" };
+  }
+
+  if (tagValue(tags, "man_made") === "pier") {
+    return { landmarkKind: "learner-reference", symbolKind: "pier" };
   }
 
   if (tourism === "attraction" || Boolean(historic) || tagValue(tags, "landmark") === "yes") {
-    return "important-landmark";
+    return { landmarkKind: "important-landmark", symbolKind: "landmark" };
   }
 
   if (
     amenity === "townhall" ||
     amenity === "library" ||
-    amenity === "school" ||
-    amenity === "university" ||
-    amenity === "college" ||
     amenity === "police" ||
     amenity === "fire_station" ||
     amenity === "courthouse" ||
     building === "public" ||
     building === "civic"
   ) {
-    return "public-building";
-  }
-
-  if (amenity === "marketplace" || shop === "mall" || tourism === "museum" || tourism === "gallery") {
-    return "learner-reference";
+    return { landmarkKind: "public-building", symbolKind: "civic" };
   }
 
   return null;

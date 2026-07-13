@@ -147,11 +147,12 @@ import {
   buildSyntheticRoadVisuals,
   buildRoadJunctionCaps,
   buildRoadRenderPasses,
+  atlasSymbolKindForVisual,
+  atlasSymbolSemanticScale,
   cartographicCustomMarkerAssetScaleForZoom,
   cartographicDrawnAttemptScaleForZoom,
   cartographicCorrectRouteScaleForZoom,
   cartographicLearnerMarkerScaleForZoom,
-  cartographicMarkerScaleForViewport,
   cartographicMistakeOverlayScaleForZoom,
   cartographicReviewTextScaleForZoom,
   cartographicStyleScaleForZoom,
@@ -166,7 +167,10 @@ import {
   sortRoadVisualsForBaseRender,
   syntheticBackgroundFeatureStyleForViewport,
   syntheticLandmarkVisualAlphaForViewport,
+  syntheticLandmarkReservationBoxes,
   syntheticLinearFeatureAlphaForViewport,
+  syntheticMapLabelSymbolOffsetX,
+  syntheticMapViewportScale,
   type SyntheticBackgroundFeature,
   type SyntheticLabelCollisionBox,
   type SyntheticLandmarkVisual,
@@ -2056,74 +2060,116 @@ function drawSyntheticLandmarkVisual(
   currentZoom?: number
 ): void {
   const point = mapToScreenPoint(visual.point, viewport);
-  const scale = cartographicMarkerScaleForViewport(viewport, currentZoom);
-  const radius = visual.radius * scale;
+  const symbolKind = atlasSymbolKindForVisual(visual);
+  const style = TOPOPASS_STREET_ATLAS_STYLE.atlasSymbols.styles[symbolKind];
+  const scale = atlasSymbolSemanticScale(currentZoom, syntheticMapViewportScale(viewport));
+  const size = style.size * scale;
 
   context.save();
   context.globalAlpha = alpha;
-  context.fillStyle = visual.haloColor;
-  context.beginPath();
-  context.arc(point.x, point.y, radius + 8 * scale, 0, Math.PI * 2);
-  context.fill();
+  context.fillStyle = style.fillColor;
+  context.strokeStyle = style.strokeColor;
+  context.lineWidth = style.strokeWidth * scale;
+  context.lineCap = "butt";
+  context.lineJoin = "miter";
 
-  context.fillStyle = visual.fillColor;
-  context.strokeStyle = visual.strokeColor;
-  context.lineWidth = (visual.kind === "station" ? TOPOPASS_STREET_ATLAS_STYLE.station.markerStrokeWidth : 2.5) * scale;
   context.beginPath();
-  context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  context.rect(point.x - size, point.y - size, size * 2, size * 2);
   context.fill();
   context.stroke();
+  context.strokeStyle = style.detailColor;
 
-  if (visual.kind === "station") {
-    context.strokeStyle = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineColor;
-    context.lineWidth = TOPOPASS_STREET_ATLAS_STYLE.station.innerLineWidth * scale;
-    context.lineCap = "round";
+  if (symbolKind === "station") {
     context.beginPath();
-    context.moveTo(point.x - radius - 4 * scale, point.y);
-    context.lineTo(point.x + radius + 4 * scale, point.y);
+    context.moveTo(point.x - size * 0.62, point.y - size * 0.42);
+    context.lineTo(point.x + size * 0.62, point.y - size * 0.42);
+    context.moveTo(point.x - size * 0.62, point.y + size * 0.42);
+    context.lineTo(point.x + size * 0.62, point.y + size * 0.42);
+    context.moveTo(point.x - size * 0.34, point.y - size * 0.72);
+    context.lineTo(point.x - size * 0.34, point.y + size * 0.72);
+    context.moveTo(point.x + size * 0.34, point.y - size * 0.72);
+    context.lineTo(point.x + size * 0.34, point.y + size * 0.72);
     context.stroke();
-  } else if (visual.kind === "hospital") {
-    context.strokeStyle = TOPOPASS_STREET_ATLAS_STYLE.landmarks.hospital.strokeColor;
-    context.lineWidth = 2.4 * scale;
-    context.lineCap = "round";
+  } else if (symbolKind === "hospital") {
+    context.lineWidth = 1.8 * scale;
     context.beginPath();
-    context.moveTo(point.x - 4 * scale, point.y);
-    context.lineTo(point.x + 4 * scale, point.y);
-    context.moveTo(point.x, point.y - 4 * scale);
-    context.lineTo(point.x, point.y + 4 * scale);
+    context.moveTo(point.x - size * 0.62, point.y);
+    context.lineTo(point.x + size * 0.62, point.y);
+    context.moveTo(point.x, point.y - size * 0.62);
+    context.lineTo(point.x, point.y + size * 0.62);
     context.stroke();
-  } else if (visual.kind === "park") {
-    context.fillStyle = TOPOPASS_STREET_ATLAS_STYLE.landmarks.park.strokeColor;
+  } else if (symbolKind === "religious") {
     context.beginPath();
-    context.arc(point.x, point.y, 3 * scale, 0, Math.PI * 2);
-    context.fill();
-  } else if (visual.kind === "public-building") {
-    context.strokeStyle = visual.strokeColor;
-    context.lineWidth = 2 * scale;
-    context.beginPath();
-    context.rect(point.x - 4 * scale, point.y - 4 * scale, 8 * scale, 8 * scale);
-    context.stroke();
-  } else if (visual.kind === "open-space") {
-    context.fillStyle = visual.strokeColor;
-    context.beginPath();
-    context.arc(point.x, point.y, 2.8 * scale, 0, Math.PI * 2);
-    context.fill();
-  } else if (visual.kind === "learner-reference" || visual.kind === "important-landmark") {
-    context.strokeStyle = visual.strokeColor;
-    context.lineWidth = 2 * scale;
-    context.beginPath();
-    context.moveTo(point.x, point.y - 5 * scale);
-    context.lineTo(point.x + 5 * scale, point.y + 4 * scale);
-    context.lineTo(point.x - 5 * scale, point.y + 4 * scale);
+    context.moveTo(point.x, point.y - size * 0.72);
+    context.lineTo(point.x + size * 0.62, point.y);
+    context.lineTo(point.x, point.y + size * 0.7);
+    context.lineTo(point.x - size * 0.62, point.y);
     context.closePath();
+    context.moveTo(point.x, point.y - size * 0.42);
+    context.lineTo(point.x, point.y + size * 0.42);
+    context.moveTo(point.x - size * 0.28, point.y - size * 0.08);
+    context.lineTo(point.x + size * 0.28, point.y - size * 0.08);
     context.stroke();
-  } else if (visual.kind === "market" || visual.kind === "dock") {
-    context.strokeStyle = visual.strokeColor;
-    context.lineWidth = 2 * scale;
+  } else if (symbolKind === "education") {
     context.beginPath();
-    context.moveTo(point.x - 4 * scale, point.y + 3 * scale);
-    context.lineTo(point.x, point.y - 4 * scale);
-    context.lineTo(point.x + 4 * scale, point.y + 3 * scale);
+    context.moveTo(point.x, point.y - size * 0.55);
+    context.lineTo(point.x, point.y + size * 0.55);
+    context.moveTo(point.x - size * 0.72, point.y - size * 0.42);
+    context.lineTo(point.x - size * 0.12, point.y - size * 0.18);
+    context.lineTo(point.x - size * 0.12, point.y + size * 0.58);
+    context.lineTo(point.x - size * 0.72, point.y + size * 0.32);
+    context.moveTo(point.x + size * 0.72, point.y - size * 0.42);
+    context.lineTo(point.x + size * 0.12, point.y - size * 0.18);
+    context.lineTo(point.x + size * 0.12, point.y + size * 0.58);
+    context.lineTo(point.x + size * 0.72, point.y + size * 0.32);
+    context.stroke();
+  } else if (symbolKind === "civic" || symbolKind === "museum") {
+    context.beginPath();
+    context.moveTo(point.x - size * 0.72, point.y - size * 0.32);
+    context.lineTo(point.x + size * 0.72, point.y - size * 0.32);
+    context.moveTo(point.x - size * 0.58, point.y + size * 0.52);
+    context.lineTo(point.x + size * 0.58, point.y + size * 0.52);
+    context.moveTo(point.x - size * 0.42, point.y - size * 0.32);
+    context.lineTo(point.x - size * 0.42, point.y + size * 0.52);
+    context.moveTo(point.x, point.y - size * 0.32);
+    context.lineTo(point.x, point.y + size * 0.52);
+    context.moveTo(point.x + size * 0.42, point.y - size * 0.32);
+    context.lineTo(point.x + size * 0.42, point.y + size * 0.52);
+    context.stroke();
+  } else if (symbolKind === "market") {
+    context.beginPath();
+    context.moveTo(point.x - size * 0.72, point.y - size * 0.2);
+    context.lineTo(point.x - size * 0.48, point.y - size * 0.58);
+    context.lineTo(point.x - size * 0.16, point.y - size * 0.2);
+    context.lineTo(point.x + size * 0.16, point.y - size * 0.58);
+    context.lineTo(point.x + size * 0.48, point.y - size * 0.2);
+    context.lineTo(point.x + size * 0.72, point.y - size * 0.58);
+    context.moveTo(point.x - size * 0.55, point.y - size * 0.18);
+    context.lineTo(point.x - size * 0.55, point.y + size * 0.58);
+    context.moveTo(point.x + size * 0.55, point.y - size * 0.18);
+    context.lineTo(point.x + size * 0.55, point.y + size * 0.58);
+    context.stroke();
+  } else if (symbolKind === "parking") {
+    context.font = `700 ${Math.max(7, size * 1.65)}px Arial, sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = style.detailColor;
+    context.fillText("P", point.x, point.y + 0.5);
+  } else if (symbolKind === "pier") {
+    context.beginPath();
+    context.moveTo(point.x - size * 0.72, point.y - size * 0.38);
+    context.lineTo(point.x + size * 0.72, point.y - size * 0.38);
+    context.moveTo(point.x - size * 0.72, point.y + size * 0.1);
+    context.lineTo(point.x + size * 0.72, point.y + size * 0.1);
+    context.moveTo(point.x, point.y + size * 0.1);
+    context.lineTo(point.x, point.y + size * 0.72);
+    context.stroke();
+  } else {
+    context.beginPath();
+    context.moveTo(point.x, point.y - size * 0.68);
+    context.lineTo(point.x + size * 0.62, point.y + size * 0.52);
+    context.lineTo(point.x - size * 0.62, point.y + size * 0.52);
+    context.closePath();
     context.stroke();
   }
 
@@ -2148,8 +2194,25 @@ function drawSyntheticMapLabel(
   const isRoadLabel = label.kind === "road" || label.kind === "road_reference";
   const isStopLabel = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish";
 
+  const labelStyle = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
+  const labelPadding = "collisionPadding" in labelStyle
+    ? labelStyle.collisionPadding
+    : TOPOPASS_STREET_ATLAS_STYLE.labels.collision.defaultPadding;
+  const estimatedTextWidth = label.text.length * (
+    "approximateCharacterWidth" in labelStyle
+      ? labelStyle.approximateCharacterWidth
+      : Number(/(\d+(?:\.\d+)?)px/.exec(labelStyle.font)?.[1] ?? 11) * 0.58
+  );
+  const symbolOffsetX = syntheticMapLabelSymbolOffsetX(
+    label,
+    viewport,
+    currentZoom,
+    estimatedTextWidth,
+    labelPadding
+  );
+
   context.save();
-  context.translate(point.x, point.y);
+  context.translate(point.x + symbolOffsetX, point.y);
 
   if (isRoadLabel && typeof label.angleRadians === "number") {
     context.rotate(readableRoadLabelAngle(label.angleRadians));
@@ -2157,7 +2220,6 @@ function drawSyntheticMapLabel(
 
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const labelStyle = labelStyleForSyntheticMapLabel(label, viewport, currentZoom);
   const yOffset = isStopLabel ? labelStyle.yOffset ?? 0 : 0;
 
   context.font = labelStyle.font;
@@ -2283,12 +2345,31 @@ function drawSyntheticStreetMapBase(input: {
     input.currentZoom
   );
 
-  for (const visual of filterSyntheticLandmarkVisualsForViewport({
-    visuals: input.landmarkVisuals,
+  const initialLabels = filterSyntheticMapLabelsForViewport({
+    labels: input.mapLabels,
     viewport: input.viewport,
     reservedBoxes: input.labelReservedBoxes,
     currentZoom: input.currentZoom
-  })) {
+  });
+
+  const landmarkVisuals = filterSyntheticLandmarkVisualsForViewport({
+    visuals: input.landmarkVisuals,
+    viewport: input.viewport,
+    reservedBoxes: input.labelReservedBoxes,
+    reservedLabels: initialLabels,
+    currentZoom: input.currentZoom
+  });
+  const labels = filterSyntheticMapLabelsForViewport({
+    labels: input.mapLabels,
+    viewport: input.viewport,
+    reservedBoxes: [
+      ...input.labelReservedBoxes,
+      ...syntheticLandmarkReservationBoxes(landmarkVisuals, input.viewport, input.currentZoom)
+    ],
+    currentZoom: input.currentZoom
+  });
+
+  for (const visual of landmarkVisuals) {
     drawSyntheticLandmarkVisual(
       input.context,
       visual,
@@ -2297,13 +2378,6 @@ function drawSyntheticStreetMapBase(input: {
       input.currentZoom
     );
   }
-
-  const labels = filterSyntheticMapLabelsForViewport({
-    labels: input.mapLabels,
-    viewport: input.viewport,
-    reservedBoxes: input.labelReservedBoxes,
-    currentZoom: input.currentZoom
-  });
 
   for (const label of labels) {
     if (label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish") {
