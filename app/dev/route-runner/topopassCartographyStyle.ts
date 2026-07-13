@@ -48,6 +48,20 @@ export type TopopassLearnerMarkerStyle = {
   asset?: TopopassMarkerAssetStyle;
 };
 
+export type TopopassAreaPolygonStyle = {
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  minViewportScale: number;
+  lowZoomAlpha: number;
+  mediumZoomAlpha: number;
+  highZoomAlpha: number;
+  minRenderedAreaPixels: number;
+  simplifyBelowViewportScale: number;
+  simplifyTolerancePixels: number;
+  maxStrokeWidth: number;
+};
+
 export type TopopassMarkerAssetStyle = {
   src: string;
   sourceWidth: number;
@@ -328,23 +342,35 @@ export type TopopassStreetAtlasStyle = {
     };
   };
   background: {
+    land: { fillColor: string };
     water: {
-      canal: { fillColor: string; strokeColor: string };
-      basin: { fillColor: string; strokeColor: string };
-      river: { fillColor: string; strokeColor: string };
-      linear: TopopassLineStyle;
+      canal: TopopassAreaPolygonStyle;
+      basin: TopopassAreaPolygonStyle;
+      river: TopopassAreaPolygonStyle;
+      linear: TopopassContextLineStyle;
     };
     park: {
-      garden: { fillColor: string; strokeColor: string };
-      square: { fillColor: string; strokeColor: string };
+      garden: TopopassAreaPolygonStyle;
+      square: TopopassAreaPolygonStyle;
     };
-    openSpace: { fillColor: string; strokeColor: string };
+    openSpace: TopopassAreaPolygonStyle;
+    landUse: Record<"residential" | "commercial" | "retail" | "industrial", TopopassAreaPolygonStyle>;
+    institution: Record<"education" | "healthcare" | "civic" | "religious", TopopassAreaPolygonStyle>;
+    building: Record<
+      "residential" | "commercial" | "retail" | "industrial" | "education" | "healthcare" | "civic" | "religious" | "other",
+      TopopassAreaPolygonStyle
+    >;
     pedestrianArea: { fillColor: string; strokeColor: string };
     landBlock: {
       stationQuarter: { fillColor: string; strokeColor: string };
       goodsYard: { fillColor: string; strokeColor: string };
       marketQuarter: { fillColor: string; strokeColor: string };
       civicQuarter: { fillColor: string; strokeColor: string };
+    };
+    layerOrder: readonly ["land-use", "parks-water", "institution", "building", "pedestrian-area"];
+    geometry: {
+      minimumSourceAreaSquareMeters: number;
+      viewportPaddingPixels: number;
     };
     polygonStrokeWidth: number;
   };
@@ -682,7 +708,7 @@ export type TopopassStreetAtlasStyle = {
 
 export const TOPOPASS_STREET_ATLAS_STYLE = {
   canvas: {
-    backgroundColor: "#f4efe3"
+    backgroundColor: "#f3eddf"
   },
   roads: {
     syntheticThresholds: {
@@ -1133,28 +1159,61 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     }
   },
   background: {
+    land: { fillColor: "#f3eddf" },
     water: {
-      canal: { fillColor: "#bee0ea", strokeColor: "#79b8cb" },
-      basin: { fillColor: "#a8d2e2", strokeColor: "#5faac1" },
-      river: { fillColor: "#95c9dc", strokeColor: "#4f9eb9" },
+      canal: { fillColor: "#b9dce7", strokeColor: "#6faec0", strokeWidth: 1.1, minViewportScale: 0.08, lowZoomAlpha: 0.78, mediumZoomAlpha: 0.9, highZoomAlpha: 1, minRenderedAreaPixels: 1, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.8, maxStrokeWidth: 1.25 },
+      basin: { fillColor: "#add5e2", strokeColor: "#62a7bc", strokeWidth: 1.15, minViewportScale: 0.08, lowZoomAlpha: 0.8, mediumZoomAlpha: 0.92, highZoomAlpha: 1, minRenderedAreaPixels: 1, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.8, maxStrokeWidth: 1.3 },
+      river: { fillColor: "#a2cfdf", strokeColor: "#559db5", strokeWidth: 1.25, minViewportScale: 0.06, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.94, highZoomAlpha: 1, minRenderedAreaPixels: 1, simplifyBelowViewportScale: 0.38, simplifyTolerancePixels: 0.75, maxStrokeWidth: 1.4 },
       linear: {
-        casingColor: "rgba(255,252,244,0.72)",
-        strokeColor: "#7bbbd0",
-        casingWidth: 34,
-        strokeWidth: 24
+        casingColor: "rgba(255,252,244,0.62)",
+        strokeColor: "#78b7ca",
+        casingWidth: 14,
+        strokeWidth: 8,
+        minViewportScale: 0.18,
+        lowZoomAlpha: 0.36,
+        mediumZoomAlpha: 0.5,
+        highZoomAlpha: 0.62
       }
     },
     park: {
-      garden: { fillColor: "#dbe8c6", strokeColor: "#aac58f" },
-      square: { fillColor: "#cfdfb8", strokeColor: "#9bb97e" }
+      garden: { fillColor: "#d4e4b9", strokeColor: "#9eb77c", strokeWidth: 1, minViewportScale: 0.08, lowZoomAlpha: 0.72, mediumZoomAlpha: 0.86, highZoomAlpha: 0.94, minRenderedAreaPixels: 2, simplifyBelowViewportScale: 0.48, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.2 },
+      square: { fillColor: "#c9ddab", strokeColor: "#8faa70", strokeWidth: 1.05, minViewportScale: 0.08, lowZoomAlpha: 0.74, mediumZoomAlpha: 0.88, highZoomAlpha: 0.96, minRenderedAreaPixels: 2, simplifyBelowViewportScale: 0.48, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.25 }
     },
-    openSpace: { fillColor: "#e3ead0", strokeColor: "#bcca9f" },
+    openSpace: { fillColor: "#dce7c8", strokeColor: "#adbd91", strokeWidth: 0.9, minViewportScale: 0.08, lowZoomAlpha: 0.62, mediumZoomAlpha: 0.78, highZoomAlpha: 0.88, minRenderedAreaPixels: 2, simplifyBelowViewportScale: 0.48, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.1 },
+    landUse: {
+      residential: { fillColor: "#eee4d3", strokeColor: "#d8cbb8", strokeWidth: 0.65, minViewportScale: 0.12, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.68, highZoomAlpha: 0.78, minRenderedAreaPixels: 5, simplifyBelowViewportScale: 0.62, simplifyTolerancePixels: 1.1, maxStrokeWidth: 0.9 },
+      commercial: { fillColor: "#eadccc", strokeColor: "#cfbeab", strokeWidth: 0.7, minViewportScale: 0.12, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.7, highZoomAlpha: 0.8, minRenderedAreaPixels: 5, simplifyBelowViewportScale: 0.62, simplifyTolerancePixels: 1.1, maxStrokeWidth: 0.95 },
+      retail: { fillColor: "#efddcb", strokeColor: "#d2bda8", strokeWidth: 0.7, minViewportScale: 0.12, lowZoomAlpha: 0.54, mediumZoomAlpha: 0.72, highZoomAlpha: 0.82, minRenderedAreaPixels: 5, simplifyBelowViewportScale: 0.62, simplifyTolerancePixels: 1.1, maxStrokeWidth: 0.95 },
+      industrial: { fillColor: "#e2ddd2", strokeColor: "#c4bcad", strokeWidth: 0.75, minViewportScale: 0.12, lowZoomAlpha: 0.56, mediumZoomAlpha: 0.72, highZoomAlpha: 0.82, minRenderedAreaPixels: 5, simplifyBelowViewportScale: 0.62, simplifyTolerancePixels: 1.1, maxStrokeWidth: 1 }
+    },
+    institution: {
+      education: { fillColor: "#e7c8c0", strokeColor: "#bd928b", strokeWidth: 0.9, minViewportScale: 0.2, lowZoomAlpha: 0.58, mediumZoomAlpha: 0.76, highZoomAlpha: 0.88, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.58, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.15 },
+      healthcare: { fillColor: "#e3beb9", strokeColor: "#b9827f", strokeWidth: 0.95, minViewportScale: 0.2, lowZoomAlpha: 0.6, mediumZoomAlpha: 0.78, highZoomAlpha: 0.9, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.58, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.2 },
+      civic: { fillColor: "#dfc4bd", strokeColor: "#b48d84", strokeWidth: 0.9, minViewportScale: 0.2, lowZoomAlpha: 0.58, mediumZoomAlpha: 0.76, highZoomAlpha: 0.88, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.58, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.15 },
+      religious: { fillColor: "#e8cbc2", strokeColor: "#bd9388", strokeWidth: 0.9, minViewportScale: 0.2, lowZoomAlpha: 0.58, mediumZoomAlpha: 0.76, highZoomAlpha: 0.88, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.58, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.15 }
+    },
+    building: {
+      residential: { fillColor: "#ead8bc", strokeColor: "#a89a84", strokeWidth: 0.72, minViewportScale: 0.68, lowZoomAlpha: 0.48, mediumZoomAlpha: 0.72, highZoomAlpha: 0.9, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.05 },
+      commercial: { fillColor: "#e3ceb2", strokeColor: "#a2927d", strokeWidth: 0.76, minViewportScale: 0.68, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.74, highZoomAlpha: 0.92, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.1 },
+      retail: { fillColor: "#e7cdb0", strokeColor: "#a89179", strokeWidth: 0.76, minViewportScale: 0.68, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.74, highZoomAlpha: 0.92, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.1 },
+      industrial: { fillColor: "#dcd1bf", strokeColor: "#9f9688", strokeWidth: 0.78, minViewportScale: 0.68, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.74, highZoomAlpha: 0.92, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.1 },
+      education: { fillColor: "#dfc0b4", strokeColor: "#a77f77", strokeWidth: 0.8, minViewportScale: 0.64, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.76, highZoomAlpha: 0.94, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
+      healthcare: { fillColor: "#ddb8b1", strokeColor: "#a47673", strokeWidth: 0.82, minViewportScale: 0.64, lowZoomAlpha: 0.54, mediumZoomAlpha: 0.78, highZoomAlpha: 0.95, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
+      civic: { fillColor: "#dec0b7", strokeColor: "#a27e77", strokeWidth: 0.8, minViewportScale: 0.64, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.76, highZoomAlpha: 0.94, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
+      religious: { fillColor: "#e5c7bb", strokeColor: "#aa857c", strokeWidth: 0.8, minViewportScale: 0.64, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.76, highZoomAlpha: 0.94, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
+      other: { fillColor: "#eadbc3", strokeColor: "#aa9c87", strokeWidth: 0.72, minViewportScale: 0.68, lowZoomAlpha: 0.48, mediumZoomAlpha: 0.72, highZoomAlpha: 0.9, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.05 }
+    },
     pedestrianArea: { fillColor: "#ece4d6", strokeColor: "#d4c8b8" },
     landBlock: {
       stationQuarter: { fillColor: "#e3dcce", strokeColor: "#cec2b1" },
       goodsYard: { fillColor: "#eae4d8", strokeColor: "#d2c7b6" },
       marketQuarter: { fillColor: "#efe6d5", strokeColor: "#d8cbb8" },
       civicQuarter: { fillColor: "#e5ddcf", strokeColor: "#cdbfae" }
+    },
+    layerOrder: ["land-use", "parks-water", "institution", "building", "pedestrian-area"],
+    geometry: {
+      minimumSourceAreaSquareMeters: 0.5,
+      viewportPaddingPixels: 2
     },
     polygonStrokeWidth: 1.5
   },

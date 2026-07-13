@@ -67,17 +67,20 @@ export type RealLondonParkContextFeature = RealLondonContextFeatureBase & {
   kind: "park";
   subtype: "park" | "garden" | "open-space";
   points: Vec2[];
+  innerRings?: Vec2[][];
 };
 
 export type RealLondonWaterContextFeature = RealLondonContextFeatureBase & {
   kind: "water";
   subtype: "basin" | "waterway";
   points: Vec2[];
+  innerRings?: Vec2[][];
 };
 
 export type RealLondonPedestrianAreaContextFeature = RealLondonContextFeatureBase & {
   kind: "pedestrian-area";
   points: Vec2[];
+  innerRings?: Vec2[][];
 };
 
 export type RealLondonAreaContextFeature = RealLondonContextFeatureBase & {
@@ -89,18 +92,21 @@ export type RealLondonBuildingContextFeature = RealLondonContextFeatureBase & {
   kind: "building";
   subtype: "residential" | "commercial" | "retail" | "industrial" | "education" | "healthcare" | "civic" | "religious" | "other";
   points: Vec2[];
+  innerRings?: Vec2[][];
 };
 
 export type RealLondonInstitutionContextFeature = RealLondonContextFeatureBase & {
   kind: "institution";
   subtype: "education" | "healthcare" | "civic" | "religious";
   points: Vec2[];
+  innerRings?: Vec2[][];
 };
 
 export type RealLondonLandUseContextFeature = RealLondonContextFeatureBase & {
   kind: "land-use";
   subtype: "residential" | "commercial" | "retail" | "industrial";
   points: Vec2[];
+  innerRings?: Vec2[][];
 };
 
 export type RealLondonRoadReferenceContextFeature = RealLondonContextFeatureBase & {
@@ -643,15 +649,33 @@ function contextFeaturesFromRelation(
 
   const waterSubtype = waterSubtypeForTags(tags);
 
-  return buildRelationOuterRings(relation, waysById, nodesById, projection).flatMap((points, index) => {
+  return buildRelationPolygonRings(relation, waysById, nodesById, projection).flatMap((polygon, index) => {
     const ring = index + 1;
+    const { outerRing: points, innerRings } = polygon;
     const features = atlasPolygonFeatures({
       elementType: "relation",
       elementId: relation.id,
       idSuffix: `-ring-${ring}`,
       tags,
-      points
+      points,
+      innerRings
     });
+
+    const parkSubtype = parkSubtypeForTags(tags);
+
+    if (parkSubtype) {
+      features.push({
+        id: `park-relation-${relation.id}-ring-${ring}`,
+        kind: "park",
+        subtype: parkSubtype,
+        name: namedContextLabel(tags),
+        points,
+        innerRings,
+        sourceElementType: "relation",
+        sourceElementId: relation.id,
+        sourceTags: { ...tags }
+      });
+    }
 
     if (waterSubtype) {
       features.push({
@@ -660,6 +684,7 @@ function contextFeaturesFromRelation(
         subtype: waterSubtype === "waterway" ? "basin" : waterSubtype,
         name: namedContextLabel(tags),
         points,
+        innerRings,
         sourceElementType: "relation",
         sourceElementId: relation.id,
         sourceTags: { ...tags }
@@ -676,12 +701,14 @@ function atlasPolygonFeatures(input: {
   idSuffix?: string;
   tags: OverpassTags;
   points: Vec2[];
+  innerRings?: Vec2[][];
 }): RealLondonContextFeature[] {
-  const { elementType, elementId, idSuffix = "", tags, points } = input;
+  const { elementType, elementId, idSuffix = "", tags, points, innerRings = [] } = input;
   const features: RealLondonContextFeature[] = [];
   const source = {
     name: namedContextLabel(tags),
     points,
+    innerRings,
     sourceElementType: elementType,
     sourceElementId: elementId,
     sourceTags: { ...tags }
@@ -1016,30 +1043,70 @@ function projectedWayPoints(input: {
   });
 }
 
-function buildRelationOuterRings(
+type RelationPolygonRings = {
+  outerRing: Vec2[];
+  innerRings: Vec2[][];
+};
+
+function buildRelationPolygonRings(
   relation: OverpassRelationElement,
   waysById: ReadonlyMap<OverpassElementId, OverpassWayElement>,
   nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>,
   projection: OsmLocalProjection
+): RelationPolygonRings[] {
+  const members = relationMembers(relation);
+  const outerRings = projectedRelationRings("outer", members, waysById, nodesById, projection);
+  const innerRings = projectedRelationRings("inner", members, waysById, nodesById, projection);
+
+  return outerRings.map((outerRing) => ({
+    outerRing,
+    innerRings: innerRings.filter((innerRing) => pointInPolygon(innerRing[0], outerRing))
+  }));
+}
+
+function projectedRelationRings(
+  role: "outer" | "inner",
+  members: ReadonlyArray<{ type: "way"; ref: OverpassElementId; role: string }>,
+  waysById: ReadonlyMap<OverpassElementId, OverpassWayElement>,
+  nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>,
+  projection: OsmLocalProjection
 ): Vec2[][] {
-  const outerWays = relationMembers(relation)
-    .filter((member) => member.type === "way" && member.role === "outer")
+  const ways = members
+    .filter((member) => member.role === role)
     .flatMap((member) => {
       const way = waysById.get(member.ref);
-
       return way ? [way] : [];
     });
-  const nodeRefRings = stitchClosedNodeRefRings(outerWays.map((way) => way.nodes));
 
-  return nodeRefRings.flatMap((ring) => {
+  return stitchClosedNodeRefRings(ways.map((way) => way.nodes)).flatMap((ring) => {
     const points = ring.flatMap((nodeId) => {
       const node = nodesById.get(nodeId);
-
       return node ? [projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, projection)] : [];
     });
 
     return points.length === ring.length && points.length >= 4 ? [points] : [];
   });
+}
+
+function pointInPolygon(point: Vec2, polygon: readonly Vec2[]): boolean {
+  let inside = false;
+
+  for (let current = 0, previous = polygon.length - 1; current < polygon.length; previous = current, current += 1) {
+    const currentPoint = polygon[current];
+    const previousPoint = polygon[previous];
+    const crosses =
+      currentPoint.y > point.y !== previousPoint.y > point.y &&
+      point.x <
+        ((previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)) /
+          (previousPoint.y - currentPoint.y || Number.EPSILON) +
+          currentPoint.x;
+
+    if (crosses) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
 }
 
 function stitchClosedNodeRefRings(nodeRefsByWay: readonly OverpassElementId[][]): OverpassElementId[][] {

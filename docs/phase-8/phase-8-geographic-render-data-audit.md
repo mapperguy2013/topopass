@@ -13,10 +13,11 @@ fetch live Overpass data and does not use the approved visual master as
 geography.
 
 Stage 8.3 subsequently added typed building, institutional-area, land-use, and
-road-reference context features. Stage 8.5 now consumes supported names and
-road references through a typed label-candidate pipeline. The source totals
-below remain the Stage 8.2 baseline; adapter and label diagnostics reflect the
-current code, while building and area-fill renderer counts remain unchanged.
+road-reference context features. Stage 8.5 consumes supported names and road
+references through a typed label-candidate pipeline. Stage 8.6 consumes the
+supported area geometry, including complete relation inner rings. The source
+totals below remain the Stage 8.2 baseline; adapter and renderer diagnostics
+reflect the current code.
 
 ## Scope And Methodology
 
@@ -63,28 +64,29 @@ dev-only stress fixture.
 
 ## Coverage Matrix
 
-| Category | Current source evidence | Current render-ready status | Stage 8.3 implication |
+| Category | Current source evidence | Current render-ready status | Current implication |
 | --- | --- | --- | --- |
 | Dense road network | Present across curated and legacy real fixtures. | Road graph and current road rendering exist. | Preserve routing while adding atlas density rules later. |
 | A/B road references | 7392 real source road-ref ways aggregate. | Typed context features now produce bounded red label candidates with source IDs and tags. | Verify placement and density through screenshots. |
-| Buildings | 696 usable closed building polygons aggregate. | Typed context footprints exist where fixtures are converted; `0` rendered. | Add simplification and renderer consumption. |
-| Land use | 1436 real land-use source features aggregate. | Typed supported polygons exist where geometry is retained; `0` rendered. | Add renderer consumption. |
-| Institutions | 764 civic/institutional source features aggregate. | Typed area features are separate from point landmarks; `0` rendered polygons. | Add renderer consumption. |
+| Buildings | 696 usable closed building polygons aggregate. | 97 typed source-backed footprints render in the explicit audit; 38 render through normal non-lazy beta gates. | Keep Central London performance-gated and verify fixture gaps visually. |
+| Land use | 1436 real land-use source features aggregate. | 128 typed supported polygons render when King's Cross is safely hydrated; normal non-lazy beta fixtures currently render 0 because retained geometry is absent. | Do not fabricate fields to fill source gaps. |
+| Institutions | 764 civic/institutional source features aggregate. | 101 typed area polygons render in the explicit audit; 44 render through normal non-lazy beta gates. Point landmarks remain separate. | Keep fills subordinate to roads and labels. |
 | Places and estates | Supported `place=*` labels and named residential land-use polygons exist. | District labels render from supported places; estate labels require an explicitly named residential land-use feature. | Verify hierarchy and fixture gaps visually. |
-| Parks and gardens | Present in several fixtures. | Supported closed polygons can render as park/open-space backgrounds. | Restyle in later visual stages. |
+| Parks and gardens | Present in several fixtures. | Supported closed polygons render with Stage 8.6 park/open-space styles. | Keep roads, labels and learner overlays dominant. |
 | Water and river | Water polygons, waterways, and relation rings are present. | Supported water polygons and waterways render where adapted. | Preserve multipolygon handling and add pier support only where sourced. |
 | Rail and stations | Present in station-area and bridge fixtures. | Rail lines and `railway=station` point visuals can render. | Review compact transport-symbol contracts. |
 | Landmarks/facilities | Tourism, historic, hospital, public-building, market, museum/gallery candidates exist. | Current output is point-like landmark visuals. | Add atlas symbol contracts; do not treat these as areas. |
 
 ## Aggregate Findings
 
-The current real fixture set and Stage 8.3 adapter can support road-network
+The current real fixture set and Stage 8.3 adapter support road-network
 hierarchy, local-road texture, building fabric, institutional and land-use
 areas, genuine road-reference data, parks, water, rail, stations, area labels,
 and point landmarks. Stage 8.5 now renders source-backed label candidates for
-those supported names and prominent A/B references. The renderer still cannot
-display the approved visual master's building fabric, institutional blocks,
-land-use fields, or pier symbols.
+those supported names and prominent A/B references. Stage 8.6 now renders the
+supported building fabric, institutional blocks, land-use fields, parks and
+water with deterministic background order and semantic-zoom limits. Pier
+symbols remain unsupported.
 
 The approved visual master therefore remains an appearance target only. Stage
 8.2 does not claim visual completion and does not change production map
@@ -92,14 +94,14 @@ styling.
 
 ## Pipeline Losses
 
-- Valid A/B road `ref` tags now become typed context features, but no current
-  renderer path displays them.
-- Building-tagged closed ways and multipolygon outer rings now become typed
-  footprints, while the route graph and renderer still ignore them.
+- Valid A/B road `ref` tags become typed context features and bounded Stage 8.5
+  label candidates.
+- Building-tagged closed ways and complete multipolygon rings become typed
+  footprints consumed by the Stage 8.6 background renderer.
 - Public/civic buildings can become point landmarks when named and recognised;
   supported closed geometry separately becomes an institutional-area feature.
-- Supported residential, retail/commercial, and industrial polygons now become
-  typed land-use blocks where fixture geometry is available, but are not drawn.
+- Supported residential, retail/commercial, industrial and rail polygons become
+  typed land-use blocks and render where retained fixture geometry is available.
 - Pier-like source features require whitelist and adapter work before any
   symbol can be claimed.
 - `public_transport=station` without `railway=station` is source-present but
@@ -123,17 +125,18 @@ too heavy for normal learner practice.
 
 ## Accuracy And Attribution
 
-All real OSM fixture reports record OpenStreetMap attribution. The audit does
+All real OSM fixture reports record OpenStreetMap attribution. Stage 8.6 does
 not modify OSM names, road references, fixture geometry, attribution text,
 route generation, legality, matching, scoring, hints, feedback, learner
-progress, authentication, payments, deployment, or production rendering.
+progress, authentication, payments or deployment.
 
 ## Performance Considerations
 
 The Central London fixture is 251273 elements and remains a dev-only stress
-case. A later renderer stage must define simplification, lazy loading, tiling,
-or other limits before building/land-use/institutional fabric is rendered for
-this extent.
+case. Stage 8.6 defines viewport filtering, minimum rendered area, bounded
+screen-space simplification and semantic-zoom limits. The full extent still
+requires its existing dev-only gate or a later loading/tiling strategy before
+dense fabric is enabled for learner use.
 
 The King's Cross / Euston fixture remains behind the existing lazy-loading
 gate. The audit command can inspect it without running route-generation
@@ -141,22 +144,20 @@ preflights.
 
 ## Manual QA
 
-Completed:
+Completed through Stage 8.6:
 
 - Inspected the approved visual master for intended cartographic character.
 - Read the Phase 8 README, cartography acceptance, baseline audit, and visual
   QA plan.
-- Ran the deterministic audit command and focused automated tests.
+- Ran the deterministic audit command and required automated validation.
+- Inspected Piccadilly, Waterloo Bridge, King's Cross / Euston, quiet
+  residential and one-way fixtures at desktop and mobile sizes.
+- Exercised pan, wheel zoom, mobile pinch, reset, route drawing, markers,
+  restrictions, correct/incorrect review overlays and OSM attribution.
 
-Remaining:
-
-- Run the application and visually inspect representative existing maps:
-  Piccadilly/dense central, Waterloo Bridge, King's Cross / Euston, quiet
-  residential roads, one-way system, and Central London only if it loads safely.
-- Confirm existing production visuals are unchanged by screenshot or live
-  browser inspection.
-- Confirm route drawing, scoring, pan/zoom, learner overlays, route-review
-  overlays, and OSM attribution remain visible in the live UI.
+Remaining Phase 8 work includes the later symbol, principal-density,
+overlay-rebalance, mobile/accessibility, performance and final acceptance
+stages. The dev-only Central London fixture remains a manual performance item.
 
 ## Stage 8.3 Handoff Status
 
@@ -169,6 +170,8 @@ preserving these audit distinctions. Remaining later-stage work includes:
 - Transport and public-feature candidates for compact atlas symbols.
 - Pier whitelist, adapter, and symbol support only if committed source tags
   warrant it.
-- Inner-ring multipolygon geometry where holes affect later fills.
-- Renderer consumption, styling, and placement for each new feature type.
 - Central London performance limits before dense fabric is enabled.
+
+Stage 8.6 completed area renderer consumption, styling, viewport filtering,
+bounded semantic zoom and complete-ring courtyard holes. It did not start the
+compact-symbol and road-reference work assigned to Stage 8.7.

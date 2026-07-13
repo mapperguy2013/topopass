@@ -11,7 +11,10 @@ import {
 import type { OverpassElementId, OverpassTags } from "../../../lib/map-engine/osm/index.ts";
 import { buildRealLondonContextFeatures } from "./realLondonContextData.ts";
 import type {
+  RealLondonBuildingContextFeature,
   RealLondonContextFeature,
+  RealLondonInstitutionContextFeature,
+  RealLondonLandUseContextFeature,
   RealLondonLandmarkContextFeature,
   RealLondonParkContextFeature,
   RealLondonPedestrianAreaContextFeature,
@@ -20,6 +23,7 @@ import type {
 import {
   TOPOPASS_STREET_ATLAS_STYLE,
   type TopopassContextLabelStyle,
+  type TopopassAreaPolygonStyle,
   type TopopassLabelStyle,
   type TopopassMarkerAssetStyle,
   type TopopassRoadInteractionStyle,
@@ -35,7 +39,29 @@ export type SyntheticRoadClass =
   | "no-entry"
   | "restricted";
 
-export type SyntheticBackgroundFeatureKind = "park" | "water" | "land-block" | "open-space" | "pedestrian-area";
+export type SyntheticBackgroundFeatureKind =
+  | "land-use"
+  | "park"
+  | "water"
+  | "institution"
+  | "building"
+  | "land-block"
+  | "open-space"
+  | "pedestrian-area";
+
+export type SyntheticBackgroundRenderLayer =
+  | "land-use"
+  | "parks-water"
+  | "institution"
+  | "building"
+  | "pedestrian-area";
+
+export type SyntheticBackgroundSourceMetadata = {
+  sourceFeatureId: string;
+  sourceElementType: "node" | "way" | "relation";
+  sourceElementId: OverpassElementId;
+  sourceTags: OverpassTags;
+};
 
 export type SyntheticLinearFeatureKind = "rail" | "waterway" | "bridge" | "crossing";
 
@@ -194,6 +220,12 @@ export type SyntheticBackgroundFeature = {
   kind: SyntheticBackgroundFeatureKind;
   label?: string;
   points: Vec2[];
+  innerRings?: Vec2[][];
+  subtype?: string;
+  renderLayer?: SyntheticBackgroundRenderLayer;
+  sourceMetadata?: SyntheticBackgroundSourceMetadata;
+  sourceBounds?: { minX: number; minY: number; maxX: number; maxY: number };
+  sourceAreaSquareMeters?: number;
   fillColor: string;
   strokeColor: string;
   routable: false;
@@ -1329,13 +1361,7 @@ function contextLineStyleForFeature(feature: SyntheticLinearFeature) {
     return TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail;
   }
 
-  return {
-    ...TOPOPASS_STREET_ATLAS_STYLE.background.water.linear,
-    minViewportScale: 0.28,
-    lowZoomAlpha: 0.52,
-    mediumZoomAlpha: 0.72,
-    highZoomAlpha: 0.88
-  };
+  return TOPOPASS_STREET_ATLAS_STYLE.background.water.linear;
 }
 
 function contextMarkerStyleForVisual(visual: SyntheticLandmarkVisual) {
@@ -2269,70 +2295,350 @@ function landmarkVisualKindForContextLandmark(feature: RealLondonLandmarkContext
 function buildOsmBackgroundFeatures(map: MapDefinition, fixture: unknown): SyntheticBackgroundFeature[] {
   return buildRealLondonContextFeatures(map, fixture)
     .flatMap((feature) => {
+      if (feature.kind === "land-use") {
+        return compactBackgroundFeature(backgroundFeatureFromLandUseContext(feature));
+      }
+
       if (feature.kind === "park") {
-        return [backgroundFeatureFromParkContext(feature)];
+        return compactBackgroundFeature(backgroundFeatureFromParkContext(feature));
       }
 
       if (feature.kind === "water" && feature.subtype !== "waterway" && feature.points.length >= 3) {
-        return [backgroundFeatureFromWaterContext(feature)];
+        return compactBackgroundFeature(backgroundFeatureFromWaterContext(feature));
+      }
+
+      if (feature.kind === "institution") {
+        return compactBackgroundFeature(backgroundFeatureFromInstitutionContext(feature));
+      }
+
+      if (feature.kind === "building") {
+        return compactBackgroundFeature(backgroundFeatureFromBuildingContext(feature));
       }
 
       if (feature.kind === "pedestrian-area") {
-        return [backgroundFeatureFromPedestrianAreaContext(feature)];
+        return compactBackgroundFeature(backgroundFeatureFromPedestrianAreaContext(feature));
       }
 
       return [];
     })
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort(compareSyntheticBackgroundFeaturesForRender);
 }
 
-function backgroundFeatureFromParkContext(feature: RealLondonParkContextFeature): SyntheticBackgroundFeature {
+function compactBackgroundFeature(feature: SyntheticBackgroundFeature | null): SyntheticBackgroundFeature[] {
+  return feature ? [feature] : [];
+}
+
+function backgroundFeatureFromLandUseContext(feature: RealLondonLandUseContextFeature): SyntheticBackgroundFeature | null {
+  return prepareOsmBackgroundFeature(
+    feature,
+    "land-use",
+    "land-use",
+    TOPOPASS_STREET_ATLAS_STYLE.background.landUse[feature.subtype]
+  );
+}
+
+function backgroundFeatureFromParkContext(feature: RealLondonParkContextFeature): SyntheticBackgroundFeature | null {
   const background = TOPOPASS_STREET_ATLAS_STYLE.background;
   const style =
     feature.subtype === "park" || feature.subtype === "garden"
       ? background.park.garden
       : background.openSpace;
 
-  return {
-    id: `osm-context-${feature.id}`,
-    kind: feature.subtype === "park" || feature.subtype === "garden" ? "park" : "open-space",
-    label: feature.name,
-    fillColor: style.fillColor,
-    strokeColor: style.strokeColor,
-    points: feature.points.map((point) => ({ ...point })),
-    routable: false
-  };
+  return prepareOsmBackgroundFeature(
+    feature,
+    feature.subtype === "park" || feature.subtype === "garden" ? "park" : "open-space",
+    "parks-water",
+    style
+  );
 }
 
-function backgroundFeatureFromWaterContext(feature: RealLondonWaterContextFeature): SyntheticBackgroundFeature {
+function backgroundFeatureFromWaterContext(feature: RealLondonWaterContextFeature): SyntheticBackgroundFeature | null {
   const water = TOPOPASS_STREET_ATLAS_STYLE.background.water;
   const tags = feature.sourceTags ?? {};
   const waterValue = typeof tags.water === "string" ? tags.water : "";
   const style =
     feature.name?.toLowerCase().includes("thames") || waterValue === "river" ? water.river : water.basin;
 
+  return prepareOsmBackgroundFeature(feature, "water", "parks-water", style);
+}
+
+function backgroundFeatureFromInstitutionContext(
+  feature: RealLondonInstitutionContextFeature
+): SyntheticBackgroundFeature | null {
+  return prepareOsmBackgroundFeature(
+    feature,
+    "institution",
+    "institution",
+    TOPOPASS_STREET_ATLAS_STYLE.background.institution[feature.subtype]
+  );
+}
+
+function backgroundFeatureFromBuildingContext(feature: RealLondonBuildingContextFeature): SyntheticBackgroundFeature | null {
+  return prepareOsmBackgroundFeature(
+    feature,
+    "building",
+    "building",
+    TOPOPASS_STREET_ATLAS_STYLE.background.building[feature.subtype]
+  );
+}
+
+function backgroundFeatureFromPedestrianAreaContext(
+  feature: RealLondonPedestrianAreaContextFeature
+): SyntheticBackgroundFeature | null {
+  const style = TOPOPASS_STREET_ATLAS_STYLE.background.pedestrianArea;
+
+  return prepareOsmBackgroundFeature(feature, "pedestrian-area", "pedestrian-area", {
+    ...style,
+    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.background.polygonStrokeWidth,
+    minViewportScale: 0.34,
+    lowZoomAlpha: 0.42,
+    mediumZoomAlpha: 0.62,
+    highZoomAlpha: 0.76,
+    minRenderedAreaPixels: 3,
+    simplifyBelowViewportScale: 0.56,
+    simplifyTolerancePixels: 0.9,
+    maxStrokeWidth: TOPOPASS_STREET_ATLAS_STYLE.background.polygonStrokeWidth
+  });
+}
+
+function prepareOsmBackgroundFeature(
+  feature:
+    | RealLondonLandUseContextFeature
+    | RealLondonParkContextFeature
+    | RealLondonWaterContextFeature
+    | RealLondonInstitutionContextFeature
+    | RealLondonBuildingContextFeature
+    | RealLondonPedestrianAreaContextFeature,
+  kind: SyntheticBackgroundFeatureKind,
+  renderLayer: SyntheticBackgroundRenderLayer,
+  style: TopopassAreaPolygonStyle
+): SyntheticBackgroundFeature | null {
+  const points = validClosedPolygonRing(feature.points);
+
+  if (!points) {
+    return null;
+  }
+
+  const innerRings = (feature.innerRings ?? []).flatMap((ring) => {
+    const validRing = validClosedPolygonRing(ring, 0.01);
+    return validRing ? [validRing] : [];
+  });
+  const sourceAreaSquareMeters = Math.max(
+    0,
+    polygonAreaSquareMeters(points) - innerRings.reduce((total, ring) => total + polygonAreaSquareMeters(ring), 0)
+  );
+
+  if (sourceAreaSquareMeters < TOPOPASS_STREET_ATLAS_STYLE.background.geometry.minimumSourceAreaSquareMeters) {
+    return null;
+  }
+
   return {
     id: `osm-context-${feature.id}`,
-    kind: "water",
+    kind,
+    subtype: "subtype" in feature ? feature.subtype : undefined,
+    renderLayer,
     label: feature.name,
     fillColor: style.fillColor,
     strokeColor: style.strokeColor,
-    points: feature.points.map((point) => ({ ...point })),
+    points,
+    innerRings,
+    sourceBounds: polygonBounds(points),
+    sourceAreaSquareMeters,
+    sourceMetadata: {
+      sourceFeatureId: feature.id,
+      sourceElementType: feature.sourceElementType,
+      sourceElementId: feature.sourceElementId,
+      sourceTags: { ...(feature.sourceTags ?? {}) }
+    },
     routable: false
   };
 }
 
-function backgroundFeatureFromPedestrianAreaContext(feature: RealLondonPedestrianAreaContextFeature): SyntheticBackgroundFeature {
-  const style = TOPOPASS_STREET_ATLAS_STYLE.background.pedestrianArea;
+function validClosedPolygonRing(points: readonly Vec2[], minimumAreaSquareMeters?: number): Vec2[] | null {
+  if (points.length < 4 || points.some((point) => !Number.isFinite(point.x) || !Number.isFinite(point.y))) {
+    return null;
+  }
+
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  if (first.x !== last.x || first.y !== last.y) {
+    return null;
+  }
+
+  const cloned = points.map((point) => ({ ...point }));
+  const minimumArea = minimumAreaSquareMeters ?? TOPOPASS_STREET_ATLAS_STYLE.background.geometry.minimumSourceAreaSquareMeters;
+
+  return polygonAreaSquareMeters(cloned) >= minimumArea ? cloned : null;
+}
+
+function polygonAreaSquareMeters(points: readonly Vec2[]): number {
+  let doubledArea = 0;
+
+  for (let index = 0; index < points.length - 1; index += 1) {
+    doubledArea += points[index].x * points[index + 1].y - points[index + 1].x * points[index].y;
+  }
+
+  return Math.abs(doubledArea) / 2;
+}
+
+function polygonBounds(points: readonly Vec2[]): { minX: number; minY: number; maxX: number; maxY: number } {
+  return points.reduce(
+    (bounds, point) => ({
+      minX: Math.min(bounds.minX, point.x),
+      minY: Math.min(bounds.minY, point.y),
+      maxX: Math.max(bounds.maxX, point.x),
+      maxY: Math.max(bounds.maxY, point.y)
+    }),
+    {
+      minX: Number.POSITIVE_INFINITY,
+      minY: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      maxY: Number.NEGATIVE_INFINITY
+    }
+  );
+}
+
+export function sortSyntheticBackgroundFeaturesForRender(
+  features: readonly SyntheticBackgroundFeature[]
+): SyntheticBackgroundFeature[] {
+  return [...features].sort(compareSyntheticBackgroundFeaturesForRender);
+}
+
+export function filterSyntheticBackgroundFeaturesForViewport(
+  features: readonly SyntheticBackgroundFeature[],
+  viewport: ScreenMapViewport
+): SyntheticBackgroundFeature[] {
+  const scale = syntheticMapViewportScale(viewport);
+  const mapPadding = scale > 0 ? TOPOPASS_STREET_ATLAS_STYLE.background.geometry.viewportPaddingPixels / scale : 0;
+
+  return sortSyntheticBackgroundFeaturesForRender(features).filter((feature) => {
+    const style = backgroundPolygonStyleForFeature(feature);
+
+    if (scale < style.minViewportScale) {
+      return false;
+    }
+
+    if (
+      feature.sourceAreaSquareMeters !== undefined &&
+      feature.sourceAreaSquareMeters * scale * scale < style.minRenderedAreaPixels
+    ) {
+      return false;
+    }
+
+    if (!feature.sourceBounds) {
+      return true;
+    }
+
+    return !(
+      feature.sourceBounds.maxX < viewport.mapBounds.minX - mapPadding ||
+      feature.sourceBounds.minX > viewport.mapBounds.maxX + mapPadding ||
+      feature.sourceBounds.maxY < viewport.mapBounds.minY - mapPadding ||
+      feature.sourceBounds.minY > viewport.mapBounds.maxY + mapPadding
+    );
+  });
+}
+
+export function syntheticBackgroundFeatureStyleForViewport(
+  feature: SyntheticBackgroundFeature,
+  viewport: ScreenMapViewport
+): { alpha: number; strokeWidth: number; simplifyTolerancePixels: number } {
+  const style = backgroundPolygonStyleForFeature(feature);
+  const scale = syntheticMapViewportScale(viewport);
+  const decluttering = TOPOPASS_STREET_ATLAS_STYLE.zoom.decluttering;
+  const alpha =
+    scale < decluttering.lowDetailViewportScale
+      ? style.lowZoomAlpha
+      : scale >= decluttering.highDetailViewportScale
+        ? style.highZoomAlpha
+        : style.mediumZoomAlpha;
 
   return {
-    id: `osm-context-${feature.id}`,
-    kind: "pedestrian-area",
-    label: feature.name,
-    fillColor: style.fillColor,
-    strokeColor: style.strokeColor,
-    points: feature.points.map((point) => ({ ...point })),
-    routable: false
+    alpha: clampNumber(alpha, 0, 1),
+    strokeWidth: clampNumber(style.strokeWidth, 0, style.maxStrokeWidth),
+    simplifyTolerancePixels: scale < style.simplifyBelowViewportScale ? style.simplifyTolerancePixels : 0
+  };
+}
+
+function compareSyntheticBackgroundFeaturesForRender(
+  left: SyntheticBackgroundFeature,
+  right: SyntheticBackgroundFeature
+): number {
+  const layerDifference = backgroundLayerRank(left) - backgroundLayerRank(right);
+
+  if (layerDifference !== 0) {
+    return layerDifference;
+  }
+
+  const areaDifference = (right.sourceAreaSquareMeters ?? 0) - (left.sourceAreaSquareMeters ?? 0);
+  return areaDifference || left.id.localeCompare(right.id);
+}
+
+function backgroundLayerRank(feature: SyntheticBackgroundFeature): number {
+  const layer = feature.renderLayer ?? defaultBackgroundRenderLayer(feature.kind);
+  const rank = TOPOPASS_STREET_ATLAS_STYLE.background.layerOrder.indexOf(layer);
+  return rank >= 0 ? rank : TOPOPASS_STREET_ATLAS_STYLE.background.layerOrder.length;
+}
+
+function defaultBackgroundRenderLayer(kind: SyntheticBackgroundFeatureKind): SyntheticBackgroundRenderLayer {
+  if (kind === "land-use" || kind === "land-block") {
+    return "land-use";
+  }
+
+  if (kind === "park" || kind === "open-space" || kind === "water") {
+    return "parks-water";
+  }
+
+  if (kind === "institution") {
+    return "institution";
+  }
+
+  if (kind === "building") {
+    return "building";
+  }
+
+  return "pedestrian-area";
+}
+
+function backgroundPolygonStyleForFeature(feature: SyntheticBackgroundFeature): TopopassAreaPolygonStyle {
+  const background = TOPOPASS_STREET_ATLAS_STYLE.background;
+
+  if (feature.kind === "land-use" && feature.subtype && feature.subtype in background.landUse) {
+    return background.landUse[feature.subtype as keyof typeof background.landUse];
+  }
+
+  if (feature.kind === "institution" && feature.subtype && feature.subtype in background.institution) {
+    return background.institution[feature.subtype as keyof typeof background.institution];
+  }
+
+  if (feature.kind === "building" && feature.subtype && feature.subtype in background.building) {
+    return background.building[feature.subtype as keyof typeof background.building];
+  }
+
+  if (feature.kind === "water") {
+    return feature.label?.toLowerCase().includes("thames") ? background.water.river : background.water.basin;
+  }
+
+  if (feature.kind === "park") {
+    return background.park.garden;
+  }
+
+  if (feature.kind === "open-space") {
+    return background.openSpace;
+  }
+
+  return {
+    fillColor: feature.fillColor,
+    strokeColor: feature.strokeColor,
+    strokeWidth: background.polygonStrokeWidth,
+    minViewportScale: 0,
+    lowZoomAlpha: 0.68,
+    mediumZoomAlpha: 0.82,
+    highZoomAlpha: 0.92,
+    minRenderedAreaPixels: 0,
+    simplifyBelowViewportScale: 0.5,
+    simplifyTolerancePixels: 0.8,
+    maxStrokeWidth: background.polygonStrokeWidth
   };
 }
 

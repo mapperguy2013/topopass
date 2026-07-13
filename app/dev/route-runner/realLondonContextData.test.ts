@@ -313,22 +313,28 @@ test("Stage 8.3 adapter output is deterministic and does not mutate source fixtu
   assert.deepEqual(atlasFixture, fixtureBefore);
 });
 
-test("Stage 8.3 adapter normalises multipolygon outer rings with relation traceability", () => {
+test("Stage 8.6 adapter preserves multipolygon outer and inner rings with relation traceability", () => {
   const fixture: OverpassJsonResponse = {
     elements: [
       { type: "node", id: 1, lat: 51.52, lon: -0.14 },
       { type: "node", id: 2, lat: 51.5201, lon: -0.1398 },
       { type: "node", id: 3, lat: 51.5202, lon: -0.1396 },
       { type: "node", id: 4, lat: 51.5203, lon: -0.1398 },
+      { type: "node", id: 5, lat: 51.52013, lon: -0.13982 },
+      { type: "node", id: 6, lat: 51.52015, lon: -0.13978 },
+      { type: "node", id: 7, lat: 51.52017, lon: -0.1398 },
+      { type: "node", id: 8, lat: 51.52015, lon: -0.13984 },
       { type: "way", id: 10, nodes: [1, 2], tags: { highway: "residential" } },
       { type: "way", id: 20, nodes: [1, 2, 3] },
       { type: "way", id: 21, nodes: [3, 4, 1] },
+      { type: "way", id: 22, nodes: [5, 6, 7, 8, 5] },
       {
         type: "relation",
         id: 30,
         members: [
           { type: "way", ref: 20, role: "outer" },
-          { type: "way", ref: 21, role: "outer" }
+          { type: "way", ref: 21, role: "outer" },
+          { type: "way", ref: 22, role: "inner" }
         ],
         tags: { type: "multipolygon", building: "yes", name: "Relation Building" }
       }
@@ -354,4 +360,6 @@ test("Stage 8.3 adapter normalises multipolygon outer rings with relation tracea
   assert.equal(building.sourceElementId, 30);
   assert.equal(building.name, "Relation Building");
   assert.deepEqual(building.points[0], building.points.at(-1));
+  assert.equal(building.innerRings?.length, 1);
+  assert.deepEqual(building.innerRings?.[0][0], building.innerRings?.[0].at(-1));
 });

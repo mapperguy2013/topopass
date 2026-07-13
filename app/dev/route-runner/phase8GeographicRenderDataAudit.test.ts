@@ -185,11 +185,11 @@ test("Phase 8 synthetic edge report separates adapted road refs from displayed r
   assert.equal(edgeReport.sourceCoverage.otherRoadRefWays, 1);
   assert.equal(edgeReport.routeGraphCoverage.roadsWithRawRefTags, 3);
   assert.equal(edgeReport.contextAdapterCoverage.roadReferenceFeatures, 2);
-  assert.equal(edgeReport.rendererConsumedCoverage.displayedRoadReferences, 0);
-  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "road-references")?.state, "context-ready-no-renderer-consumer");
+  assert.equal(edgeReport.rendererConsumedCoverage.displayedRoadReferences, 2);
+  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "road-references")?.state, "render-ready");
 });
 
-test("Phase 8 audit reports adapted building geometry separately from renderer consumption", () => {
+test("Stage 8.6 audit reports adapted building geometry as renderer-consumed", () => {
   const edgeReport = buildPhase8AuditReportForFixture(buildEdgeFixture(), {
     mapId: "phase-8-building-fixture",
     name: "Phase 8 building fixture",
@@ -199,8 +199,8 @@ test("Phase 8 audit reports adapted building geometry separately from renderer c
 
   assert.equal(edgeReport.sourceCoverage.usableClosedBuildingPolygons, 1);
   assert.equal(edgeReport.contextAdapterCoverage.generalBuildingPolygons, 1);
-  assert.equal(edgeReport.rendererConsumedCoverage.generalBuildingPolygons, 0);
-  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "buildings-built-fabric")?.state, "context-ready-no-renderer-consumer");
+  assert.equal(edgeReport.rendererConsumedCoverage.generalBuildingPolygons, 1);
+  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "buildings-built-fabric")?.state, "render-ready");
 });
 
 test("Phase 8 audit keeps point landmarks separate from adapted institutional polygons", () => {
@@ -214,8 +214,9 @@ test("Phase 8 audit keeps point landmarks separate from adapted institutional po
   assert.ok(edgeReport.contextAdapterCoverage.institutionalPointLandmarks > 0);
   assert.equal(edgeReport.contextAdapterCoverage.institutionalPolygons, 1);
   assert.equal(edgeReport.contextAdapterCoverage.landUsePolygons, 1);
-  assert.equal(edgeReport.rendererConsumedCoverage.institutionalPolygons, 0);
-  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "land-use-institutions")?.state, "context-ready-no-renderer-consumer");
+  assert.equal(edgeReport.rendererConsumedCoverage.institutionalPolygons, 1);
+  assert.equal(edgeReport.rendererConsumedCoverage.landUsePolygons, 1);
+  assert.equal(edgeReport.categoryAudits.find((category) => category.id === "land-use-institutions")?.state, "render-ready");
 });
 
 test("Phase 8 audit reports missing whitelist blockers for future atlas tags", () => {
@@ -241,12 +242,37 @@ test("Phase 8 context feature totals agree with buildRealLondonContextFeatures",
   assert.equal(fixtureReport("waterlooBridgeOverpass.json").contextAdapterCoverage.totalFeatures, contextFeatures.length);
 });
 
-test("Phase 8 audit marks source tag summaries separately from renderer output", () => {
+test("Stage 8.6 audit reports source-backed building renderer output", () => {
   const waterloo = fixtureReport("waterlooBridgeOverpass.json");
 
   assert.ok(waterloo.sourceCoverage.usableClosedBuildingPolygons > 0);
-  assert.equal(waterloo.rendererConsumedCoverage.generalBuildingPolygons, 0);
+  assert.ok(waterloo.rendererConsumedCoverage.generalBuildingPolygons > 0);
   assert.ok(waterloo.sourceCoverage.sourceRoadRefWays >= waterloo.rendererConsumedCoverage.displayedRoadReferences);
+});
+
+test("Stage 8.6 renderer-consumed real fixture polygon counts stay stable behind existing gates", () => {
+  const expectedByFixture = new Map([
+    ["centralLondonOverpass.json", [0, 0, 0]],
+    ["kingsCrossEustonOverpass.json", [0, 0, 0]],
+    ["oneWaySystemAreaOverpass.json", [11, 18, 0]],
+    ["piccadillyCircusOverpass.json", [9, 9, 0]],
+    ["quietResidentialRoadsOverpass.json", [3, 8, 0]],
+    ["realLondonPilotOverpass.json", [0, 0, 0]],
+    ["waterlooBridgeOverpass.json", [15, 9, 0]]
+  ]);
+
+  for (const [fixtureName, expected] of expectedByFixture) {
+    const consumed = fixtureReport(fixtureName).rendererConsumedCoverage;
+    assert.deepEqual(
+      [consumed.generalBuildingPolygons, consumed.institutionalPolygons, consumed.landUsePolygons],
+      expected,
+      fixtureName
+    );
+  }
+
+  assert.equal(report.aggregate.totals.generalBuildingPolygonsRendered, 38);
+  assert.equal(report.aggregate.totals.institutionalPolygonsRendered, 44);
+  assert.equal(report.aggregate.totals.landUsePolygonsRendered, 0);
 });
 
 test("Phase 8 audit represents water multipolygon coverage where present", () => {

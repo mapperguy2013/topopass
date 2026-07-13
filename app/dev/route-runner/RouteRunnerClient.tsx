@@ -155,6 +155,7 @@ import {
   cartographicMistakeOverlayScaleForZoom,
   cartographicReviewTextScaleForZoom,
   cartographicStyleScaleForZoom,
+  filterSyntheticBackgroundFeaturesForViewport,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   labelStyleForSyntheticMapLabel,
@@ -163,6 +164,7 @@ import {
   roadStyleForViewport,
   shouldShowSyntheticLinearFeatureForViewport,
   sortRoadVisualsForBaseRender,
+  syntheticBackgroundFeatureStyleForViewport,
   syntheticLandmarkVisualAlphaForViewport,
   syntheticLinearFeatureAlphaForViewport,
   type SyntheticBackgroundFeature,
@@ -1785,29 +1787,76 @@ function drawMapPinPath(context: CanvasRenderingContext2D, center: Vec2, radius:
 function drawSyntheticBackgroundFeature(
   context: CanvasRenderingContext2D,
   feature: SyntheticBackgroundFeature,
-  viewport: ScreenMapViewport
+  viewport: ScreenMapViewport,
+  style: ReturnType<typeof syntheticBackgroundFeatureStyleForViewport>
 ): void {
   if (feature.points.length < 3) {
     return;
   }
 
-  const screenPoints = feature.points.map((point) => mapToScreenPoint(point, viewport));
+  const screenPoints = simplifyScreenPolygonRing(
+    feature.points.map((point) => mapToScreenPoint(point, viewport)),
+    style.simplifyTolerancePixels
+  );
+
+  if (screenPoints.length < 3) {
+    return;
+  }
 
   context.save();
+  context.globalAlpha = style.alpha;
   context.fillStyle = feature.fillColor;
   context.strokeStyle = feature.strokeColor;
-  context.lineWidth = TOPOPASS_STREET_ATLAS_STYLE.background.polygonStrokeWidth;
+  context.lineWidth = style.strokeWidth;
+  context.lineJoin = "round";
   context.beginPath();
-  context.moveTo(screenPoints[0].x, screenPoints[0].y);
+  appendScreenPolygonRing(context, screenPoints);
 
-  for (const point of screenPoints.slice(1)) {
+  for (const innerRing of feature.innerRings ?? []) {
+    const screenRing = simplifyScreenPolygonRing(
+      innerRing.map((point) => mapToScreenPoint(point, viewport)),
+      style.simplifyTolerancePixels
+    );
+
+    if (screenRing.length >= 3) {
+      appendScreenPolygonRing(context, screenRing);
+    }
+  }
+
+  context.fill("evenodd");
+  context.stroke();
+  context.restore();
+}
+
+function appendScreenPolygonRing(context: CanvasRenderingContext2D, points: readonly Vec2[]): void {
+  context.moveTo(points[0].x, points[0].y);
+
+  for (const point of points.slice(1)) {
     context.lineTo(point.x, point.y);
   }
 
   context.closePath();
-  context.fill();
-  context.stroke();
-  context.restore();
+}
+
+function simplifyScreenPolygonRing(points: readonly Vec2[], tolerancePixels: number): Vec2[] {
+  if (tolerancePixels <= 0 || points.length <= 4) {
+    return points.map((point) => ({ ...point }));
+  }
+
+  const toleranceSquared = tolerancePixels * tolerancePixels;
+  const simplified = [points[0]];
+
+  for (const point of points.slice(1, -1)) {
+    const previous = simplified[simplified.length - 1];
+    const distanceSquared = (point.x - previous.x) ** 2 + (point.y - previous.y) ** 2;
+
+    if (distanceSquared >= toleranceSquared) {
+      simplified.push(point);
+    }
+  }
+
+  simplified.push(points[points.length - 1]);
+  return simplified.length >= 4 ? simplified.map((point) => ({ ...point })) : points.map((point) => ({ ...point }));
 }
 
 function drawSyntheticLinearFeature(
@@ -2194,8 +2243,13 @@ function drawSyntheticStreetMapBase(input: {
   selectedRoadIds: readonly string[];
   hoveredRoadIds: readonly string[];
 }): void {
-  for (const feature of input.backgroundFeatures) {
-    drawSyntheticBackgroundFeature(input.context, feature, input.viewport);
+  for (const feature of filterSyntheticBackgroundFeaturesForViewport(input.backgroundFeatures, input.viewport)) {
+    drawSyntheticBackgroundFeature(
+      input.context,
+      feature,
+      input.viewport,
+      syntheticBackgroundFeatureStyleForViewport(feature, input.viewport)
+    );
   }
 
   for (const feature of input.linearFeatures) {
@@ -3715,7 +3769,7 @@ function drawRouteCanvas(input: {
   }
 
   context.clearRect(0, 0, input.canvas.width, input.canvas.height);
-  context.fillStyle = TOPOPASS_STREET_ATLAS_STYLE.canvas.backgroundColor;
+  context.fillStyle = TOPOPASS_STREET_ATLAS_STYLE.background.land.fillColor;
   context.fillRect(0, 0, input.canvas.width, input.canvas.height);
 
   context.lineCap = "round";

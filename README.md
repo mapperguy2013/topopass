@@ -100,10 +100,12 @@ target with a denser examination-atlas target while keeping the implementation
 original and using only permitted attributed geography. Phase 7 is paused and
 retains its current status rather than being declared complete. Route
 generation, legality, matching, scoring, hints, feedback, learner progress, and
-deployment remain outside the completed Phase 8 setup, audit, and adapter
-stages. Stages 8.1 through 8.3 are complete. Stage 8.4's production
-printed-atlas road hierarchy is implemented, with manual screenshot and
-interaction acceptance still pending before the stage is marked complete.
+deployment remain outside the completed Phase 8 cartography stages. Stages 8.1
+through 8.3, Stage 8.5, and Stage 8.6 are complete. Stage 8.4's production
+printed-atlas road hierarchy is implemented, with its independent manual visual
+acceptance still pending. Stage 8.6 adds source-backed buildings,
+institutional areas, land use, parks and water below the road, label,
+restriction and learner-overlay stack.
 
 ## Completed Phase 1: Prototype Foundation
 

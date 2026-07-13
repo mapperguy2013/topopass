@@ -24,6 +24,7 @@ import {
   deriveOsmRoadVisualHierarchy,
   deriveRoadLabelPosition,
   deriveSyntheticRoadClass,
+  filterSyntheticBackgroundFeaturesForViewport,
   filterSyntheticLandmarkVisualsForViewport,
   filterSyntheticMapLabelsForViewport,
   getZoomStyleScale,
@@ -39,7 +40,9 @@ import {
   roadStyleForSyntheticClass,
   shouldShowSyntheticLinearFeatureForViewport,
   syntheticLandmarkVisualAlphaForViewport,
+  syntheticBackgroundFeatureStyleForViewport,
   syntheticLinearFeatureAlphaForViewport,
+  sortSyntheticBackgroundFeaturesForRender,
   sortRoadVisualsForBaseRender,
   type SyntheticMapLabel,
   type SyntheticRoadVisual
@@ -90,7 +93,7 @@ test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () 
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#f2ca3d");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#f2ca3d");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#dbe8c6");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#d4e4b9");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#647184");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.station.strokeColor, "#26384c");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.start.fillColor, "#059669");
@@ -354,7 +357,8 @@ test("Stage 160 atlas identity tokens keep hierarchy calm and original", () => {
   assert.ok(style.labels.roadHierarchy.major.repeatDistance > style.labels.roadHierarchy.secondary.repeatDistance);
   assert.ok(style.labels.roadHierarchy.service.minViewportScale > style.labels.roadHierarchy.minor.minViewportScale);
   assert.ok(style.contextFeatures.rail.highZoomAlpha < 0.8);
-  assert.ok(style.background.water.linear.strokeWidth > style.roads.osm.primary.casingWidth);
+  assert.ok((style.background.water.linear.casingWidth ?? 0) < style.roads.osm.primary.casingWidth);
+  assert.ok(style.background.water.linear.strokeWidth < style.roads.osm.primary.strokeWidth);
   assert.notEqual(style.station.strokeColor, style.restrictions.noEntryMarker.strokeColor);
 });
 
@@ -721,6 +725,170 @@ test("synthetic background features are visual only and do not overlap routable 
   assert.ok(features.every((feature) => !routableIds.has(feature.id)));
 });
 
+test("Stage 8.6 consumes typed building institution land-use park and water polygons deterministically", () => {
+  const fixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.52, lon: -0.139 },
+      { type: "node", id: 3, lat: 51.521, lon: -0.139 },
+      { type: "node", id: 4, lat: 51.521, lon: -0.14 },
+      { type: "node", id: 5, lat: 51.5204, lon: -0.1396 },
+      { type: "node", id: 6, lat: 51.5204, lon: -0.1394 },
+      { type: "node", id: 7, lat: 51.5206, lon: -0.1394 },
+      { type: "node", id: 8, lat: 51.5206, lon: -0.1396 },
+      { type: "way", id: 10, nodes: [1, 2], tags: { highway: "residential", name: "Atlas Road" } },
+      { type: "way", id: 100, nodes: [1, 2, 3, 4, 1], tags: { building: "apartments" } },
+      { type: "way", id: 101, nodes: [1, 2, 3, 4, 1], tags: { building: "office" } },
+      { type: "way", id: 102, nodes: [1, 2, 3, 4, 1], tags: { building: "retail" } },
+      { type: "way", id: 103, nodes: [1, 2, 3, 4, 1], tags: { building: "industrial" } },
+      { type: "way", id: 104, nodes: [1, 2, 3, 4, 1], tags: { building: "school", amenity: "school" } },
+      { type: "way", id: 105, nodes: [1, 2, 3, 4, 1], tags: { building: "hospital", healthcare: "hospital" } },
+      { type: "way", id: 106, nodes: [1, 2, 3, 4, 1], tags: { building: "civic", amenity: "townhall" } },
+      { type: "way", id: 107, nodes: [1, 2, 3, 4, 1], tags: { building: "church", amenity: "place_of_worship" } },
+      { type: "way", id: 108, nodes: [1, 2, 3, 4, 1], tags: { building: "yes" } },
+      { type: "way", id: 200, nodes: [1, 2, 3, 4, 1], tags: { landuse: "residential" } },
+      { type: "way", id: 201, nodes: [1, 2, 3, 4, 1], tags: { landuse: "commercial" } },
+      { type: "way", id: 202, nodes: [1, 2, 3, 4, 1], tags: { landuse: "retail" } },
+      { type: "way", id: 203, nodes: [1, 2, 3, 4, 1], tags: { landuse: "industrial" } },
+      { type: "way", id: 300, nodes: [1, 2, 3, 4, 1], tags: { leisure: "garden", name: "Atlas Garden" } },
+      { type: "way", id: 301, nodes: [1, 2, 3, 4, 1], tags: { natural: "water", name: "Atlas Basin" } },
+      { type: "way", id: 400, nodes: [1, 2, 3], tags: { building: "yes" } },
+      { type: "way", id: 401, nodes: [1, 1, 1, 1], tags: { building: "yes" } },
+      { type: "way", id: 500, nodes: [1, 2, 3, 4, 1] },
+      { type: "way", id: 501, nodes: [5, 6, 7, 8, 5] },
+      {
+        type: "relation",
+        id: 600,
+        members: [
+          { type: "way", ref: 500, role: "outer" },
+          { type: "way", ref: 501, role: "inner" }
+        ],
+        tags: { type: "multipolygon", building: "apartments", name: "Courtyard Building" }
+      }
+    ]
+  };
+  const fixtureBefore = structuredClone(fixture);
+  const converted = convertOverpassJsonToRouteMap(fixture, {
+    mapId: "stage-8-6-context-test",
+    name: "Stage 8.6 Context Test"
+  });
+
+  assert.equal(converted.ok, true);
+
+  if (!converted.ok) {
+    return;
+  }
+
+  const first = buildSyntheticBackgroundFeatures(converted.map, { sourceOverpassFixture: fixture });
+  const second = buildSyntheticBackgroundFeatures(converted.map, { sourceOverpassFixture: fixture });
+  const buildings = first.filter((feature) => feature.kind === "building");
+  const institutions = first.filter((feature) => feature.kind === "institution");
+  const landUse = first.filter((feature) => feature.kind === "land-use");
+  const courtyard = buildings.find((feature) => feature.sourceMetadata?.sourceElementId === 600);
+
+  assert.deepEqual(second, first);
+  assert.deepEqual(fixture, fixtureBefore);
+  assert.deepEqual(new Set(buildings.map((feature) => feature.subtype)), new Set([
+    "residential",
+    "commercial",
+    "retail",
+    "industrial",
+    "education",
+    "healthcare",
+    "civic",
+    "religious",
+    "other"
+  ]));
+  assert.deepEqual(new Set(institutions.map((feature) => feature.subtype)), new Set([
+    "education",
+    "healthcare",
+    "civic",
+    "religious"
+  ]));
+  assert.deepEqual(new Set(landUse.map((feature) => feature.subtype)), new Set([
+    "residential",
+    "commercial",
+    "retail",
+    "industrial"
+  ]));
+  assert.ok(first.some((feature) => feature.kind === "park"));
+  assert.ok(first.some((feature) => feature.kind === "water"));
+  assert.equal(buildings.some((feature) => feature.sourceMetadata?.sourceElementId === 401), false);
+  assert.equal(courtyard?.innerRings?.length, 1);
+  assert.equal(courtyard?.sourceMetadata?.sourceFeatureId, "building-relation-600-ring-1");
+  assert.equal(courtyard?.sourceMetadata?.sourceElementType, "relation");
+  assert.deepEqual(courtyard?.sourceMetadata?.sourceTags, fixture.elements.at(-1)?.tags);
+});
+
+test("Stage 8.6 area styles layer order and semantic viewport filtering are bounded", () => {
+  const background = TOPOPASS_STREET_ATLAS_STYLE.background;
+  const records = [background.landUse, background.institution, background.building];
+
+  assert.deepEqual(background.layerOrder, ["land-use", "parks-water", "institution", "building", "pedestrian-area"]);
+  assert.equal(Object.keys(background.building).length, 9);
+  assert.equal(Object.keys(background.institution).length, 4);
+  assert.equal(Object.keys(background.landUse).length, 4);
+  records.forEach((record) => Object.values(record).forEach((style) => assertPrimitiveRenderValues(style)));
+
+  const features = sortSyntheticBackgroundFeaturesForRender([
+    { id: "building", kind: "building", subtype: "other", renderLayer: "building", points: [], fillColor: "#fff", strokeColor: "#000", routable: false },
+    { id: "park", kind: "park", renderLayer: "parks-water", points: [], fillColor: "#fff", strokeColor: "#000", routable: false },
+    { id: "institution", kind: "institution", subtype: "civic", renderLayer: "institution", points: [], fillColor: "#fff", strokeColor: "#000", routable: false },
+    { id: "land-use", kind: "land-use", subtype: "residential", renderLayer: "land-use", points: [], fillColor: "#fff", strokeColor: "#000", routable: false }
+  ]);
+  const lowViewport = { width: 300, height: 300, mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 } };
+  const highViewport = { width: 1000, height: 1000, mapBounds: { minX: 0, minY: 0, maxX: 100, maxY: 100 } };
+  const styledBuilding = syntheticBackgroundFeatureStyleForViewport(features.at(-1)!, highViewport);
+  const offscreenPark = {
+    ...features[1],
+    id: "offscreen-park",
+    sourceBounds: { minX: 2000, minY: 2000, maxX: 2100, maxY: 2100 },
+    sourceAreaSquareMeters: 10000
+  };
+
+  assert.deepEqual(features.map((feature) => feature.id), ["land-use", "park", "institution", "building"]);
+  assert.deepEqual(
+    filterSyntheticBackgroundFeaturesForViewport(features, lowViewport).map((feature) => feature.id),
+    ["land-use", "park", "institution"]
+  );
+  assert.ok(styledBuilding.alpha >= 0 && styledBuilding.alpha <= 1);
+  assert.ok(styledBuilding.strokeWidth <= background.building.other.maxStrokeWidth);
+  assert.deepEqual(filterSyntheticBackgroundFeaturesForViewport([offscreenPark], highViewport), []);
+});
+
+test("Stage 8.6 production draw stack keeps context fabric below roads labels restrictions and learner overlays", () => {
+  const source = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+  const baseStart = source.indexOf("function drawSyntheticStreetMapBase");
+  const canvasStart = source.indexOf("function drawRouteCanvas");
+  const baseSource = source.slice(baseStart, canvasStart);
+  const canvasSource = source.slice(canvasStart);
+
+  assert.ok(baseStart >= 0 && canvasStart > baseStart);
+  assert.ok(baseSource.indexOf("filterSyntheticBackgroundFeaturesForViewport") < baseSource.indexOf("input.linearFeatures"));
+  assert.ok(baseSource.indexOf("input.linearFeatures") < baseSource.indexOf("drawSyntheticRoadVisualsByHierarchy"));
+  assert.ok(baseSource.indexOf("drawSyntheticRoadVisualsByHierarchy") < baseSource.indexOf("filterSyntheticMapLabelsForViewport"));
+  assert.ok(canvasSource.indexOf("drawSyntheticStreetMapBase") < canvasSource.indexOf("input.roadRestrictionOverlays"));
+  assert.ok(canvasSource.indexOf("input.roadRestrictionOverlays") < canvasSource.indexOf("drawLearnerTrainingRouteOverlay"));
+  assert.ok(baseSource.indexOf("input.linearFeatures") < baseSource.indexOf("filterSyntheticMapLabelsForViewport"));
+});
+
+test("Stage 8.6 does not fabricate context polygons when source area data is absent", () => {
+  const fixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.5201, lon: -0.1398 },
+      { type: "way", id: 10, nodes: [1, 2], tags: { highway: "residential", name: "Only Road" } }
+    ]
+  };
+  const converted = convertOverpassJsonToRouteMap(fixture, { mapId: "stage-8-6-no-context", name: "No Context" });
+
+  assert.equal(converted.ok, true);
+  assert.deepEqual(
+    converted.ok ? buildSyntheticBackgroundFeatures(converted.map, { sourceOverpassFixture: fixture }) : [],
+    []
+  );
+});
+
 test("synthetic road styling keeps a clear London-inspired hierarchy", () => {
   const majorStyle = roadStyleForSyntheticClass("major");
   const localStyle = roadStyleForSyntheticClass("local");
@@ -1031,8 +1199,8 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   assert.ok(waterFeatures.length > 0, "Waterloo fixture should render Thames water polygons");
   assert.ok(thamesRelationWaterFeatures.length > 0, "Waterloo fixture should render the Thames multipolygon relation");
   assert.ok(
-    waterwayFeatures.some((feature) => feature.strokeWidth >= 20),
-    "Thames waterway corridor should read at learner zoom"
+    waterwayFeatures.some((feature) => feature.strokeWidth >= 8),
+    "Thames waterway corridor should remain visible without overpowering the filled river"
   );
   assert.notEqual(
     TOPOPASS_STREET_ATLAS_STYLE.background.water.river.fillColor,
@@ -1979,8 +2147,8 @@ test("Stage 143 OSM context rendering uses raw fixture tags without adding routa
     backgroundFeatures.map((feature) => [feature.kind, feature.label]),
     [
       ["park", "Fitzroy Garden"],
-      ["pedestrian-area", "Pilot Walk"],
-      ["water", "Pilot Basin"]
+      ["water", "Pilot Basin"],
+      ["pedestrian-area", "Pilot Walk"]
     ]
   );
   assert.deepEqual(

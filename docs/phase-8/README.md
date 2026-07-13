@@ -53,6 +53,7 @@ stages may be split if implementation audit shows that a stage is too large.
    Implemented; manual visual acceptance pending.
 5. Stage 8.5: Atlas label density and place-name pass. Completed.
 6. Stage 8.6: Buildings, built-up fabric, institutional areas, parks and water.
+   Completed.
 7. Stage 8.7: Compact original symbols and road-reference refinement.
 8. Stage 8.8: Principal examination-atlas scale and information-density rules.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
@@ -71,8 +72,11 @@ bounded semantic zoom scaling. Stage 8.5 adds typed source-backed label
 candidates, denser road-name placement, large district names, red A/B
 references, place labels, deterministic collision rules, and category coverage
 diagnostics. Stage 8.5 visual QA is accepted with committed desktop and mobile
-screenshots. Stage 8.4's independent manual visual acceptance remains pending,
-and Stage 8.6 has not started.
+screenshots. Stage 8.6 now renders source-backed buildings, institutional
+areas, land use, parks and water with deterministic layer order, inner-ring
+holes, viewport filtering and bounded semantic zoom. Its desktop/mobile visual
+QA and full local validation are complete. Stage 8.4's independent manual
+visual acceptance remains pending.
 
 ## Documents
 
@@ -82,4 +86,5 @@ and Stage 8.6 has not started.
 - [Stage 8.3 render-data adapter](stage-8-3-render-data-adapter.md)
 - [Stage 8.4 printed-atlas road hierarchy](stage-8-4-printed-atlas-road-hierarchy.md)
 - [Stage 8.5 atlas label density](stage-8-5-atlas-label-density.md)
+- [Stage 8.6 built-up context](stage-8-6-built-up-context.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

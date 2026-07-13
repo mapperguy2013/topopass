@@ -76,3 +76,13 @@ major-road, institutional, residential, park/water, transport, junction,
 route-drawing, and route-review scenarios visibly belong to the same
 cartographic family as the approved master while remaining an original
 TOPOPASS map based on permitted and attributed source data.
+
+## Stage 8.6 Evidence
+
+Stage 8.6 production-renderer evidence is recorded in
+`stage-8-6-built-up-context.md` and `screenshots/stage-8-6/`. It covers dense
+built and institutional fabric, sparse residential coverage, parks, water and
+bridges, one-way context, an active learner route, correct/incorrect review
+states, desktop 1440 by 900, and mobile 390 by 844. This is Stage 8.6 evidence,
+not the final Phase 8 acceptance gate for later symbol, density, overlay,
+mobile/accessibility and regression stages.

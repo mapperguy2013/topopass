@@ -949,10 +949,10 @@ function countRendererConsumedCoverage(option: RouteRunnerMapOption, fixture: un
     linearFeatures: sortedRecord(countBy(linear, (feature) => feature.kind)),
     landmarkVisuals: sortedRecord(countBy(landmarks, (feature) => feature.kind)),
     labels: sortedRecord(countBy(labels, (label) => label.kind)),
-    displayedRoadReferences: 0,
-    generalBuildingPolygons: 0,
-    institutionalPolygons: 0,
-    landUsePolygons: 0,
+    displayedRoadReferences: labels.filter((label) => label.kind === "road_reference").length,
+    generalBuildingPolygons: background.filter((feature) => feature.kind === "building").length,
+    institutionalPolygons: background.filter((feature) => feature.kind === "institution").length,
+    landUsePolygons: background.filter((feature) => feature.kind === "land-use").length,
     piers: 0
   };
 }
@@ -987,7 +987,10 @@ function countUnsupportedCoverage(
     sourceBuildingsUsedOnlyAsPointLandmarks: contextFeatures.filter(
       (feature) => feature.kind === "landmark" && Boolean(feature.sourceTags?.building)
     ).length,
-    sourceBuildingPolygonsWithoutRendererPath: source.usableClosedBuildingPolygons,
+    sourceBuildingPolygonsWithoutRendererPath: Math.max(
+      0,
+      source.usableClosedBuildingPolygons - contextFeatures.filter((feature) => feature.kind === "building").length
+    ),
     institutionalPolygonsWithoutAdapter: Math.max(
       0,
       source.polygonCapableInstitutionalFeatures - contextFeatures.filter((feature) => feature.kind === "institution").length
@@ -1047,8 +1050,10 @@ function buildCategoryAudits(input: {
       return categoryAudit({
         id,
         state: sourceCoverage.sourceRoadRefWays > 0
-          ? contextAdapterCoverage.roadReferenceFeatures > 0
-            ? "context-ready-no-renderer-consumer"
+          ? rendererConsumedCoverage.displayedRoadReferences > 0
+            ? "render-ready"
+            : contextAdapterCoverage.roadReferenceFeatures > 0
+              ? "context-ready-no-renderer-consumer"
             : routeGraphCoverage.roadsWithRawRefTags > 0
               ? "route-metadata-only"
             : "source-present-geometry-discarded"
@@ -1059,7 +1064,7 @@ function buildCategoryAudits(input: {
         contextAdapterCount: contextAdapterCoverage.roadReferenceFeatures,
         rendererConsumedCount: rendererConsumedCoverage.displayedRoadReferences,
         blockerCount: unsupportedCoverage.roadRefsMetadataOnly,
-        notes: ["Source ref tags are counted only from OSM ref values; no A-road or B-road value is inferred from road names. Current renderer does not display road references."],
+        notes: ["Source ref tags are counted only from OSM ref values; no A-road or B-road value is inferred from road names. Stage 8.5 consumes supported references as bounded label candidates."],
         evidence: evidenceFor(elements, (tags) => Boolean(tags.ref?.trim()) && Boolean(tagValue(tags, "highway")))
       });
     }
@@ -1067,8 +1072,10 @@ function buildCategoryAudits(input: {
     if (id === "buildings-built-fabric") {
       return categoryAudit({
         id,
-        state: contextAdapterCoverage.generalBuildingPolygons > 0
-          ? "context-ready-no-renderer-consumer"
+        state: rendererConsumedCoverage.generalBuildingPolygons > 0
+          ? "render-ready"
+          : contextAdapterCoverage.generalBuildingPolygons > 0
+            ? "context-ready-no-renderer-consumer"
           : sourceCoverage.usableClosedBuildingPolygons > 0
             ? "source-present-geometry-discarded"
             : "source-absent",
@@ -1078,7 +1085,7 @@ function buildCategoryAudits(input: {
         contextAdapterCount: contextAdapterCoverage.generalBuildingPolygons,
         rendererConsumedCount: rendererConsumedCoverage.generalBuildingPolygons,
         blockerCount: unsupportedCoverage.sourceBuildingPolygonsWithoutRendererPath,
-        notes: ["Closed building polygons are normalised as render-data context features, but the current renderer does not consume them. Some building-tagged features also become point landmarks."],
+        notes: ["Closed building polygons are normalised as typed context features and consumed as source-backed built fabric where fixture and performance gates permit. Some building-tagged features also become point landmarks."],
         evidence: evidenceFor(elements, (tags) => Boolean(tagValue(tags, "building")))
       });
     }
@@ -1086,8 +1093,10 @@ function buildCategoryAudits(input: {
     if (id === "land-use-institutions") {
       return categoryAudit({
         id,
-        state: contextAdapterCoverage.institutionalPolygons + contextAdapterCoverage.landUsePolygons > 0
-          ? "context-ready-no-renderer-consumer"
+        state: rendererConsumedCoverage.institutionalPolygons + rendererConsumedCoverage.landUsePolygons > 0
+          ? "render-ready"
+          : contextAdapterCoverage.institutionalPolygons + contextAdapterCoverage.landUsePolygons > 0
+            ? "context-ready-no-renderer-consumer"
           : sourceCoverage.civicInstitutionalSourceFeatures > 0
             ? "point-landmark-only"
             : "source-absent",
@@ -1109,7 +1118,7 @@ function buildCategoryAudits(input: {
         rendererConsumedCount:
           rendererConsumedCoverage.institutionalPolygons + rendererConsumedCoverage.landUsePolygons,
         blockerCount: unsupportedCoverage.institutionalPolygonsWithoutAdapter + unsupportedCoverage.landUsePolygonsWithoutAdapter,
-        notes: ["Institutional and land-use polygons now have typed context adapters. The current renderer still consumes recognised public buildings only as point landmarks."],
+        notes: ["Institutional and land-use polygons use the typed context adapter and render below buildings and roads where fixture and performance gates permit."],
         evidence: evidenceFor(elements, (tags) => Boolean(tagValue(tags, "landuse")) || isInstitutionalSource(tags))
       });
     }
