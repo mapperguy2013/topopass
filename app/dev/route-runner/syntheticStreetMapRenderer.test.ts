@@ -16,6 +16,7 @@ import {
   cartographicReviewTextScaleForZoom,
   cartographicRouteOverlayScaleForZoom,
   buildSyntheticStreetMapLegendItems,
+  buildRoadJunctionCaps,
   buildRoadRenderPasses,
   cartographicStyleScaleForZoom,
   deriveOsmRoadRenderMetadata,
@@ -1373,11 +1374,97 @@ test("Stage 145.5 junction and interaction tokens make major and selected roads 
   assert.notEqual(selected.strokeColor, hovered.strokeColor);
 });
 
-test("Stage 8.4 junction caps cover half of each road pass width without changing geometry", () => {
-  const primary = roadVisual({
+test("Stage 8.4 junction caps are emitted once for a shared split-way join, not terminal endpoints", () => {
+  const first = roadVisual({
+    roadId: "primary-a",
+    osmWayId: "osm-way-42",
     roadClass: "major",
     osmHighway: "primary",
     osmHierarchy: "primary",
+    points: [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 }
+    ],
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const second = roadVisual({
+    roadId: "primary-b",
+    osmWayId: "osm-way-42",
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    points: [
+      { x: 100, y: 0 },
+      { x: 200, y: 20 }
+    ],
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const visuals = [second, first];
+  const visualsBefore = structuredClone(visuals);
+  const caps = buildRoadJunctionCaps(visuals);
+
+  assert.equal(caps.length, 1);
+  assert.deepEqual(caps[0].point, { x: 100, y: 0 });
+  assert.deepEqual(caps[0].roadIds, ["primary-a", "primary-b"]);
+  assert.equal(caps[0].osmWayId, "osm-way-42");
+  assert.equal(caps[0].visual.roadId, "primary-b");
+  assert.deepEqual(buildRoadJunctionCaps(visuals), caps);
+  assert.deepEqual(visuals, visualsBefore);
+});
+
+test("Stage 8.4 terminal and hierarchy-transition endpoints do not receive junction caps", () => {
+  const primary = roadVisual({
+    roadId: "primary-terminal",
+    osmWayId: "osm-way-primary",
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    points: [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 }
+    ],
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const secondary = roadVisual({
+    roadId: "secondary-transition",
+    osmWayId: "osm-way-secondary",
+    roadClass: "secondary",
+    osmHighway: "secondary",
+    osmHierarchy: "secondary",
+    points: [
+      { x: 100, y: 0 },
+      { x: 180, y: 40 }
+    ],
+    style: roadStyleForOsmHierarchy("secondary")
+  });
+
+  assert.deepEqual(buildRoadJunctionCaps([primary]), []);
+  assert.deepEqual(buildRoadJunctionCaps([primary, secondary]), []);
+});
+
+test("Stage 8.4 shared-junction discs never exceed the normal road pass width", () => {
+  const first = roadVisual({
+    roadId: "primary-a",
+    osmWayId: "osm-way-42",
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    points: [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 }
+    ],
+    style: roadStyleForOsmHierarchy("primary")
+  });
+  const second = roadVisual({
+    roadId: "primary-b",
+    osmWayId: "osm-way-42",
+    roadClass: "major",
+    osmHighway: "primary",
+    osmHierarchy: "primary",
+    points: [
+      { x: 100, y: 0 },
+      { x: 200, y: 20 }
+    ],
     style: roadStyleForOsmHierarchy("primary")
   });
   const viewport = {
@@ -1385,12 +1472,11 @@ test("Stage 8.4 junction caps cover half of each road pass width without changin
     height: 1000,
     mapBounds: { minX: 0, minY: 0, maxX: 1000, maxY: 1000 }
   };
-  const pointsBefore = structuredClone(primary.points);
-  const style = roadStyleForViewport(primary, viewport, 1);
+  const [cap] = buildRoadJunctionCaps([first, second]);
+  const style = roadStyleForViewport(cap.visual, viewport, 1);
 
-  assert.equal(roadJunctionRadiusForVisual(primary, viewport, "casing", 1), style.casingWidth / 2);
-  assert.equal(roadJunctionRadiusForVisual(primary, viewport, "fill", 1), style.strokeWidth / 2);
-  assert.deepEqual(primary.points, pointsBefore);
+  assert.equal(roadJunctionRadiusForVisual(cap.visual, viewport, "casing", 1) * 2, style.casingWidth);
+  assert.equal(roadJunctionRadiusForVisual(cap.visual, viewport, "fill", 1) * 2, style.strokeWidth);
 });
 
 test("Stage 8.4 maximum zoom caps preserve principal corridor dominance", () => {

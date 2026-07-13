@@ -116,6 +116,14 @@ export type SyntheticRoadRenderPass = {
   visual: SyntheticRoadVisual;
 };
 
+export type SyntheticRoadJunctionCap = {
+  id: string;
+  point: Vec2;
+  visual: SyntheticRoadVisual;
+  roadIds: readonly string[];
+  osmWayId: string;
+};
+
 export type SyntheticRoadInteractionState = "selected" | "hovered";
 
 export type OsmRoadVisualHierarchy =
@@ -555,6 +563,94 @@ export function buildRoadRenderPasses(roadVisuals: readonly SyntheticRoadVisual[
     ...orderedRoadVisuals.map((visual) => ({ layer: "casing" as const, visual })),
     ...orderedRoadVisuals.map((visual) => ({ layer: "fill" as const, visual }))
   ];
+}
+
+const roadJunctionCapsCache = new WeakMap<readonly SyntheticRoadVisual[], SyntheticRoadJunctionCap[]>();
+
+export function buildRoadJunctionCaps(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticRoadJunctionCap[] {
+  const cached = roadJunctionCapsCache.get(roadVisuals);
+
+  if (cached) {
+    return cached;
+  }
+
+  const endpointsByJoin = new Map<string, Array<{ point: Vec2; visual: SyntheticRoadVisual }>>();
+
+  for (const visual of roadVisuals) {
+    if (!visual.osmWayId || visual.points.length < 2) {
+      continue;
+    }
+
+    const continuityKey = roadContinuityKey(visual);
+
+    for (const point of [visual.points[0], visual.points[visual.points.length - 1]]) {
+      const joinKey = `${continuityKey}:${roadPointKey(point)}`;
+      const endpoints = endpointsByJoin.get(joinKey) ?? [];
+      endpoints.push({ point, visual });
+      endpointsByJoin.set(joinKey, endpoints);
+    }
+  }
+
+  const caps = [...endpointsByJoin.values()]
+    .flatMap((endpoints) => {
+      const ordered = [...endpoints].sort(
+        (left, right) =>
+          roadRenderRank(left.visual) - roadRenderRank(right.visual) ||
+          left.visual.name.localeCompare(right.visual.name) ||
+          left.visual.roadId.localeCompare(right.visual.roadId)
+      );
+      const roadIds = [...new Set(ordered.map((endpoint) => endpoint.visual.roadId))].sort((left, right) =>
+        left.localeCompare(right)
+      );
+      const representative = ordered[ordered.length - 1];
+
+      if (!representative || roadIds.length < 2 || !representative.visual.osmWayId) {
+        return [];
+      }
+
+      return [{
+        id: `road-join-${representative.visual.osmWayId}-${roadPointKey(representative.point)}`,
+        point: { ...representative.point },
+        visual: representative.visual,
+        roadIds,
+        osmWayId: representative.visual.osmWayId
+      }];
+    })
+    .sort(
+      (left, right) =>
+        roadRenderRank(left.visual) - roadRenderRank(right.visual) ||
+        left.osmWayId.localeCompare(right.osmWayId) ||
+        left.point.x - right.point.x ||
+        left.point.y - right.point.y ||
+        left.id.localeCompare(right.id)
+    );
+
+  roadJunctionCapsCache.set(roadVisuals, caps);
+
+  return caps;
+}
+
+function roadContinuityKey(visual: SyntheticRoadVisual): string {
+  const style = visual.style;
+
+  return [
+    visual.osmWayId ?? "",
+    visual.roadClass,
+    visual.osmHierarchy ?? "",
+    style.casingColor,
+    style.strokeColor,
+    style.casingWidth,
+    style.strokeWidth,
+    style.alpha ?? 1,
+    style.dash?.join(",") ?? ""
+  ].join(":");
+}
+
+function roadPointKey(point: Vec2): string {
+  const x = Object.is(point.x, -0) ? 0 : point.x;
+  const y = Object.is(point.y, -0) ? 0 : point.y;
+
+  return `${x},${y}`;
 }
 
 export function roadStyleForViewport(

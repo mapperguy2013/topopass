@@ -145,6 +145,7 @@ import {
   buildSyntheticLinearFeatures,
   buildSyntheticMapLabels,
   buildSyntheticRoadVisuals,
+  buildRoadJunctionCaps,
   buildRoadRenderPasses,
   cartographicCustomMarkerAssetScaleForZoom,
   cartographicDrawnAttemptScaleForZoom,
@@ -171,6 +172,7 @@ import {
   type SyntheticMapLabel,
   type SyntheticMapLabelKind,
   type SyntheticRoadInteractionState,
+  type SyntheticRoadJunctionCap,
   type SyntheticRoadRenderLayer,
   type SyntheticRoadVisual,
   type SyntheticStreetMapLegendItem
@@ -1890,37 +1892,28 @@ function drawSyntheticRoadVisualLayer(
   context.restore();
 }
 
-function drawSyntheticRoadJunctionCaps(
+function drawSyntheticRoadJunctionCap(
   context: CanvasRenderingContext2D,
-  visual: SyntheticRoadVisual,
+  cap: SyntheticRoadJunctionCap,
   viewport: ScreenMapViewport,
   layer: SyntheticRoadRenderLayer,
   currentZoom?: number
 ): void {
-  if (visual.points.length < 2) {
-    return;
-  }
-
-  const style = roadStyleForViewport(visual, viewport, currentZoom);
-  const radius = roadJunctionRadiusForVisual(visual, viewport, layer, currentZoom);
+  const style = roadStyleForViewport(cap.visual, viewport, currentZoom);
+  const radius = roadJunctionRadiusForVisual(cap.visual, viewport, layer, currentZoom);
 
   if (radius <= 0) {
     return;
   }
 
-  const first = mapToScreenPoint(visual.points[0], viewport);
-  const last = mapToScreenPoint(visual.points[visual.points.length - 1], viewport);
+  const point = mapToScreenPoint(cap.point, viewport);
 
   context.save();
   context.globalAlpha = style.alpha ?? 1;
   context.fillStyle = layer === "casing" ? style.casingColor : style.strokeColor;
-
-  for (const point of [first, last]) {
-    context.beginPath();
-    context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-    context.fill();
-  }
-
+  context.beginPath();
+  context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  context.fill();
   context.restore();
 }
 
@@ -1930,9 +1923,26 @@ function drawSyntheticRoadVisualsByHierarchy(
   viewport: ScreenMapViewport,
   currentZoom?: number
 ): void {
-  for (const pass of buildRoadRenderPasses(roadVisuals)) {
-    drawSyntheticRoadVisualLayer(context, pass.visual, viewport, pass.layer, currentZoom);
-    drawSyntheticRoadJunctionCaps(context, pass.visual, viewport, pass.layer, currentZoom);
+  const passes = buildRoadRenderPasses(roadVisuals);
+  const junctionCaps = buildRoadJunctionCaps(roadVisuals);
+  const junctionCapsByRoadId = new Map<string, SyntheticRoadJunctionCap[]>();
+
+  for (const cap of junctionCaps) {
+    const roadCaps = junctionCapsByRoadId.get(cap.visual.roadId) ?? [];
+    roadCaps.push(cap);
+    junctionCapsByRoadId.set(cap.visual.roadId, roadCaps);
+  }
+
+  for (const layer of ["casing", "fill"] as const) {
+    for (const pass of passes) {
+      if (pass.layer === layer) {
+        drawSyntheticRoadVisualLayer(context, pass.visual, viewport, layer, currentZoom);
+
+        for (const cap of junctionCapsByRoadId.get(pass.visual.roadId) ?? []) {
+          drawSyntheticRoadJunctionCap(context, cap, viewport, layer, currentZoom);
+        }
+      }
+    }
   }
 }
 

@@ -44,8 +44,9 @@ Affected production systems:
 - The renderer still draws all deterministic casing passes before all fill
   passes, ordered from quiet roads to principal corridors.
 - Safe round joins and a low miter limit prevent spikes. Butt line caps combine
-  with half-width endpoint junction discs to close split-segment seams and keep
-  same-tier junctions coherent.
+  with one deduplicated half-width junction disc only where split segments from
+  the same OSM way share an exact endpoint and visual treatment. True terminals,
+  fixture-boundary endpoints, and mixed-tier transitions do not receive discs.
 - Prepared OSM road visuals now retain `osmWayId`, allowing split segments from
   the same source way to be verified as one classified corridor without
   changing or merging route geometry.
@@ -95,7 +96,8 @@ Focused tests cover:
 - Restrained residential, service, pedestrian, inactive, and restricted roads.
 - Tier-specific zoom gains and maximum width caps.
 - Same-OSM-way segment metadata and identical corridor styles.
-- Half-width junction caps, safe join tokens, and geometry immutability.
+- Shared-junction detection, terminal and mixed-tier exclusion, half-width cap
+  bounds, safe join tokens, deterministic ordering, and geometry immutability.
 - Base roads below labels, one-way arrows, restrictions, routes, warnings,
   markers, and review overlays.
 - Existing bridge, one-way, restriction, route, and coordinate tests through
@@ -123,6 +125,12 @@ Completed:
 - Started the local application successfully on `http://localhost:3001`.
 - Attempted to connect the in-app browser; browser discovery returned no
   available browser backends.
+- Reviewed supplied desktop captures for King's Cross/Euston and quiet-road
+  fixtures. They confirmed corridor hierarchy, casing, overlay visibility, and
+  attribution, while exposing oversized endpoint and multi-lobed junction discs.
+- Restricted junction discs to deduplicated, same-way shared joins. Terminal,
+  fixture-boundary, and hierarchy-transition endpoints now rely on the normal
+  restrained butt-ended road strokes.
 
 Not completed and still required:
 
@@ -135,6 +143,8 @@ Not completed and still required:
   pinch zoom, marker/checkpoint alignment, one-way/restriction visibility, and
   OSM attribution checks.
 - Side-by-side cartographic-family comparison with the approved visual master.
+- Replacement King's Cross/Euston and quiet-road captures confirming that split
+  seams remain closed without bulbs, gaps, spikes, or enlarged boundary ends.
 
 Visual acceptance must not be inferred from token values or tests. Stage 8.4
 can be marked complete only after those production-renderer checks pass.
@@ -143,16 +153,18 @@ can be marked complete only after those production-renderer checks pass.
 
 The implementation keeps the existing memoised road-visual preparation and
 does not add per-frame classification, duplicated roads, or geometry merging.
-The existing two-pass renderer remains deterministic. Lower tier-specific zoom
-caps reduce extreme high-zoom stroke growth, while OSM way traceability adds
-only one optional string to prepared OSM visuals.
+Shared-junction plans are cached by the prepared road-visual array. The existing
+two-pass renderer remains deterministic. Lower tier-specific zoom caps reduce
+extreme high-zoom stroke growth, while OSM way traceability adds only one
+optional string to prepared OSM visuals.
 
 ## Known Limitations
 
-- Visual character, mobile density, label contrast, junction appearance, and
-  split-segment seams have not been verified in a live browser.
-- Endpoint discs guarantee the renderer's continuity contract but screenshots
-  are still required for dense same-class and mixed-class junctions.
+- Corrected junction appearance and split-segment seams still require replacement
+  production screenshots at desktop and mobile widths.
+- Exact-coordinate, same-way segment joins receive continuity discs. Separate
+  OSM ways and mixed visual tiers connect through ordered butt-ended strokes;
+  dense transitions still require visual review at every semantic zoom.
 - Bridge/tunnel contrast relies on existing context styling and needs live
   review against the stronger road corridors.
 - Building fabric and institutional/land-use context remain intentionally
