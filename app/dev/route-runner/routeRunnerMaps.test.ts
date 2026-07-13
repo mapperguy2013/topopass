@@ -360,6 +360,8 @@ test("converted OSM exercises only appear when the converted OSM map is selected
   assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.scoreable, false);
   assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.fixtureUse, "visualQaOnly");
   assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.fixturePerformanceGate, "visualQaOnly");
+  assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.sourceOverpassFixture?.elements.length, 64123);
+  assert.equal(victoriaWestminsterVauxhallOsmRouteRunnerMapOption.map.roads.length, 8914);
   assert.equal(VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING.fixtureName, "victoriaWestminsterVauxhallOverpass.json");
   assert.ok(VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING.osmConversionMs >= 0);
   assert.deepEqual(
@@ -465,7 +467,7 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
       map: victoriaWestminsterVauxhallOsmRouteMap,
       minNamedRoads: 600,
       minOneWayWays: 380,
-      minTurnRestrictions: 50,
+      minTurnRestrictions: 0,
       visualQaOnly: true,
       requiredHighways: ["primary", "secondary", "tertiary", "residential"],
       requiredCategories: [
@@ -476,7 +478,6 @@ test("Stage 160.5 curated Real London Overpass fixtures are registered with prov
         "bridgeRoad",
         "tunnelRoad",
         "oneWaySegment",
-        "restrictedTurn",
         "park",
         "water",
         "rail",

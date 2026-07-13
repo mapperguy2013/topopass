@@ -1,4 +1,5 @@
 import victoriaWestminsterVauxhallOverpassFixture from "../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallOverpass.json" with { type: "json" };
+import victoriaWestminsterVauxhallBuildingsOverpassFixture from "../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallBuildingsOverpass.json" with { type: "json" };
 import {
   VICTORIA_WESTMINSTER_VAUXHALL_OSM_MAP_ID,
   buildCuratedRealLondonOsmMap,
@@ -7,6 +8,14 @@ import {
 import type { RouteRunnerMapOption } from "./routeRunnerMaps.ts";
 
 const conversionStartedAt = performanceNow();
+
+const victoriaWestminsterVauxhallContextFixture = {
+  ...victoriaWestminsterVauxhallOverpassFixture,
+  elements: [
+    ...victoriaWestminsterVauxhallOverpassFixture.elements,
+    ...victoriaWestminsterVauxhallBuildingsOverpassFixture.elements
+  ]
+};
 
 export const victoriaWestminsterVauxhallOsmRouteMap = buildCuratedRealLondonOsmMap(
   victoriaWestminsterVauxhallOverpassFixture,
@@ -29,7 +38,7 @@ export const victoriaWestminsterVauxhallOsmRouteRunnerMapOption: RouteRunnerMapO
   defaultExerciseId: "",
   attribution: getCuratedRealLondonFixtureMetadata("victoriaWestminsterVauxhall").attribution.text,
   fixtureName: "victoriaWestminsterVauxhallOverpass.json",
-  sourceOverpassFixture: victoriaWestminsterVauxhallOverpassFixture,
+  sourceOverpassFixture: victoriaWestminsterVauxhallContextFixture,
   devOnly: true,
   fixtureUse: "visualQaOnly",
   fixturePerformanceGate: "visualQaOnly",
@@ -48,7 +57,7 @@ export const VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING = {
   firstRenderPreparationMs: null,
   totalUntilInteractiveMs: null,
   note:
-    "Static JSON module parsing is not separately observable in Node/Next. The dev visual-QA page defers this Phase 8.8 benchmark behind a dynamic import and shows a loading state while import, parse, conversion, graph, context, label, and first render preparation complete."
+    "Static JSON module parsing is not separately observable in Node/Next. The dev visual-QA page defers the lightweight route fixture and bounded building-only context fixture behind one dynamic import and shows a loading state while import, parse, conversion, graph, context, label, and first render preparation complete."
 } as const;
 
 function performanceNow(): number {

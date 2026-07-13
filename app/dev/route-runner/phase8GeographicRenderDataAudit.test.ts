@@ -251,6 +251,13 @@ test("Stage 8.6 audit reports source-backed building renderer output", () => {
   assert.ok(waterloo.sourceCoverage.sourceRoadRefWays >= waterloo.rendererConsumedCoverage.displayedRoadReferences);
 });
 
+test("Stage 8.8 audit includes the bounded Victoria building-only context source", () => {
+  const victoria = fixtureReport("victoriaWestminsterVauxhallOverpass.json");
+
+  assert.equal(victoria.sourceCoverage.buildingTaggedWays, 5970);
+  assert.equal(victoria.sourceCoverage.usableClosedBuildingPolygons, 5970);
+});
+
 test("Stage 8.6 renderer-consumed real fixture polygon counts stay stable behind existing gates", () => {
   const expectedByFixture = new Map([
     ["centralLondonOverpass.json", [0, 0, 0]],

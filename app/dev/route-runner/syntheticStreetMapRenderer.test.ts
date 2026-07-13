@@ -54,7 +54,13 @@ import {
   type SyntheticLandmarkVisual,
   type SyntheticRoadVisual
 } from "./syntheticStreetMapRenderer.ts";
-import { buildZoomedMapViewport, createDefaultMapViewportState, ROUTE_RUNNER_MAP_ZOOM_LIMITS } from "./mapViewport.ts";
+import {
+  buildZoomedMapViewport,
+  createDefaultMapViewportState,
+  ROUTE_RUNNER_MAP_ZOOM_LIMITS,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH
+} from "./mapViewport.ts";
 import { ONE_WAY_ARROW_MIN_SPACING_METERS } from "./restrictionMapVisuals.ts";
 import { TOPOPASS_STREET_ATLAS_STYLE } from "./topopassCartographyStyle.ts";
 import {
@@ -64,7 +70,11 @@ import {
   mapToScreenPoint,
   type MapDefinition
 } from "../../../lib/map-engine/index.ts";
-import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
+import {
+  convertOverpassJsonToRouteMap,
+  projectOsmCoordinateToLocalMeters,
+  type OverpassJsonResponse
+} from "../../../lib/map-engine/osm/index.ts";
 import { mediumLondonOsmRouteExercises, mediumLondonOsmRouteMap, getRouteRunnerMapViewportBounds, getRouteRunnerMapOption, realLondonOsmPilotRouteMap } from "./routeRunnerMaps.ts";
 import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondonRouteRunnerMaps.ts";
 import { kingsCrossEustonOsmRouteRunnerMapOption } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
@@ -127,7 +137,7 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#f2ca3d");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#e9ca55");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#f2ca3d");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#d4e4b9");
@@ -609,10 +619,10 @@ test("Stage 161.6.21 route review issue symbols default to icon-only learner map
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#474239",
-    strokeColor: "#f2ca3d",
-    casingWidth: 18,
-    strokeWidth: 13.2
+    casingColor: "#554d40",
+    strokeColor: "#e9ca55",
+    casingWidth: 15.2,
+    strokeWidth: 10.6
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -892,7 +902,7 @@ test("Stage 8.6 area styles layer order and semantic viewport filtering are boun
   assert.deepEqual(features.map((feature) => feature.id), ["land-use", "park", "institution", "building"]);
   assert.deepEqual(
     filterSyntheticBackgroundFeaturesForViewport(features, lowViewport).map((feature) => feature.id),
-    ["land-use", "park", "institution"]
+    ["land-use", "park", "institution", "building"]
   );
   assert.ok(styledBuilding.alpha >= 0 && styledBuilding.alpha <= 1);
   assert.ok(styledBuilding.strokeWidth <= background.building.other.maxStrokeWidth);
@@ -975,8 +985,8 @@ test("Stage 8.4 printed-atlas tokens define dark-edged flat-yellow principal cor
   const residential = roadStyleForOsmHierarchy("residential");
   const service = roadStyleForOsmHierarchy("service");
 
-  assert.equal(primary.casingColor, "#474239");
-  assert.equal(primary.strokeColor, "#f2ca3d");
+  assert.equal(primary.casingColor, "#554d40");
+  assert.equal(primary.strokeColor, "#e9ca55");
   assert.ok(primary.casingWidth > primary.strokeWidth);
   assert.ok((primary.casingWidth - primary.strokeWidth) / 2 >= 2);
   assert.ok(primary.strokeWidth > secondary.strokeWidth);
@@ -1257,7 +1267,7 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
     TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor,
     TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.matchedRoute.strokeColor
   );
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 5);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 4);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.minorLowZoomAlphaMultiplier >= 0.9);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha <= 0.3);
   assert.ok(
@@ -3049,9 +3059,13 @@ test("Stage 8.8 benchmark renders principal atlas density from source-backed geo
     mapBounds: getRouteRunnerMapViewportBounds(map, 1440, 900)
   };
   const mobileBaseViewport = {
-    width: 390,
-    height: 844,
-    mapBounds: getRouteRunnerMapViewportBounds(map, 390, 844)
+    width: ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+    height: ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+    mapBounds: getRouteRunnerMapViewportBounds(
+      map,
+      ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
+      ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT
+    )
   };
   const viewport = buildZoomedMapViewport(
     desktopBaseViewport,
@@ -3065,20 +3079,25 @@ test("Stage 8.8 benchmark renders principal atlas density from source-backed geo
   );
   const visibleLabels = filterSyntheticMapLabelsForViewport({ labels, viewport, currentZoom: 1 });
   const visibleMobileLabels = filterSyntheticMapLabelsForViewport({ labels, viewport: mobileViewport, currentZoom: 1 });
+  const visibleBackgroundFeatures = filterSyntheticBackgroundFeaturesForViewport(backgroundFeatures, viewport);
   const roadLabels = visibleLabels.filter((label) => label.kind === "road");
   const roadReferences = visibleLabels.filter((label) => label.kind === "road_reference");
   const districtLabels = visibleLabels.filter((label) => label.kind === "district");
-  const majorRoadVisualsByWay = new Map<string, SyntheticRoadVisual[]>();
+  const estateLabels = labels.filter((label) => label.text === "Tachbrook Estate" || label.text === "Peabody Estate");
+  const squareLabel = labels.find((label) => label.text === "Orange Square");
+  const roadVisualsByWay = new Map<string, SyntheticRoadVisual[]>();
 
   for (const visual of roadVisuals) {
-    if (visual.osmWayId && visual.roadClass === "major" && visual.osmHierarchy === "primary") {
-      majorRoadVisualsByWay.set(visual.osmWayId, [...(majorRoadVisualsByWay.get(visual.osmWayId) ?? []), visual]);
+    if (visual.osmWayId) {
+      roadVisualsByWay.set(visual.osmWayId, [...(roadVisualsByWay.get(visual.osmWayId) ?? []), visual]);
     }
   }
 
   assert.equal(option.fixtureUse, "visualQaOnly");
   assert.equal(option.scoreable, false);
-  assert.ok(backgroundFeatures.filter((feature) => feature.kind === "building").length >= 50);
+  assert.equal(map.roads.length, 8914, "building-only context geometry must not alter the route graph");
+  assert.ok(backgroundFeatures.filter((feature) => feature.kind === "building").length >= 5600);
+  assert.ok(visibleBackgroundFeatures.filter((feature) => feature.kind === "building").length >= 5500);
   assert.ok(backgroundFeatures.filter((feature) => feature.kind === "institution").length >= 10);
   assert.ok(backgroundFeatures.filter((feature) => feature.kind === "land-use").length >= 50);
   assert.ok(backgroundFeatures.some((feature) => feature.kind === "park"));
@@ -3097,15 +3116,41 @@ test("Stage 8.8 benchmark renders principal atlas density from source-backed geo
 
     return point.x >= -1 && point.x <= mobileViewport.width + 1 && point.y >= -1 && point.y <= mobileViewport.height + 1;
   }));
+  assert.ok(estateLabels.length > 0);
+  assert.ok(estateLabels.every((label) => label.kind === "land_use" && label.category === "estate"));
+  assert.equal(squareLabel?.kind, "land_use");
+  assert.equal(squareLabel?.category, "contextual-land-use");
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.casingWidth <= 16);
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.casingWidth >
+      TOPOPASS_STREET_ATLAS_STYLE.roads.osm.secondary.casingWidth
+  );
+
+  const pointVisibleAtReset = (lat: number, lon: number) => {
+    const point = projectOsmCoordinateToLocalMeters({ lat, lon }, map.metadata.projection);
+    const screenPoint = mapToScreenPoint(point, viewport);
+
+    return screenPoint.x >= 0 && screenPoint.x <= viewport.width && screenPoint.y >= 0 && screenPoint.y <= viewport.height;
+  };
+
+  assert.equal(pointVisibleAtReset(51.4952, -0.1442), true, "Victoria should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.489, -0.1399), true, "Pimlico should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.5013, -0.125), true, "Westminster should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.4927, -0.1256), true, "Millbank should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.4861, -0.123), true, "Vauxhall should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.494, -0.1205), true, "the Thames corridor should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.5129, -0.1243), false, "Covent Garden should not be the reset focus");
+  assert.equal(pointVisibleAtReset(51.5113, -0.1132), false, "Temple should not be the reset focus");
+  assert.equal(pointVisibleAtReset(51.5116, -0.103), false, "Blackfriars should not be the reset focus");
 
   for (const reference of roadReferences) {
     const sourceWayId = String(reference.sourceMetadata?.elementId);
-    const matchingVisuals = majorRoadVisualsByWay.get(sourceWayId) ?? [];
+    const matchingVisuals = roadVisualsByWay.get(sourceWayId) ?? [];
     const finalPasses = roadPasses
       .filter((pass) => pass.visual.osmWayId === sourceWayId)
       .map((pass) => pass.layer);
 
-    assert.ok(matchingVisuals.length > 0, `${reference.id} should have matching major-road geometry`);
+    assert.ok(matchingVisuals.length > 0, `${reference.id} should have matching rendered road geometry`);
     assert.ok(finalPasses.includes("casing"), `${reference.id} should render a casing`);
     assert.ok(finalPasses.includes("fill"), `${reference.id} should render a fill`);
     assert.ok(

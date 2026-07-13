@@ -503,7 +503,17 @@ function loadKingsCrossEustonOverpassFixture(): OverpassJsonResponse {
 }
 
 function loadVictoriaWestminsterVauxhallOverpassFixture(): OverpassJsonResponse {
-  return requireJson("../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallOverpass.json") as OverpassJsonResponse;
+  const routeFixture = requireJson(
+    "../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallOverpass.json"
+  ) as OverpassJsonResponse;
+  const buildingFixture = requireJson(
+    "../../../lib/map-engine/osm/fixtures/victoriaWestminsterVauxhallBuildingsOverpass.json"
+  ) as OverpassJsonResponse;
+
+  return {
+    ...routeFixture,
+    elements: [...routeFixture.elements, ...buildingFixture.elements]
+  };
 }
 
 function classifyFixture(option: RouteRunnerMapOption): Phase8FixtureClassification {

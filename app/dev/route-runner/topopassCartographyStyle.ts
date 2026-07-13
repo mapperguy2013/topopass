@@ -818,34 +818,34 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     osm: {
       primary: {
-        casingColor: "#474239",
-        strokeColor: "#f2ca3d",
-        casingWidth: 18,
-        strokeWidth: 13.2
+        casingColor: "#554d40",
+        strokeColor: "#e9ca55",
+        casingWidth: 15.2,
+        strokeWidth: 10.6
       },
       secondary: {
         casingColor: "#6c6457",
-        strokeColor: "#f5dda0",
-        casingWidth: 14.2,
-        strokeWidth: 9.8
+        strokeColor: "#f1dca5",
+        casingWidth: 12.2,
+        strokeWidth: 7.8
       },
       tertiary: {
         casingColor: "#8a8173",
         strokeColor: "#fff8e7",
-        casingWidth: 11.4,
-        strokeWidth: 7.2
+        casingWidth: 9.8,
+        strokeWidth: 5.8
       },
       residential: {
         casingColor: "#aaa195",
         strokeColor: "#fffefa",
-        casingWidth: 9.2,
-        strokeWidth: 5.8
+        casingWidth: 7.8,
+        strokeWidth: 4.4
       },
       service: {
         casingColor: "#c8c0b4",
         strokeColor: "#f2eadc",
-        casingWidth: 5.4,
-        strokeWidth: 2.2,
+        casingWidth: 4.6,
+        strokeWidth: 1.8,
         alpha: 0.66
       },
       pedestrian: {
@@ -1039,14 +1039,14 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         collisionPadding: 5
       },
       district: {
-        font: "700 18px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 18,
-        approximateCharacterWidth: 8.2,
+        font: "700 16px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 16,
+        approximateCharacterWidth: 7.3,
         color: "rgba(18,25,34,0.88)",
         haloColor: "rgba(255,252,244,0.82)",
         haloWidth: 3.2,
         minViewportScale: 0.12,
-        collisionPadding: 9
+        collisionPadding: 7
       },
       institution: {
         font: "650 9.5px 'Arial Narrow', Arial, sans-serif",
@@ -1251,15 +1251,15 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       religious: { fillColor: "#e8cbc2", strokeColor: "#bd9388", strokeWidth: 0.9, minViewportScale: 0.2, lowZoomAlpha: 0.58, mediumZoomAlpha: 0.76, highZoomAlpha: 0.88, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.58, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.15 }
     },
     building: {
-      residential: { fillColor: "#ead8bc", strokeColor: "#a89a84", strokeWidth: 0.72, minViewportScale: 0.68, lowZoomAlpha: 0.48, mediumZoomAlpha: 0.72, highZoomAlpha: 0.9, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.05 },
-      commercial: { fillColor: "#e3ceb2", strokeColor: "#a2927d", strokeWidth: 0.76, minViewportScale: 0.68, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.74, highZoomAlpha: 0.92, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.1 },
-      retail: { fillColor: "#e7cdb0", strokeColor: "#a89179", strokeWidth: 0.76, minViewportScale: 0.68, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.74, highZoomAlpha: 0.92, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.1 },
-      industrial: { fillColor: "#dcd1bf", strokeColor: "#9f9688", strokeWidth: 0.78, minViewportScale: 0.68, lowZoomAlpha: 0.5, mediumZoomAlpha: 0.74, highZoomAlpha: 0.92, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.1 },
-      education: { fillColor: "#dfc0b4", strokeColor: "#a77f77", strokeWidth: 0.8, minViewportScale: 0.64, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.76, highZoomAlpha: 0.94, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
-      healthcare: { fillColor: "#ddb8b1", strokeColor: "#a47673", strokeWidth: 0.82, minViewportScale: 0.64, lowZoomAlpha: 0.54, mediumZoomAlpha: 0.78, highZoomAlpha: 0.95, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
-      civic: { fillColor: "#dec0b7", strokeColor: "#a27e77", strokeWidth: 0.8, minViewportScale: 0.64, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.76, highZoomAlpha: 0.94, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
-      religious: { fillColor: "#e5c7bb", strokeColor: "#aa857c", strokeWidth: 0.8, minViewportScale: 0.64, lowZoomAlpha: 0.52, mediumZoomAlpha: 0.76, highZoomAlpha: 0.94, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.15 },
-      other: { fillColor: "#eadbc3", strokeColor: "#aa9c87", strokeWidth: 0.72, minViewportScale: 0.68, lowZoomAlpha: 0.48, mediumZoomAlpha: 0.72, highZoomAlpha: 0.9, minRenderedAreaPixels: 2.6, simplifyBelowViewportScale: 0.9, simplifyTolerancePixels: 0.65, maxStrokeWidth: 1.05 }
+      residential: { fillColor: "#e2c79f", strokeColor: "#8f806a", strokeWidth: 0.9, minViewportScale: 0.22, lowZoomAlpha: 0.82, mediumZoomAlpha: 0.9, highZoomAlpha: 0.96, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.15 },
+      commercial: { fillColor: "#dcc09d", strokeColor: "#897864", strokeWidth: 0.94, minViewportScale: 0.22, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.92, highZoomAlpha: 0.97, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.2 },
+      retail: { fillColor: "#dfbd98", strokeColor: "#8d7660", strokeWidth: 0.94, minViewportScale: 0.22, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.92, highZoomAlpha: 0.97, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.2 },
+      industrial: { fillColor: "#d2c4af", strokeColor: "#887e70", strokeWidth: 0.96, minViewportScale: 0.22, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.92, highZoomAlpha: 0.97, minRenderedAreaPixels: 1.6, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.2 },
+      education: { fillColor: "#d9ada0", strokeColor: "#956e67", strokeWidth: 0.98, minViewportScale: 0.2, lowZoomAlpha: 0.86, mediumZoomAlpha: 0.93, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
+      healthcare: { fillColor: "#d6a39d", strokeColor: "#926561", strokeWidth: 1, minViewportScale: 0.2, lowZoomAlpha: 0.88, mediumZoomAlpha: 0.94, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
+      civic: { fillColor: "#d7ada4", strokeColor: "#916d66", strokeWidth: 0.98, minViewportScale: 0.2, lowZoomAlpha: 0.86, mediumZoomAlpha: 0.93, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
+      religious: { fillColor: "#dcb4a7", strokeColor: "#98736a", strokeWidth: 0.98, minViewportScale: 0.2, lowZoomAlpha: 0.86, mediumZoomAlpha: 0.93, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
+      other: { fillColor: "#e1c9a6", strokeColor: "#91816b", strokeWidth: 0.9, minViewportScale: 0.22, lowZoomAlpha: 0.82, mediumZoomAlpha: 0.9, highZoomAlpha: 0.96, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.15 }
     },
     pedestrianArea: { fillColor: "#ece4d6", strokeColor: "#d4c8b8" },
     landBlock: {

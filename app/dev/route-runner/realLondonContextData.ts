@@ -3,6 +3,7 @@ import { projectOsmCoordinateToLocalMeters } from "../../../lib/map-engine/osm/i
 import type {
   OsmLocalProjection,
   OverpassElementId,
+  OverpassGeometryCoordinate,
   OverpassJsonResponse,
   OverpassNodeElement,
   OverpassRelationElement,
@@ -486,7 +487,7 @@ function contextFeaturesFromWay(
   const points = projectedWayPoints({ way, nodesById, projection });
   const features: RealLondonContextFeature[] = [];
   const closed = isClosedWay(way);
-  const polygonReady = closed && points.length === way.nodes.length && points.length >= 4;
+  const polygonReady = closed && hasCompleteWayGeometry(way, points) && points.length >= 4;
 
   if (points.length >= 2) {
     for (const roadReference of roadReferencesForTags(tags)) {
@@ -1115,6 +1116,12 @@ function projectedWayPoints(input: {
   nodesById: ReadonlyMap<OverpassElementId, OverpassNodeElement>;
   projection: OsmLocalProjection;
 }): Vec2[] {
+  const inlineGeometry = validInlineWayGeometry(input.way);
+
+  if (inlineGeometry) {
+    return inlineGeometry.map((coordinate) => projectOsmCoordinateToLocalMeters(coordinate, input.projection));
+  }
+
   return input.way.nodes.flatMap((nodeId) => {
     const node = input.nodesById.get(nodeId);
 
@@ -1124,6 +1131,28 @@ function projectedWayPoints(input: {
 
     return [projectOsmCoordinateToLocalMeters({ lat: node.lat, lon: node.lon }, input.projection)];
   });
+}
+
+function validInlineWayGeometry(way: OverpassWayElement): OverpassGeometryCoordinate[] | null {
+  const geometry = way.geometry;
+
+  if (
+    !Array.isArray(geometry) ||
+    geometry.length < 2 ||
+    (way.nodes.length > 0 && geometry.length !== way.nodes.length) ||
+    geometry.some((coordinate) => !Number.isFinite(coordinate.lat) || !Number.isFinite(coordinate.lon))
+  ) {
+    return null;
+  }
+
+  return geometry;
+}
+
+function hasCompleteWayGeometry(way: OverpassWayElement, projectedPoints: readonly Vec2[]): boolean {
+  const inlineGeometry = validInlineWayGeometry(way);
+  const expectedPointCount = inlineGeometry?.length ?? way.nodes.length;
+
+  return expectedPointCount >= 2 && projectedPoints.length === expectedPointCount;
 }
 
 type RelationPolygonRings = {
@@ -1256,6 +1285,15 @@ function isClosedNodeRefRing(nodeRefs: readonly OverpassElementId[]): boolean {
 }
 
 function isClosedWay(way: OverpassWayElement): boolean {
+  const inlineGeometry = validInlineWayGeometry(way);
+
+  if (inlineGeometry && inlineGeometry.length >= 4) {
+    const first = inlineGeometry[0];
+    const last = inlineGeometry[inlineGeometry.length - 1];
+
+    return first.lat === last.lat && first.lon === last.lon;
+  }
+
   return way.nodes.length >= 4 && way.nodes[0] === way.nodes[way.nodes.length - 1];
 }
 

@@ -223,6 +223,42 @@ test("Stage 150.5 adapter safely no-ops without projection fixture or usable geo
   assert.deepEqual(buildRealLondonContextFeatures(convertedContextMap(), { elements: [{ type: "node", id: 1 }] }), []);
 });
 
+test("Stage 8.8 adapter accepts complete inline Overpass building geometry without route nodes", () => {
+  const fixture: OverpassJsonResponse = {
+    elements: [
+      {
+        type: "way",
+        id: 8801,
+        nodes: [88011, 88012, 88013, 88014, 88011],
+        geometry: [
+          { lat: 51.5198, lon: -0.1401 },
+          { lat: 51.5198, lon: -0.1399 },
+          { lat: 51.52, lon: -0.1399 },
+          { lat: 51.52, lon: -0.1401 },
+          { lat: 51.5198, lon: -0.1401 }
+        ],
+        tags: { building: "apartments" }
+      },
+      {
+        type: "way",
+        id: 8802,
+        nodes: [88021, 88022, 88023, 88021],
+        geometry: [
+          { lat: 51.5198, lon: -0.1401 },
+          { lat: Number.NaN, lon: -0.1399 },
+          { lat: 51.5198, lon: -0.1401 }
+        ],
+        tags: { building: "yes" }
+      }
+    ]
+  };
+  const features = buildRealLondonContextFeatures(convertedAtlasMap(), fixture);
+
+  assert.deepEqual(features.map((feature) => feature.id), ["building-way-8801"]);
+  assert.equal(features[0]?.kind, "building");
+  assert.equal("points" in features[0] ? features[0].points.length : 0, 5);
+});
+
 test("Stage 8.3 adapter normalises atlas polygons, subtypes, road refs, and source metadata", () => {
   const features = buildRealLondonContextFeatures(convertedAtlasMap(), atlasFixture);
   const atlasFeatures = features.filter((feature) =>

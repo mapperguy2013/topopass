@@ -10,10 +10,16 @@ export type OverpassNodeElement = {
   tags?: OverpassTags;
 };
 
+export type OverpassGeometryCoordinate = {
+  lat: number;
+  lon: number;
+};
+
 export type OverpassWayElement = {
   type: "way";
   id: OverpassElementId;
   nodes: OverpassElementId[];
+  geometry?: OverpassGeometryCoordinate[];
   tags?: OverpassTags;
 };
 

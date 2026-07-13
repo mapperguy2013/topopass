@@ -42,6 +42,7 @@ export type {
   OsmAcceptedHighway,
   OverpassElement,
   OverpassElementId,
+  OverpassGeometryCoordinate,
   OverpassExcludedWay,
   OverpassExcludedWayReason,
   OverpassJsonResponse,

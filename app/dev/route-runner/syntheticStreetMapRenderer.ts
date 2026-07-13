@@ -2570,7 +2570,18 @@ function buildOsmContextLabels(
       }
 
       if (feature.kind === "area") {
-        return [contextCandidate(feature, "district", "district", feature.name, feature.point)];
+        const place = feature.sourceTags?.place;
+        const compactEstate =
+          (place === "neighbourhood" || place === "locality") && /\bestate\b/i.test(feature.name);
+        const compactArea = compactEstate || place === "square";
+
+        return [contextCandidate(
+          feature,
+          compactArea ? "land_use" : "district",
+          compactEstate ? "estate" : compactArea ? "contextual-land-use" : "district",
+          feature.name,
+          feature.point
+        )];
       }
 
       if (feature.kind === "station") {
