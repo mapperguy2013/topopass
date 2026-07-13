@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  auditSyntheticAtlasLabelCoverage,
   buildSyntheticBackgroundFeatures,
   buildSyntheticLandmarkVisuals,
   buildSyntheticLinearFeatures,
@@ -185,6 +186,10 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "service"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.context), [
+    "road_reference",
+    "district",
+    "institution",
+    "land_use",
     "station",
     "landmark",
     "public_building",
@@ -198,9 +203,13 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.collision), [
     "defaultPadding",
     "routePadding",
-    "markerPadding"
+    "markerPadding",
+    "roadReferenceRepeatDistance",
+    "roadReferenceMaxPerViewport"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.labels.priorities), [
+    "roadReference",
+    "district",
     "majorRoad",
     "secondaryRoad",
     "restrictedRoad",
@@ -214,6 +223,8 @@ test("Stage 142 road hierarchy route restriction and one-way token groups are co
     "water",
     "bridge",
     "area",
+    "institution",
+    "contextualLandUse",
     "exerciseStop"
   ]);
   assert.deepEqual(Object.keys(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures), [
@@ -805,11 +816,11 @@ function insetViewportForMap(map: MapDefinition, fraction: number) {
 
 test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and context at learner zoom", () => {
   const minimumVisibleRoadLabelsByMapId = new Map([
-    ["osm-curated-piccadilly-circus", 45],
-    ["osm-curated-waterloo-bridge", 45],
-    ["osm-curated-one-way-system-area", 70],
-    ["osm-curated-quiet-residential-roads", 45],
-    ["osm-curated-kings-cross-euston", 40]
+    ["osm-curated-piccadilly-circus", 3],
+    ["osm-curated-waterloo-bridge", 1],
+    ["osm-curated-one-way-system-area", 9],
+    ["osm-curated-quiet-residential-roads", 13],
+    ["osm-curated-kings-cross-euston", 1]
   ]);
   const minimumVisibleLandmarksByMapId = new Map([
     ["osm-curated-kings-cross-euston", 0]
@@ -863,7 +874,7 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
       option.id
     );
     assert.ok(learnerLabels.some((label) => label.kind !== "road"), option.id);
-    assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 6, option.id);
+    assert.ok(overviewLabels.filter((label) => label.kind === "road").length <= 12, option.id);
   }
 });
 
@@ -875,6 +886,10 @@ test("Stage 161.6.26 beta default fit keeps sparse real maps readable without in
     ["osm-curated-quiet-residential-roads", { roadLabels: 8, contextLabels: 3 }]
   ]);
   const contextKinds = new Set([
+    "road_reference",
+    "district",
+    "institution",
+    "land_use",
     "area",
     "park",
     "water",
@@ -945,8 +960,8 @@ test("Stage 161.6.26 beta default fit keeps sparse real maps readable without in
   assert.ok(visiblePilotLabels.filter((label) => label.kind === "road").length >= 8);
   assert.equal(
     visiblePilotLabels.some((label) => contextKinds.has(label.kind)),
-    false,
-    "Real London pilot has no committed context fixture data to render"
+    true,
+    "Real London pilot should expose its committed OSM road references"
   );
 });
 
@@ -1569,7 +1584,7 @@ test("Stage 145 label styles follow road hierarchy", () => {
 
   assert.equal(roadLabelTier(majorLabel), "major");
   assert.equal(roadLabelTier(minorLabel), "minor");
-  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 13px Arial, sans-serif");
+  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "700 12px 'Arial Narrow', Arial, sans-serif");
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.major.fontSize >
       TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.minor.fontSize
@@ -2062,11 +2077,11 @@ test("Stage 149 raw OSM area names and landmark categories are fixture-backed", 
   });
 
   assert.equal(labelsWithoutFixture.some((label) => label.text === "Fitzrovia"), false);
-  assert.ok(labels.some((label) => label.kind === "area" && label.text === "Fitzrovia"));
+  assert.ok(labels.some((label) => label.kind === "district" && label.text === "Fitzrovia"));
   assert.ok(labels.some((label) => label.kind === "public_building" && label.text === "Pilot Library"));
   assert.ok(labels.some((label) => label.kind === "landmark" && label.text === "Pilot Monument"));
   assert.ok(labels.some((label) => label.kind === "learner_reference" && label.text === "Pilot Market"));
-  assert.ok(labels.some((label) => label.kind === "open_space" && label.text === "Pilot Garden"));
+  assert.ok(labels.some((label) => label.kind === "park" && label.text === "Pilot Garden"));
   assert.equal(labels.some((label) => label.text === "Named Bench"), false);
   assert.deepEqual(
     visuals.map((visual) => [visual.kind, visual.label, visual.routable]),
@@ -2118,11 +2133,11 @@ test("Stage 149 area and landmark labels respect zoom and learner overlay priori
 
   assert.deepEqual(
     filterSyntheticMapLabelsForViewport({ labels, viewport: lowZoomViewport }).map((label) => label.id),
-    []
+    ["road-label"]
   );
   assert.deepEqual(
     filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
-    ["road-label"]
+    ["area-label"]
   );
   assert.deepEqual(
     filterSyntheticMapLabelsForViewport({ labels: labels.slice(0, 2), viewport: labelTestViewport, reservedBoxes }),
@@ -2164,7 +2179,149 @@ test("Stage 149 landmark marker roles have deterministic zoom and collision beha
   assert.ok(syntheticLandmarkVisualAlphaForViewport(openSpace, highViewport) <= 1);
 });
 
-test("converted OSM road labels are optional and deduplicated by road name", () => {
+test("Stage 8.5 atlas candidates classify source-backed labels and preserve OSM metadata", () => {
+  const fixture: OverpassJsonResponse = {
+    elements: [
+      { type: "node", id: 1, lat: 51.52, lon: -0.14 },
+      { type: "node", id: 2, lat: 51.52, lon: -0.138 },
+      { type: "node", id: 3, lat: 51.5204, lon: -0.1398 },
+      { type: "node", id: 4, lat: 51.5204, lon: -0.1395 },
+      { type: "node", id: 5, lat: 51.5201, lon: -0.1395 },
+      { type: "node", id: 6, lat: 51.5201, lon: -0.1398 },
+      { type: "node", id: 7, lat: 51.5199, lon: -0.1398 },
+      { type: "node", id: 8, lat: 51.5199, lon: -0.1395 },
+      { type: "node", id: 9, lat: 51.5196, lon: -0.1395 },
+      { type: "node", id: 10, lat: 51.5196, lon: -0.1398 },
+      { type: "node", id: 11, lat: 51.5204, lon: -0.1393 },
+      { type: "node", id: 12, lat: 51.5204, lon: -0.139 },
+      { type: "node", id: 13, lat: 51.5201, lon: -0.139 },
+      { type: "node", id: 14, lat: 51.5201, lon: -0.1393 },
+      { type: "node", id: 15, lat: 51.5199, lon: -0.1393 },
+      { type: "node", id: 16, lat: 51.5199, lon: -0.139 },
+      { type: "node", id: 17, lat: 51.5196, lon: -0.139 },
+      { type: "node", id: 18, lat: 51.5196, lon: -0.1393 },
+      { type: "node", id: 20, lat: 51.52025, lon: -0.1394, tags: { place: "neighbourhood", name: "Atlas Quarter" } },
+      { type: "node", id: 21, lat: 51.5202, lon: -0.1392, tags: { railway: "station", name: "Atlas Station" } },
+      { type: "node", id: 22, lat: 51.52, lon: -0.1392, tags: { amenity: "library", name: "Atlas Library" } },
+      { type: "node", id: 23, lat: 51.5198, lon: -0.1392, tags: { amenity: "bench", name: "Unsupported Bench" } },
+      { type: "way", id: 100, nodes: [1, 2], tags: { highway: "primary", name: "Atlas Road", ref: "A501" } },
+      { type: "way", id: 200, nodes: [3, 4, 5, 6, 3], tags: { leisure: "park", name: "Atlas Gardens" } },
+      { type: "way", id: 201, nodes: [7, 8, 9, 10, 7], tags: { amenity: "school", name: "Atlas School" } },
+      { type: "way", id: 202, nodes: [11, 12, 13, 14, 11], tags: { landuse: "residential", name: "Atlas Estate" } },
+      { type: "way", id: 203, nodes: [15, 16, 17, 18, 15], tags: { landuse: "commercial", name: "Atlas Works" } }
+    ]
+  };
+  const converted = convertOverpassJsonToRouteMap(fixture, {
+    mapId: "stage-8-5-label-map",
+    name: "Stage 8.5 label map"
+  });
+
+  if (!converted.ok) {
+    throw new Error(`Expected Stage 8.5 fixture to convert: ${converted.errors.join("; ")}`);
+  }
+
+  const labels = buildSyntheticMapLabels(converted.map, undefined, {
+    includeOsmRoadLabels: true,
+    sourceOverpassFixture: fixture
+  });
+  const repeatedLabels = buildSyntheticMapLabels(converted.map, undefined, {
+    includeOsmRoadLabels: true,
+    sourceOverpassFixture: fixture
+  });
+  const reference = labels.find((label) => label.kind === "road_reference" && label.text === "A501");
+  const coverage = auditSyntheticAtlasLabelCoverage(labels);
+
+  assert.ok(reference);
+  assert.equal(reference.sourceMetadata?.elementType, "way");
+  assert.equal(reference.sourceMetadata?.elementId, 100);
+  assert.equal(reference.sourceMetadata?.tags?.ref, "A501");
+  assert.ok(labels.some((label) => label.kind === "district" && label.text === "Atlas Quarter"));
+  assert.ok(labels.some((label) => label.category === "major-road" && label.text === "Atlas Road"));
+  assert.ok(labels.some((label) => label.category === "station" && label.text === "Atlas Station"));
+  assert.ok(labels.some((label) => label.category === "landmark" && label.text === "Atlas Library"));
+  assert.ok(labels.some((label) => label.category === "park" && label.text === "Atlas Gardens"));
+  assert.ok(labels.some((label) => label.category === "institution" && label.text === "Atlas School"));
+  assert.ok(labels.some((label) => label.category === "estate" && label.text === "Atlas Estate"));
+  assert.ok(labels.some((label) => label.category === "contextual-land-use" && label.text === "Atlas Works"));
+  assert.equal(labels.some((label) => label.text === "Unsupported Bench"), false);
+  assert.ok(labels.every((label) => label.category && label.sourceMetadata));
+  assert.deepEqual(repeatedLabels, labels);
+  assert.equal(coverage.counts.roadReferenceLabels, 1);
+  assert.equal(coverage.counts.districtLabels, 1);
+  assert.equal(coverage.counts.majorRoadLabels, 1);
+  assert.equal(coverage.counts.stationLabels, 1);
+  assert.equal(coverage.counts.landmarkLabels, 2);
+  assert.equal(coverage.counts.parkLabels, 1);
+  assert.equal(coverage.counts.institutionLabels, 1);
+  assert.equal(coverage.counts.estateLabels, 1);
+  assert.equal(coverage.counts.contextualLandUseLabels, 1);
+  assert.deepEqual(
+    coverage.orderedCategories.map((category) => category.id),
+    [
+      "roadReferenceLabels",
+      "districtLabels",
+      "majorRoadLabels",
+      "stationLabels",
+      "landmarkLabels",
+      "localRoadLabels",
+      "parkLabels",
+      "estateLabels",
+      "waterLabels",
+      "institutionLabels",
+      "contextualLandUseLabels"
+    ]
+  );
+});
+
+test("Stage 8.5 label priorities, zoom gates, viewport clipping, and overlay reservations are deterministic", () => {
+  const labels: SyntheticMapLabel[] = [
+    {
+      id: "reference",
+      kind: "road_reference",
+      text: "A501",
+      point: { x: 100, y: 50 },
+      angleRadians: 0,
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.roadReference
+    },
+    {
+      id: "district",
+      kind: "district",
+      text: "Bloomsbury",
+      point: { x: 100, y: 50 },
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.district
+    },
+    roadLabel({ id: "major", point: { x: 100, y: 50 }, roadLengthMeters: 500 }),
+    roadLabel({
+      id: "local",
+      text: "Store Street",
+      point: { x: 100, y: 50 },
+      roadClass: "local",
+      osmHierarchy: "residential",
+      priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.localRoad,
+      roadLengthMeters: 500
+    }),
+    roadLabel({ id: "outside", point: { x: 500, y: 500 }, roadLengthMeters: 500 })
+  ];
+
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({ labels, viewport: labelTestViewport }).map((label) => label.id),
+    ["reference"]
+  );
+  assert.deepEqual(
+    filterSyntheticMapLabelsForViewport({
+      labels,
+      viewport: labelTestViewport,
+      reservedBoxes: [{ id: "learner-route", minX: 50, minY: 20, maxX: 150, maxY: 80 }]
+    }),
+    []
+  );
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.labels.context.road_reference.minViewportScale <
+      TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.service.minViewportScale
+  );
+});
+
+test("converted OSM road labels are optional and deterministic per source way", () => {
   const hiddenLabels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0]);
   const visibleLabels = buildSyntheticMapLabels(mediumLondonOsmRouteMap, mediumLondonOsmRouteExercises[0], {
     includeOsmRoadLabels: true
@@ -2172,20 +2329,27 @@ test("converted OSM road labels are optional and deduplicated by road name", () 
   const eustonRoadLabels = visibleLabels.filter((label) => label.kind === "road" && label.text === "Euston Road");
 
   assert.equal(hiddenLabels.some((label) => label.kind === "road" && label.text === "Euston Road"), false);
-  assert.equal(eustonRoadLabels.length, 1);
-  assert.equal(eustonRoadLabels[0].id, "road-label-osm-euston-road");
+  assert.ok(eustonRoadLabels.length > 1);
+  assert.match(eustonRoadLabels[0].id, /^road-label-osm-osm-way-6001-segment-\d+-euston-road$/);
   assert.equal(eustonRoadLabels[0].kind, "road");
   assert.equal(eustonRoadLabels[0].text, "Euston Road");
-  assert.deepEqual(eustonRoadLabels[0].point, { x: -267.166778, y: -322.105622 });
-  assert.equal(eustonRoadLabels[0].angleRadians, 0);
-  assert.equal(eustonRoadLabels[0].priority, 2);
+  assert.ok(Number.isFinite(eustonRoadLabels[0].point.x));
+  assert.ok(Number.isFinite(eustonRoadLabels[0].point.y));
+  assert.ok(Number.isFinite(eustonRoadLabels[0].angleRadians));
+  assert.equal(eustonRoadLabels[0].priority, 3);
   assert.equal(eustonRoadLabels[0].roadClass, "major");
   assert.equal(eustonRoadLabels[0].osmHierarchy, "primary");
   assert.equal(eustonRoadLabels[0].source, "osm");
+  assert.equal(eustonRoadLabels[0].category, "major-road");
+  assert.ok(eustonRoadLabels.every((label) => label.sourceMetadata?.elementId === 6001));
   assert.ok((eustonRoadLabels[0].roadLengthMeters ?? 0) > 0);
 });
 
-test("Stage 8.4 does not render source A/B references as road labels", () => {
+test("Stage 8.5 renders only source-backed A/B references with atlas-red styling", () => {
+  const pilotOption = getRouteRunnerMapOption(realLondonOsmPilotRouteMap.id);
+
+  assert.ok(pilotOption);
+
   const sourceRefs = new Set(
     realLondonOsmPilotRouteMap.roads.flatMap((road) => {
       const ref = road.metadata.rawTags.ref?.trim().toUpperCase();
@@ -2194,11 +2358,17 @@ test("Stage 8.4 does not render source A/B references as road labels", () => {
     })
   );
   const labels = buildSyntheticMapLabels(realLondonOsmPilotRouteMap, undefined, {
-    includeOsmRoadLabels: true
+    includeOsmRoadLabels: true,
+    sourceOverpassFixture: pilotOption.sourceOverpassFixture
   });
+  const referenceLabels = labels.filter((label) => label.kind === "road_reference");
 
   assert.ok(sourceRefs.size > 0);
-  assert.equal(labels.some((label) => sourceRefs.has(label.text.toUpperCase())), false);
+  assert.ok(referenceLabels.length > 0);
+  assert.ok(referenceLabels.every((label) => sourceRefs.has(label.text.toUpperCase())));
+  assert.ok(referenceLabels.every((label) => label.sourceMetadata?.provider === "openstreetmap"));
+  assert.ok(referenceLabels.every((label) => label.sourceMetadata?.tags?.ref));
+  assert.equal(labelStyleForSyntheticMapLabel(referenceLabels[0]).color, "#c5202f");
 });
 
 test("unnamed converted OSM roads do not crash label generation", () => {

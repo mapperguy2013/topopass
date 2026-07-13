@@ -2096,7 +2096,7 @@ function drawSyntheticMapLabel(
   currentZoom?: number
 ): void {
   const point = mapToScreenPoint(label.point, viewport);
-  const isRoadLabel = label.kind === "road";
+  const isRoadLabel = label.kind === "road" || label.kind === "road_reference";
   const isStopLabel = label.kind === "start" || label.kind === "checkpoint" || label.kind === "finish";
 
   context.save();
@@ -2112,6 +2112,7 @@ function drawSyntheticMapLabel(
   const yOffset = isStopLabel ? labelStyle.yOffset ?? 0 : 0;
 
   context.font = labelStyle.font;
+  context.letterSpacing = "0px";
 
   if (isStopLabel) {
     drawStopLabelBubble(context, label.text, label.kind, labelStyle, yOffset);

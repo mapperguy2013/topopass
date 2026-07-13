@@ -281,6 +281,10 @@ export type TopopassStreetAtlasStyle = {
     area: TopopassLabelStyle;
     landmark: TopopassLabelStyle;
     context: Record<
+      | "road_reference"
+      | "district"
+      | "institution"
+      | "land_use"
       | "station"
       | "landmark"
       | "public_building"
@@ -297,8 +301,12 @@ export type TopopassStreetAtlasStyle = {
       defaultPadding: number;
       routePadding: number;
       markerPadding: number;
+      roadReferenceRepeatDistance: number;
+      roadReferenceMaxPerViewport: number;
     };
     priorities: {
+      roadReference: number;
+      district: number;
       majorRoad: number;
       secondaryRoad: number;
       restrictedRoad: number;
@@ -312,6 +320,8 @@ export type TopopassStreetAtlasStyle = {
       water: number;
       bridge: number;
       area: number;
+      institution: number;
+      contextualLandUse: number;
       exerciseStop: number;
     };
   };
@@ -845,25 +855,25 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     roadHierarchy: {
       major: {
-        font: "700 13px Arial, sans-serif",
-        fontSize: 13,
-        approximateCharacterWidth: 7.1,
-        color: "rgba(26,36,50,0.88)",
-        haloColor: "rgba(255,252,244,0.98)",
-        haloWidth: 5,
-        shadowColor: "rgba(255,255,255,0.62)",
-        shadowBlur: 3,
+        font: "700 12px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 12,
+        approximateCharacterWidth: 6.1,
+        color: "rgba(23,30,39,0.94)",
+        haloColor: "rgba(255,222,42,0.88)",
+        haloWidth: 3.6,
+        shadowColor: "transparent",
+        shadowBlur: 0,
         shadowOffsetY: 0,
-        minViewportScale: 0.16,
-        minRoadScreenLength: 72,
-        maxTextToRoadRatio: 0.94,
-        repeatDistance: 320,
-        collisionPadding: 8
+        minViewportScale: 0.14,
+        minRoadScreenLength: 52,
+        maxTextToRoadRatio: 0.98,
+        repeatDistance: 230,
+        collisionPadding: 4
       },
       secondary: {
-        font: "650 12px Arial, sans-serif",
-        fontSize: 12,
-        approximateCharacterWidth: 6.6,
+        font: "700 10.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 10.5,
+        approximateCharacterWidth: 5.45,
         color: "rgba(41,51,66,0.86)",
         haloColor: "rgba(255,252,244,0.97)",
         haloWidth: 4.4,
@@ -871,26 +881,26 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowBlur: 2,
         shadowOffsetY: 0,
         minViewportScale: 0.24,
-        minRoadScreenLength: 58,
-        maxTextToRoadRatio: 0.9,
-        repeatDistance: 270,
-        collisionPadding: 7
+        minRoadScreenLength: 44,
+        maxTextToRoadRatio: 0.96,
+        repeatDistance: 190,
+        collisionPadding: 3.5
       },
       minor: {
-        font: "600 10.5px Arial, sans-serif",
-        fontSize: 10.5,
-        approximateCharacterWidth: 5.65,
+        font: "600 9.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 9.5,
+        approximateCharacterWidth: 4.8,
         color: "rgba(42,54,72,0.84)",
         haloColor: "rgba(255,252,244,0.95)",
         haloWidth: 3.45,
         shadowColor: "rgba(255,255,255,0.44)",
         shadowBlur: 1.5,
         shadowOffsetY: 0,
-        minViewportScale: 0.18,
-        minRoadScreenLength: 42,
-        maxTextToRoadRatio: 0.92,
-        repeatDistance: 190,
-        collisionPadding: 5.5
+        minViewportScale: 0.14,
+        minRoadScreenLength: 30,
+        maxTextToRoadRatio: 0.97,
+        repeatDistance: 135,
+        collisionPadding: 2.5
       },
       restricted: {
         font: "600 10px Arial, sans-serif",
@@ -909,20 +919,20 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         collisionPadding: 5
       },
       service: {
-        font: "500 9.5px Arial, sans-serif",
-        fontSize: 9.5,
-        approximateCharacterWidth: 5.1,
+        font: "600 8.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 8.5,
+        approximateCharacterWidth: 4.3,
         color: "rgba(71,85,105,0.5)",
         haloColor: "rgba(255,252,244,0.88)",
         haloWidth: 2.5,
         shadowColor: "rgba(255,255,255,0.3)",
         shadowBlur: 1,
         shadowOffsetY: 0,
-        minViewportScale: 1.42,
-        minRoadScreenLength: 92,
-        maxTextToRoadRatio: 0.72,
-        repeatDistance: 220,
-        collisionPadding: 4
+        minViewportScale: 0.72,
+        minRoadScreenLength: 52,
+        maxTextToRoadRatio: 0.88,
+        repeatDistance: 170,
+        collisionPadding: 2.5
       }
     },
     area: {
@@ -938,6 +948,46 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       haloWidth: 3
     },
     context: {
+      road_reference: {
+        font: "700 12px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 12,
+        approximateCharacterWidth: 6.1,
+        color: "#c5202f",
+        haloColor: "rgba(255,220,24,0.96)",
+        haloWidth: 2.8,
+        minViewportScale: 0.14,
+        collisionPadding: 4
+      },
+      district: {
+        font: "700 18px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 18,
+        approximateCharacterWidth: 8.2,
+        color: "rgba(18,25,34,0.88)",
+        haloColor: "rgba(255,252,244,0.82)",
+        haloWidth: 3.2,
+        minViewportScale: 0.12,
+        collisionPadding: 9
+      },
+      institution: {
+        font: "650 9.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 9.5,
+        approximateCharacterWidth: 4.9,
+        color: "rgba(91,49,57,0.78)",
+        haloColor: "rgba(255,245,240,0.88)",
+        haloWidth: 2.5,
+        minViewportScale: 0.42,
+        collisionPadding: 3
+      },
+      land_use: {
+        font: "600 9.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 9.5,
+        approximateCharacterWidth: 4.9,
+        color: "rgba(76,68,57,0.62)",
+        haloColor: "rgba(255,252,244,0.78)",
+        haloWidth: 2.2,
+        minViewportScale: 0.58,
+        collisionPadding: 3
+      },
       station: {
         font: "700 12px Arial, sans-serif",
         fontSize: 12,
@@ -1054,23 +1104,29 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     collision: {
       defaultPadding: 5,
       routePadding: 10,
-      markerPadding: 14
+      markerPadding: 14,
+      roadReferenceRepeatDistance: 320,
+      roadReferenceMaxPerViewport: 4
     },
     priorities: {
-      majorRoad: 2,
+      roadReference: 1,
+      district: 2,
+      majorRoad: 3,
       secondaryRoad: 3,
       restrictedRoad: 5,
-      localRoad: 6,
+      localRoad: 5,
       station: 4,
-      landmark: 6,
-      publicBuilding: 6,
-      openSpace: 5,
+      landmark: 4,
+      publicBuilding: 4,
+      openSpace: 6,
       learnerReference: 7,
-      park: 5,
-      water: 5,
+      park: 6,
+      water: 4,
       bridge: 5,
-      area: 8,
-      exerciseStop: 10
+      area: 2,
+      institution: 4,
+      contextualLandUse: 7,
+      exerciseStop: 0
     }
   },
   background: {

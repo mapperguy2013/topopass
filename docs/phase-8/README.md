@@ -51,9 +51,9 @@ stages may be split if implementation audit shows that a stage is too large.
    places, transport context and road references. Completed.
 4. Stage 8.4: Printed-atlas road hierarchy and major-road corridor system.
    Implemented; manual visual acceptance pending.
-5. Stage 8.5: Buildings, built-up fabric, institutional areas, parks and water.
-6. Stage 8.6: Compact atlas typography and dense road-label placement.
-7. Stage 8.7: Road references and compact original symbols.
+5. Stage 8.5: Atlas label density and place-name pass. Completed.
+6. Stage 8.6: Buildings, built-up fabric, institutional areas, parks and water.
+7. Stage 8.7: Compact original symbols and road-reference refinement.
 8. Stage 8.8: Principal examination-atlas scale and information-density rules.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
@@ -64,12 +64,15 @@ stages may be split if implementation audit shows that a stage is too large.
 
 ## Current Status
 
-Stages 8.1 through 8.3 are complete. Stage 8.4 is implemented in the production
+Stages 8.1 through 8.3 are complete. Stages 8.4 and 8.5 are implemented in the production
 renderer with typed road-hierarchy tokens, flat-yellow principal corridors,
 dark casings, deterministic pass order, split-segment continuity metadata, and
-bounded semantic zoom scaling. Manual production screenshot and interaction QA
-was unavailable during implementation, so Stage 8.4 visual acceptance remains
-pending and the stage is not marked complete.
+bounded semantic zoom scaling. Stage 8.5 adds typed source-backed label
+candidates, denser road-name placement, large district names, red A/B
+references, place labels, deterministic collision rules, and category coverage
+diagnostics. Stage 8.5 visual QA is accepted with committed desktop and mobile
+screenshots. Stage 8.4's independent manual visual acceptance remains pending,
+and Stage 8.6 has not started.
 
 ## Documents
 
@@ -78,4 +81,5 @@ pending and the stage is not marked complete.
 - [Phase 8 geographic render-data audit](phase-8-geographic-render-data-audit.md)
 - [Stage 8.3 render-data adapter](stage-8-3-render-data-adapter.md)
 - [Stage 8.4 printed-atlas road hierarchy](stage-8-4-printed-atlas-road-hierarchy.md)
+- [Stage 8.5 atlas label density](stage-8-5-atlas-label-density.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

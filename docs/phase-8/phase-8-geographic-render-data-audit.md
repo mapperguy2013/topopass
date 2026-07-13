@@ -13,9 +13,10 @@ fetch live Overpass data and does not use the approved visual master as
 geography.
 
 Stage 8.3 subsequently added typed building, institutional-area, land-use, and
-road-reference context features. The source totals below remain the Stage 8.2
-baseline; adapter counts and pipeline-state output now reflect the current
-Stage 8.3 code. Renderer-consumed counts remain unchanged.
+road-reference context features. Stage 8.5 now consumes supported names and
+road references through a typed label-candidate pipeline. The source totals
+below remain the Stage 8.2 baseline; adapter and label diagnostics reflect the
+current code, while building and area-fill renderer counts remain unchanged.
 
 ## Scope And Methodology
 
@@ -65,11 +66,11 @@ dev-only stress fixture.
 | Category | Current source evidence | Current render-ready status | Stage 8.3 implication |
 | --- | --- | --- | --- |
 | Dense road network | Present across curated and legacy real fixtures. | Road graph and current road rendering exist. | Preserve routing while adding atlas density rules later. |
-| A/B road references | 7392 real source road-ref ways aggregate. | Typed context features exist; `0` displayed road references. | Add renderer placement and styling. |
+| A/B road references | 7392 real source road-ref ways aggregate. | Typed context features now produce bounded red label candidates with source IDs and tags. | Verify placement and density through screenshots. |
 | Buildings | 696 usable closed building polygons aggregate. | Typed context footprints exist where fixtures are converted; `0` rendered. | Add simplification and renderer consumption. |
 | Land use | 1436 real land-use source features aggregate. | Typed supported polygons exist where geometry is retained; `0` rendered. | Add renderer consumption. |
 | Institutions | 764 civic/institutional source features aggregate. | Typed area features are separate from point landmarks; `0` rendered polygons. | Add renderer consumption. |
-| Places and estates | Supported `place=*` labels exist; named residential areas are ambiguous. | Area labels render where adapted. Estates are not safely classified. | Add explicit place/neighbourhood/estate-candidate contract. |
+| Places and estates | Supported `place=*` labels and named residential land-use polygons exist. | District labels render from supported places; estate labels require an explicitly named residential land-use feature. | Verify hierarchy and fixture gaps visually. |
 | Parks and gardens | Present in several fixtures. | Supported closed polygons can render as park/open-space backgrounds. | Restyle in later visual stages. |
 | Water and river | Water polygons, waterways, and relation rings are present. | Supported water polygons and waterways render where adapted. | Preserve multipolygon handling and add pier support only where sourced. |
 | Rail and stations | Present in station-area and bridge fixtures. | Rail lines and `railway=station` point visuals can render. | Review compact transport-symbol contracts. |
@@ -80,9 +81,10 @@ dev-only stress fixture.
 The current real fixture set and Stage 8.3 adapter can support road-network
 hierarchy, local-road texture, building fabric, institutional and land-use
 areas, genuine road-reference data, parks, water, rail, stations, area labels,
-and point landmarks. The renderer still cannot display the approved visual
-master's building fabric, institutional blocks, land-use fields, prominent A/B
-references, estate treatment, or pier symbols.
+and point landmarks. Stage 8.5 now renders source-backed label candidates for
+those supported names and prominent A/B references. The renderer still cannot
+display the approved visual master's building fabric, institutional blocks,
+land-use fields, or pier symbols.
 
 The approved visual master therefore remains an appearance target only. Stage
 8.2 does not claim visual completion and does not change production map

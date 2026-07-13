@@ -666,7 +666,7 @@ test("Stage 151 visual QA scenario provides context features for visual inspecti
   assert.ok(labels.some((label) => label.kind === "station" && label.text === "QA Central Station"));
   assert.ok(labels.some((label) => label.kind === "public_building" && label.text === "QA Library"));
   assert.ok(labels.some((label) => label.kind === "landmark" && label.text === "QA Hospital"));
-  assert.ok(labels.some((label) => label.kind === "area" && label.text === "QA Fitzrovia"));
+  assert.ok(labels.some((label) => label.kind === "district" && label.text === "QA Fitzrovia"));
   assert.deepEqual(
     option.exercises[0]?.stops.map((stop) => ("label" in stop ? stop.label : "")),
     ["QA start", "QA required via point", "QA checkpoint", "QA destination"]

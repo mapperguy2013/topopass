@@ -8,6 +8,7 @@ import {
   type ScreenMapViewport,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
+import type { OverpassElementId, OverpassTags } from "../../../lib/map-engine/osm/index.ts";
 import { buildRealLondonContextFeatures } from "./realLondonContextData.ts";
 import type {
   RealLondonContextFeature,
@@ -54,6 +55,10 @@ export type SyntheticLandmarkVisualKind =
   | "generic";
 
 export type SyntheticContextMapLabelKind =
+  | "road_reference"
+  | "district"
+  | "institution"
+  | "land_use"
   | "area"
   | "park"
   | "water"
@@ -65,6 +70,28 @@ export type SyntheticContextMapLabelKind =
   | "bridge";
 
 export type SyntheticMapLabelKind = "road" | SyntheticContextMapLabelKind | "start" | "checkpoint" | "finish";
+
+export type SyntheticAtlasLabelCategory =
+  | "road-reference"
+  | "district"
+  | "major-road"
+  | "station"
+  | "landmark"
+  | "local-road"
+  | "park"
+  | "estate"
+  | "water"
+  | "institution"
+  | "contextual-land-use"
+  | "learner-overlay";
+
+export type SyntheticAtlasLabelSourceMetadata = {
+  provider: "map-definition" | "openstreetmap" | "exercise";
+  featureId: string;
+  elementType?: "node" | "way" | "relation";
+  elementId?: OverpassElementId;
+  tags?: OverpassTags;
+};
 
 export type SyntheticRouteOverlayKind =
   | "raw-route"
@@ -152,6 +179,7 @@ export type SyntheticRoadVisual = {
   osmHighway?: string;
   osmHierarchy?: OsmRoadVisualHierarchy;
   osmWayId?: string;
+  osmSourceTags?: OverpassTags;
   points: Vec2[];
   midpoint: Vec2;
   labelAngleRadians: number;
@@ -209,6 +237,32 @@ export type SyntheticMapLabel = {
   osmHierarchy?: OsmRoadVisualHierarchy;
   source?: "synthetic" | "osm";
   roadLengthMeters?: number;
+  category?: SyntheticAtlasLabelCategory;
+  sourceMetadata?: SyntheticAtlasLabelSourceMetadata;
+};
+
+export type SyntheticAtlasLabelCandidate = SyntheticMapLabel & {
+  category: SyntheticAtlasLabelCategory;
+  sourceMetadata: SyntheticAtlasLabelSourceMetadata;
+};
+
+export type SyntheticAtlasLabelCoverageCounts = {
+  roadReferenceLabels: number;
+  districtLabels: number;
+  majorRoadLabels: number;
+  stationLabels: number;
+  landmarkLabels: number;
+  localRoadLabels: number;
+  parkLabels: number;
+  estateLabels: number;
+  waterLabels: number;
+  institutionLabels: number;
+  contextualLandUseLabels: number;
+};
+
+export type SyntheticAtlasLabelCoverageAudit = {
+  counts: SyntheticAtlasLabelCoverageCounts;
+  orderedCategories: Array<{ id: keyof SyntheticAtlasLabelCoverageCounts; count: number }>;
 };
 
 export type SyntheticRoadLabelTier = "major" | "secondary" | "minor" | "restricted" | "service";
@@ -286,6 +340,7 @@ type RoadWithOptionalOsmMetadata = MapRoad & {
     source?: string;
     highway?: string;
     osmWayId?: string | number;
+    rawTags?: OverpassTags;
   };
 };
 
@@ -729,6 +784,7 @@ export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisu
     const roadClass = deriveSyntheticRoadClass(map, road);
     const label = deriveRoadLabelPosition(map, road);
     const osmMetadata = deriveOsmRoadRenderMetadata(road);
+    const sourceTags = (road as RoadWithOptionalOsmMetadata).metadata?.rawTags;
     const style =
       roadClass === "restricted" || roadClass === "no-entry"
         ? roadStyleForSyntheticClass(roadClass)
@@ -745,6 +801,7 @@ export function buildSyntheticRoadVisuals(map: MapDefinition): SyntheticRoadVisu
         ...(osmMetadata?.highway ? { osmHighway: osmMetadata.highway } : {}),
         ...(osmMetadata ? { osmHierarchy: osmMetadata.hierarchy } : {}),
         ...(osmMetadata?.osmWayId ? { osmWayId: osmMetadata.osmWayId } : {}),
+        ...(sourceTags ? { osmSourceTags: { ...sourceTags } } : {}),
         points: [endpoints.from, endpoints.to],
         midpoint: midpoint(endpoints.from, endpoints.to),
         labelAngleRadians: label?.angleRadians ?? 0,
@@ -780,6 +837,9 @@ export function buildSyntheticMapLabels(
 ): SyntheticMapLabel[] {
   const labels: SyntheticMapLabel[] = [];
   const roadVisuals = buildSyntheticRoadVisuals(map);
+  const contextFeatures = options.sourceOverpassFixture
+    ? buildRealLondonContextFeatures(map, options.sourceOverpassFixture)
+    : [];
 
   for (const visual of roadVisuals) {
     if (visual.source === "osm") {
@@ -800,7 +860,9 @@ export function buildSyntheticMapLabels(
       roadClass: visual.roadClass,
       ...(visual.osmHierarchy ? { osmHierarchy: visual.osmHierarchy } : {}),
       source: visual.source,
-      roadLengthMeters: roadVisualLength(visual)
+      roadLengthMeters: roadVisualLength(visual),
+      category: atlasRoadLabelCategory(visual),
+      sourceMetadata: mapDefinitionLabelSource(visual.roadId)
     });
   }
 
@@ -809,7 +871,7 @@ export function buildSyntheticMapLabels(
   }
 
   for (const feature of options.backgroundFeatures ?? buildSyntheticBackgroundFeatures(map)) {
-    if (!feature.label) {
+    if (!feature.label || (contextFeatures.length > 0 && feature.id.startsWith("osm-context-"))) {
       continue;
     }
 
@@ -820,12 +882,14 @@ export function buildSyntheticMapLabels(
       kind,
       text: feature.label,
       point: polygonCenter(feature.points),
-      priority: contextLabelPriority(kind)
+      priority: contextLabelPriority(kind),
+      category: atlasCategoryForContextKind(kind),
+      sourceMetadata: mapDefinitionLabelSource(feature.id)
     });
   }
 
   for (const feature of options.linearFeatures ?? buildSyntheticLinearFeatures(map)) {
-    if (!feature.label) {
+    if (!feature.label || (contextFeatures.length > 0 && feature.id.startsWith("osm-context-"))) {
       continue;
     }
 
@@ -836,15 +900,17 @@ export function buildSyntheticMapLabels(
       kind,
       text: feature.label,
       point: polylineCenter(feature.points),
-      priority: contextLabelPriority(kind)
+      priority: contextLabelPriority(kind),
+      category: atlasCategoryForContextKind(kind),
+      sourceMetadata: mapDefinitionLabelSource(feature.id)
     });
   }
 
-  labels.push(...buildOsmAreaLabels(map, options.sourceOverpassFixture));
+  labels.push(...buildOsmContextLabels(contextFeatures));
 
   const labelledLandmarks = buildSyntheticLandmarkVisuals(map, exercise, {
     sourceOverpassFixture: options.sourceOverpassFixture
-  }).filter((visual) => shouldLabelLandmark(visual));
+  }).filter((visual) => shouldLabelLandmark(visual) && !(contextFeatures.length > 0 && visual.id.startsWith("osm-")));
 
   for (const visual of labelledLandmarks) {
     const kind = contextLabelKindForLandmarkVisual(visual);
@@ -854,7 +920,9 @@ export function buildSyntheticMapLabels(
       kind,
       text: visual.label,
       point: { x: visual.point.x, y: visual.point.y - 18 },
-      priority: visual.isExerciseStop ? contextLabelPriority("station") : contextLabelPriority(kind)
+      priority: visual.isExerciseStop ? contextLabelPriority("station") : contextLabelPriority(kind),
+      category: atlasCategoryForContextKind(kind),
+      sourceMetadata: mapDefinitionLabelSource(visual.id)
     });
   }
 
@@ -878,12 +946,75 @@ export function buildSyntheticMapLabels(
             ? TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.destination.text
             : `CHECKPOINT ${index}`,
         point,
-        priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.exerciseStop
+        priority: TOPOPASS_STREET_ATLAS_STYLE.labels.priorities.exerciseStop,
+        category: "learner-overlay",
+        sourceMetadata: {
+          provider: "exercise",
+          featureId: `${exercise.id}:${index}`
+        }
       });
     });
   }
 
   return dedupeContextMapLabels(labels).sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+const orderedAtlasLabelCoverageKeys: Array<keyof SyntheticAtlasLabelCoverageCounts> = [
+  "roadReferenceLabels",
+  "districtLabels",
+  "majorRoadLabels",
+  "stationLabels",
+  "landmarkLabels",
+  "localRoadLabels",
+  "parkLabels",
+  "estateLabels",
+  "waterLabels",
+  "institutionLabels",
+  "contextualLandUseLabels"
+];
+
+export function auditSyntheticAtlasLabelCoverage(
+  labels: readonly Pick<SyntheticMapLabel, "category">[]
+): SyntheticAtlasLabelCoverageAudit {
+  const counts: SyntheticAtlasLabelCoverageCounts = {
+    roadReferenceLabels: 0,
+    districtLabels: 0,
+    majorRoadLabels: 0,
+    stationLabels: 0,
+    landmarkLabels: 0,
+    localRoadLabels: 0,
+    parkLabels: 0,
+    estateLabels: 0,
+    waterLabels: 0,
+    institutionLabels: 0,
+    contextualLandUseLabels: 0
+  };
+  const countKeyByCategory: Partial<Record<SyntheticAtlasLabelCategory, keyof SyntheticAtlasLabelCoverageCounts>> = {
+    "road-reference": "roadReferenceLabels",
+    district: "districtLabels",
+    "major-road": "majorRoadLabels",
+    station: "stationLabels",
+    landmark: "landmarkLabels",
+    "local-road": "localRoadLabels",
+    park: "parkLabels",
+    estate: "estateLabels",
+    water: "waterLabels",
+    institution: "institutionLabels",
+    "contextual-land-use": "contextualLandUseLabels"
+  };
+
+  for (const label of labels) {
+    const key = label.category ? countKeyByCategory[label.category] : undefined;
+
+    if (key) {
+      counts[key] += 1;
+    }
+  }
+
+  return {
+    counts,
+    orderedCategories: orderedAtlasLabelCoverageKeys.map((id) => ({ id, count: counts[id] }))
+  };
 }
 
 export function roadLabelTier(label: Pick<SyntheticMapLabel, "roadClass" | "osmHierarchy">): SyntheticRoadLabelTier {
@@ -1010,7 +1141,9 @@ export function filterSyntheticMapLabelsForViewport(
   const placedBoxes: SyntheticLabelCollisionBox[] = [...(options.reservedBoxes ?? [])];
   const acceptedLabels: SyntheticMapLabel[] = [];
   const roadLabelPointsByText = new Map<string, Vec2[]>();
+  const roadReferencePointsByText = new Map<string, Vec2[]>();
   const viewportScale = syntheticMapViewportScale(options.viewport);
+  let acceptedRoadReferenceCount = 0;
 
   for (const label of [...options.labels].sort(compareLabelsForLayout)) {
     if (
@@ -1024,7 +1157,21 @@ export function filterSyntheticMapLabelsForViewport(
       continue;
     }
 
+    if (label.kind === "road_reference") {
+      if (acceptedRoadReferenceCount >= TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceMaxPerViewport) {
+        continue;
+      }
+
+      if (!shouldShowRoadReferenceLabel(label, options.viewport, roadReferencePointsByText)) {
+        continue;
+      }
+    }
+
     const box = labelCollisionBox(label, options.viewport, options.currentZoom);
+
+    if (!boxIntersectsViewport(box, options.viewport)) {
+      continue;
+    }
 
     if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
       continue;
@@ -1040,6 +1187,15 @@ export function filterSyntheticMapLabelsForViewport(
 
       points.push(screenPoint);
       roadLabelPointsByText.set(key, points);
+    }
+
+    if (label.kind === "road_reference") {
+      const key = label.text.toLowerCase();
+      const points = roadReferencePointsByText.get(key) ?? [];
+
+      points.push(mapToScreenPoint(label.point, options.viewport));
+      roadReferencePointsByText.set(key, points);
+      acceptedRoadReferenceCount += 1;
     }
   }
 
@@ -1604,7 +1760,9 @@ function labelCollisionBox(label: SyntheticMapLabel, viewport: ScreenMapViewport
   const padding = "collisionPadding" in style ? style.collisionPadding : TOPOPASS_STREET_ATLAS_STYLE.labels.collision.defaultPadding;
   const width = estimatedLabelTextWidth(label.text, style);
   const height = fontSize + padding * 2;
-  const angle = label.kind === "road" && typeof label.angleRadians === "number" ? readableLabelAngle(label.angleRadians) : 0;
+  const angle = (label.kind === "road" || label.kind === "road_reference") && typeof label.angleRadians === "number"
+    ? readableLabelAngle(label.angleRadians)
+    : 0;
   const rotatedWidth = Math.abs(Math.cos(angle)) * width + Math.abs(Math.sin(angle)) * height;
   const rotatedHeight = Math.abs(Math.sin(angle)) * width + Math.abs(Math.cos(angle)) * height;
 
@@ -1697,12 +1855,32 @@ function boxesIntersect(left: SyntheticLabelCollisionBox, right: SyntheticLabelC
   return left.minX <= right.maxX && left.maxX >= right.minX && left.minY <= right.maxY && left.maxY >= right.minY;
 }
 
+function shouldShowRoadReferenceLabel(
+  label: SyntheticMapLabel,
+  viewport: ScreenMapViewport,
+  pointsByText: ReadonlyMap<string, readonly Vec2[]>
+): boolean {
+  const point = mapToScreenPoint(label.point, viewport);
+  const existingPoints = pointsByText.get(label.text.toLowerCase()) ?? [];
+  const repeatDistance = TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceRepeatDistance;
+
+  return existingPoints.every((existingPoint) => distanceBetweenPoints(existingPoint, point) >= repeatDistance);
+}
+
+function boxIntersectsViewport(box: SyntheticLabelCollisionBox, viewport: ScreenMapViewport): boolean {
+  return box.maxX >= 0 && box.maxY >= 0 && box.minX <= viewport.width && box.minY <= viewport.height;
+}
+
 function distanceBetweenPoints(left: Vec2, right: Vec2): number {
   return Math.hypot(left.x - right.x, left.y - right.y);
 }
 
 function isContextMapLabelKind(kind: SyntheticMapLabelKind): kind is SyntheticContextMapLabelKind {
   return (
+    kind === "road_reference" ||
+    kind === "district" ||
+    kind === "institution" ||
+    kind === "land_use" ||
     kind === "area" ||
     kind === "park" ||
     kind === "water" ||
@@ -1725,7 +1903,9 @@ function dedupeContextMapLabels(labels: readonly SyntheticMapLabel[]): Synthetic
       continue;
     }
 
-    const key = `${label.kind}:${label.text.trim().toLowerCase()}`;
+    const key = label.kind === "road_reference"
+      ? `${label.kind}:${label.text.trim().toLowerCase()}:${label.sourceMetadata?.elementId ?? label.id}`
+      : `${label.kind}:${label.text.trim().toLowerCase()}`;
     const existing = labelsByKey.get(key);
 
     if (!existing || label.priority < existing.priority || (label.priority === existing.priority && label.id.localeCompare(existing.id) < 0)) {
@@ -1783,6 +1963,14 @@ function contextLabelKindForLinearFeature(feature: SyntheticLinearFeature): Synt
 function contextLabelPriority(kind: SyntheticContextMapLabelKind): number {
   const priorities = TOPOPASS_STREET_ATLAS_STYLE.labels.priorities;
 
+  if (kind === "road_reference") {
+    return priorities.roadReference;
+  }
+
+  if (kind === "district") {
+    return priorities.district;
+  }
+
   if (kind === "station") {
     return priorities.station;
   }
@@ -1815,10 +2003,63 @@ function contextLabelPriority(kind: SyntheticContextMapLabelKind): number {
     return priorities.bridge;
   }
 
+  if (kind === "institution") {
+    return priorities.institution;
+  }
+
+  if (kind === "land_use") {
+    return priorities.contextualLandUse;
+  }
+
   return priorities.area;
 }
 
-function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticMapLabel[] {
+function atlasRoadLabelCategory(visual: Pick<SyntheticRoadVisual, "roadClass" | "osmHierarchy">): SyntheticAtlasLabelCategory {
+  const tier = roadLabelTier(visual);
+
+  return tier === "major" || tier === "secondary" ? "major-road" : "local-road";
+}
+
+function atlasCategoryForContextKind(kind: SyntheticContextMapLabelKind): SyntheticAtlasLabelCategory {
+  if (kind === "road_reference") {
+    return "road-reference";
+  }
+
+  if (kind === "district" || kind === "area") {
+    return "district";
+  }
+
+  if (kind === "station") {
+    return "station";
+  }
+
+  if (kind === "park" || kind === "open_space") {
+    return "park";
+  }
+
+  if (kind === "water") {
+    return "water";
+  }
+
+  if (kind === "institution") {
+    return "institution";
+  }
+
+  if (kind === "land_use") {
+    return "contextual-land-use";
+  }
+
+  return "landmark";
+}
+
+function mapDefinitionLabelSource(featureId: string): SyntheticAtlasLabelSourceMetadata {
+  return {
+    provider: "map-definition",
+    featureId
+  };
+}
+
+function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): SyntheticAtlasLabelCandidate[] {
   const labelsByName = new Map<string, SyntheticRoadVisual[]>();
 
   for (const visual of roadVisuals) {
@@ -1826,32 +2067,45 @@ function buildOsmRoadLabels(roadVisuals: readonly SyntheticRoadVisual[]): Synthe
       continue;
     }
 
-    const group = labelsByName.get(visual.name) ?? [];
+    const key = visual.name.trim().toLowerCase();
+    const group = labelsByName.get(key) ?? [];
 
     group.push(visual);
-    labelsByName.set(visual.name, group);
+    labelsByName.set(key, group);
   }
 
-  return [...labelsByName.entries()].map(([name, visuals]) => {
-    const selectedVisual = selectOsmRoadLabelVisual(visuals);
+  return [...labelsByName.values()].flatMap((visuals) => {
     const namedRoadLengthMeters = visuals.reduce((sum, visual) => sum + roadVisualLength(visual), 0);
 
-    return {
-      id: `road-label-osm-${slugifyLabelId(name)}`,
-      kind: "road",
-      text: name,
-      point: { ...selectedVisual.midpoint },
-      angleRadians: selectedVisual.labelAngleRadians,
-      priority: roadLabelPriority(selectedVisual.roadClass, selectedVisual.osmHierarchy),
-      roadClass: selectedVisual.roadClass,
-      ...(selectedVisual.osmHierarchy ? { osmHierarchy: selectedVisual.osmHierarchy } : {}),
-      source: selectedVisual.source,
-      roadLengthMeters: Math.max(roadVisualLength(selectedVisual), namedRoadLengthMeters)
-    };
-  });
+    return selectOsmRoadLabelVisuals(visuals).map((selectedVisual) => {
+      const name = selectedVisual.name.trim();
+      const sourceWayElementId = selectedVisual.osmWayId ? Number(selectedVisual.osmWayId) : undefined;
+
+      return {
+        id: `road-label-osm-${selectedVisual.roadId}-${slugifyLabelId(name)}`,
+        kind: "road" as const,
+        text: name,
+        point: { ...selectedVisual.midpoint },
+        angleRadians: selectedVisual.labelAngleRadians,
+        priority: roadLabelPriority(selectedVisual.roadClass, selectedVisual.osmHierarchy),
+        roadClass: selectedVisual.roadClass,
+        ...(selectedVisual.osmHierarchy ? { osmHierarchy: selectedVisual.osmHierarchy } : {}),
+        source: selectedVisual.source,
+        roadLengthMeters: Math.max(roadVisualLength(selectedVisual), namedRoadLengthMeters),
+        category: atlasRoadLabelCategory(selectedVisual),
+        sourceMetadata: {
+          provider: "openstreetmap" as const,
+          featureId: selectedVisual.roadId,
+          elementType: "way" as const,
+          ...(sourceWayElementId !== undefined && Number.isFinite(sourceWayElementId) ? { elementId: sourceWayElementId } : {}),
+          ...(selectedVisual.osmSourceTags ? { tags: { ...selectedVisual.osmSourceTags } } : {})
+        }
+      };
+    });
+  }).sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
 }
 
-function selectOsmRoadLabelVisual(visuals: readonly SyntheticRoadVisual[]): SyntheticRoadVisual {
+function selectOsmRoadLabelVisuals(visuals: readonly SyntheticRoadVisual[]): SyntheticRoadVisual[] {
   return [...visuals].sort((left, right) => {
     const classPriority = roadLabelPriority(left.roadClass, left.osmHierarchy) - roadLabelPriority(right.roadClass, right.osmHierarchy);
 
@@ -1866,7 +2120,7 @@ function selectOsmRoadLabelVisual(visuals: readonly SyntheticRoadVisual[]): Synt
     }
 
     return left.roadId.localeCompare(right.roadId);
-  })[0];
+  });
 }
 
 function roadVisualLength(visual: SyntheticRoadVisual): number {
@@ -1884,25 +2138,93 @@ function slugifyLabelId(label: string): string {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unnamed";
 }
 
-function buildOsmAreaLabels(map: MapDefinition, fixture: unknown): SyntheticMapLabel[] {
-  return buildRealLondonContextFeatures(map, fixture)
-    .filter((feature): feature is Extract<RealLondonContextFeature, { kind: "area" }> => feature.kind === "area")
+function buildOsmContextLabels(features: readonly RealLondonContextFeature[]): SyntheticAtlasLabelCandidate[] {
+  return features
     .flatMap((feature) => {
+      if (feature.kind === "road-reference") {
+        const pose = polylineLabelPose(feature.points);
+
+        return pose
+          ? [contextCandidate(feature, "road_reference", "road-reference", feature.reference, pose.point, pose.angleRadians)]
+          : [];
+      }
+
       if (!feature.name) {
         return [];
       }
 
-      return [
-        {
-          id: `area-label-${feature.id}`,
-          kind: "area" as const,
-          text: feature.name,
-          point: { ...feature.point },
-          priority: contextLabelPriority("area")
-        }
-      ];
+      if (feature.kind === "area") {
+        return [contextCandidate(feature, "district", "district", feature.name, feature.point)];
+      }
+
+      if (feature.kind === "station") {
+        return [contextCandidate(feature, "station", "station", feature.name, feature.point)];
+      }
+
+      if (feature.kind === "landmark") {
+        const kind = feature.landmarkKind === "public-building"
+          ? "public_building"
+          : feature.landmarkKind === "learner-reference"
+            ? "learner_reference"
+            : "landmark";
+
+        return [contextCandidate(feature, kind, "landmark", feature.name, feature.point)];
+      }
+
+      if (feature.kind === "institution") {
+        return [contextCandidate(feature, "institution", "institution", feature.name, polygonCenter(feature.points))];
+      }
+
+      if (feature.kind === "land-use") {
+        const category = feature.subtype === "residential" ? "estate" : "contextual-land-use";
+
+        return [contextCandidate(feature, "land_use", category, feature.name, polygonCenter(feature.points))];
+      }
+
+      if (feature.kind === "park") {
+        return [contextCandidate(feature, "park", "park", feature.name, polygonCenter(feature.points))];
+      }
+
+      if (feature.kind === "water") {
+        return [contextCandidate(feature, "water", "water", feature.name, polylineCenter(feature.points))];
+      }
+
+      if (feature.kind === "bridge") {
+        const pose = polylineLabelPose(feature.points);
+
+        return pose ? [contextCandidate(feature, "bridge", "landmark", feature.name, pose.point, pose.angleRadians)] : [];
+      }
+
+      return [];
     })
     .sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id));
+}
+
+function contextCandidate(
+  feature: RealLondonContextFeature,
+  kind: SyntheticContextMapLabelKind,
+  category: SyntheticAtlasLabelCategory,
+  text: string,
+  point: Vec2,
+  angleRadians?: number
+): SyntheticAtlasLabelCandidate {
+  return {
+    id: `${kind}-label-${feature.id}`,
+    kind,
+    text,
+    point: { ...point },
+    ...(angleRadians === undefined ? {} : { angleRadians }),
+    priority: contextLabelPriority(kind),
+    category,
+    source: "osm",
+    sourceMetadata: {
+      provider: "openstreetmap",
+      featureId: feature.id,
+      elementType: feature.sourceElementType,
+      elementId: feature.sourceElementId,
+      ...(feature.sourceTags ? { tags: { ...feature.sourceTags } } : {})
+    }
+  };
 }
 
 function buildOsmLandmarkVisuals(map: MapDefinition, fixture: unknown): SyntheticLandmarkVisual[] {
@@ -2511,6 +2833,44 @@ function polylineCenter(points: readonly Vec2[]): Vec2 {
   }
 
   return { ...points[points.length - 1] };
+}
+
+function polylineLabelPose(points: readonly Vec2[]): { point: Vec2; angleRadians: number } | null {
+  if (points.length < 2) {
+    return null;
+  }
+
+  const totalLength = points.slice(1).reduce((sum, point, index) => sum + distanceBetweenPoints(points[index], point), 0);
+  const targetLength = totalLength / 2;
+  let travelledLength = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const from = points[index - 1];
+    const to = points[index];
+    const segmentLength = distanceBetweenPoints(from, to);
+
+    if (travelledLength + segmentLength >= targetLength) {
+      const ratio = segmentLength > 0 ? (targetLength - travelledLength) / segmentLength : 0;
+
+      return {
+        point: {
+          x: from.x + (to.x - from.x) * ratio,
+          y: from.y + (to.y - from.y) * ratio
+        },
+        angleRadians: Math.atan2(to.y - from.y, to.x - from.x)
+      };
+    }
+
+    travelledLength += segmentLength;
+  }
+
+  const from = points[points.length - 2];
+  const to = points[points.length - 1];
+
+  return {
+    point: { ...to },
+    angleRadians: Math.atan2(to.y - from.y, to.x - from.x)
+  };
 }
 
 function mapBounds(map: MapDefinition): { minX: number; minY: number; maxX: number; maxY: number } {

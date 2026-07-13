@@ -452,7 +452,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     expected: {
       phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "area-names", "one-way-arrows"],
       roadHierarchies: ["primary", "secondary", "residential"],
-      labelKinds: ["road", "area"],
+      labelKinds: ["road", "district"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
@@ -682,7 +682,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     expected: {
       phase6Layers: ["land-background", "landmarks", "area-names", "road-casings", "road-fills", "road-hierarchy", "street-labels"],
       roadHierarchies: ["secondary", "tertiary", "residential"],
-      labelKinds: ["road", "landmark", "public_building", "area"],
+      labelKinds: ["road", "landmark", "public_building", "district"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
@@ -799,7 +799,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
         "review-callouts"
       ],
       roadHierarchies: ["secondary", "residential"],
-      labelKinds: ["road", "area"],
+      labelKinds: ["road", "district"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
       routeOverlayKinds: ["accepted-alternative-route", "inefficient-section", "backtrack-section", "illegal-movement"],
@@ -842,7 +842,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     expected: {
       phase6Layers: FINAL_PHASE_6_REAL_LONDON_LAYER_STACK,
       roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
-      labelKinds: ["road", "start", "checkpoint", "finish", "station", "landmark", "public_building", "area", "bridge", "water"],
+      labelKinds: ["road", "start", "checkpoint", "finish", "station", "landmark", "public_building", "district", "bridge", "water"],
       backgroundKinds: ["park", "water", "pedestrian-area"],
       linearKinds: ["rail", "bridge", "waterway"],
       routeOverlayKinds: [
@@ -900,7 +900,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     expected: {
       phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "area-names"],
       roadHierarchies: ["primary", "secondary", "residential"],
-      labelKinds: ["road", "area"],
+      labelKinds: ["road", "district"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
@@ -954,7 +954,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     expected: {
       phase6Layers: ["land-background", "road-casings", "road-fills", "road-hierarchy", "street-labels", "area-names"],
       roadHierarchies: ["residential"],
-      labelKinds: ["road", "area"],
+      labelKinds: ["road", "district"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
@@ -1111,7 +1111,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
     expected: {
       phase6Layers: ["land-background", "landmarks", "area-names", "road-casings", "road-fills", "road-hierarchy", "street-labels"],
       roadHierarchies: ["secondary", "tertiary", "residential"],
-      labelKinds: ["road", "landmark", "public_building", "area"],
+      labelKinds: ["road", "landmark", "public_building", "district"],
       backgroundKinds: ["pedestrian-area"],
       linearKinds: [],
       routeOverlayKinds: noRouteOverlays,
@@ -1154,7 +1154,7 @@ export const REAL_LONDON_VISUAL_READABILITY_SCENARIOS: RealLondonVisualReadabili
         "checkpoints"
       ],
       roadHierarchies: ["primary", "secondary", "tertiary", "residential"],
-      labelKinds: ["road", "station", "landmark", "public_building", "area", "start", "checkpoint", "finish"],
+      labelKinds: ["road", "station", "landmark", "public_building", "district", "start", "checkpoint", "finish"],
       backgroundKinds: ["park", "water", "pedestrian-area"],
       linearKinds: ["rail"],
       routeOverlayKinds: ["raw-route", "snapped-route"],

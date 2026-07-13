@@ -173,11 +173,10 @@ optional string to prepared OSM visuals.
 
 ## Stage 8.5 Hand-Off
 
-After Stage 8.4 visual acceptance, Stage 8.5 can add building fabric,
-institutional areas, parks, and water treatment beneath the established road
-base. It must preserve the new corridor dominance, casing/fill pass order,
-source-derived hierarchy, learner-overlay priority, and current performance
-limits.
+Stage 8.5 adds source-backed dense labels and road references above the
+established road base. It must preserve corridor dominance, casing/fill pass
+order, junction continuity, learner-overlay priority, and current performance
+limits. Building fabric and area-fill redesign remain in the following stage.
 
 ## Commit Message
 
