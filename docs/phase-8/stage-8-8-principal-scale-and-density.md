@@ -2,10 +2,11 @@
 
 ## Status
 
-Complete. Stage 8.8 registers a source-backed Victoria / Westminster / Vauxhall
-visual-QA benchmark, applies reusable principal-scale density rules, and records
-desktop, tablet, mobile, active-route and submitted-review evidence. Stage 8.9
-was not started.
+Implementation complete, but its original manual visual acceptance was later
+rejected. Stage 8.8 registers a source-backed Victoria / Westminster / Vauxhall
+visual-QA benchmark and applies reusable principal-scale density rules. Stage
+8.8.1 supersedes the acceptance record below with a near-master correction.
+Stage 8.9 remains paused.
 
 ## Benchmark And Provenance
 
@@ -107,14 +108,20 @@ OpenStreetMap attribution.
 | Correct submitted review | 1440 by 900, pass | `screenshots/stage-8-8/desktop-correct-review-100.png` |
 | Incorrect submitted review | 1440 by 900, failed required stop | `screenshots/stage-8-8/desktop-incorrect-review-100.png` |
 
-Normal-size inspection of the correction against the approved visual master
-found a materially denser local-street and building field without broad
+This was the original Stage 8.8 inspection finding. Subsequent manual review
+found that the result was still too wide, pale and sparse beside the approved
+master, so it must not be treated as final acceptance. Stage 8.8.1 found a
+materially denser local-street and building field without broad
 collision voids. Yellow major corridors remain authoritative but no longer
 overwhelm the source-backed fabric. Red A/B references remain readable; local
 names, districts, buildings, institutions, parks, water, rail and compact
 symbols fill context without overtaking learner overlays. Labels follow source
 geometry. Route, marker, review, attribution and coordinate alignment remain
 intact.
+
+The corrective implementation, diagnostics, iterations and replacement
+evidence are documented in
+`stage-8-8-1-visual-acceptance-correction.md`.
 
 ## Deliberate Non-Changes
 

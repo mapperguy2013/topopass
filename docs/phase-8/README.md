@@ -58,6 +58,8 @@ stages may be split if implementation audit shows that a stage is too large.
    Completed.
 8. Stage 8.8: Principal examination-atlas scale and information-density rules.
    Completed.
+   Stage 8.8.1 is the principal-scale near-master visual-acceptance correction.
+   Completed and visually accepted.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
@@ -83,15 +85,20 @@ symbol pipeline, original compact marks, deterministic coordinated symbol and
 label placement, and class-aware A/B reference placement. Its focused visual-QA
 correction strengthens genuine references and compact marks, selects distinct
 references before controlled repeats, and suppresses clipped edge candidates.
-Production evidence
-covers the required fixtures, zoom tiers, active learner route and submitted
-correct/incorrect review states at desktop and mobile sizes. Stage 8.8 adds a
+Production evidence covers the required fixtures, zoom tiers, active learner
+route and submitted correct/incorrect review states at desktop and mobile
+sizes. Stage 8.8 adds a
 lazy-loaded, source-backed Victoria / Westminster / Vauxhall visual-QA
-benchmark and reusable principal-scale density rules. Exact 1440 by 900, 1024
-by 768 and 390 by 844 benchmark captures plus representative fixture,
-active-route and submitted pass/fail evidence are visually accepted. The
-benchmark remains dev-only, unscoreable and absent from learner beta map
-catalogues. Stage 8.9 has not started.
+benchmark and reusable principal-scale density rules. Stage 8.8.1 corrects its
+manual acceptance failure by tightening the principal extent, admitting the
+available building/context data at displayed 100%, darkening compact labels,
+strengthening building fabric, symbols and flat-yellow road hierarchy, and
+adding placement rejection diagnostics. Desktop, tablet and mobile map
+evidence is materially closer to the approved master. Required active-route
+and submitted passing/incorrect review evidence is complete at desktop and
+mobile sizes. The benchmark remains dev-only, unscoreable and absent from
+learner beta map catalogues. Stage 8.9 is paused in a named stash and has not
+been continued.
 
 ## Documents
 
@@ -104,4 +111,5 @@ catalogues. Stage 8.9 has not started.
 - [Stage 8.6 built-up context](stage-8-6-built-up-context.md)
 - [Stage 8.7 compact symbols and road references](stage-8-7-compact-symbols-road-references.md)
 - [Stage 8.8 principal scale and density](stage-8-8-principal-scale-and-density.md)
+- [Stage 8.8.1 near-master visual correction](stage-8-8-1-visual-acceptance-correction.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

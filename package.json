@@ -34,6 +34,7 @@
     "map:graph:kings-cross-euston": "node scripts/maps/generate-kings-cross-euston-route-graph.mjs",
     "map:enrich:curated-london-osm": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/maps/enrich-curated-london-osm.ts",
     "map:audit:phase8": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/maps/audit-phase8-geographic-render-data.ts",
+    "map:audit:stage8-density": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/maps/audit-stage-8-8-1-density.ts",
     "map:build:kings-cross-euston": "npm run map:render:kings-cross-euston && npm run map:graph:kings-cross-euston",
     "seed:questions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-question-bank.ts"
   },

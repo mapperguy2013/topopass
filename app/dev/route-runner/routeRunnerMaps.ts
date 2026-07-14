@@ -1187,7 +1187,8 @@ function getFixturePrincipalResetBounds(map: MapDefinition): RouteRunnerMapBound
 
   return expandRouteRunnerMapBounds(
     projectLatLonBoundsToRouteRunnerMapBounds(VICTORIA_WESTMINSTER_VAUXHALL_PRINCIPAL_VIEW_BOUNDS, projection),
-    TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds.baselineZoomFactor
+    TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds.baselineZoomFactor *
+      TOPOPASS_STREET_ATLAS_STYLE.zoom.thresholds.principalResetExtentFactor
   );
 }
 

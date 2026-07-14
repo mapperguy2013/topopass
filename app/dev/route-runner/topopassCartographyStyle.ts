@@ -222,6 +222,7 @@ export type TopopassContextLabelStyle = TopopassLabelStyle & {
 
 export type TopopassZoomThresholds = {
   baselineZoomFactor: number;
+  principalResetExtentFactor: number;
   defaultZoom: number;
   minZoom: number;
   maxZoom: number;
@@ -818,35 +819,35 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     osm: {
       primary: {
-        casingColor: "#554d40",
-        strokeColor: "#e9ca55",
-        casingWidth: 15.2,
-        strokeWidth: 10.6
+        casingColor: "#423d32",
+        strokeColor: "#f3ce3f",
+        casingWidth: 15.8,
+        strokeWidth: 11.2
       },
       secondary: {
-        casingColor: "#6c6457",
-        strokeColor: "#f1dca5",
-        casingWidth: 12.2,
-        strokeWidth: 7.8
+        casingColor: "#5b554a",
+        strokeColor: "#f2d985",
+        casingWidth: 12.6,
+        strokeWidth: 8.2
       },
       tertiary: {
-        casingColor: "#8a8173",
+        casingColor: "#71695d",
         strokeColor: "#fff8e7",
-        casingWidth: 9.8,
-        strokeWidth: 5.8
+        casingWidth: 9.4,
+        strokeWidth: 5.6
       },
       residential: {
-        casingColor: "#aaa195",
-        strokeColor: "#fffefa",
-        casingWidth: 7.8,
+        casingColor: "#91897c",
+        strokeColor: "#fffdf7",
+        casingWidth: 7.4,
         strokeWidth: 4.4
       },
       service: {
-        casingColor: "#c8c0b4",
-        strokeColor: "#f2eadc",
+        casingColor: "#aaa194",
+        strokeColor: "#f6eddf",
         casingWidth: 4.6,
-        strokeWidth: 1.8,
-        alpha: 0.66
+        strokeWidth: 2,
+        alpha: 0.72
       },
       pedestrian: {
         casingColor: "#d6cec0",
@@ -935,52 +936,52 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     roadHierarchy: {
       major: {
-        font: "700 12px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 12,
-        approximateCharacterWidth: 6.1,
-        color: "rgba(23,30,39,0.94)",
-        haloColor: "rgba(255,222,42,0.88)",
-        haloWidth: 3.6,
+        font: "800 11.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 11.5,
+        approximateCharacterWidth: 5.55,
+        color: "#171a1f",
+        haloColor: "rgba(255,220,62,0.84)",
+        haloWidth: 2.4,
         shadowColor: "transparent",
         shadowBlur: 0,
         shadowOffsetY: 0,
         minViewportScale: 0.14,
-        minRoadScreenLength: 48,
-        maxTextToRoadRatio: 0.98,
-        repeatDistance: 215,
-        collisionPadding: 3.5
+        minRoadScreenLength: 40,
+        maxTextToRoadRatio: 1.04,
+        repeatDistance: 170,
+        collisionPadding: 2
       },
       secondary: {
-        font: "700 10.5px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 10.5,
-        approximateCharacterWidth: 5.45,
-        color: "rgba(41,51,66,0.86)",
-        haloColor: "rgba(255,252,244,0.97)",
-        haloWidth: 4.4,
-        shadowColor: "rgba(255,255,255,0.55)",
-        shadowBlur: 2,
+        font: "750 9.8px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 9.8,
+        approximateCharacterWidth: 4.7,
+        color: "#24272d",
+        haloColor: "rgba(255,252,244,0.92)",
+        haloWidth: 2.6,
+        shadowColor: "transparent",
+        shadowBlur: 0,
         shadowOffsetY: 0,
         minViewportScale: 0.24,
-        minRoadScreenLength: 40,
-        maxTextToRoadRatio: 0.96,
-        repeatDistance: 178,
-        collisionPadding: 3
+        minRoadScreenLength: 32,
+        maxTextToRoadRatio: 1.02,
+        repeatDistance: 136,
+        collisionPadding: 1.8
       },
       minor: {
-        font: "600 9.5px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 9.5,
-        approximateCharacterWidth: 4.8,
-        color: "rgba(42,54,72,0.84)",
-        haloColor: "rgba(255,252,244,0.95)",
-        haloWidth: 3.45,
-        shadowColor: "rgba(255,255,255,0.44)",
-        shadowBlur: 1.5,
+        font: "700 9.4px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 9.4,
+        approximateCharacterWidth: 4.2,
+        color: "#22252a",
+        haloColor: "rgba(255,252,244,0.9)",
+        haloWidth: 2,
+        shadowColor: "transparent",
+        shadowBlur: 0,
         shadowOffsetY: 0,
         minViewportScale: 0.14,
-        minRoadScreenLength: 27,
-        maxTextToRoadRatio: 0.97,
-        repeatDistance: 122,
-        collisionPadding: 2.1
+        minRoadScreenLength: 20,
+        maxTextToRoadRatio: 1.04,
+        repeatDistance: 88,
+        collisionPadding: 1.1
       },
       restricted: {
         font: "600 10px Arial, sans-serif",
@@ -999,20 +1000,20 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         collisionPadding: 5
       },
       service: {
-        font: "600 8.5px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 8.5,
-        approximateCharacterWidth: 4.3,
-        color: "rgba(71,85,105,0.5)",
-        haloColor: "rgba(255,252,244,0.88)",
-        haloWidth: 2.5,
-        shadowColor: "rgba(255,255,255,0.3)",
-        shadowBlur: 1,
+        font: "650 8.3px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 8.3,
+        approximateCharacterWidth: 3.85,
+        color: "rgba(35,39,43,0.9)",
+        haloColor: "rgba(255,252,244,0.86)",
+        haloWidth: 1.8,
+        shadowColor: "transparent",
+        shadowBlur: 0,
         shadowOffsetY: 0,
-        minViewportScale: 0.72,
-        minRoadScreenLength: 52,
-        maxTextToRoadRatio: 0.88,
-        repeatDistance: 150,
-        collisionPadding: 2.1
+        minViewportScale: 0.18,
+        minRoadScreenLength: 24,
+        maxTextToRoadRatio: 1.02,
+        repeatDistance: 100,
+        collisionPadding: 1
       }
     },
     area: {
@@ -1029,44 +1030,44 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     context: {
       road_reference: {
-        font: "900 19px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 19,
-        approximateCharacterWidth: 9.1,
+        font: "900 18.5px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 18.5,
+        approximateCharacterWidth: 8.7,
         color: "#c8102e",
-        haloColor: "rgba(255,252,244,0.96)",
-        haloWidth: 4.2,
+        haloColor: "rgba(255,246,222,0.94)",
+        haloWidth: 3.2,
         minViewportScale: 0.14,
-        collisionPadding: 5
+        collisionPadding: 3
       },
       district: {
-        font: "700 16px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 16,
-        approximateCharacterWidth: 7.3,
-        color: "rgba(18,25,34,0.88)",
-        haloColor: "rgba(255,252,244,0.82)",
-        haloWidth: 3.2,
+        font: "800 19px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 19,
+        approximateCharacterWidth: 7.6,
+        color: "rgba(18,21,25,0.94)",
+        haloColor: "rgba(255,248,231,0.8)",
+        haloWidth: 2.4,
         minViewportScale: 0.12,
-        collisionPadding: 7
+        collisionPadding: 4
       },
       institution: {
-        font: "650 9.5px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 9.5,
-        approximateCharacterWidth: 4.9,
-        color: "rgba(91,49,57,0.78)",
-        haloColor: "rgba(255,245,240,0.88)",
-        haloWidth: 2.5,
-        minViewportScale: 0.42,
-        collisionPadding: 3
+        font: "700 9px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 9,
+        approximateCharacterWidth: 4.35,
+        color: "rgba(73,31,42,0.95)",
+        haloColor: "rgba(255,242,233,0.84)",
+        haloWidth: 1.8,
+        minViewportScale: 0.18,
+        collisionPadding: 1.5
       },
       land_use: {
-        font: "600 9.5px 'Arial Narrow', Arial, sans-serif",
-        fontSize: 9.5,
-        approximateCharacterWidth: 4.9,
-        color: "rgba(76,68,57,0.62)",
-        haloColor: "rgba(255,252,244,0.78)",
-        haloWidth: 2.2,
-        minViewportScale: 0.58,
-        collisionPadding: 3
+        font: "700 8.7px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 8.7,
+        approximateCharacterWidth: 4.15,
+        color: "rgba(70,57,43,0.84)",
+        haloColor: "rgba(255,248,229,0.8)",
+        haloWidth: 1.7,
+        minViewportScale: 0.18,
+        collisionPadding: 1.5
       },
       station: {
         font: "700 12px Arial, sans-serif",
@@ -1078,34 +1079,34 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.48)",
         shadowBlur: 2,
         shadowOffsetY: 0,
-        minViewportScale: 0.24,
-        collisionPadding: 6
+        minViewportScale: 0.16,
+        collisionPadding: 3
       },
       landmark: {
-        font: "650 10.5px Arial, sans-serif",
-        fontSize: 10.5,
-        approximateCharacterWidth: 5.9,
-        color: "rgba(32,43,58,0.68)",
-        haloColor: "rgba(255,252,244,0.9)",
-        haloWidth: 3,
+        font: "700 8.8px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 8.8,
+        approximateCharacterWidth: 4.3,
+        color: "rgba(38,42,47,0.84)",
+        haloColor: "rgba(255,248,232,0.84)",
+        haloWidth: 1.8,
         shadowColor: "rgba(255,255,255,0.35)",
         shadowBlur: 1.5,
         shadowOffsetY: 0,
-        minViewportScale: 0.78,
-        collisionPadding: 5
+        minViewportScale: 0.2,
+        collisionPadding: 1.5
       },
       public_building: {
-        font: "650 10px Arial, sans-serif",
-        fontSize: 10,
-        approximateCharacterWidth: 5.7,
-        color: "rgba(51,65,85,0.68)",
-        haloColor: "rgba(255,255,255,0.9)",
-        haloWidth: 3,
+        font: "700 8.8px 'Arial Narrow', Arial, sans-serif",
+        fontSize: 8.8,
+        approximateCharacterWidth: 4.25,
+        color: "rgba(43,50,59,0.86)",
+        haloColor: "rgba(255,248,232,0.84)",
+        haloWidth: 1.8,
         shadowColor: "rgba(255,255,255,0.32)",
         shadowBlur: 1,
         shadowOffsetY: 0,
-        minViewportScale: 0.3,
-        collisionPadding: 4
+        minViewportScale: 0.18,
+        collisionPadding: 1.5
       },
       open_space: {
         font: "600 11px Arial, sans-serif",
@@ -1114,8 +1115,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(52,88,62,0.58)",
         haloColor: "rgba(255,252,244,0.76)",
         haloWidth: 3,
-        minViewportScale: 0.18,
-        collisionPadding: 5
+        minViewportScale: 0.14,
+        collisionPadding: 2
       },
       learner_reference: {
         font: "650 10px Arial, sans-serif",
@@ -1127,8 +1128,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.3)",
         shadowBlur: 1,
         shadowOffsetY: 0,
-        minViewportScale: 0.78,
-        collisionPadding: 4
+        minViewportScale: 0.22,
+        collisionPadding: 1.5
       },
       park: {
         font: "600 11px Arial, sans-serif",
@@ -1137,8 +1138,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(52,88,62,0.62)",
         haloColor: "rgba(255,252,244,0.76)",
         haloWidth: 3,
-        minViewportScale: 0.2,
-        collisionPadding: 5
+        minViewportScale: 0.14,
+        collisionPadding: 2
       },
       water: {
         font: "600 11px Arial, sans-serif",
@@ -1147,8 +1148,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(24,78,108,0.76)",
         haloColor: "rgba(255,252,244,0.82)",
         haloWidth: 3.4,
-        minViewportScale: 0.18,
-        collisionPadding: 7
+        minViewportScale: 0.12,
+        collisionPadding: 3
       },
       bridge: {
         font: "650 10.5px Arial, sans-serif",
@@ -1160,8 +1161,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         shadowColor: "rgba(255,255,255,0.34)",
         shadowBlur: 1,
         shadowOffsetY: 0,
-        minViewportScale: 0.24,
-        collisionPadding: 7
+        minViewportScale: 0.18,
+        collisionPadding: 3
       },
       area: {
         font: "650 12px Arial, sans-serif",
@@ -1170,8 +1171,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "rgba(66,79,96,0.46)",
         haloColor: "rgba(255,252,244,0.72)",
         haloWidth: 3,
-        minViewportScale: 0.24,
-        collisionPadding: 7
+        minViewportScale: 0.18,
+        collisionPadding: 3
       }
     },
     stop: {
@@ -1182,7 +1183,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       yOffset: -18
     },
     collision: {
-      defaultPadding: 4.5,
+      defaultPadding: 2.5,
       routePadding: 10,
       markerPadding: 14,
       viewportEdgePadding: 6,
@@ -1217,7 +1218,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     }
   },
   background: {
-    land: { fillColor: "#f3eddf" },
+    land: { fillColor: "#f0e6d5" },
     water: {
       canal: { fillColor: "#b9dce7", strokeColor: "#6faec0", strokeWidth: 1.1, minViewportScale: 0.08, lowZoomAlpha: 0.78, mediumZoomAlpha: 0.9, highZoomAlpha: 1, minRenderedAreaPixels: 1, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.8, maxStrokeWidth: 1.25 },
       basin: { fillColor: "#add5e2", strokeColor: "#62a7bc", strokeWidth: 1.15, minViewportScale: 0.08, lowZoomAlpha: 0.8, mediumZoomAlpha: 0.92, highZoomAlpha: 1, minRenderedAreaPixels: 1, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.8, maxStrokeWidth: 1.3 },
@@ -1251,15 +1252,15 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       religious: { fillColor: "#e8cbc2", strokeColor: "#bd9388", strokeWidth: 0.9, minViewportScale: 0.2, lowZoomAlpha: 0.58, mediumZoomAlpha: 0.76, highZoomAlpha: 0.88, minRenderedAreaPixels: 3, simplifyBelowViewportScale: 0.58, simplifyTolerancePixels: 0.9, maxStrokeWidth: 1.15 }
     },
     building: {
-      residential: { fillColor: "#e2c79f", strokeColor: "#8f806a", strokeWidth: 0.9, minViewportScale: 0.22, lowZoomAlpha: 0.82, mediumZoomAlpha: 0.9, highZoomAlpha: 0.96, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.15 },
-      commercial: { fillColor: "#dcc09d", strokeColor: "#897864", strokeWidth: 0.94, minViewportScale: 0.22, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.92, highZoomAlpha: 0.97, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.2 },
-      retail: { fillColor: "#dfbd98", strokeColor: "#8d7660", strokeWidth: 0.94, minViewportScale: 0.22, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.92, highZoomAlpha: 0.97, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.2 },
+      residential: { fillColor: "#dfbf8f", strokeColor: "#796c59", strokeWidth: 0.92, minViewportScale: 0.18, lowZoomAlpha: 0.88, mediumZoomAlpha: 0.94, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.1, simplifyBelowViewportScale: 0.36, simplifyTolerancePixels: 0.5, maxStrokeWidth: 1.2 },
+      commercial: { fillColor: "#d9b98f", strokeColor: "#766654", strokeWidth: 0.96, minViewportScale: 0.18, lowZoomAlpha: 0.89, mediumZoomAlpha: 0.95, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.1, simplifyBelowViewportScale: 0.36, simplifyTolerancePixels: 0.5, maxStrokeWidth: 1.22 },
+      retail: { fillColor: "#dcb687", strokeColor: "#7b6550", strokeWidth: 0.96, minViewportScale: 0.18, lowZoomAlpha: 0.89, mediumZoomAlpha: 0.95, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.1, simplifyBelowViewportScale: 0.36, simplifyTolerancePixels: 0.5, maxStrokeWidth: 1.22 },
       industrial: { fillColor: "#d2c4af", strokeColor: "#887e70", strokeWidth: 0.96, minViewportScale: 0.22, lowZoomAlpha: 0.84, mediumZoomAlpha: 0.92, highZoomAlpha: 0.97, minRenderedAreaPixels: 1.6, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.2 },
       education: { fillColor: "#d9ada0", strokeColor: "#956e67", strokeWidth: 0.98, minViewportScale: 0.2, lowZoomAlpha: 0.86, mediumZoomAlpha: 0.93, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
       healthcare: { fillColor: "#d6a39d", strokeColor: "#926561", strokeWidth: 1, minViewportScale: 0.2, lowZoomAlpha: 0.88, mediumZoomAlpha: 0.94, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
       civic: { fillColor: "#d7ada4", strokeColor: "#916d66", strokeWidth: 0.98, minViewportScale: 0.2, lowZoomAlpha: 0.86, mediumZoomAlpha: 0.93, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
       religious: { fillColor: "#dcb4a7", strokeColor: "#98736a", strokeWidth: 0.98, minViewportScale: 0.2, lowZoomAlpha: 0.86, mediumZoomAlpha: 0.93, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.25 },
-      other: { fillColor: "#e1c9a6", strokeColor: "#91816b", strokeWidth: 0.9, minViewportScale: 0.22, lowZoomAlpha: 0.82, mediumZoomAlpha: 0.9, highZoomAlpha: 0.96, minRenderedAreaPixels: 1.4, simplifyBelowViewportScale: 0.42, simplifyTolerancePixels: 0.55, maxStrokeWidth: 1.15 }
+      other: { fillColor: "#dec39a", strokeColor: "#7d705c", strokeWidth: 0.92, minViewportScale: 0.18, lowZoomAlpha: 0.88, mediumZoomAlpha: 0.94, highZoomAlpha: 0.98, minRenderedAreaPixels: 1.1, simplifyBelowViewportScale: 0.36, simplifyTolerancePixels: 0.5, maxStrokeWidth: 1.2 }
     },
     pedestrianArea: { fillColor: "#ece4d6", strokeColor: "#d4c8b8" },
     landBlock: {
@@ -1446,23 +1447,23 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   },
   atlasSymbols: {
     styles: {
-      station: { size: 8.8, fillColor: "#ffffff", strokeColor: "#172f43", detailColor: "#075f73", haloColor: "rgba(255,252,244,0.96)", haloWidth: 2.2, strokeWidth: 1.9, priority: 1, minViewportScale: 0.2, collisionPadding: 3, minSpacingPixels: 32, maxPerViewport: 8 },
-      hospital: { size: 8.3, fillColor: "#fffdf8", strokeColor: "#9f1727", detailColor: "#b20f28", haloColor: "rgba(255,252,244,0.96)", haloWidth: 2.2, strokeWidth: 1.85, priority: 2, minViewportScale: 0.34, collisionPadding: 3, minSpacingPixels: 36, maxPerViewport: 4 },
-      pier: { size: 7.9, fillColor: "#eef8fa", strokeColor: "#145b73", detailColor: "#145b73", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.65, priority: 3, minViewportScale: 0.38, collisionPadding: 3, minSpacingPixels: 34, maxPerViewport: 2 },
-      civic: { size: 7.8, fillColor: "#fffdf8", strokeColor: "#283b4d", detailColor: "#283b4d", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 4, minViewportScale: 0.46, collisionPadding: 3, minSpacingPixels: 38, maxPerViewport: 4 },
-      education: { size: 7.6, fillColor: "#fffdf8", strokeColor: "#33485d", detailColor: "#33485d", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 5, minViewportScale: 0.5, collisionPadding: 3, minSpacingPixels: 38, maxPerViewport: 4 },
-      religious: { size: 7.6, fillColor: "#fffdf8", strokeColor: "#4e3b59", detailColor: "#4e3b59", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 5, minViewportScale: 0.52, collisionPadding: 3, minSpacingPixels: 38, maxPerViewport: 5 },
-      museum: { size: 7.6, fillColor: "#fffdf8", strokeColor: "#304354", detailColor: "#304354", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 5, minViewportScale: 0.54, collisionPadding: 3, minSpacingPixels: 38, maxPerViewport: 3 },
-      market: { size: 7.5, fillColor: "#fff7e8", strokeColor: "#75420f", detailColor: "#75420f", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 6, minViewportScale: 0.58, collisionPadding: 3, minSpacingPixels: 40, maxPerViewport: 3 },
-      parking: { size: 7.4, fillColor: "#eef5fa", strokeColor: "#174f72", detailColor: "#174f72", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 7, minViewportScale: 0.68, collisionPadding: 3, minSpacingPixels: 44, maxPerViewport: 2 },
-      landmark: { size: 7.6, fillColor: "#fffdf8", strokeColor: "#383a32", detailColor: "#383a32", haloColor: "rgba(255,252,244,0.94)", haloWidth: 2, strokeWidth: 1.6, priority: 5, minViewportScale: 0.52, collisionPadding: 3, minSpacingPixels: 40, maxPerViewport: 3 },
-      "open-space": { size: 7.1, fillColor: "#eef6e7", strokeColor: "#356b35", detailColor: "#356b35", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.8, strokeWidth: 1.5, priority: 8, minViewportScale: 0.7, collisionPadding: 3, minSpacingPixels: 46, maxPerViewport: 2 },
-      generic: { size: 7.1, fillColor: "#fffdf8", strokeColor: "#415568", detailColor: "#415568", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.8, strokeWidth: 1.5, priority: 8, minViewportScale: 0.7, collisionPadding: 3, minSpacingPixels: 46, maxPerViewport: 2 }
+      station: { size: 8.4, fillColor: "#ffffff", strokeColor: "#172f43", detailColor: "#075f73", haloColor: "rgba(255,252,244,0.94)", haloWidth: 1.8, strokeWidth: 1.8, priority: 1, minViewportScale: 0.16, collisionPadding: 2, minSpacingPixels: 26, maxPerViewport: 10 },
+      hospital: { size: 8, fillColor: "#fffdf8", strokeColor: "#9f1727", detailColor: "#b20f28", haloColor: "rgba(255,252,244,0.94)", haloWidth: 1.8, strokeWidth: 1.75, priority: 2, minViewportScale: 0.18, collisionPadding: 2, minSpacingPixels: 28, maxPerViewport: 6 },
+      pier: { size: 7.6, fillColor: "#eef8fa", strokeColor: "#145b73", detailColor: "#145b73", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.6, priority: 3, minViewportScale: 0.18, collisionPadding: 2, minSpacingPixels: 28, maxPerViewport: 3 },
+      civic: { size: 7.5, fillColor: "#fffdf8", strokeColor: "#283b4d", detailColor: "#283b4d", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 4, minViewportScale: 0.18, collisionPadding: 2, minSpacingPixels: 28, maxPerViewport: 6 },
+      education: { size: 7.3, fillColor: "#fffdf8", strokeColor: "#33485d", detailColor: "#33485d", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 5, minViewportScale: 0.18, collisionPadding: 2, minSpacingPixels: 28, maxPerViewport: 7 },
+      religious: { size: 7.3, fillColor: "#fffdf8", strokeColor: "#4e3b59", detailColor: "#4e3b59", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 5, minViewportScale: 0.18, collisionPadding: 2, minSpacingPixels: 28, maxPerViewport: 7 },
+      museum: { size: 7.3, fillColor: "#fffdf8", strokeColor: "#304354", detailColor: "#304354", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 5, minViewportScale: 0.19, collisionPadding: 2, minSpacingPixels: 28, maxPerViewport: 5 },
+      market: { size: 7.2, fillColor: "#fff7e8", strokeColor: "#75420f", detailColor: "#75420f", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 6, minViewportScale: 0.2, collisionPadding: 2, minSpacingPixels: 30, maxPerViewport: 4 },
+      parking: { size: 7.1, fillColor: "#eef5fa", strokeColor: "#174f72", detailColor: "#174f72", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 7, minViewportScale: 0.22, collisionPadding: 2, minSpacingPixels: 32, maxPerViewport: 3 },
+      landmark: { size: 7.3, fillColor: "#fffdf8", strokeColor: "#383a32", detailColor: "#383a32", haloColor: "rgba(255,252,244,0.92)", haloWidth: 1.7, strokeWidth: 1.55, priority: 5, minViewportScale: 0.19, collisionPadding: 2, minSpacingPixels: 30, maxPerViewport: 6 },
+      "open-space": { size: 6.9, fillColor: "#eef6e7", strokeColor: "#356b35", detailColor: "#356b35", haloColor: "rgba(255,252,244,0.9)", haloWidth: 1.6, strokeWidth: 1.45, priority: 8, minViewportScale: 0.22, collisionPadding: 2, minSpacingPixels: 34, maxPerViewport: 3 },
+      generic: { size: 6.9, fillColor: "#fffdf8", strokeColor: "#415568", detailColor: "#415568", haloColor: "rgba(255,252,244,0.9)", haloWidth: 1.6, strokeWidth: 1.45, priority: 8, minViewportScale: 0.22, collisionPadding: 2, minSpacingPixels: 34, maxPerViewport: 3 }
     },
     viewportEdgePadding: 8,
-    maxPerViewport: 20,
-    mobileMaxPerViewport: 10,
-    semanticScale: { low: 0.94, principal: 1.08, high: 1.14, veryHigh: 1.18 }
+    maxPerViewport: 32,
+    mobileMaxPerViewport: 14,
+    semanticScale: { low: 0.92, principal: 1.04, high: 1.1, veryHigh: 1.14 }
   },
   routeOverlays: {
     rawRoute: {
@@ -2274,6 +2275,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   zoom: {
     thresholds: {
       baselineZoomFactor: 2.7,
+      principalResetExtentFactor: 0.82,
       defaultZoom: 1,
       minZoom: 0.75,
       maxZoom: 50,

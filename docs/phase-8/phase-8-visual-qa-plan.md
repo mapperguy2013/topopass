@@ -128,10 +128,29 @@ Piccadilly, Waterloo, King's Cross / Euston, quiet residential,
 one-way/restriction, active learner route and submitted correct/incorrect
 review states.
 
-Inspection against the approved visual master confirmed a denser principal
+This Stage 8.8 acceptance statement was later rejected at manual review and is
+superseded by Stage 8.8.1. The original inspection found a denser principal
 exam view with numerous source-backed local names, continuous major-road
 corridors, bounded red A/B references, subordinate district/context labels and
 no broad collision-created blank fields. Learner routes, markers, submitted
 review overlays and attribution remain aligned. The development-only mobile QA
 toolbar still wraps beyond the narrow benchmark viewport; Stage 8.10 owns the
 broader mobile/accessibility layout pass. Stage 8.9 was not started.
+
+## Stage 8.8.1 Correction Evidence
+
+Stage 8.8.1 production-renderer captures are under
+`screenshots/stage-8-8-1/` and are indexed in
+`stage-8-8-1-visual-acceptance-correction.md`. Three material desktop
+iterations compare the corrected Victoria principal view with both the
+approved master and rejected Stage 8.8 benchmark. The matrix includes desktop
+80%, 100% and 125%, representative dense/quiet/junction/water/restriction
+fixtures, desktop pass/fail reviews, tablet Victoria and active route, and
+mobile Victoria, active route and expanded passing/incorrect reviews.
+
+Normal-size inspection found a dramatic increase in useful building, label and
+symbol density while preserving source geometry, major-road hierarchy, red
+A/B references, route/marker alignment and attribution. The 390 by 844 passing
+review confirms a 100% submitted 2.21 km route against the 2.21 km shortest
+legal route, with responsive review details aligned. Stage 8.8.1 is visually
+accepted; Stage 8.9 remains paused in its named stash and was not continued.

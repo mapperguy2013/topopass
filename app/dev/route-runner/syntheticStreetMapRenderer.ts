@@ -344,6 +344,26 @@ export type FilterSyntheticMapLabelsOptions = {
   viewport: ScreenMapViewport;
   reservedBoxes?: readonly SyntheticLabelCollisionBox[];
   currentZoom?: number;
+  onPlacementDecision?: (decision: SyntheticLabelPlacementDecision) => void;
+};
+
+export type SyntheticLabelPlacementRejectionReason =
+  | "road-scale"
+  | "road-length"
+  | "road-text-fit"
+  | "road-repeat"
+  | "context-scale"
+  | "reference-budget"
+  | "reference-geometry-or-repeat"
+  | "viewport-edge"
+  | "collision";
+
+export type SyntheticLabelPlacementDecision = {
+  id: string;
+  kind: SyntheticMapLabelKind;
+  text: string;
+  accepted: boolean;
+  reason?: SyntheticLabelPlacementRejectionReason;
 };
 
 export type FilterSyntheticLandmarkVisualsOptions = {
@@ -1208,15 +1228,25 @@ export function filterSyntheticMapLabelsForViewport(
   const otherLabels = sortedLabels.filter((label) => label.kind !== "road_reference");
 
   const acceptLabel = (label: SyntheticMapLabel): boolean => {
-    if (
-      label.kind === "road" &&
-      !shouldShowRoadLabel(label, options.viewport, viewportScale, roadLabelPointsByText, options.currentZoom)
-    ) {
+    const reject = (reason: SyntheticLabelPlacementRejectionReason): false => {
+      options.onPlacementDecision?.({ id: label.id, kind: label.kind, text: label.text, accepted: false, reason });
       return false;
+    };
+
+    if (label.kind === "road") {
+      const reason = roadLabelRejectionReason(
+        label,
+        options.viewport,
+        viewportScale,
+        roadLabelPointsByText,
+        options.currentZoom
+      );
+
+      if (reason) return reject(reason);
     }
 
     if (isContextMapLabelKind(label.kind) && !shouldShowContextLabel(label, viewportScale)) {
-      return false;
+      return reject("context-scale");
     }
 
     if (label.kind === "road_reference") {
@@ -1230,22 +1260,22 @@ export function filterSyntheticMapLabelsForViewport(
         (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) >= collision.roadReferenceMaxPerClass[roadReferenceClass] ||
         acceptedForText >= collision.roadReferenceMaxPerText
       ) {
-        return false;
+        return reject("reference-budget");
       }
 
       if (!shouldShowRoadReferenceLabel(label, options.viewport, roadReferencePointsByText)) {
-        return false;
+        return reject("reference-geometry-or-repeat");
       }
     }
 
     const box = labelCollisionBox(label, options.viewport, options.currentZoom);
 
     if (!boxFitsWithinViewport(box, options.viewport)) {
-      return false;
+      return reject("viewport-edge");
     }
 
     if (placedBoxes.some((placedBox) => boxesIntersect(placedBox, box))) {
-      return false;
+      return reject("collision");
     }
 
     placedBoxes.push(box);
@@ -1270,6 +1300,7 @@ export function filterSyntheticMapLabelsForViewport(
       const roadReferenceClass = label.roadReferenceClass ?? (label.text.startsWith("B") ? "b-road" : "a-road");
       acceptedRoadReferenceCounts.set(roadReferenceClass, (acceptedRoadReferenceCounts.get(roadReferenceClass) ?? 0) + 1);
     }
+    options.onPlacementDecision?.({ id: label.id, kind: label.kind, text: label.text, accepted: true });
     return true;
   };
 
@@ -1854,13 +1885,13 @@ function scaleLabelStyleForViewport<
   return scaledStyle;
 }
 
-function shouldShowRoadLabel(
+function roadLabelRejectionReason(
   label: SyntheticMapLabel,
   viewport: ScreenMapViewport,
   viewportScale: number,
   roadLabelPointsByText: ReadonlyMap<string, readonly Vec2[]>,
   currentZoom?: number
-): boolean {
+): SyntheticLabelPlacementRejectionReason | null {
   const tier = roadLabelTier(label);
   const style = labelStyleForSyntheticMapLabel(label, viewport, currentZoom) as TopopassRoadLabelStyle;
   const roadLengthMeters = label.roadLengthMeters ?? 0;
@@ -1868,24 +1899,26 @@ function shouldShowRoadLabel(
   const visibilityMultiplier = roadLabelMinLengthMultiplierForViewport(viewportScale);
 
   if (viewportScale < style.minViewportScale) {
-    return false;
+    return "road-scale";
   }
 
   if (roadScreenLength < style.minRoadScreenLength * visibilityMultiplier) {
-    return false;
+    return "road-length";
   }
 
   const estimatedWidth = estimatedLabelTextWidth(label.text, style);
 
   if (estimatedWidth + style.collisionPadding * 2 > roadScreenLength * style.maxTextToRoadRatio) {
-    return false;
+    return "road-text-fit";
   }
 
   const screenPoint = mapToScreenPoint(label.point, viewport);
   const existingPoints = roadLabelPointsByText.get(label.text.toLowerCase()) ?? [];
   const repeatDistance = style.repeatDistance / Math.min(cartographicLabelScaleForTier(tier, viewport, currentZoom), 1.6);
 
-  return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= repeatDistance);
+  return existingPoints.every((point) => distanceBetweenPoints(point, screenPoint) >= repeatDistance)
+    ? null
+    : "road-repeat";
 }
 
 function shouldShowContextLabel(label: SyntheticMapLabel, viewportScale: number): boolean {
