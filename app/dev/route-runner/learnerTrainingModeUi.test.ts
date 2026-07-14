@@ -45,9 +45,14 @@ test("normal Route Runner endpoints render when no learner training exercise is 
   });
 
   assert.equal(ownership.activeOverlayMode, "normal");
+  assert.equal(ownership.renderNormalCorrectRoute, true);
+  assert.equal(ownership.renderNormalAttemptRoute, true);
+  assert.equal(ownership.renderNormalReviewIssues, true);
+  assert.equal(ownership.renderSnapPreview, true);
   assert.equal(ownership.renderNormalRouteEndpoints, true);
   assert.equal(ownership.renderNormalRouteEndpointLabels, true);
   assert.equal(ownership.renderTrainingRouteEndpoints, false);
+  assert.equal(ownership.renderPipelineMatchDiagnostics, true);
 });
 
 test("learner training endpoints suppress original Route Runner start and destination markers", () => {
@@ -66,6 +71,10 @@ test("learner training endpoints suppress original Route Runner start and destin
   assert.ok(roles.includes("start"));
   assert.ok(roles.includes("finish"));
   assert.equal(ownership.activeOverlayMode, "training");
+  assert.equal(ownership.renderNormalCorrectRoute, false);
+  assert.equal(ownership.renderNormalAttemptRoute, true);
+  assert.equal(ownership.renderNormalReviewIssues, true);
+  assert.equal(ownership.renderSnapPreview, true);
   assert.equal(ownership.renderTrainingRouteEndpoints, true);
   assert.equal(ownership.renderNormalRouteEndpoints, false);
   assert.equal(ownership.renderNormalRouteEndpointLabels, false);
@@ -85,15 +94,42 @@ test("learner training review keeps training markers authoritative over original
     viewport: "desktop"
   });
   const ownership = buildRouteRunnerOverlayOwnership({
-    trainingOverlay: model.overlay
+    trainingOverlay: model.overlay,
+    trainingReviewVisible: Boolean(model.review)
   });
 
   assert.equal(model.review?.status, "passed");
   assert.equal(model.overlay.visible, true);
   assert.equal(ownership.activeOverlayMode, "training");
+  assert.equal(ownership.renderNormalCorrectRoute, false);
+  assert.equal(ownership.renderNormalAttemptRoute, false);
+  assert.equal(ownership.renderNormalReviewIssues, false);
+  assert.equal(ownership.renderSnapPreview, false);
   assert.equal(ownership.renderNormalRouteEndpoints, false);
   assert.equal(ownership.renderNormalRouteEndpointLabels, false);
   assert.equal(ownership.renderTrainingRouteEndpoints, true);
+  assert.equal(ownership.renderPipelineMatchDiagnostics, false);
+});
+
+test("Stage 8.9 learner-facing ownership hides technical route diagnostics", () => {
+  const active = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: { visible: false },
+    learnerFacing: true,
+    submittedReview: false
+  });
+  const submitted = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: { visible: false },
+    learnerFacing: true,
+    submittedReview: true
+  });
+
+  assert.equal(active.renderPipelineMatchDiagnostics, false);
+  assert.equal(active.renderNormalAttemptRoute, true);
+  assert.equal(active.renderSnapPreview, false);
+  assert.equal(submitted.renderPipelineMatchDiagnostics, false);
+  assert.equal(submitted.renderNormalAttemptRoute, true);
+  assert.equal(submitted.renderNormalReviewIssues, true);
+  assert.equal(submitted.renderSnapPreview, false);
 });
 
 test("closing learner training restores normal Route Runner endpoint ownership", () => {
@@ -102,9 +138,14 @@ test("closing learner training restores normal Route Runner endpoint ownership",
   });
 
   assert.equal(ownership.activeOverlayMode, "normal");
+  assert.equal(ownership.renderNormalCorrectRoute, true);
+  assert.equal(ownership.renderNormalAttemptRoute, true);
+  assert.equal(ownership.renderNormalReviewIssues, true);
+  assert.equal(ownership.renderSnapPreview, true);
   assert.equal(ownership.renderNormalRouteEndpoints, true);
   assert.equal(ownership.renderNormalRouteEndpointLabels, true);
   assert.equal(ownership.renderTrainingRouteEndpoints, false);
+  assert.equal(ownership.renderPipelineMatchDiagnostics, true);
 });
 
 function learnerReviewMap(): MapDefinition {

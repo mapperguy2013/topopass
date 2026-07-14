@@ -445,10 +445,10 @@ test("Stage 153 learner overlay marker hint and callout tokens are complete and 
     "correct-route",
     "accepted-alternative-route",
     "attempted-route",
+    "hints-next-road",
     "route-warnings",
     "checkpoint-markers",
     "start-destination-markers",
-    "hints-next-road",
     "review-callouts",
     "selected-focus"
   ]);
@@ -603,9 +603,9 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding < 7);
   assert.equal(markers.requiredVia.textPrefix, "VIA");
   assert.ok(markers.start.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.oneWay.tipDistance);
-  assert.ok(markers.destination.radius > TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius);
+  assert.ok(markers.destination.radius >= TOPOPASS_STREET_ATLAS_STYLE.restrictions.turnBanMarker.radius);
   assert.ok(markers.requiredVia.radius > markers.checkpoint.radius);
-  assert.ok(markers.reservationPadding > TOPOPASS_STREET_ATLAS_STYLE.labels.collision.markerPadding);
+  assert.ok(markers.reservationPadding >= TOPOPASS_STREET_ATLAS_STYLE.labels.collision.defaultPadding);
   assert.ok(hints.snapPreview.strokeWidth < TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth);
   assert.ok(hints.snappedPointRadius < markers.checkpoint.radius);
   assert.ok(selectedRoad.haloWidth > TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeWidth);
@@ -614,8 +614,50 @@ test("Stage 151 objective and hint overlays use learner-priority central tokens"
 
 test("Stage 161.6.21 route review issue symbols default to icon-only learner map feedback", () => {
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.iconOnlyDefault, true);
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius >= 16);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius <= 14);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding > 0);
+  assert.ok(
+    TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets.reviewIssueHitRadius >
+      TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius
+  );
+});
+
+test("Stage 8.9 learner and review overlays preserve atlas geography through bounded hierarchy", () => {
+  const overlays = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays;
+  const learner = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays;
+  const routeIssue = TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue;
+
+  assert.deepEqual(learner.drawOrder, [
+    "base-context",
+    "roads",
+    "base-labels",
+    "correct-route",
+    "accepted-alternative-route",
+    "attempted-route",
+    "hints-next-road",
+    "route-warnings",
+    "checkpoint-markers",
+    "start-destination-markers",
+    "review-callouts",
+    "selected-focus"
+  ]);
+  assert.ok(overlays.rawRoute.strokeWidth < 4);
+  assert.ok((overlays.rawRoute.casingWidth ?? 0) <= 7);
+  assert.ok((overlays.rawRoute.alpha ?? 1) < 0.9);
+  assert.ok(overlays.shortestLegalRoute.strokeWidth < overlays.rawRoute.strokeWidth);
+  assert.notEqual(overlays.shortestLegalRoute.strokeColor, overlays.rawRoute.strokeColor);
+  assert.ok((overlays.shortestLegalRoute.dash?.length ?? 0) > 0);
+  assert.ok(overlays.illegalMovement.strokeWidth > overlays.rawRoute.strokeWidth);
+  assert.ok((overlays.illegalMovement.alpha ?? 0) > (overlays.rawRoute.alpha ?? 0));
+  assert.notEqual(overlays.illegalMovement.strokeColor, overlays.inefficientSection.strokeColor);
+  assert.ok(learner.hints.revealed.strokeWidth < overlays.rawRoute.strokeWidth);
+  assert.ok((learner.hints.revealed.alpha ?? 1) <= (overlays.rawRoute.alpha ?? 1));
+  assert.ok(routeIssue.markerRadius < learner.touchTargets.reviewIssueHitRadius);
+  assert.ok(learner.markers.start.radius < learner.touchTargets.markerHitRadius);
+  assert.ok(learner.markers.destination.radius < learner.touchTargets.markerHitRadius);
+  assert.ok(learner.markers.requiredCheckpoint.radius < learner.touchTargets.checkpointHitRadius);
+  assert.ok(learner.markers.start.asset!.displayWidth < learner.touchTargets.markerHitRadius * 2);
+  assert.ok(learner.markers.destination.asset!.displayWidth < learner.touchTargets.markerHitRadius * 2);
 });
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
@@ -653,9 +695,10 @@ test("Stage 142 tokenized renderer helpers preserve existing style values", () =
           { x: 10, y: 0 }
         ],
         strokeColor: "#f97316",
-        strokeWidth: 5,
-        casingColor: "rgba(255,255,255,0.92)",
-        casingWidth: 9
+        strokeWidth: 3.5,
+        casingColor: "rgba(255,255,255,0.68)",
+        casingWidth: 7,
+        alpha: 0.82
       },
       {
         id: "shortest-legal-route",
@@ -665,11 +708,11 @@ test("Stage 142 tokenized renderer helpers preserve existing style values", () =
           { x: 10, y: 4 }
         ],
         strokeColor: "#0284c7",
-        strokeWidth: 4.5,
-        casingColor: "rgba(255,255,255,0.9)",
-        casingWidth: 9,
-        dash: [14, 8],
-        alpha: 0.9
+        strokeWidth: 3.25,
+        casingColor: "rgba(255,255,255,0.68)",
+        casingWidth: 7,
+        dash: [12, 8],
+        alpha: 0.78
       }
     ]
   );
@@ -914,15 +957,19 @@ test("Stage 8.6 production draw stack keeps context fabric below roads labels re
   const source = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
   const baseStart = source.indexOf("function drawSyntheticStreetMapBase");
   const canvasStart = source.indexOf("function drawRouteCanvas");
+  const canvasEnd = source.indexOf("function createViewport", canvasStart);
   const baseSource = source.slice(baseStart, canvasStart);
-  const canvasSource = source.slice(canvasStart);
+  const canvasSource = source.slice(canvasStart, canvasEnd);
 
   assert.ok(baseStart >= 0 && canvasStart > baseStart);
   assert.ok(baseSource.indexOf("filterSyntheticBackgroundFeaturesForViewport") < baseSource.indexOf("input.linearFeatures"));
   assert.ok(baseSource.indexOf("input.linearFeatures") < baseSource.indexOf("drawSyntheticRoadVisualsByHierarchy"));
   assert.ok(baseSource.indexOf("drawSyntheticRoadVisualsByHierarchy") < baseSource.indexOf("filterSyntheticMapLabelsForViewport"));
   assert.ok(canvasSource.indexOf("drawSyntheticStreetMapBase") < canvasSource.indexOf("input.roadRestrictionOverlays"));
-  assert.ok(canvasSource.indexOf("input.roadRestrictionOverlays") < canvasSource.indexOf("drawLearnerTrainingRouteOverlay"));
+  assert.ok(
+    canvasSource.indexOf("input.roadRestrictionOverlays") <
+      canvasSource.indexOf("drawLearnerTrainingCorrectRouteOverlay")
+  );
   assert.ok(baseSource.indexOf("input.linearFeatures") < baseSource.indexOf("filterSyntheticMapLabelsForViewport"));
 });
 
@@ -1272,10 +1319,8 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 4);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.minorLowZoomAlphaMultiplier >= 0.9);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha <= 0.3);
-  assert.ok(
-    TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding <
-      TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.haloRadiusPadding
-  );
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding <= 5);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.haloRadiusPadding <= 5);
 
   for (const label of [
     "Victoria Embankment",

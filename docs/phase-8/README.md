@@ -61,6 +61,7 @@ stages may be split if implementation audit shows that a stage is too large.
    Stage 8.8.1 is the principal-scale near-master visual-acceptance correction.
    Completed and visually accepted.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
+   Completed and visually accepted.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
     evidence.
@@ -97,8 +98,12 @@ adding placement rejection diagnostics. Desktop, tablet and mobile map
 evidence is materially closer to the approved master. Required active-route
 and submitted passing/incorrect review evidence is complete at desktop and
 mobile sizes. The benchmark remains dev-only, unscoreable and absent from
-learner beta map catalogues. Stage 8.9 is paused in a named stash and has not
-been continued.
+learner beta map catalogues. Stage 8.9 now uses typed learner/review route and
+marker tokens, compact visible markers with separate interaction targets,
+deterministic overlay ownership and a stable drawing order. Learner-facing
+active and submitted states suppress pipeline diagnostics that competed with
+the route and atlas geography. Desktop and mobile evidence covers active,
+correct, incorrect, mistake and hint states at displayed 100%.
 
 ## Documents
 
@@ -112,4 +117,5 @@ been continued.
 - [Stage 8.7 compact symbols and road references](stage-8-7-compact-symbols-road-references.md)
 - [Stage 8.8 principal scale and density](stage-8-8-principal-scale-and-density.md)
 - [Stage 8.8.1 near-master visual correction](stage-8-8-1-visual-acceptance-correction.md)
+- [Stage 8.9 learner and review overlay rebalance](stage-8-9-learner-review-overlay-rebalance.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

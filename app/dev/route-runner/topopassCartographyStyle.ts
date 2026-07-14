@@ -516,10 +516,10 @@ export type TopopassStreetAtlasStyle = {
       "correct-route",
       "accepted-alternative-route",
       "attempted-route",
+      "hints-next-road",
       "route-warnings",
       "checkpoint-markers",
       "start-destination-markers",
-      "hints-next-road",
       "review-callouts",
       "selected-focus"
     ];
@@ -1467,10 +1467,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
   },
   routeOverlays: {
     rawRoute: {
-      casingColor: "rgba(255,255,255,0.92)",
-      casingWidth: 9,
+      casingColor: "rgba(255,255,255,0.68)",
+      casingWidth: 7,
       strokeColor: "#f97316",
-      strokeWidth: 5
+      strokeWidth: 3.5,
+      alpha: 0.82
     },
     snappedRoute: {
       strokeColor: "#22c55e",
@@ -1478,59 +1479,59 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       dash: [6, 5]
     },
     matchedRoute: {
-      casingColor: "rgba(255,255,255,0.88)",
-      casingWidth: 11,
+      casingColor: "rgba(255,255,255,0.66)",
+      casingWidth: 8,
       strokeColor: "#7c3aed",
-      strokeWidth: 7,
-      alpha: 0.9
+      strokeWidth: 4.5,
+      alpha: 0.72
     },
     shortestLegalRoute: {
-      casingColor: "rgba(255,255,255,0.9)",
-      casingWidth: 9,
+      casingColor: "rgba(255,255,255,0.68)",
+      casingWidth: 7,
       strokeColor: "#0284c7",
-      strokeWidth: 4.5,
-      dash: [14, 8],
-      alpha: 0.9
+      strokeWidth: 3.25,
+      dash: [12, 8],
+      alpha: 0.78
     },
     acceptedAlternativeRoute: {
-      casingColor: "rgba(255,255,255,0.84)",
-      casingWidth: 7,
+      casingColor: "rgba(255,255,255,0.62)",
+      casingWidth: 6,
       strokeColor: "#0f766e",
-      strokeWidth: 3.5,
+      strokeWidth: 3,
       dash: [3, 7],
-      alpha: 0.78
+      alpha: 0.7
     },
     illegalMovement: {
-      casingColor: "rgba(255,255,255,0.9)",
-      casingWidth: 12,
+      casingColor: "rgba(255,255,255,0.74)",
+      casingWidth: 9,
       strokeColor: "#dc2626",
-      strokeWidth: 8.5,
-      alpha: 0.9
+      strokeWidth: 6.5,
+      alpha: 0.86
     },
     inefficientSection: {
-      casingColor: "rgba(255,255,255,0.82)",
-      casingWidth: 8,
+      casingColor: "rgba(255,255,255,0.64)",
+      casingWidth: 6.5,
       strokeColor: "#d97706",
-      strokeWidth: 4,
+      strokeWidth: 3.5,
       dash: [9, 7],
-      alpha: 0.78
+      alpha: 0.74
     },
     backtrackSection: {
-      casingColor: "rgba(255,255,255,0.82)",
-      casingWidth: 8,
+      casingColor: "rgba(255,255,255,0.64)",
+      casingWidth: 6.5,
       strokeColor: "#9333ea",
-      strokeWidth: 4,
+      strokeWidth: 3.5,
       dash: [4, 5],
-      alpha: 0.72
+      alpha: 0.7
     }
   },
   exerciseMarkers: {
     haloFillColor: "rgba(255,255,255,0.96)",
     textColor: "#ffffff",
-    haloRadiusPadding: 6,
-    reservationPadding: 16,
+    haloRadiusPadding: 5,
+    reservationPadding: 6,
     minSeparation: 34,
-    strokeWidth: 3.5,
+    strokeWidth: 3,
     shadowColor: "rgba(15,23,42,0.28)",
     shadowBlur: 12,
     shadowOffsetY: 2,
@@ -1542,7 +1543,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       borderRadius: 8,
       minWidth: 54,
       shadowColor: "rgba(15,23,42,0.24)",
-      shadowBlur: 7,
+      shadowBlur: 5,
       shadowOffsetY: 1.5
     },
     assetZoomScale: {
@@ -1561,30 +1562,30 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     },
     start: {
       fillColor: "#059669",
-      radius: 17,
+      radius: 14,
       text: "START",
       compactText: "S",
       font: "800 10px Arial, sans-serif",
       shape: "pin",
-      pinTipLength: 25
+      pinTipLength: 21
     },
-    checkpoint: { fillColor: "#2563eb", radius: 15, textPrefix: "CP", font: "800 9px Arial, sans-serif", shape: "circle" },
-    requiredVia: { fillColor: "#1d4ed8", radius: 16, textPrefix: "VIA", font: "800 8px Arial, sans-serif", shape: "circle" },
+    checkpoint: { fillColor: "#2563eb", radius: 12, textPrefix: "CP", font: "800 9px Arial, sans-serif", shape: "circle" },
+    requiredVia: { fillColor: "#1d4ed8", radius: 13, textPrefix: "VIA", font: "800 8px Arial, sans-serif", shape: "circle" },
     destination: {
       fillColor: "#dc2626",
-      radius: 17,
+      radius: 14,
       text: "DESTINATION",
       compactText: "D",
       font: "800 10px Arial, sans-serif",
       shape: "pin",
-      pinTipLength: 25
+      pinTipLength: 21
     }
   },
   hints: {
     snapPreview: {
       strokeColor: "#0d9488",
-      strokeWidth: 2.4,
-      alpha: 0.82,
+      strokeWidth: 2,
+      alpha: 0.72,
       dash: [5, 5]
     },
     snappedPointMatchedColor: "#16a34a",
@@ -1592,7 +1593,7 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
     snappedPointHaloColor: "rgba(255,255,255,0.9)",
     snappedPointStrokeColor: "rgba(15,23,42,0.42)",
     snappedPointStrokeWidth: 1.5,
-    snappedPointRadius: 4
+    snappedPointRadius: 3
   },
   learnerOverlays: {
     drawOrder: [
@@ -1602,10 +1603,10 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       "correct-route",
       "accepted-alternative-route",
       "attempted-route",
+      "hints-next-road",
       "route-warnings",
       "checkpoint-markers",
       "start-destination-markers",
-      "hints-next-road",
       "review-callouts",
       "selected-focus"
     ],
@@ -1615,21 +1616,21 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         color: "#047857",
         haloColor: "rgba(255,255,255,0.96)",
         haloWidth: 0,
-        yOffset: -58
+        yOffset: -48
       },
       destination: {
         font: "800 13px Arial, sans-serif",
         color: "#b91c1c",
         haloColor: "rgba(255,255,255,0.96)",
         haloWidth: 0,
-        yOffset: -58
+        yOffset: -48
       },
       checkpoint: {
         font: "800 12px Arial, sans-serif",
         color: "#1d4ed8",
         haloColor: "rgba(255,255,255,0.94)",
         haloWidth: 0,
-        yOffset: -46
+        yOffset: -40
       },
       hint: {
         font: "700 10px Arial, sans-serif",
@@ -1651,12 +1652,12 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         strokeColor: "#ffffff",
         haloColor: "rgba(255,255,255,0.72)",
         haloStrokeColor: "rgba(6,95,70,0.24)",
-        haloRadiusPadding: 6,
-        strokeWidth: 3.2,
-        radius: 17,
+        haloRadiusPadding: 5,
+        strokeWidth: 2.8,
+        radius: 14,
         font: "800 10px Arial, sans-serif",
         textColor: "#ffffff",
-        pinTipLength: 25,
+        pinTipLength: 21,
         innerFillColor: "#ffffff",
         innerTextColor: "#047857",
         innerRadiusRatio: 0.36,
@@ -1664,8 +1665,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
           src: "/map-icons/start-marker.svg",
           sourceWidth: 120,
           sourceHeight: 180,
-          displayWidth: 48,
-          displayHeight: 72,
+          displayWidth: 40,
+          displayHeight: 60,
           anchorX: 60,
           anchorY: 174
         }
@@ -1677,11 +1678,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         haloColor: "rgba(255,255,255,0.72)",
         haloStrokeColor: "rgba(153,27,27,0.24)",
         haloRadiusPadding: 5,
-        strokeWidth: 3.1,
-        radius: 17,
+        strokeWidth: 2.8,
+        radius: 14,
         font: "800 10px Arial, sans-serif",
         textColor: "#ffffff",
-        pinTipLength: 25,
+        pinTipLength: 21,
         innerFillColor: "#ffffff",
         innerTextColor: "#b91c1c",
         innerRadiusRatio: 0.36,
@@ -1689,8 +1690,8 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
           src: "/map-icons/destination-marker.svg",
           sourceWidth: 120,
           sourceHeight: 180,
-          displayWidth: 48,
-          displayHeight: 72,
+          displayWidth: 40,
+          displayHeight: 60,
           anchorX: 60,
           anchorY: 174
         }
@@ -1701,17 +1702,17 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         strokeColor: "#ffffff",
         haloColor: "rgba(37,99,235,0.13)",
         haloStrokeColor: "rgba(29,78,216,0.28)",
-        haloRadiusPadding: 7,
-        strokeWidth: 3,
-        radius: 15,
+        haloRadiusPadding: 5,
+        strokeWidth: 2.6,
+        radius: 12,
         font: "800 9px Arial, sans-serif",
         textColor: "#ffffff",
         asset: {
           src: "/map-icons/checkpoint-marker.svg",
           sourceWidth: 110,
           sourceHeight: 160,
-          displayWidth: 42,
-          displayHeight: 61.0909090909,
+          displayWidth: 34,
+          displayHeight: 49.4545454545,
           anchorX: 55,
           anchorY: 154
         }
@@ -1722,17 +1723,17 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
         strokeColor: "#ffffff",
         haloColor: "rgba(29,78,216,0.16)",
         haloStrokeColor: "rgba(30,64,175,0.32)",
-        haloRadiusPadding: 8,
-        strokeWidth: 3.25,
-        radius: 16,
+        haloRadiusPadding: 6,
+        strokeWidth: 2.8,
+        radius: 13,
         font: "800 8px Arial, sans-serif",
         textColor: "#ffffff",
         asset: {
           src: "/map-icons/checkpoint-marker.svg",
           sourceWidth: 110,
           sourceHeight: 160,
-          displayWidth: 42,
-          displayHeight: 61.0909090909,
+          displayWidth: 34,
+          displayHeight: 49.4545454545,
           anchorX: 55,
           anchorY: 154
         }
@@ -2191,11 +2192,11 @@ export const TOPOPASS_STREET_ATLAS_STYLE = {
       noEntrySymbolStrokeColor: "#b91c1c",
       illegalSymbolFillColor: "#ffffff",
       illegalSymbolStrokeColor: "#dc2626",
-      markerRadius: 16,
-      markerStrokeWidth: 3,
+      markerRadius: 14,
+      markerStrokeWidth: 2.6,
       markerHaloColor: "rgba(255,255,255,0.96)",
-      markerHaloPadding: 5,
-      reservationPadding: 12,
+      markerHaloPadding: 4,
+      reservationPadding: 6,
       iconOnlyDefault: true
     },
     fastestRoute: {

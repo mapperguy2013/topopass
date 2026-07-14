@@ -3152,12 +3152,11 @@ function drawLearnerTrainingReviewMarker(
   context.restore();
 }
 
-function drawLearnerTrainingRouteOverlay(
+function drawLearnerTrainingCorrectRouteOverlay(
   context: CanvasRenderingContext2D,
   overlay: LearnerTrainingRouteOverlay | undefined,
   viewport: ScreenMapViewport,
-  currentZoom?: number,
-  markerAssets?: LearnerMarkerImageAssets
+  currentZoom?: number
 ): void {
   if (!overlay?.visible) {
     return;
@@ -3171,6 +3170,17 @@ function drawLearnerTrainingRouteOverlay(
       TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute,
       cartographicCorrectRouteScaleForZoom(currentZoom ?? 1)
     );
+  }
+}
+
+function drawLearnerTrainingAttemptReviewOverlay(
+  context: CanvasRenderingContext2D,
+  overlay: LearnerTrainingRouteOverlay | undefined,
+  viewport: ScreenMapViewport,
+  currentZoom?: number
+): void {
+  if (!overlay?.visible) {
+    return;
   }
 
   if (overlay.attemptedRoute?.points.length && overlay.attemptedRoute.points.length >= 2) {
@@ -3191,6 +3201,18 @@ function drawLearnerTrainingRouteOverlay(
       learnerTrainingReviewLineStyle(item),
       cartographicMistakeOverlayScaleForZoom(currentZoom ?? 1)
     );
+  }
+}
+
+function drawLearnerTrainingMarkers(
+  context: CanvasRenderingContext2D,
+  overlay: LearnerTrainingRouteOverlay | undefined,
+  viewport: ScreenMapViewport,
+  currentZoom?: number,
+  markerAssets?: LearnerMarkerImageAssets
+): void {
+  if (!overlay?.visible) {
+    return;
   }
 
   for (const checkpoint of overlay.checkpoints) {
@@ -3528,54 +3550,18 @@ function buildLabelReservationBoxes(input: {
   routeDraft: DrawnRouteDraft;
   fastestRoutePoints: readonly Vec2[];
   trainingOverlay?: LearnerTrainingRouteOverlay;
+  renderSnapPreview: boolean;
+  renderNormalReviewIssues: boolean;
   snapPreview: SnappedRouteTraceResult;
   pipelineResult: DrawnRoutePipelineResult;
   routeIssueOverlays: readonly RouteIssueOverlay[];
 }): SyntheticLabelCollisionBox[] {
   const boxes: SyntheticLabelCollisionBox[] = [];
   const labelCollisionStyle = TOPOPASS_STREET_ATLAS_STYLE.labels.collision;
-  const touchTargets = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.touchTargets;
-  const drawnAttemptScale = cartographicDrawnAttemptScaleForZoom(input.currentZoom);
-  const correctRouteScale = cartographicCorrectRouteScaleForZoom(input.currentZoom);
   const mistakeScale = cartographicMistakeOverlayScaleForZoom(input.currentZoom);
   const markerScale = cartographicLearnerMarkerScaleForZoom(input.currentZoom);
 
-  addPolylineReservationBoxes({
-    boxes,
-    idPrefix: "fastest-route",
-    points: input.fastestRoutePoints,
-    viewport: input.viewport,
-    strokeWidth:
-      (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.casingWidth ??
-        TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.strokeWidth) * correctRouteScale,
-    padding: labelCollisionStyle.routePadding
-  });
-
   if (input.trainingOverlay?.visible) {
-    addPolylineReservationBoxes({
-      boxes,
-      idPrefix: "training-route",
-      points: input.trainingOverlay.route.points,
-      viewport: input.viewport,
-      strokeWidth:
-        (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.casingWidth ??
-          TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.shortestLegalRoute.strokeWidth) * correctRouteScale,
-      padding: labelCollisionStyle.routePadding
-    });
-
-    if (input.trainingOverlay.attemptedRoute?.points.length) {
-      addPolylineReservationBoxes({
-        boxes,
-        idPrefix: "training-attempted-route",
-        points: input.trainingOverlay.attemptedRoute.points,
-        viewport: input.viewport,
-        strokeWidth:
-          (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.casingWidth ??
-            TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth) * drawnAttemptScale,
-        padding: labelCollisionStyle.routePadding
-      });
-    }
-
     input.trainingOverlay.segmentFeedback.forEach((item, index) => {
       const itemStyle = learnerTrainingReviewLineStyle(item);
 
@@ -3605,12 +3591,8 @@ function buildLabelReservationBoxes(input: {
           point: checkpoint.point,
           viewport: input.viewport,
           radius:
-            Math.max(
-              markerStyle.radius + markerStyle.haloRadiusPadding,
-              checkpoint.role === "checkpoint" ? touchTargets.checkpointHitRadius : touchTargets.markerHitRadius
-            ) *
-              markerScale +
-          TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
+            (markerStyle.radius + markerStyle.haloRadiusPadding) * markerScale +
+            TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
         })
       );
     });
@@ -3622,11 +3604,8 @@ function buildLabelReservationBoxes(input: {
           point: marker.point,
           viewport: input.viewport,
           radius:
-            Math.max(
-              TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
-                TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding,
-              touchTargets.reviewIssueHitRadius
-            ) *
+            (TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
+              TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding) *
               mistakeScale +
             TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
         })
@@ -3634,88 +3613,48 @@ function buildLabelReservationBoxes(input: {
     });
   }
 
-  visibleRawRouteStrokes(input.routeDraft, input.trace).forEach((stroke, index) => {
-    addPolylineReservationBoxes({
-      boxes,
-      idPrefix: `raw-route-${index}`,
-      points: stroke.points,
-      viewport: input.viewport,
-      strokeWidth:
-        (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.casingWidth ??
-          TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute.strokeWidth) * drawnAttemptScale,
-      padding: labelCollisionStyle.routePadding
+  if (input.renderSnapPreview) {
+    input.snapPreview.snappedPoints.forEach((point, index) => {
+      boxes.push(
+        screenPointReservationBox({
+          id: `snap-point-${index}`,
+          point: point.originalPoint,
+          viewport: input.viewport,
+          radius:
+            (TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.radius + labelCollisionStyle.markerPadding) *
+            markerScale
+        })
+      );
     });
-  });
+  }
 
-  addPolylineReservationBoxes({
-    boxes,
-    idPrefix: "snap-preview",
-    points: input.snapPreview.snappedPoints.map((point) => point.snappedPoint),
-    viewport: input.viewport,
-    strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.revealed.strokeWidth * drawnAttemptScale,
-    padding: labelCollisionStyle.routePadding
-  });
-
-  input.snapPreview.snappedPoints.forEach((point, index) => {
-    boxes.push(
-      screenPointReservationBox({
-        id: `snap-point-${index}`,
-        point: point.originalPoint,
+  if (input.renderNormalReviewIssues) {
+    input.routeIssueOverlays.forEach((overlay, index) => {
+      addPolylineReservationBoxes({
+        boxes,
+        idPrefix: `route-issue-${index}`,
+        points: overlay.points,
         viewport: input.viewport,
-        radius: Math.max(
-          TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker.radius + labelCollisionStyle.markerPadding,
-          touchTargets.hintHitRadius
-        ) * markerScale
-      })
-    );
-  });
+        strokeWidth:
+          (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement.casingWidth ??
+            TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement.strokeWidth) * mistakeScale,
+        padding: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
+      });
 
-  input.pipelineResult.matchResult?.attemptedMovements.forEach((movement, index) => {
-    const from = nodeById(movement.fromNodeId, input.map);
-    const to = nodeById(movement.toNodeId, input.map);
-
-    if (!from || !to) {
-      return;
-    }
-
-    addPolylineReservationBoxes({
-      boxes,
-      idPrefix: `matched-movement-${index}`,
-      points: [from, to],
-      viewport: input.viewport,
-      strokeWidth: TOPOPASS_STREET_ATLAS_STYLE.review.matchedMovement.haloWidth * mistakeScale,
-      padding: labelCollisionStyle.routePadding
+      boxes.push(
+        screenPointReservationBox({
+          id: `route-issue-marker-${index}`,
+          point: overlay.midpoint,
+          viewport: input.viewport,
+          radius:
+            (TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
+              TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding) *
+              mistakeScale +
+            TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
+        })
+      );
     });
-  });
-
-  input.routeIssueOverlays.forEach((overlay, index) => {
-    addPolylineReservationBoxes({
-      boxes,
-      idPrefix: `route-issue-${index}`,
-      points: overlay.points,
-      viewport: input.viewport,
-      strokeWidth:
-        (TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement.casingWidth ??
-          TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.illegalMovement.strokeWidth) * mistakeScale,
-      padding: TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
-    });
-
-    boxes.push(
-      screenPointReservationBox({
-        id: `route-issue-marker-${index}`,
-        point: overlay.midpoint,
-        viewport: input.viewport,
-        radius:
-          Math.max(
-            TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerRadius +
-              TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloPadding,
-            touchTargets.reviewIssueHitRadius
-          ) *
-            mistakeScale +
-          TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.reservationPadding
-      })
-    );
-  });
+  }
 
   input.selectedExercise?.stops.forEach((stop, index) => {
     const node = resolveStopNode(stop, input.map);
@@ -3740,11 +3679,7 @@ function buildLabelReservationBoxes(input: {
         point: node,
         viewport: input.viewport,
         radius:
-          Math.max(
-            markerStyle.radius + markerStyle.haloRadiusPadding,
-            index === 0 || isFinish ? touchTargets.markerHitRadius : touchTargets.checkpointHitRadius
-          ) *
-            markerScale +
+          (markerStyle.radius + markerStyle.haloRadiusPadding) * markerScale +
           TOPOPASS_STREET_ATLAS_STYLE.exerciseMarkers.reservationPadding
       })
     );
@@ -3811,6 +3746,9 @@ function drawRouteCanvas(input: {
   map: MapDefinition;
   viewport: ScreenMapViewport;
   currentZoom: number;
+  learnerFacing: boolean;
+  submittedReview: boolean;
+  trainingReviewVisible: boolean;
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
@@ -3847,7 +3785,10 @@ function drawRouteCanvas(input: {
   context.lineCap = "round";
   context.lineJoin = "round";
   const overlayOwnership = buildRouteRunnerOverlayOwnership({
-    trainingOverlay: input.trainingOverlay
+    trainingOverlay: input.trainingOverlay,
+    trainingReviewVisible: input.trainingReviewVisible,
+    learnerFacing: input.learnerFacing,
+    submittedReview: input.submittedReview
   });
   const labelReservedBoxes = buildLabelReservationBoxes({
     map: input.map,
@@ -3858,6 +3799,8 @@ function drawRouteCanvas(input: {
     routeDraft: input.routeDraft,
     fastestRoutePoints: input.fastestRoutePoints,
     trainingOverlay: input.trainingOverlay,
+    renderSnapPreview: overlayOwnership.renderSnapPreview,
+    renderNormalReviewIssues: overlayOwnership.renderNormalReviewIssues,
     snapPreview: input.snapPreview,
     pipelineResult: input.pipelineResult,
     routeIssueOverlays: input.routeIssueOverlays
@@ -3874,10 +3817,16 @@ function drawRouteCanvas(input: {
     landmarkVisuals: input.landmarkVisuals,
     mapLabels: input.mapLabels,
     labelReservedBoxes,
-    selectedRoadIds: input.pipelineResult.matchResult?.orderedRoadIds ?? [],
-    hoveredRoadIds: uniqueOrdered(
-      input.snapPreview.snappedPoints.map((point) => point.roadId).filter((roadId): roadId is string => Boolean(roadId))
-    )
+    selectedRoadIds: overlayOwnership.renderPipelineMatchDiagnostics
+      ? (input.pipelineResult.matchResult?.orderedRoadIds ?? [])
+      : [],
+    hoveredRoadIds: overlayOwnership.renderSnapPreview
+      ? uniqueOrdered(
+          input.snapPreview.snappedPoints
+            .map((point) => point.roadId)
+            .filter((roadId): roadId is string => Boolean(roadId))
+        )
+      : []
   });
 
   for (const overlay of input.roadRestrictionOverlays) {
@@ -3886,71 +3835,95 @@ function drawRouteCanvas(input: {
 
   drawOsmDebugOverlay(context, input.osmDebugOverlay, input.viewport);
 
-  drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport, input.currentZoom);
-  drawLearnerTrainingRouteOverlay(context, input.trainingOverlay, input.viewport, input.currentZoom, input.markerAssets);
+  if (overlayOwnership.renderNormalCorrectRoute) {
+    drawFastestRouteOverlay(context, input.fastestRoutePoints, input.viewport, input.currentZoom);
+  }
+  drawLearnerTrainingCorrectRouteOverlay(context, input.trainingOverlay, input.viewport, input.currentZoom);
   drawOsmExerciseDebugOverlay(context, input.osmExerciseDebugOverlay, input.viewport);
 
-  input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
-    const from = nodeById(movement.fromNodeId, input.map);
-    const to = nodeById(movement.toNodeId, input.map);
+  const visibleRawStrokes = visibleRawRouteStrokes(input.routeDraft, input.trace);
 
-    if (!from || !to) {
-      return;
+  if (overlayOwnership.renderNormalAttemptRoute && visibleRawStrokes.length > 0) {
+    const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
+    const routeScale = cartographicDrawnAttemptScaleForZoom(input.currentZoom);
+
+    visibleRawStrokes.forEach((stroke) => {
+      drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle, routeScale);
+    });
+  }
+
+  drawLearnerTrainingAttemptReviewOverlay(context, input.trainingOverlay, input.viewport, input.currentZoom);
+
+  if (overlayOwnership.renderPipelineMatchDiagnostics) {
+    input.pipelineResult.matchResult?.attemptedMovements.forEach((movement) => {
+      const from = nodeById(movement.fromNodeId, input.map);
+      const to = nodeById(movement.toNodeId, input.map);
+
+      if (!from || !to) {
+        return;
+      }
+
+      const fromPoint = mapToScreenPoint(from, input.viewport);
+      const toPoint = mapToScreenPoint(to, input.viewport);
+      const midPoint = {
+        x: (fromPoint.x + toPoint.x) / 2,
+        y: (fromPoint.y + toPoint.y) / 2
+      };
+
+      const movementStyle = TOPOPASS_STREET_ATLAS_STYLE.review.matchedMovement;
+      const movementScale = cartographicMistakeOverlayScaleForZoom(input.currentZoom);
+
+      context.strokeStyle = movementStyle.haloColor;
+      context.lineWidth = movementStyle.haloWidth * movementScale;
+      context.globalAlpha = movementStyle.haloAlpha;
+      context.beginPath();
+      context.moveTo(fromPoint.x, fromPoint.y);
+      context.lineTo(toPoint.x, toPoint.y);
+      context.stroke();
+
+      context.strokeStyle = movement.directedEdgeId ? movementStyle.matchedColor : movementStyle.unmatchedColor;
+      context.fillStyle = movement.directedEdgeId ? movementStyle.matchedColor : movementStyle.unmatchedColor;
+      context.lineWidth = movementStyle.lineWidth * movementScale;
+      context.globalAlpha = movementStyle.alpha;
+      context.beginPath();
+      context.moveTo(fromPoint.x, fromPoint.y);
+      context.lineTo(toPoint.x, toPoint.y);
+      context.stroke();
+      context.globalAlpha = 1;
+      if (!movement.directedEdgeId) {
+        drawArrowHead(context, fromPoint, toPoint, movementScale);
+      }
+
+      context.fillStyle = movementStyle.nodeFillColor;
+      context.strokeStyle = movement.directedEdgeId
+        ? movementStyle.matchedNodeStrokeColor
+        : movementStyle.unmatchedNodeStrokeColor;
+      context.lineWidth = movementStyle.nodeStrokeWidth * movementScale;
+      context.beginPath();
+      context.arc(midPoint.x, midPoint.y, movementStyle.nodeRadius * movementScale, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    });
+  }
+
+  if (overlayOwnership.renderNormalReviewIssues) {
+    for (const overlay of input.routeIssueOverlays) {
+      drawRouteIssueOverlay(context, overlay, input.viewport, input.map, input.currentZoom);
     }
-
-    const fromPoint = mapToScreenPoint(from, input.viewport);
-    const toPoint = mapToScreenPoint(to, input.viewport);
-    const midPoint = {
-      x: (fromPoint.x + toPoint.x) / 2,
-      y: (fromPoint.y + toPoint.y) / 2
-    };
-
-    const movementStyle = TOPOPASS_STREET_ATLAS_STYLE.review.matchedMovement;
-    const movementScale = cartographicMistakeOverlayScaleForZoom(input.currentZoom);
-
-    context.strokeStyle = movementStyle.haloColor;
-    context.lineWidth = movementStyle.haloWidth * movementScale;
-    context.globalAlpha = movementStyle.haloAlpha;
-    context.beginPath();
-    context.moveTo(fromPoint.x, fromPoint.y);
-    context.lineTo(toPoint.x, toPoint.y);
-    context.stroke();
-
-    context.strokeStyle = movement.directedEdgeId ? movementStyle.matchedColor : movementStyle.unmatchedColor;
-    context.fillStyle = movement.directedEdgeId ? movementStyle.matchedColor : movementStyle.unmatchedColor;
-    context.lineWidth = movementStyle.lineWidth * movementScale;
-    context.globalAlpha = movementStyle.alpha;
-    context.beginPath();
-    context.moveTo(fromPoint.x, fromPoint.y);
-    context.lineTo(toPoint.x, toPoint.y);
-    context.stroke();
-    context.globalAlpha = 1;
-    drawArrowHead(context, fromPoint, toPoint, movementScale);
-
-    context.fillStyle = movementStyle.nodeFillColor;
-    context.strokeStyle = movement.directedEdgeId
-      ? movementStyle.matchedNodeStrokeColor
-      : movementStyle.unmatchedNodeStrokeColor;
-    context.lineWidth = movementStyle.nodeStrokeWidth * movementScale;
-    context.beginPath();
-    context.arc(midPoint.x, midPoint.y, movementStyle.nodeRadius * movementScale, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
-  });
-
-  for (const overlay of input.routeIssueOverlays) {
-    drawRouteIssueOverlay(context, overlay, input.viewport, input.map, input.currentZoom);
   }
 
   for (const item of filterRestrictionMapVisualItemsForViewport(input.restrictionMapVisualItems, input.viewport, {
     reservedBoxes: labelReservedBoxes,
     currentZoom: input.currentZoom
   })) {
-    drawRestrictionMapVisualItem(context, item, input.viewport, input.currentZoom);
-  }
+    if (
+      !overlayOwnership.renderNormalReviewIssues &&
+      (item.kind === "illegal-movement" || item.kind === "missed-restriction")
+    ) {
+      continue;
+    }
 
-  if (input.selectedRestrictionHighlight) {
-    drawSelectedRestrictionHighlight(context, input.selectedRestrictionHighlight, input.viewport, input.currentZoom);
+    drawRestrictionMapVisualItem(context, item, input.viewport, input.currentZoom);
   }
 
   const nodeStyle = TOPOPASS_STREET_ATLAS_STYLE.nodes;
@@ -3969,30 +3942,30 @@ function drawRouteCanvas(input: {
     }
   }
 
-  input.pipelineResult.matchResult?.nodeIds.forEach((nodeId, index) => {
-    const node = nodeById(nodeId, input.map);
+  if (overlayOwnership.renderPipelineMatchDiagnostics) {
+    input.pipelineResult.matchResult?.nodeIds.forEach((nodeId, index) => {
+      const node = nodeById(nodeId, input.map);
 
-    if (!node) {
-      return;
-    }
+      if (!node) {
+        return;
+      }
 
-    const nodeScale = cartographicLearnerMarkerScaleForZoom(input.currentZoom);
+      const nodeScale = cartographicLearnerMarkerScaleForZoom(input.currentZoom);
 
-    drawNodeMarker({
-      context,
-      point: mapToScreenPoint(node, input.viewport),
-      fillStyle: index === 0
-        ? nodeStyle.matchedStartColor
-        : nodeStyle.matchedNodeColor,
-      radius: nodeStyle.matchedNodeRadius * nodeScale,
-      strokeStyle: nodeStyle.matchedNodeStrokeColor,
-      strokeWidth: nodeStyle.matchedNodeStrokeWidth * nodeScale,
-      haloColor: nodeStyle.matchedNodeHaloColor,
-      haloRadiusPadding: nodeStyle.matchedNodeHaloRadiusPadding * nodeScale
+      drawNodeMarker({
+        context,
+        point: mapToScreenPoint(node, input.viewport),
+        fillStyle: index === 0 ? nodeStyle.matchedStartColor : nodeStyle.matchedNodeColor,
+        radius: nodeStyle.matchedNodeRadius * nodeScale,
+        strokeStyle: nodeStyle.matchedNodeStrokeColor,
+        strokeWidth: nodeStyle.matchedNodeStrokeWidth * nodeScale,
+        haloColor: nodeStyle.matchedNodeHaloColor,
+        haloRadiusPadding: nodeStyle.matchedNodeHaloRadiusPadding * nodeScale
+      });
     });
-  });
+  }
 
-  if (input.snapPreview.snappedPoints.length > 0) {
+  if (overlayOwnership.renderSnapPreview && input.snapPreview.snappedPoints.length > 0) {
     const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.revealed;
     const hintScale = cartographicDrawnAttemptScaleForZoom(input.currentZoom);
 
@@ -4016,35 +3989,38 @@ function drawRouteCanvas(input: {
     context.restore();
   }
 
-  const visibleRawStrokes = visibleRawRouteStrokes(input.routeDraft, input.trace);
+  if (overlayOwnership.renderSnapPreview) {
+    input.snapPreview.snappedPoints.forEach((point) => {
+      const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
+      const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker;
+      const hintScale = cartographicLearnerMarkerScaleForZoom(input.currentZoom);
 
-  if (visibleRawStrokes.length > 0) {
-    const rawRouteStyle = TOPOPASS_STREET_ATLAS_STYLE.routeOverlays.rawRoute;
-    const routeScale = cartographicDrawnAttemptScaleForZoom(input.currentZoom);
+      context.fillStyle = hintStyle.haloColor;
+      context.beginPath();
+      context.arc(screenPoint.x, screenPoint.y, (hintStyle.radius + 2) * hintScale, 0, Math.PI * 2);
+      context.fill();
 
-    visibleRawStrokes.forEach((stroke) => {
-      drawStyledMapPolyline(context, stroke.points, input.viewport, rawRouteStyle, routeScale);
+      context.fillStyle = point.roadId
+        ? hintStyle.fillColor
+        : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor;
+      context.strokeStyle = point.roadId
+        ? hintStyle.strokeColor
+        : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.defaultColor;
+      context.lineWidth = hintStyle.strokeWidth * hintScale;
+      context.beginPath();
+      context.arc(screenPoint.x, screenPoint.y, hintStyle.radius * hintScale, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
     });
   }
 
-  input.snapPreview.snappedPoints.forEach((point) => {
-    const screenPoint = mapToScreenPoint(point.originalPoint, input.viewport);
-    const hintStyle = TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.hints.marker;
-    const hintScale = cartographicLearnerMarkerScaleForZoom(input.currentZoom);
-
-    context.fillStyle = hintStyle.haloColor;
-    context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, (hintStyle.radius + 2) * hintScale, 0, Math.PI * 2);
-    context.fill();
-
-    context.fillStyle = point.roadId ? hintStyle.fillColor : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.markerHaloColor;
-    context.strokeStyle = point.roadId ? hintStyle.strokeColor : TOPOPASS_STREET_ATLAS_STYLE.review.routeIssue.defaultColor;
-    context.lineWidth = hintStyle.strokeWidth * hintScale;
-    context.beginPath();
-    context.arc(screenPoint.x, screenPoint.y, hintStyle.radius * hintScale, 0, Math.PI * 2);
-    context.fill();
-    context.stroke();
-  });
+  drawLearnerTrainingMarkers(
+    context,
+    input.trainingOverlay,
+    input.viewport,
+    input.currentZoom,
+    input.markerAssets
+  );
 
   const selectedExercise = input.selectedExercise;
   const requiredStopStatusByNodeId = new Map(
@@ -4087,6 +4063,10 @@ function drawRouteCanvas(input: {
     labels: overlayOwnership.renderNormalRouteEndpointLabels ? input.stopLabels : [],
     currentZoom: input.currentZoom
   });
+
+  if (input.selectedRestrictionHighlight) {
+    drawSelectedRestrictionHighlight(context, input.selectedRestrictionHighlight, input.viewport, input.currentZoom);
+  }
 
   for (const marker of input.routeReplayMarkers) {
     drawRouteReplayMarker(context, marker, input.viewport, input.currentZoom);
@@ -5689,6 +5669,9 @@ export function RouteRunnerClient({
       map: activeMap,
       viewport,
       currentZoom: mapViewportState.zoom,
+      learnerFacing: isStudentBetaRouteRunner,
+      submittedReview: hasSubmittedCurrentDrawnAttempt,
+      trainingReviewVisible: Boolean(learnerTrainingModePanel.review),
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
@@ -5718,7 +5701,10 @@ export function RouteRunnerClient({
     drawnRouteDraft,
     drawnTrace,
     fastestRouteOverlay,
+    hasSubmittedCurrentDrawnAttempt,
+    isStudentBetaRouteRunner,
     learnerTrainingModePanel.overlay,
+    learnerTrainingModePanel.review,
     learnerMarkerImageAssets,
     mapViewportState.zoom,
     osmDebugOverlay,

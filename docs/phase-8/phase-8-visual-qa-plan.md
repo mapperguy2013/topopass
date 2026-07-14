@@ -154,3 +154,21 @@ A/B references, route/marker alignment and attribution. The 390 by 844 passing
 review confirms a 100% submitted 2.21 km route against the 2.21 km shortest
 legal route, with responsive review details aligned. Stage 8.8.1 is visually
 accepted; Stage 8.9 remains paused in its named stash and was not continued.
+
+## Stage 8.9 Evidence
+
+Stage 8.9 production-renderer captures are under `screenshots/stage-8-9/` and
+are indexed in `stage-8-9-learner-review-overlay-rebalance.md`. Desktop 1440 by
+900 evidence covers King's Cross/Euston, Piccadilly and Waterloo; mobile 390 by
+844 evidence covers King's Cross/Euston. The matrix includes the map without
+an active route, active routes and compact markers, mistake/invalid route
+state, passing and incorrect submitted reviews, and hint/feedback state at
+displayed 100%.
+
+Normal-size inspection found the thinner typed routes, smaller visible markers
+and compact review feedback immediately legible while preserving road names,
+A/B references, junction structure and surrounding built context. Pipeline
+snap and selected-road diagnostics no longer compete with learner-facing
+active or submitted states. Pan, wheel zoom, reset, drawing and review
+transitions preserve overlay alignment. Physical touch-device pinch remains a
+Stage 8.10 mobile/accessibility check.
