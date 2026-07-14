@@ -359,9 +359,11 @@ import {
   type SharedRouteSubmissionState
 } from "./sharedRouteSubmission";
 import {
+  LEARNER_TRAINING_HINT_FADE_MS,
   advanceLearnerTrainingHintTimer,
   createLearnerTrainingHintPresentationState,
   dismissLearnerTrainingHint,
+  isLearnerTrainingHintFading,
   keepLearnerTrainingHintOpen,
   presentLearnerTrainingHint,
   reopenLearnerTrainingHint,
@@ -5094,6 +5096,10 @@ export function RouteRunnerClient({
     learnerHintPresentation.isOpen &&
     !showAttemptFeedbackPanel;
   const learnerHintRemainingSeconds = Math.ceil(learnerHintPresentation.remainingMs / 1000);
+  const learnerHintFadeStartsInSeconds = Math.ceil(
+    Math.max(0, learnerHintPresentation.remainingMs - LEARNER_TRAINING_HINT_FADE_MS) / 1000
+  );
+  const learnerHintIsFading = isLearnerTrainingHintFading(learnerHintPresentation);
   const learnerDrawnDisplayText = getLearnerDrawnPipelineStatusText({
     status: drawnDisplayStatus,
     submitted: hasSubmittedCurrentDrawnAttempt,
@@ -8944,9 +8950,12 @@ export function RouteRunnerClient({
                 }
               }}
               className={
-                isStudentBetaPhoneMap
+                `${isStudentBetaPhoneMap
                   ? "fixed inset-x-2 bottom-2 z-50 max-h-[58dvh] overflow-auto rounded-xl border border-sky-200 bg-white p-4 pb-16 shadow-2xl"
-                  : "fixed bottom-4 right-4 top-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-auto rounded-xl border border-sky-200 bg-white p-4 shadow-2xl"
+                  : "fixed right-4 top-4 z-50 aspect-square w-[min(21rem,calc(100vw-2rem),calc(100dvh-2rem))] overflow-auto rounded-lg border border-sky-200 bg-white p-4 shadow-2xl"
+                } transition-opacity duration-[2000ms] ease-linear motion-reduce:transition-none ${
+                  learnerHintIsFading ? "opacity-0" : "opacity-100"
+                }`
               }
             >
               <div className="flex items-start justify-between gap-3">
@@ -8968,7 +8977,9 @@ export function RouteRunnerClient({
                   ? "This hint will stay open."
                   : learnerHintPresentation.pausedByUser
                     ? `Dismissal paused with ${learnerHintRemainingSeconds} seconds remaining.`
-                    : `Closes in ${learnerHintRemainingSeconds} seconds. The timer pauses while this panel is hovered or focused.`}
+                    : learnerHintIsFading
+                      ? "Closing hint."
+                      : `Fades in ${learnerHintFadeStartsInSeconds} seconds. The timer pauses while this panel is hovered or focused.`}
               </p>
               <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
                 {!learnerHintPresentation.keptOpen ? (

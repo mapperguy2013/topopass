@@ -1,4 +1,7 @@
-export const LEARNER_TRAINING_HINT_AUTO_DISMISS_MS = 30_000;
+export const LEARNER_TRAINING_HINT_VISIBLE_MS = 30_000;
+export const LEARNER_TRAINING_HINT_FADE_MS = 2_000;
+export const LEARNER_TRAINING_HINT_AUTO_DISMISS_MS =
+  LEARNER_TRAINING_HINT_VISIBLE_MS + LEARNER_TRAINING_HINT_FADE_MS;
 
 export type LearnerTrainingHintPresentationState = {
   hintKey: string | null;
@@ -66,6 +69,17 @@ export function toggleLearnerTrainingHintTimer(
   }
 
   return { ...state, pausedByUser: !state.pausedByUser };
+}
+
+export function isLearnerTrainingHintFading(
+  state: LearnerTrainingHintPresentationState
+): boolean {
+  return (
+    state.isOpen &&
+    !state.keptOpen &&
+    state.remainingMs > 0 &&
+    state.remainingMs <= LEARNER_TRAINING_HINT_FADE_MS
+  );
 }
 
 export function advanceLearnerTrainingHintTimer(
