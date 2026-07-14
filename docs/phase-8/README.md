@@ -10,11 +10,16 @@ not train learners to follow a consumer turn-by-turn navigation interface.
 
 ## Controlling Visual Reference
 
-The controlling Phase 8 visual master is:
+The revised controlling Phase 8 visual master for Stage 8.8.2 and later
+base-map visual alignment is:
+
+`docs/phase-8/references/phase-8-approved-exam-atlas-visual-master-v2.png`
+
+The original Phase 8 visual master remains preserved at:
 
 `docs/phase-8/references/phase-8-approved-exam-atlas-visual-master.png`
 
-The reference controls cartographic appearance only. It is not a geography
+These references control cartographic appearance only. They are not geography
 source. Production roads, names, references, restrictions, buildings, stations,
 estates, landmarks, public facilities, parks, water, and other geography must
 come from permitted and attributed data. OSM-derived rendered data must keep
@@ -60,6 +65,8 @@ stages may be split if implementation audit shows that a stage is too large.
    Completed.
    Stage 8.8.1 is the principal-scale near-master visual-acceptance correction.
    Completed and visually accepted.
+   Stage 8.8.2 is the revised visual-master base-map alignment pass.
+   Completed and visually accepted.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
    Completed and visually accepted.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
@@ -97,13 +104,19 @@ strengthening building fabric, symbols and flat-yellow road hierarchy, and
 adding placement rejection diagnostics. Desktop, tablet and mobile map
 evidence is materially closer to the approved master. Required active-route
 and submitted passing/incorrect review evidence is complete at desktop and
-mobile sizes. The benchmark remains dev-only, unscoreable and absent from
-learner beta map catalogues. Stage 8.9 now uses typed learner/review route and
-marker tokens, compact visible markers with separate interaction targets,
-deterministic overlay ownership and a stable drawing order. Learner-facing
-active and submitted states suppress pipeline diagnostics that competed with
-the route and atlas geography. Desktop and mobile evidence covers active,
-correct, incorrect, mistake and hint states at displayed 100%.
+mobile sizes. Stage 8.8.2 adopts the revised ChatGPT-generated appearance-only
+visual master as the controlling base-map reference, widens the Victoria
+principal reset to include Lambeth and Kennington context, strengthens the
+yellow/orange road hierarchy, darkens casings, increases compact local labels,
+preserves red A/B references and adds richer source-backed symbols without
+changing source geography or overlays. The benchmark remains dev-only,
+unscoreable and absent from learner beta map catalogues. Stage 8.9 now uses
+typed learner/review route and marker tokens, compact visible markers with
+separate interaction targets, deterministic overlay ownership and a stable
+drawing order. Learner-facing active and submitted states suppress pipeline
+diagnostics that competed with the route and atlas geography. Desktop and
+mobile evidence covers active, correct, incorrect, mistake and hint states at
+displayed 100%.
 
 ## Documents
 
@@ -117,5 +130,6 @@ correct, incorrect, mistake and hint states at displayed 100%.
 - [Stage 8.7 compact symbols and road references](stage-8-7-compact-symbols-road-references.md)
 - [Stage 8.8 principal scale and density](stage-8-8-principal-scale-and-density.md)
 - [Stage 8.8.1 near-master visual correction](stage-8-8-1-visual-acceptance-correction.md)
+- [Stage 8.8.2 revised visual-master alignment](stage-8-8-2-revised-visual-master-alignment.md)
 - [Stage 8.9 learner and review overlay rebalance](stage-8-9-learner-review-overlay-rebalance.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

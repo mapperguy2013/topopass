@@ -74,10 +74,10 @@ const CURATED_OSM_ROUTE_RUNNER_PADDING_RATIO = 0.28;
 const CURATED_OSM_MAP_ID_PREFIX = "osm-curated-";
 const VICTORIA_WESTMINSTER_VAUXHALL_OSM_MAP_ID = "osm-curated-victoria-westminster-vauxhall";
 const VICTORIA_WESTMINSTER_VAUXHALL_PRINCIPAL_VIEW_BOUNDS = {
-  minLat: 51.4838,
+  minLat: 51.4828,
   maxLat: 51.5047,
-  minLon: -0.158,
-  maxLon: -0.1115
+  minLon: -0.156,
+  maxLon: -0.099
 } as const;
 
 export function getRealLondonPilotExerciseMetadata(

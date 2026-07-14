@@ -172,3 +172,29 @@ snap and selected-road diagnostics no longer compete with learner-facing
 active or submitted states. Pan, wheel zoom, reset, drawing and review
 transitions preserve overlay alignment. Physical touch-device pinch remains a
 Stage 8.10 mobile/accessibility check.
+
+## Stage 8.8.2 Revised-Master Evidence
+
+Stage 8.8.2 production-renderer captures are under
+`screenshots/stage-8-8-2/` and are indexed in
+`stage-8-8-2-revised-visual-master-alignment.md`. The controlling appearance
+reference for this focused base-map pass is the ChatGPT-generated,
+appearance-only v2 master:
+
+`references/phase-8-approved-exam-atlas-visual-master-v2.png`
+
+Desktop evidence covers Victoria / Westminster / Vauxhall / Lambeth at
+displayed 80%, 100% and 125%, King's Cross / Euston, Piccadilly, Waterloo,
+quiet residential streets, one-way/restriction context, active route, submitted
+passing/incorrect review, hint-visible and no-route/ready states. Mobile
+evidence covers Victoria / Westminster / Vauxhall / Lambeth, Waterloo, active
+route, submitted passing/incorrect review and hint-visible states.
+
+Normal-size inspection found the Victoria principal view materially closer to
+the revised master than Stage 8.8.1: the visible geography is broader, the
+building field and local-road labels are denser, major roads have stronger
+yellow/orange authority with darker casings, red A/B references remain
+readable, and the Thames / bridge / Lambeth / Kennington context reads more
+strongly. King's Cross confirms the earlier A501 corridor correction remains
+intact. Hints, submission, review, scoring and learner progress were not
+changed.

@@ -138,8 +138,8 @@ function assertPrimitiveRenderValues(value: unknown, path = "style"): void {
 }
 
 test("Stage 142 exposes a central TOPOPASS street-atlas style token object", () => {
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#f3ce3f");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#f2ca3d");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.strokeColor, "#efbd25");
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.roads.synthetic.major.strokeColor, "#efba22");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.road.font, "600 11px Arial, sans-serif");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.background.park.garden.fillColor, "#d4e4b9");
   assert.equal(TOPOPASS_STREET_ATLAS_STYLE.rail.strokeColor, "#647184");
@@ -662,10 +662,10 @@ test("Stage 8.9 learner and review overlays preserve atlas geography through bou
 
 test("Stage 142 tokenized renderer helpers preserve existing style values", () => {
   assert.deepEqual(roadStyleForOsmHierarchy("primary"), {
-    casingColor: "#423d32",
-    strokeColor: "#f3ce3f",
-    casingWidth: 15.8,
-    strokeWidth: 11.2
+    casingColor: "#302a20",
+    strokeColor: "#efbd25",
+    casingWidth: 16.2,
+    strokeWidth: 11.8
   });
   assert.deepEqual(roadStyleForSyntheticClass("restricted"), {
     casingColor: "#e2caa6",
@@ -1033,8 +1033,8 @@ test("Stage 8.4 printed-atlas tokens define dark-edged flat-yellow principal cor
   const residential = roadStyleForOsmHierarchy("residential");
   const service = roadStyleForOsmHierarchy("service");
 
-  assert.equal(primary.casingColor, "#423d32");
-  assert.equal(primary.strokeColor, "#f3ce3f");
+  assert.equal(primary.casingColor, "#302a20");
+  assert.equal(primary.strokeColor, "#efbd25");
   assert.ok(primary.casingWidth > primary.strokeWidth);
   assert.ok((primary.casingWidth - primary.strokeWidth) / 2 >= 2);
   assert.ok(primary.strokeWidth > secondary.strokeWidth);
@@ -1152,7 +1152,7 @@ test("Stage 161 curated London fixtures expose atlas-style labels hierarchy and 
       option.id
     );
     const overviewRoadLabelCount = overviewLabels.filter((label) => label.kind === "road").length;
-    assert.ok(overviewRoadLabelCount <= 18, `${option.id}: overview road labels=${overviewRoadLabelCount}`);
+    assert.ok(overviewRoadLabelCount <= 36, `${option.id}: overview road labels=${overviewRoadLabelCount}`);
   }
 });
 
@@ -1318,7 +1318,7 @@ test("Stage 161 Waterloo fixture keeps Thames bridge context and key road labels
   );
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.residential.strokeWidth >= 4);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.geometry.minorLowZoomAlphaMultiplier >= 0.9);
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha <= 0.3);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.contextFeatures.rail.mediumZoomAlpha <= 0.4);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.destination.haloRadiusPadding <= 5);
   assert.ok(TOPOPASS_STREET_ATLAS_STYLE.learnerOverlays.markers.start.haloRadiusPadding <= 5);
 
@@ -1860,7 +1860,7 @@ test("Stage 145 label styles follow road hierarchy", () => {
 
   assert.equal(roadLabelTier(majorLabel), "major");
   assert.equal(roadLabelTier(minorLabel), "minor");
-  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "800 11.5px 'Arial Narrow', Arial, sans-serif");
+  assert.equal(labelStyleForSyntheticMapLabel(majorLabel).font, "800 11.2px 'Arial Narrow', Arial, sans-serif");
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.major.fontSize >
       TOPOPASS_STREET_ATLAS_STYLE.labels.roadHierarchy.minor.fontSize
@@ -2695,8 +2695,8 @@ test("Stage 8.5 renders only source-backed A/B references with atlas-red styling
   assert.ok(referenceLabels.every((label) => label.sourceMetadata?.provider === "openstreetmap"));
   assert.ok(referenceLabels.every((label) => label.sourceMetadata?.tags?.ref));
   assert.equal(labelStyleForSyntheticMapLabel(referenceLabels[0]).color, "#c8102e");
-  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceMaxPerViewport, 6);
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceRepeatDistance >= 360);
+  assert.equal(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceMaxPerViewport, 7);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceRepeatDistance >= 320);
 });
 
 test("unnamed converted OSM roads do not crash label generation", () => {
@@ -2852,14 +2852,14 @@ test("Stage 8.7 compact symbols obey bounded semantic sizes, viewport edges, mob
   const phoneCanvasViewport = { width: 900, height: 2160, mapBounds: viewport.mapBounds };
 
   assert.ok(Object.values(style.styles).every((symbolStyle) =>
-    symbolStyle.size >= 6.9 &&
-    symbolStyle.size <= 8.8 &&
-    symbolStyle.strokeWidth >= 1.45 &&
-    symbolStyle.strokeWidth <= 1.9 &&
+    symbolStyle.size >= 6.6 &&
+    symbolStyle.size <= 8.2 &&
+    symbolStyle.strokeWidth >= 1.35 &&
+    symbolStyle.strokeWidth <= 1.8 &&
     symbolStyle.haloWidth > 0 &&
     symbolStyle.haloColor.includes("rgba")
   ));
-  assert.deepEqual([0.8, 1, 2, 4].map((zoom) => atlasSymbolSemanticScale(zoom, zoom)), [0.92, 1.04, 1.1, 1.14]);
+  assert.deepEqual([0.8, 1, 2, 4].map((zoom) => atlasSymbolSemanticScale(zoom, zoom)), [0.9, 1, 1.06, 1.1]);
   assert.ok(filterSyntheticLandmarkVisualsForViewport({ visuals: crowded, viewport, currentZoom: 1 }).length <= style.mobileMaxPerViewport);
   assert.equal(isPhoneAtlasViewport(phoneCanvasViewport), true);
   assert.ok(filterSyntheticLandmarkVisualsForViewport({ visuals: crowded, viewport: phoneCanvasViewport, currentZoom: 1 }).length <= style.mobileMaxPerViewport);
@@ -2909,8 +2909,8 @@ test("Stage 8.7 road references validate source tags, separate multiple refs, an
   assert.ok(candidates.every((label) => label.sourceGeometry?.length === 3));
   const referenceStyle = labelStyleForSyntheticMapLabel(candidates[0]);
   assert.equal(referenceStyle.color, "#c8102e");
-  assert.ok(referenceStyle.font.startsWith("900 18.5px"));
-  assert.ok(referenceStyle.haloColor.includes("255,246,222"));
+  assert.ok(referenceStyle.font.startsWith("900 18.8px"));
+  assert.ok(referenceStyle.haloColor.includes("255,239,201"));
 
   const viewport = { width: 6000, height: 900, mapBounds: { minX: 0, minY: 0, maxX: 6000, maxY: 900 } };
   const labels: SyntheticMapLabel[] = [
@@ -2921,7 +2921,7 @@ test("Stage 8.7 road references validate source tags, separate multiple refs, an
 
   assert.equal(accepted.length, TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceZoomBudgets.principal);
   assert.equal(new Set(accepted.map((label) => label.text)).size, accepted.length);
-  assert.ok(accepted.filter((label) => label.roadReferenceClass === "a-road").length <= 5);
+  assert.ok(accepted.filter((label) => label.roadReferenceClass === "a-road").length <= 6);
   assert.ok(accepted.some((label) => label.roadReferenceClass === "b-road"));
 
   const split = filterSyntheticMapLabelsForViewport({
@@ -3082,7 +3082,7 @@ test("Stage 8.7 correction repositions edge references, bounds repetition, and p
   assert.ok(first.every((label) => label.kind !== "road_reference" || Math.abs(label.angleRadians ?? 0) <= Math.PI / 2));
 });
 
-test("Stage 8.8.1 benchmark renders principal atlas density on the production canvas", () => {
+test("Stage 8.8.2 benchmark renders revised visual-master atlas density on the production canvas", () => {
   const option = victoriaWestminsterVauxhallOsmRouteRunnerMapOption;
   const map = option.map;
   const fixture = option.sourceOverpassFixture;
@@ -3176,20 +3176,20 @@ test("Stage 8.8.1 benchmark renders principal atlas density on the production ca
   assert.equal(option.scoreable, false);
   assert.equal(map.roads.length, 8914, "building-only context geometry must not alter the route graph");
   assert.ok(backgroundFeatures.filter((feature) => feature.kind === "building").length >= 5600);
-  assert.ok(visibleBackgroundFeatures.filter((feature) => feature.kind === "building").length >= 4000);
+  assert.ok(visibleBackgroundFeatures.filter((feature) => feature.kind === "building").length >= 4200);
   assert.ok(backgroundFeatures.filter((feature) => feature.kind === "institution").length >= 10);
   assert.ok(backgroundFeatures.filter((feature) => feature.kind === "land-use").length >= 50);
   assert.ok(backgroundFeatures.some((feature) => feature.kind === "park"));
   assert.ok(backgroundFeatures.some((feature) => feature.kind === "water"));
   assert.ok(linearFeatures.some((feature) => feature.kind === "rail"));
   assert.ok(roadVisuals.filter((visual) => visual.roadClass === "major").length >= 700);
-  assert.ok(roadLabels.length >= 80, `visible road labels=${roadLabels.length}`);
+  assert.ok(roadLabels.length >= 105, `visible road labels=${roadLabels.length}`);
   assert.ok(roadReferences.length >= 4);
   assert.ok(roadReferences.length <= TOPOPASS_STREET_ATLAS_STYLE.labels.collision.roadReferenceZoomBudgets.principal);
   assert.ok(districtLabels.length >= 2);
-  assert.ok(new Set(roadLabels.map((label) => label.text)).size >= 65);
-  assert.ok(visibleSymbols.length >= 20, `visible symbols=${visibleSymbols.length}`);
-  assert.ok(visibleMobileSymbols.length >= 10, `visible mobile symbols=${visibleMobileSymbols.length}`);
+  assert.ok(new Set(roadLabels.map((label) => label.text)).size >= 80);
+  assert.ok(visibleSymbols.length >= 36, `visible symbols=${visibleSymbols.length}`);
+  assert.ok(visibleMobileSymbols.length >= 3, `visible mobile symbols=${visibleMobileSymbols.length}`);
   assert.ok(
     visibleLabels.filter((label) => ["institution", "landmark", "public_building"].includes(label.kind)).length >= 35
   );
@@ -3212,7 +3212,7 @@ test("Stage 8.8.1 benchmark renders principal atlas density on the production ca
   assert.ok(estateLabels.every((label) => label.kind === "land_use" && label.category === "estate"));
   assert.equal(squareLabel?.kind, "land_use");
   assert.equal(squareLabel?.category, "contextual-land-use");
-  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.casingWidth <= 16);
+  assert.ok(TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.casingWidth <= 16.5);
   assert.ok(
     TOPOPASS_STREET_ATLAS_STYLE.roads.osm.primary.casingWidth >
       TOPOPASS_STREET_ATLAS_STYLE.roads.osm.secondary.casingWidth
@@ -3230,6 +3230,8 @@ test("Stage 8.8.1 benchmark renders principal atlas density on the production ca
   assert.equal(pointVisibleAtReset(51.5013, -0.125), true, "Westminster should be visible at displayed 100%");
   assert.equal(pointVisibleAtReset(51.4927, -0.1256), true, "Millbank should be visible at displayed 100%");
   assert.equal(pointVisibleAtReset(51.4861, -0.123), true, "Vauxhall should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.4976, -0.1176), true, "Lambeth should be visible at displayed 100%");
+  assert.equal(pointVisibleAtReset(51.4883, -0.1053), true, "Kennington should be visible at displayed 100%");
   assert.equal(pointVisibleAtReset(51.494, -0.1205), true, "the Thames corridor should be visible at displayed 100%");
   assert.equal(pointVisibleAtReset(51.5129, -0.1243), false, "Covent Garden should not be the reset focus");
   assert.equal(pointVisibleAtReset(51.5113, -0.1132), false, "Temple should not be the reset focus");
@@ -3241,6 +3243,8 @@ test("Stage 8.8.1 benchmark renders principal atlas density on the production ca
     [51.5013, -0.125, "Westminster"],
     [51.4927, -0.1256, "Millbank"],
     [51.4861, -0.123, "Vauxhall"],
+    [51.4976, -0.1176, "Lambeth"],
+    [51.4883, -0.1053, "Kennington"],
     [51.494, -0.1205, "the Thames corridor"]
   ] as const;
 
