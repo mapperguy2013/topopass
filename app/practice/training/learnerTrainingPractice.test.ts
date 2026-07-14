@@ -68,7 +68,7 @@ test("Stage 15 learner training route reuses RouteRunnerClient with standard map
   assert.equal(model.trainingSurface.exerciseTypeSelectorLabel, "Exercise type");
   assert.equal(model.trainingSurface.generateActionLabel, "Generate exercise");
   assert.equal(model.trainingSurface.hintActionLabel, "Get hint");
-  assert.equal(model.trainingSurface.reviewActionLabel, "Complete and review");
+  assert.equal(model.trainingSurface.reviewActionLabel, "Submit route");
   assert.equal(model.trainingSurface.mapPanDefault, true);
 });
 
@@ -116,7 +116,8 @@ test("Stage 18 dedicated Training Mode page focuses the existing RouteRunnerClie
   assert.ok(routeRunnerSource.includes("openLearnerTrainingMode(createLearnerTrainingModeState())"));
   assert.ok(routeRunnerSource.includes("showTrainingModePanel || isTrainingModeOnly"));
   assert.ok(routeRunnerSource.includes("Learner training setup"));
-  assert.ok(routeRunnerSource.includes("Pan map"));
+  assert.ok(routeRunnerSource.includes("Pan mode is on"));
+  assert.ok(routeRunnerSource.includes("Switch back to Draw"));
   assert.ok(routeRunnerSource.includes("selectedExercise && !isTrainingModeOnly"));
 });
 

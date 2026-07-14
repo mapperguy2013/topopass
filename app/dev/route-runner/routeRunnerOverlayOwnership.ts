@@ -25,15 +25,17 @@ export function buildRouteRunnerOverlayOwnership(input: {
   trainingReviewVisible?: boolean;
   learnerFacing?: boolean;
   submittedReview?: boolean;
+  sharedSubmissionReview?: boolean;
 }): RouteRunnerOverlayOwnership {
   const trainingOwnsRouteEndpoints = learnerTrainingOverlayOwnsRouteEndpoints(input.trainingOverlay);
   const trainingOwnsAttemptReview = trainingOwnsRouteEndpoints && input.trainingReviewVisible === true;
+  const sharedSubmissionReview = input.sharedSubmissionReview === true;
 
   return {
     activeOverlayMode: trainingOwnsRouteEndpoints ? "training" : "normal",
-    renderNormalCorrectRoute: !trainingOwnsRouteEndpoints,
-    renderNormalAttemptRoute: !trainingOwnsAttemptReview,
-    renderNormalReviewIssues: !trainingOwnsAttemptReview,
+    renderNormalCorrectRoute: sharedSubmissionReview || !trainingOwnsRouteEndpoints,
+    renderNormalAttemptRoute: sharedSubmissionReview || !trainingOwnsAttemptReview,
+    renderNormalReviewIssues: sharedSubmissionReview || !trainingOwnsAttemptReview,
     renderSnapPreview: !trainingOwnsAttemptReview && input.learnerFacing !== true,
     renderNormalRouteEndpoints: !trainingOwnsRouteEndpoints,
     renderNormalRouteEndpointLabels: !trainingOwnsRouteEndpoints,

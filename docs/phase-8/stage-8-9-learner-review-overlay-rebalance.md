@@ -5,7 +5,13 @@
 Stage 8.9 is implemented and visually accepted against the approved Phase 8
 visual master at displayed 100%. Stage 8.10 has not started. The preserved
 `WIP Stage 8.9 overlay rebalance before Stage 8.8.1` stash remains intact and
-was applied without being popped or dropped.
+was not applied, popped or dropped during the focused correction.
+
+The focused submission-parity correction is also complete. Real London
+Practice beta and Learner Training now use one shared submission/review
+implementation, and Training hints use timed responsive disclosure rather than
+the former inline instruction block. Detailed evidence is indexed in
+`docs/submission-parity/README.md`.
 
 ## Purpose
 
@@ -125,3 +131,8 @@ The mobile QA shell retains its inherited tall source framing and development
 toolbar behaviour. This stage verifies overlay scaling and alignment within
 that shell; Stage 8.10 owns the full mobile, tablet, accessibility and physical
 touch-device pass.
+
+The shared-submission correction used one isolated headless Chrome process
+after the integrated browser backend became unavailable. Accepted desktop and
+mobile evidence, including transient loading and paused-timer states, is stored
+under `docs/submission-parity/screenshots/`.

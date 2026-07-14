@@ -99,7 +99,6 @@ import {
   type DrawnPipelineDisplayStatus,
   type DrawnRouteScoreDisplay,
   type DrawnRouteScoreDisplayState,
-  type DrawnRouteSubmitBlockCode,
   type PipelineStageState,
   type RoadRestrictionOverlay,
   type RequiredStopVisitStatus,
@@ -311,7 +310,6 @@ import {
   createLearnerTrainingModeState,
   openLearnerTrainingMode,
   requestLearnerTrainingHint,
-  retryLearnerTrainingExercise,
   reviewLearnerTrainingAttempt,
   selectLearnerTrainingDifficulty,
   selectLearnerTrainingExerciseType,
@@ -347,6 +345,28 @@ import {
   buildRealLondonPilotPlaythroughPanelModel,
   type RealLondonPilotPlaythroughTone
 } from "./routeRunnerRealLondonPilotPlaythroughPanel";
+import {
+  SHARED_ROUTE_SUBMIT_LABEL,
+  SHARED_ROUTE_SUBMISSION_MINIMUM_FEEDBACK_MS,
+  beginSharedRouteSubmission,
+  createIdleSharedRouteSubmissionState,
+  dedupeSharedRouteFeedbackItems,
+  failSharedRouteSubmission,
+  matchedRouteToLearnerSegments,
+  resolveSharedRouteSubmission,
+  trainingExerciseToRouteExercise,
+  trainingReviewToRouteAttemptReview,
+  type SharedRouteSubmissionState
+} from "./sharedRouteSubmission";
+import {
+  advanceLearnerTrainingHintTimer,
+  createLearnerTrainingHintPresentationState,
+  dismissLearnerTrainingHint,
+  keepLearnerTrainingHintOpen,
+  presentLearnerTrainingHint,
+  reopenLearnerTrainingHint,
+  toggleLearnerTrainingHintTimer
+} from "./learnerTrainingHintPresentation";
 import {
   buildOsmExerciseDebugOverlayModel,
   canOfferOsmExerciseDebugOverlay,
@@ -418,14 +438,6 @@ type RouteAttemptSaveStatus = {
   state: "idle" | "saving" | "saved" | "failed";
   message: string | null;
   id?: string;
-};
-
-type DrawnRouteSubmitState = {
-  state: "idle" | "submitted" | "blocked";
-  attemptKey: string | null;
-  code: DrawnRouteSubmitBlockCode | null;
-  message: string | null;
-  devMessage: string | null;
 };
 
 type ActiveMapPointer = MapPinchPointer & {
@@ -672,7 +684,7 @@ function reviewStateClass(status: RouteAttemptReview["status"]): string {
 }
 
 type LearnerFeedbackIssueSection = {
-  id: "route-efficiency" | "illegal-movements" | "required-stops" | "matching";
+  id: "route-efficiency" | "illegal-movements" | "required-stops" | "route-guidance" | "matching";
   title: string;
   items: RouteAttemptReviewItem[];
   mapActionTone: "red" | "amber" | "blue";
@@ -680,15 +692,15 @@ type LearnerFeedbackIssueSection = {
 
 function learnerFeedbackStatusLabel(status: RouteAttemptReview["status"]): string {
   if (status === "pass") {
-    return "Pass";
+    return "Passed";
   }
 
   if (status === "fail") {
-    return "Failed";
+    return "Needs review";
   }
 
   if (status === "blocked") {
-    return "Needs review";
+    return "Unable to score";
   }
 
   return "Not submitted";
@@ -837,13 +849,54 @@ function learnerRouteMatchesShortestLegalRoute(review: RouteAttemptReview): bool
   return learnerReviewMetricValue(review, "extra-distance") === "0 m";
 }
 
+function trainingRestrictionFocusReviewItem(
+  item: RestrictionFocusReviewItem | null,
+  review: LearnerTrainingModeState["review"]
+): RestrictionFocusReviewItem | null {
+  if (!item) {
+    return null;
+  }
+
+  const indexMatch = /^training-feedback-(\d+)$/.exec(item.id);
+
+  if (!review || !indexMatch) {
+    return item;
+  }
+
+  const messageIndex = Number.parseInt(indexMatch[1], 10) - 1;
+  const message = review.feedback.messages.filter((candidate) => candidate.severity !== "positive")[messageIndex];
+
+  if (!message) {
+    return item;
+  }
+
+  return {
+    ...item,
+    detail: [
+      item.detail,
+      ...message.roadIds,
+      ...message.nodeIds,
+      ...message.routeSegmentIds
+    ]
+      .filter(Boolean)
+      .join(" ")
+  };
+}
+
 function buildLearnerFeedbackIssueSections(review: RouteAttemptReview): LearnerFeedbackIssueSection[] {
-  const routeEfficiencyItems = review.missedRestrictions.filter(isRouteEfficiencyReviewItem);
-  const requiredStopItems = review.missedRestrictions.filter(isRequiredStopReviewItem);
-  const matchingItems = review.missedRestrictions.filter(isMatchingReviewItem);
-  const otherMissedItems = review.missedRestrictions.filter(
-    (item) => !isRouteEfficiencyReviewItem(item) && !isRequiredStopReviewItem(item) && !isMatchingReviewItem(item)
+  const routeEfficiencyItems = dedupeSharedRouteFeedbackItems(
+    review.missedRestrictions.filter(isRouteEfficiencyReviewItem)
   );
+  const requiredStopItems = dedupeSharedRouteFeedbackItems(
+    review.missedRestrictions.filter(isRequiredStopReviewItem)
+  );
+  const matchingItems = dedupeSharedRouteFeedbackItems(review.missedRestrictions.filter(isMatchingReviewItem));
+  const otherMissedItems = dedupeSharedRouteFeedbackItems(
+    review.missedRestrictions.filter(
+      (item) => !isRouteEfficiencyReviewItem(item) && !isRequiredStopReviewItem(item) && !isMatchingReviewItem(item)
+    )
+  );
+  const illegalMovements = dedupeSharedRouteFeedbackItems(review.illegalMovements);
   const sections: LearnerFeedbackIssueSection[] = [];
 
   if (routeEfficiencyItems.length > 0) {
@@ -855,21 +908,30 @@ function buildLearnerFeedbackIssueSections(review: RouteAttemptReview): LearnerF
     });
   }
 
-  if (review.illegalMovements.length > 0) {
+  if (illegalMovements.length > 0) {
     sections.push({
       id: "illegal-movements",
       title: "Illegal movements",
-      items: review.illegalMovements,
+      items: illegalMovements,
       mapActionTone: "red"
     });
   }
 
-  if (requiredStopItems.length + otherMissedItems.length > 0) {
+  if (requiredStopItems.length > 0) {
     sections.push({
       id: "required-stops",
       title: "Required stops",
-      items: [...requiredStopItems, ...otherMissedItems],
+      items: requiredStopItems,
       mapActionTone: "amber"
+    });
+  }
+
+  if (otherMissedItems.length > 0) {
+    sections.push({
+      id: "route-guidance",
+      title: "Route guidance",
+      items: otherMissedItems,
+      mapActionTone: "blue"
     });
   }
 
@@ -1299,18 +1361,6 @@ function reviewItemClass(severity: RouteAttemptReviewItemSeverity): string {
   }
 
   return "border-blue-100 bg-white text-blue-950";
-}
-
-function learnerTrainingReviewMessageClass(severity: string): string {
-  if (severity === "dangerous" || severity === "serious") {
-    return "border-red-200 bg-white text-red-950";
-  }
-
-  if (severity === "minor" || severity === "observation") {
-    return "border-amber-200 bg-white text-amber-950";
-  }
-
-  return "border-emerald-200 bg-white text-emerald-950";
 }
 
 function routeReplayModeButtonClass(active: boolean): string {
@@ -3749,6 +3799,7 @@ function drawRouteCanvas(input: {
   learnerFacing: boolean;
   submittedReview: boolean;
   trainingReviewVisible: boolean;
+  sharedSubmissionReview: boolean;
   backgroundFeatures: SyntheticBackgroundFeature[];
   linearFeatures: SyntheticLinearFeature[];
   roadVisuals: SyntheticRoadVisual[];
@@ -3788,7 +3839,8 @@ function drawRouteCanvas(input: {
     trainingOverlay: input.trainingOverlay,
     trainingReviewVisible: input.trainingReviewVisible,
     learnerFacing: input.learnerFacing,
-    submittedReview: input.submittedReview
+    submittedReview: input.submittedReview,
+    sharedSubmissionReview: input.sharedSubmissionReview
   });
   const labelReservedBoxes = buildLabelReservationBoxes({
     map: input.map,
@@ -4085,16 +4137,6 @@ function readableError(caughtError: unknown): string {
   return caughtError instanceof Error ? caughtError.message : "Route runner failed with an unknown error.";
 }
 
-function createIdleDrawnRouteSubmitState(): DrawnRouteSubmitState {
-  return {
-    state: "idle",
-    attemptKey: null,
-    code: null,
-    message: null,
-    devMessage: null
-  };
-}
-
 function drawnSubmitAttemptKey(input: {
   mapId: string;
   exerciseId: string | null;
@@ -4257,6 +4299,9 @@ export function RouteRunnerClient({
   });
   const learnerMarkerImageAssets = useLearnerMarkerImageAssets();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const submitRouteButtonRef = useRef<HTMLButtonElement | null>(null);
+  const routeFeedbackPanelRef = useRef<HTMLElement | null>(null);
+  const learnerHintPanelRef = useRef<HTMLElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const panPointerIdRef = useRef<number | null>(null);
@@ -4273,10 +4318,17 @@ export function RouteRunnerClient({
   const [roadIdsText, setRoadIdsText] = useState("");
   const [result, setResult] = useState<RunRouteExerciseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [drawnSubmitState, setDrawnSubmitState] = useState<DrawnRouteSubmitState>(() =>
-    createIdleDrawnRouteSubmitState()
+  const [drawnSubmitState, setDrawnSubmitState] = useState<SharedRouteSubmissionState>(() =>
+    createIdleSharedRouteSubmissionState()
   );
+  const drawnSubmitStateRef = useRef(drawnSubmitState);
+  const drawnSubmitRequestIdRef = useRef(0);
   const [routeFeedbackDrawerOpen, setRouteFeedbackDrawerOpen] = useState(false);
+  const [learnerHintPresentation, setLearnerHintPresentation] = useState(() =>
+    createLearnerTrainingHintPresentationState()
+  );
+  const [learnerHintInteractionPaused, setLearnerHintInteractionPaused] = useState(false);
+  const [learnerHintDocumentHidden, setLearnerHintDocumentHidden] = useState(false);
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
   const [isDrawing, setIsDrawing] = useState(false);
   const studentBetaPhoneInitialZoomAppliedRef = useRef(false);
@@ -4382,6 +4434,49 @@ export function RouteRunnerClient({
       mediaQuery.removeListener(syncPhoneViewport);
     };
   }, [isStudentBetaRouteRunner]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const syncDocumentVisibility = () => {
+      setLearnerHintDocumentHidden(document.visibilityState !== "visible");
+    };
+
+    syncDocumentVisibility();
+    document.addEventListener("visibilitychange", syncDocumentVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncDocumentVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !learnerHintPresentation.isOpen ||
+      learnerHintPresentation.keptOpen ||
+      learnerHintPresentation.pausedByUser ||
+      learnerHintInteractionPaused ||
+      learnerHintDocumentHidden
+    ) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setLearnerHintPresentation((currentState) => advanceLearnerTrainingHintTimer(currentState, 250));
+    }, 250);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [
+    learnerHintDocumentHidden,
+    learnerHintInteractionPaused,
+    learnerHintPresentation.isOpen,
+    learnerHintPresentation.keptOpen,
+    learnerHintPresentation.pausedByUser
+  ]);
 
   useEffect(() => {
     const result = learnerTrainingProgressStorage.load();
@@ -4544,6 +4639,39 @@ export function RouteRunnerClient({
       }),
     [activeMap, isStudentBetaPhoneMap, learnerTrainingModeState, learnerTrainingProgress]
   );
+  const learnerTrainingHintKey = learnerTrainingModePanel.hint
+    ? `${learnerTrainingModePanel.hint.requestNumber}:${learnerTrainingModePanel.hint.title}:${learnerTrainingModePanel.hint.text}`
+    : null;
+
+  useEffect(() => {
+    if (!isTrainingModeOnly || !learnerTrainingHintKey || learnerTrainingModeState.review) {
+      return;
+    }
+
+    setLearnerHintPresentation((currentState) =>
+      currentState.hintKey === learnerTrainingHintKey
+        ? currentState
+        : presentLearnerTrainingHint(currentState, learnerTrainingHintKey)
+    );
+  }, [isTrainingModeOnly, learnerTrainingHintKey, learnerTrainingModeState.review]);
+
+  const trainingOverlayForMap = useMemo<LearnerTrainingRouteOverlay>(
+    () =>
+      isTrainingModeOnly
+        ? {
+            ...learnerTrainingModePanel.overlay,
+            route: {
+              points: [],
+              segmentIds: [],
+              roadIds: []
+            },
+            attemptedRoute: null,
+            faultMarkers: [],
+            segmentFeedback: []
+          }
+        : learnerTrainingModePanel.overlay,
+    [isTrainingModeOnly, learnerTrainingModePanel.overlay]
+  );
 
   useEffect(() => {
     const lazyLoadId = selectedMapOption.lazyLoadId;
@@ -4694,9 +4822,21 @@ export function RouteRunnerClient({
     [activeMap, selectedMapOption.sourceOverpassFixture]
   );
   const syntheticRoadVisuals = useMemo(() => buildSyntheticRoadVisuals(activeMap), [activeMap]);
+  const trainingRouteExercise = useMemo(
+    () =>
+      isTrainingModeOnly && learnerTrainingModeState.activeExercise
+        ? trainingExerciseToRouteExercise(learnerTrainingModeState.activeExercise)
+        : null,
+    [isTrainingModeOnly, learnerTrainingModeState.activeExercise]
+  );
+  const submissionExercises = useMemo(
+    () => (trainingRouteExercise ? [trainingRouteExercise] : activeExercises),
+    [activeExercises, trainingRouteExercise]
+  );
+  const submissionExerciseId = trainingRouteExercise?.id ?? selectedExerciseId;
   const selectedExercise = useMemo<RouteExercise | undefined>(
-    () => activeExercises.find((exercise) => exercise.id === selectedExerciseId),
-    [activeExercises, selectedExerciseId]
+    () => submissionExercises.find((exercise) => exercise.id === submissionExerciseId),
+    [submissionExerciseId, submissionExercises]
   );
   const syntheticLandmarkVisuals = useMemo(
     () =>
@@ -4827,7 +4967,11 @@ export function RouteRunnerClient({
       visibleOsmDebugOverlayAvailable
     ]
   );
-  const selectedExerciseAvailability = selectedExercise ? exerciseAvailabilityById[selectedExercise.id] ?? null : null;
+  const selectedExerciseAvailability = trainingRouteExercise
+    ? null
+    : selectedExercise
+      ? exerciseAvailabilityById[selectedExercise.id] ?? null
+      : null;
   const selectedExerciseIsInvalid = selectedExerciseAvailability ? !selectedExerciseAvailability.isValid : false;
   const fastestRouteOverlay = useMemo(
     () =>
@@ -4904,8 +5048,8 @@ export function RouteRunnerClient({
 
     return runDrawnRoutePipeline({
       map: activeMap,
-      exercises: activeExercises,
-      exerciseId: selectedExerciseId,
+      exercises: submissionExercises,
+      exerciseId: submissionExerciseId,
       drawnTrace: pipelineTrace,
       options: {
         minimumGesturePointCount: MIN_DRAWN_GESTURE_POINT_COUNT,
@@ -4913,23 +5057,29 @@ export function RouteRunnerClient({
         maximumSnapDistance: SNAP_TOLERANCE
       }
     });
-  }, [activeExercises, activeMap, drawnTrace, isDrawing, selectedExerciseAvailability, selectedExerciseId]);
+  }, [activeMap, drawnTrace, isDrawing, selectedExerciseAvailability, submissionExerciseId, submissionExercises]);
   const snapPreview = drawnPipelineResult.snappedRoute ?? emptySnapPreview();
   const drawnDisplayStatus = getDrawnPipelineDisplayStatus(drawnPipelineResult, isDrawing);
   const currentDrawnSubmitAttemptKey = useMemo(
     () =>
       drawnSubmitAttemptKey({
         mapId: activeMap.id,
-        exerciseId: selectedExerciseId ?? null,
+        exerciseId: submissionExerciseId ?? null,
         drawnTrace,
         pipelineResult: drawnPipelineResult
       }),
-    [activeMap.id, drawnPipelineResult, drawnTrace, selectedExerciseId]
+    [activeMap.id, drawnPipelineResult, drawnTrace, submissionExerciseId]
   );
+  const currentDrawnSubmitAttemptKeyRef = useRef(currentDrawnSubmitAttemptKey);
+
+  currentDrawnSubmitAttemptKeyRef.current = currentDrawnSubmitAttemptKey;
   const drawnSubmitMatchesCurrentAttempt =
     drawnSubmitState.attemptKey !== null && drawnSubmitState.attemptKey === currentDrawnSubmitAttemptKey;
   const hasSubmittedCurrentDrawnAttempt = drawnSubmitState.state === "submitted" && drawnSubmitMatchesCurrentAttempt;
-  const hasBlockedCurrentDrawnSubmit = drawnSubmitState.state === "blocked" && drawnSubmitMatchesCurrentAttempt;
+  const hasBlockedCurrentDrawnSubmit =
+    (drawnSubmitState.state === "blocked" || drawnSubmitState.state === "failed") && drawnSubmitMatchesCurrentAttempt;
+  const isSubmittingCurrentDrawnAttempt =
+    drawnSubmitState.state === "submitting" && drawnSubmitMatchesCurrentAttempt;
   const showLearnerAttemptReviewDetails = !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt;
   const showAttemptFeedbackPanel =
     !isStudentBetaRouteRunner || hasSubmittedCurrentDrawnAttempt || hasBlockedCurrentDrawnSubmit;
@@ -4938,6 +5088,12 @@ export function RouteRunnerClient({
     showAttemptFeedbackPanel && (!isStudentBetaRouteRunner || routeFeedbackDrawerOpen);
   const showRouteFeedbackReopenButton =
     isStudentBetaRouteRunner && showAttemptFeedbackPanel && !routeFeedbackDrawerOpen && !isStudentBetaPhoneMap;
+  const showLearnerTrainingHintPanel =
+    isTrainingModeOnly &&
+    Boolean(learnerTrainingModePanel.hint) &&
+    learnerHintPresentation.isOpen &&
+    !showAttemptFeedbackPanel;
+  const learnerHintRemainingSeconds = Math.ceil(learnerHintPresentation.remainingMs / 1000);
   const learnerDrawnDisplayText = getLearnerDrawnPipelineStatusText({
     status: drawnDisplayStatus,
     submitted: hasSubmittedCurrentDrawnAttempt,
@@ -4996,6 +5152,31 @@ export function RouteRunnerClient({
           : null
       }),
     [activeMap, drawnPipelineResult, illegalDrawnMovements, isDrawing, selectedExercise]
+  );
+  const submittedAttemptReview = useMemo(
+    () => {
+      if (drawnSubmitState.state === "failed") {
+        return {
+          ...drawnAttemptReview,
+          status: "blocked" as const,
+          title: "Route was not scored",
+          scoreLabel: "n/a",
+          distanceLabel: "The route check did not finish.",
+          distanceMetrics: [],
+          illegalMovements: [],
+          missedRestrictions: [],
+          suggestedFailureReason: drawnSubmitState.message,
+          correctionHints: ["Try submitting the same route again."],
+          practiceRecommendations: [],
+          recommendedPracticeQueue: []
+        };
+      }
+
+      return isTrainingModeOnly && learnerTrainingModeState.review
+        ? trainingReviewToRouteAttemptReview(learnerTrainingModeState.review, drawnAttemptReview)
+        : drawnAttemptReview;
+    },
+    [drawnAttemptReview, drawnSubmitState.message, drawnSubmitState.state, isTrainingModeOnly, learnerTrainingModeState.review]
   );
   const realLondonPilotPlaythroughPanel = buildRealLondonPilotPlaythroughPanelModel({
     mapId: activeMap.id,
@@ -5079,26 +5260,29 @@ export function RouteRunnerClient({
     }
 
     return (
-      [...drawnAttemptReview.illegalMovements, ...drawnAttemptReview.missedRestrictions].find(
+      [...submittedAttemptReview.illegalMovements, ...submittedAttemptReview.missedRestrictions].find(
         (item) => item.id === selectedRestrictionReviewItemId
       ) ?? null
     );
-  }, [drawnAttemptReview.illegalMovements, drawnAttemptReview.missedRestrictions, selectedRestrictionReviewItemId]);
+  }, [selectedRestrictionReviewItemId, submittedAttemptReview.illegalMovements, submittedAttemptReview.missedRestrictions]);
   const selectedRestrictionFocusTarget = useMemo(
     () =>
       resolveRestrictionFocusTarget({
-        reviewItem: selectedRestrictionReviewItem,
+        reviewItem: trainingRestrictionFocusReviewItem(
+          selectedRestrictionReviewItem,
+          isTrainingModeOnly ? learnerTrainingModeState.review : null
+        ),
         visualItems: restrictionMapVisualItems
       }),
-    [restrictionMapVisualItems, selectedRestrictionReviewItem]
+    [isTrainingModeOnly, learnerTrainingModeState.review, restrictionMapVisualItems, selectedRestrictionReviewItem]
   );
   const learnerFeedbackIssueSections = useMemo(
-    () => buildLearnerFeedbackIssueSections(drawnAttemptReview),
-    [drawnAttemptReview]
+    () => buildLearnerFeedbackIssueSections(submittedAttemptReview),
+    [submittedAttemptReview]
   );
-  const learnerFeedbackBannerTitleText = learnerFeedbackBannerTitle(drawnAttemptReview);
-  const learnerFeedbackSummary = learnerFeedbackSummarySentence(drawnAttemptReview);
-  const learnerFeedbackWhatHappenedText = learnerFeedbackWhatHappened(drawnAttemptReview);
+  const learnerFeedbackBannerTitleText = learnerFeedbackBannerTitle(submittedAttemptReview);
+  const learnerFeedbackSummary = learnerFeedbackSummarySentence(submittedAttemptReview);
+  const learnerFeedbackWhatHappenedText = learnerFeedbackWhatHappened(submittedAttemptReview);
   const compactRestrictionOverlayPanel = useMemo(
     () =>
       buildCompactRestrictionOverlayModel({
@@ -5321,9 +5505,20 @@ export function RouteRunnerClient({
       return;
     }
 
-    setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+    const idleState = createIdleSharedRouteSubmissionState();
+
+    drawnSubmitStateRef.current = idleState;
+    setDrawnSubmitState(idleState);
     setRouteFeedbackDrawerOpen(false);
   }, [currentDrawnSubmitAttemptKey, drawnSubmitState.attemptKey, drawnSubmitState.state]);
+
+  useEffect(() => {
+    if (!routeFeedbackDrawerOpen || !showAttemptFeedbackPanel) {
+      return;
+    }
+
+    routeFeedbackPanelRef.current?.focus({ preventScroll: true });
+  }, [routeFeedbackDrawerOpen, showAttemptFeedbackPanel]);
 
   useEffect(() => {
     if (!isStudentBetaRouteRunner || showAttemptFeedbackPanel || !routeFeedbackDrawerOpen) {
@@ -5671,7 +5866,8 @@ export function RouteRunnerClient({
       currentZoom: mapViewportState.zoom,
       learnerFacing: isStudentBetaRouteRunner,
       submittedReview: hasSubmittedCurrentDrawnAttempt,
-      trainingReviewVisible: Boolean(learnerTrainingModePanel.review),
+      trainingReviewVisible: !isTrainingModeOnly && Boolean(learnerTrainingModePanel.review),
+      sharedSubmissionReview: isTrainingModeOnly,
       backgroundFeatures: syntheticBackgroundFeatures,
       linearFeatures: syntheticLinearFeatures,
       roadVisuals: syntheticRoadVisuals,
@@ -5682,7 +5878,7 @@ export function RouteRunnerClient({
       trace: drawnTrace,
       routeDraft: drawnRouteDraft,
       fastestRoutePoints: fastestRouteOverlay.status === "available" ? fastestRouteOverlay.points : [],
-      trainingOverlay: learnerTrainingModePanel.overlay,
+      trainingOverlay: trainingOverlayForMap,
       routeReplayMarkers,
       snapPreview,
       pipelineResult: drawnPipelineResult,
@@ -5703,7 +5899,7 @@ export function RouteRunnerClient({
     fastestRouteOverlay,
     hasSubmittedCurrentDrawnAttempt,
     isStudentBetaRouteRunner,
-    learnerTrainingModePanel.overlay,
+    isTrainingModeOnly,
     learnerTrainingModePanel.review,
     learnerMarkerImageAssets,
     mapViewportState.zoom,
@@ -5724,6 +5920,7 @@ export function RouteRunnerClient({
     syntheticMapLabels,
     syntheticRoadVisuals,
     syntheticStopLabels,
+    trainingOverlayForMap,
     visibleOsmDebugOverlayAvailable,
     visibleOsmExerciseDebugOverlayAvailable,
     viewport,
@@ -5888,8 +6085,12 @@ export function RouteRunnerClient({
     setDrawnRouteDraft(clearRouteDraft());
     setResult(null);
     setError(null);
-    setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+    const idleState = createIdleSharedRouteSubmissionState();
+
+    drawnSubmitStateRef.current = idleState;
+    setDrawnSubmitState(idleState);
     setRouteFeedbackDrawerOpen(false);
+    setLearnerHintPresentation(createLearnerTrainingHintPresentationState());
     setAttemptSaveStatus({
       state: "idle",
       message: null
@@ -5937,41 +6138,93 @@ export function RouteRunnerClient({
     resetRouteReplay();
   }
 
-  function submitDrawnAttempt() {
+  async function submitDrawnAttempt() {
     setIsDrawing(false);
+    setLearnerHintPresentation((currentState) => dismissLearnerTrainingHint(currentState));
 
     const attemptKey =
       currentDrawnSubmitAttemptKey ??
       drawnSubmitAttemptKey({
         mapId: activeMap.id,
-        exerciseId: selectedExerciseId ?? null,
+        exerciseId: submissionExerciseId ?? null,
         drawnTrace,
         pipelineResult: drawnPipelineResult
       });
-    const outcome = getDrawnRouteSubmitOutcome({
-      readiness: drawnSubmitReadiness,
-      result: drawnPipelineResult
-    });
-
-    setDrawnSubmitState({
-      state: outcome.submitted ? "submitted" : "blocked",
-      attemptKey,
-      code: outcome.code,
-      message: outcome.learnerMessage,
-      devMessage: outcome.devMessage
-    });
-    if (isStudentBetaRouteRunner) {
-      setRouteFeedbackDrawerOpen(!isStudentBetaPhoneMap);
-    }
-
-    if (outcome.submitted && drawnPipelineResult.exerciseResult) {
-      setError(null);
-      setResult(drawnPipelineResult.exerciseResult);
+    if (!attemptKey) {
       return;
     }
 
-    if (!isStudentBetaRouteRunner) {
-      setError(outcome.devMessage);
+    const requestId = drawnSubmitRequestIdRef.current + 1;
+    const started = beginSharedRouteSubmission({
+      current: drawnSubmitStateRef.current,
+      requestId,
+      attemptKey
+    });
+
+    if (!started.accepted) {
+      return;
+    }
+
+    drawnSubmitRequestIdRef.current = requestId;
+    drawnSubmitStateRef.current = started.state;
+    setDrawnSubmitState(started.state);
+
+    try {
+      await new Promise<void>((resolve) =>
+        window.setTimeout(resolve, SHARED_ROUTE_SUBMISSION_MINIMUM_FEEDBACK_MS)
+      );
+
+      if (currentDrawnSubmitAttemptKeyRef.current !== attemptKey) {
+        return;
+      }
+
+      const outcome = getDrawnRouteSubmitOutcome({
+        readiness: drawnSubmitReadiness,
+        result: drawnPipelineResult
+      });
+
+      if (outcome.submitted && isTrainingModeOnly) {
+        const attemptedRouteSegments = matchedRouteToLearnerSegments(drawnPipelineResult.matchResult);
+
+        handleReviewLearnerTrainingAttempt(attemptedRouteSegments, requestId);
+      }
+
+      const resolvedState = resolveSharedRouteSubmission({
+        current: drawnSubmitStateRef.current,
+        requestId,
+        attemptKey,
+        submitted: outcome.submitted,
+        code: outcome.code,
+        learnerMessage: outcome.learnerMessage,
+        devMessage: outcome.devMessage
+      });
+
+      drawnSubmitStateRef.current = resolvedState;
+      setDrawnSubmitState(resolvedState);
+      if (isStudentBetaRouteRunner) {
+        setRouteFeedbackDrawerOpen(!isStudentBetaPhoneMap);
+      }
+
+      if (outcome.submitted && drawnPipelineResult.exerciseResult) {
+        setError(null);
+        setResult(drawnPipelineResult.exerciseResult);
+        return;
+      }
+
+      if (!isStudentBetaRouteRunner) {
+        setError(outcome.devMessage);
+      }
+    } catch (caughtError) {
+      const failedState = failSharedRouteSubmission({
+        current: drawnSubmitStateRef.current,
+        requestId,
+        attemptKey,
+        message: readableError(caughtError)
+      });
+
+      drawnSubmitStateRef.current = failedState;
+      setDrawnSubmitState(failedState);
+      setRouteFeedbackDrawerOpen(!isStudentBetaPhoneMap);
     }
   }
 
@@ -6000,7 +6253,10 @@ export function RouteRunnerClient({
     setRoadIdsText("");
     setResult(null);
     setError(null);
-    setDrawnSubmitState(createIdleDrawnRouteSubmitState());
+    const idleState = createIdleSharedRouteSubmissionState();
+
+    drawnSubmitStateRef.current = idleState;
+    setDrawnSubmitState(idleState);
     setAttemptSaveStatus({
       state: "idle",
       message: null
@@ -6101,6 +6357,7 @@ export function RouteRunnerClient({
   }
 
   function handleGenerateLearnerTrainingExercise() {
+    clearDrawnAttempt();
     setLearnerTrainingModeState((currentState) =>
       startLearnerTrainingExercise({
         state: currentState,
@@ -6118,6 +6375,7 @@ export function RouteRunnerClient({
   }
 
   function handleGenerateExperimentalLearnerTrainingExercise() {
+    clearDrawnAttempt();
     setLearnerTrainingModeState((currentState) =>
       startLearnerTrainingExercise({
         state: currentState,
@@ -6137,15 +6395,24 @@ export function RouteRunnerClient({
   }
 
   function handleRequestLearnerTrainingHint() {
+    if (showAttemptFeedbackPanel || isSubmittingCurrentDrawnAttempt) {
+      return;
+    }
+
+    setRouteFeedbackDrawerOpen(false);
     setLearnerTrainingModeState((currentState) => requestLearnerTrainingHint({ state: currentState }));
   }
 
-  function handleReviewLearnerTrainingAttempt() {
+  function handleReviewLearnerTrainingAttempt(
+    attemptedRouteSegments: ReturnType<typeof matchedRouteToLearnerSegments>,
+    requestId: number
+  ) {
     const completedAt = new Date().toISOString();
     const reviewedState = reviewLearnerTrainingAttempt({
       state: learnerTrainingModeState,
       map: activeMap,
-      attemptId: `${learnerTrainingModeState.activeExercise?.id ?? "learner-training"}-${Date.now().toString(36)}`
+      attemptedRouteSegments,
+      attemptId: `${learnerTrainingModeState.activeExercise?.id ?? "learner-training"}-${requestId}`
     });
 
     setLearnerTrainingModeState(reviewedState);
@@ -6169,10 +6436,6 @@ export function RouteRunnerClient({
     setLearnerTrainingProgressMessage(
       saveResult.ok ? "Learner training progress saved on this device." : saveResult.reason ?? "Progress was not saved."
     );
-  }
-
-  function handleRetryLearnerTrainingExercise() {
-    setLearnerTrainingModeState((currentState) => retryLearnerTrainingExercise(currentState));
   }
 
   function handleResetLearnerTrainingProgress() {
@@ -6737,12 +7000,17 @@ export function RouteRunnerClient({
               ) : null}
               {!isTrainingModeOnly ? (
                 <button
+                  ref={submitRouteButtonRef}
                   type="button"
                   onClick={submitDrawnAttempt}
-                  disabled={drawnSubmitDisabled}
+                  disabled={drawnSubmitDisabled || isSubmittingCurrentDrawnAttempt}
                   className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  {isStudentBetaRouteRunner ? "Submit" : "Submit Attempt"}
+                  {isSubmittingCurrentDrawnAttempt
+                    ? "Submitting..."
+                    : isStudentBetaRouteRunner
+                      ? SHARED_ROUTE_SUBMIT_LABEL
+                      : "Submit Attempt"}
                 </button>
               ) : null}
             </div>
@@ -7265,20 +7533,31 @@ export function RouteRunnerClient({
                     <button
                       type="button"
                       onClick={handleRequestLearnerTrainingHint}
-                      disabled={learnerTrainingModePanel.primaryActions[2].disabled}
+                      disabled={
+                        learnerTrainingModePanel.primaryActions[2].disabled ||
+                        showAttemptFeedbackPanel ||
+                        isSubmittingCurrentDrawnAttempt
+                      }
                       aria-label={learnerTrainingModePanel.primaryActions[2].ariaLabel}
                       className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                     >
                       {learnerTrainingModePanel.primaryActions[2].label}
                     </button>
                     <button
+                      ref={submitRouteButtonRef}
                       type="button"
-                      onClick={handleReviewLearnerTrainingAttempt}
-                      disabled={learnerTrainingModePanel.primaryActions[3].disabled}
+                      onClick={submitDrawnAttempt}
+                      disabled={
+                        learnerTrainingModePanel.primaryActions[3].disabled ||
+                        drawnSubmitDisabled ||
+                        isSubmittingCurrentDrawnAttempt
+                      }
                       aria-label={learnerTrainingModePanel.primaryActions[3].ariaLabel}
                       className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                     >
-                      {learnerTrainingModePanel.primaryActions[3].label}
+                      {isSubmittingCurrentDrawnAttempt
+                        ? "Submitting..."
+                        : learnerTrainingModePanel.primaryActions[3].label}
                     </button>
                   </div>
 
@@ -7519,13 +7798,6 @@ export function RouteRunnerClient({
                         </div>
                       ) : null}
 
-                      {learnerTrainingModePanel.currentInstruction ? (
-                        <div className="mt-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current instruction</p>
-                          <p className="mt-1 text-slate-800">{learnerTrainingModePanel.currentInstruction.text}</p>
-                        </div>
-                      ) : null}
-
                       {learnerTrainingModePanel.overlay.checkpoints.length > 0 ? (
                         <div className="mt-3">
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Checkpoints</p>
@@ -7554,159 +7826,18 @@ export function RouteRunnerClient({
                     </div>
                   ) : null}
 
-                  {learnerTrainingModePanel.hint ? (
-                    <div className="mt-3 rounded-md border border-sky-200 bg-sky-50 p-3 text-sm leading-6 text-sky-950" role="status">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold">{learnerTrainingModePanel.hint.title}</p>
-                        <span className="rounded-full border border-sky-300 bg-white px-2 py-0.5 text-xs font-semibold">
-                          Hint {learnerTrainingModePanel.hint.requestNumber}
-                        </span>
-                      </div>
-                      <p className="mt-1">{learnerTrainingModePanel.hint.text}</p>
-                    </div>
-                  ) : null}
-
-                  {learnerTrainingModePanel.review ? (
-                    <div
-                      className={`mt-3 rounded-md border p-3 text-sm leading-6 ${
-                        learnerTrainingModePanel.review.passed
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
-                          : "border-amber-200 bg-amber-50 text-amber-950"
-                      }`}
-                      role="status"
+                  {learnerTrainingModePanel.hint && !showAttemptFeedbackPanel && !learnerHintPresentation.isOpen ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLearnerHintPresentation((currentState) => reopenLearnerTrainingHint(currentState))
+                      }
+                      className="mt-3 min-h-11 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200"
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Learner attempt review</p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2">
-                            <p className="font-semibold">
-                              {learnerTrainingModePanel.review.passed ? "Passed" : "Needs review"}
-                            </p>
-                            <span className="rounded-full border border-current/20 bg-white px-2 py-0.5 text-xs font-semibold">
-                              {Math.round(learnerTrainingModePanel.review.scorePercent)}%
-                            </span>
-                            <span className="rounded-full border border-current/20 bg-white px-2 py-0.5 text-xs font-semibold capitalize">
-                              {learnerTrainingModePanel.review.status}
-                            </span>
-                          </div>
-                          <p className="mt-1">{learnerTrainingModePanel.review.summary}</p>
-                        </div>
-                      </div>
-
-                      <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
-                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Planned route</dt>
-                          <dd className="mt-1 font-semibold">{formatDistance(learnerTrainingModePanel.review.plannedDistanceMeters)}</dd>
-                        </div>
-                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
-                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Learner route</dt>
-                          <dd className="mt-1 font-semibold">{formatDistance(learnerTrainingModePanel.review.attemptedDistanceMeters)}</dd>
-                        </div>
-                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
-                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Route adherence</dt>
-                          <dd className="mt-1 font-semibold">
-                            {learnerTrainingModePanel.review.routeAdherencePercent.toFixed(1)}%
-                          </dd>
-                        </div>
-                        <div className="rounded-md border border-current/10 bg-white/80 p-2">
-                          <dt className="text-xs font-semibold uppercase tracking-wide opacity-75">Checkpoints</dt>
-                          <dd className="mt-1 font-semibold">
-                            {learnerTrainingModePanel.review.completedCheckpointCount}/
-                            {learnerTrainingModePanel.review.totalCheckpointCount}
-                          </dd>
-                        </div>
-                      </dl>
-
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
-                          Minor {learnerTrainingModePanel.review.minorFaultCount}
-                        </span>
-                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
-                          Serious {learnerTrainingModePanel.review.seriousFaultCount}
-                        </span>
-                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
-                          Dangerous {learnerTrainingModePanel.review.dangerousFaultCount}
-                        </span>
-                        <span className="rounded-full border border-current/20 bg-white px-2 py-0.5">
-                          Extra {formatDistance(learnerTrainingModePanel.review.extraDistanceMeters)}
-                        </span>
-                      </div>
-
-                      {learnerTrainingModePanel.review.messages.length > 0 ? (
-                        <div className="mt-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Feedback</p>
-                          <ol className="mt-2 space-y-2">
-                            {learnerTrainingModePanel.review.messages.slice(0, 4).map((message) => (
-                              <li
-                                key={message.id}
-                                className={`rounded-md border p-3 text-xs leading-5 ${learnerTrainingReviewMessageClass(
-                                  message.severity
-                                )}`}
-                              >
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-semibold">{message.categoryLabel}</span>
-                                  <span className="rounded-full border border-current/20 px-2 py-0.5 text-[10px] font-semibold uppercase">
-                                    {message.severity}
-                                  </span>
-                                </div>
-                                <p className="mt-1 font-semibold">{message.whatHappened}</p>
-                                <p className="mt-1">{message.whyItMatters}</p>
-                                <p className="mt-1">
-                                  <span className="font-semibold">Where: </span>
-                                  {message.location}
-                                </p>
-                                <p className="mt-1">
-                                  <span className="font-semibold">Improve: </span>
-                                  {message.improvementSuggestion}
-                                </p>
-                              </li>
-                            ))}
-                          </ol>
-                        </div>
-                      ) : null}
-
-                      {learnerTrainingModePanel.review.segmentFeedback.length > 0 ? (
-                        <div className="mt-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide opacity-75">Segment feedback</p>
-                          <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                            {learnerTrainingModePanel.review.segmentFeedback.slice(0, 6).map((item) => (
-                              <li
-                                key={`${item.routeSegmentId}-${item.summary}`}
-                                className={`rounded-md border p-3 text-xs leading-5 ${learnerTrainingReviewMessageClass(
-                                  item.severity
-                                )}`}
-                              >
-                                <p className="font-semibold">{item.summary}</p>
-                                <p className="mt-1">Road segment: {item.roadId}</p>
-                                {item.improvementSuggestion ? <p className="mt-1">{item.improvementSuggestion}</p> : null}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : null}
-
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          onClick={handleRetryLearnerTrainingExercise}
-                          disabled={learnerTrainingModePanel.reviewActions[0].disabled}
-                          aria-label={learnerTrainingModePanel.reviewActions[0].ariaLabel}
-                          className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
-                        >
-                          {learnerTrainingModePanel.reviewActions[0].label}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleGenerateLearnerTrainingExercise}
-                          disabled={learnerTrainingModePanel.reviewActions[1].disabled}
-                          aria-label={learnerTrainingModePanel.reviewActions[1].ariaLabel}
-                          className="min-h-11 rounded-md border border-blue-600 bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {learnerTrainingModePanel.reviewActions[1].label}
-                        </button>
-                      </div>
-                    </div>
+                      View hint
+                    </button>
                   ) : null}
+
                 </div>
               ) : null}
             </div>
@@ -7955,55 +8086,47 @@ export function RouteRunnerClient({
             >
               <div className="pointer-events-none absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1.5 sm:right-4 sm:top-4 sm:max-w-[calc(100%-2rem)] sm:gap-2">
                 <div className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm">
-                  {!isTrainingModeOnly ? (
-                    <button
-                      type="button"
-                      onClick={() => setRouteMapInteractionMode("draw")}
-                      aria-pressed={mapInteractionMode === "draw"}
-                      className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-                        mapInteractionMode === "draw"
-                          ? "bg-blue-700 text-white"
-                          : "bg-white/95 text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      Draw
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setRouteMapInteractionMode("draw")}
+                    aria-pressed={mapInteractionMode === "draw"}
+                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
+                      mapInteractionMode === "draw"
+                        ? "bg-blue-700 text-white"
+                        : "bg-white/95 text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    Draw
+                  </button>
                   <button
                     type="button"
                     onClick={() => setRouteMapInteractionMode("pan")}
                     aria-pressed={mapInteractionMode === "pan"}
-                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
-                      !isTrainingModeOnly ? "border-l border-slate-300" : ""
-                    } ${
+                    className={`inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap border-l border-slate-300 px-3 py-2 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-blue-100 ${
                       mapInteractionMode === "pan"
                         ? "bg-blue-700 text-white"
                         : "bg-white/95 text-slate-700 hover:bg-slate-50"
                     }`}
                   >
-                    {isTrainingModeOnly ? "Pan map" : "Pan"}
+                    Pan
                   </button>
                 </div>
-                {!isTrainingModeOnly ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={undoLastDrawnStroke}
-                      disabled={!hasUndoableDrawnStroke}
-                      className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    >
-                      Undo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearDrawnAttempt}
-                      disabled={drawnTrace.points.length === 0 && !isDrawing}
-                      className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                    >
-                      {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
-                    </button>
-                  </>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={undoLastDrawnStroke}
+                  disabled={!hasUndoableDrawnStroke}
+                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={clearDrawnAttempt}
+                  disabled={drawnTrace.points.length === 0 && !isDrawing}
+                  className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                >
+                  {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}
+                </button>
                 {!isStudentBetaRouteRunner ? (
                   <button
                     type="button"
@@ -8807,12 +8930,89 @@ export function RouteRunnerClient({
             ) : null}
           </section>
 
+          {showLearnerTrainingHintPanel && learnerTrainingModePanel.hint ? (
+            <aside
+              ref={learnerHintPanelRef}
+              aria-label="Training hint"
+              aria-describedby="learner-training-hint-timer"
+              onPointerEnter={() => setLearnerHintInteractionPaused(true)}
+              onPointerLeave={() => setLearnerHintInteractionPaused(false)}
+              onFocusCapture={() => setLearnerHintInteractionPaused(true)}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setLearnerHintInteractionPaused(false);
+                }
+              }}
+              className={
+                isStudentBetaPhoneMap
+                  ? "fixed inset-x-2 bottom-2 z-50 max-h-[58dvh] overflow-auto rounded-xl border border-sky-200 bg-white p-4 pb-16 shadow-2xl"
+                  : "fixed bottom-4 right-4 top-4 z-50 w-[min(24rem,calc(100vw-2rem))] overflow-auto rounded-xl border border-sky-200 bg-white p-4 shadow-2xl"
+              }
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Training hint</p>
+                  <h2 className="mt-1 text-base font-semibold text-slate-950">
+                    {learnerTrainingModePanel.hint.title}
+                  </h2>
+                </div>
+                <span className="shrink-0 rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-900">
+                  Hint {learnerTrainingModePanel.hint.requestNumber}
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-slate-800" role="status">
+                {learnerTrainingModePanel.hint.text}
+              </p>
+              <p id="learner-training-hint-timer" className="mt-3 text-xs leading-5 text-slate-600">
+                {learnerHintPresentation.keptOpen
+                  ? "This hint will stay open."
+                  : learnerHintPresentation.pausedByUser
+                    ? `Dismissal paused with ${learnerHintRemainingSeconds} seconds remaining.`
+                    : `Closes in ${learnerHintRemainingSeconds} seconds. The timer pauses while this panel is hovered or focused.`}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                {!learnerHintPresentation.keptOpen ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLearnerHintPresentation((currentState) => toggleLearnerTrainingHintTimer(currentState))
+                    }
+                    aria-pressed={learnerHintPresentation.pausedByUser}
+                    className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                  >
+                    {learnerHintPresentation.pausedByUser ? "Resume timer" : "Pause timer"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setLearnerHintPresentation((currentState) => keepLearnerTrainingHintOpen(currentState))
+                  }
+                  disabled={learnerHintPresentation.keptOpen}
+                  className="min-h-11 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-950 transition hover:bg-sky-100 disabled:cursor-default disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  Keep open
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLearnerHintInteractionPaused(false);
+                    setLearnerHintPresentation((currentState) => dismissLearnerTrainingHint(currentState));
+                  }}
+                  className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200"
+                >
+                  Close
+                </button>
+              </div>
+            </aside>
+          ) : null}
+
           {showMobileRouteFeedbackBanner ? (
             <section
               aria-label="Route result summary"
               aria-live="polite"
               className={`order-3 rounded-lg border p-3 shadow-sm ${learnerFeedbackBannerClass(
-                drawnAttemptReview.status
+                submittedAttemptReview.status
               )}`}
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -8847,6 +9047,8 @@ export function RouteRunnerClient({
 
           {shouldRenderAttemptFeedbackPanel ? (
             <section
+              ref={routeFeedbackPanelRef}
+              tabIndex={-1}
               aria-label={isStudentBetaRouteRunner ? "Route feedback details" : "Attempt review"}
               className={
                 isStudentBetaRouteRunner
@@ -8878,7 +9080,10 @@ export function RouteRunnerClient({
                   {isStudentBetaRouteRunner ? (
                     <button
                       type="button"
-                      onClick={() => setRouteFeedbackDrawerOpen(false)}
+                      onClick={() => {
+                        setRouteFeedbackDrawerOpen(false);
+                        submitRouteButtonRef.current?.focus({ preventScroll: true });
+                      }}
                       className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
                       {isStudentBetaPhoneMap ? "Hide details" : "Close"}
@@ -8919,7 +9124,7 @@ export function RouteRunnerClient({
             {isStudentBetaRouteRunner ? (
               <div
                 className={`relative mt-4 overflow-hidden rounded-xl border p-4 pl-5 text-sm shadow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 ${learnerFeedbackToneClass(
-                  drawnAttemptReview.status
+                  submittedAttemptReview.status
                 )}`}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -8927,10 +9132,10 @@ export function RouteRunnerClient({
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${learnerFeedbackBadgeClass(
-                          drawnAttemptReview.status
+                          submittedAttemptReview.status
                         )}`}
                       >
-                        {learnerFeedbackStatusLabel(drawnAttemptReview.status)}
+                        {learnerFeedbackStatusLabel(submittedAttemptReview.status)}
                       </span>
                       <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Submitted route
@@ -8943,24 +9148,24 @@ export function RouteRunnerClient({
                 <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</dt>
-                    <dd className="mt-1 font-semibold text-slate-950">{drawnAttemptReview.scoreLabel}</dd>
+                    <dd className="mt-1 font-semibold text-slate-950">{submittedAttemptReview.scoreLabel}</dd>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your route</dt>
                     <dd className="mt-1 font-semibold text-slate-950">
-                      {learnerReviewMetricValue(drawnAttemptReview, "student-route-distance")}
+                      {learnerReviewMetricValue(submittedAttemptReview, "student-route-distance")}
                     </dd>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shortest legal route</dt>
                     <dd className="mt-1 font-semibold text-slate-950">
-                      {learnerReviewMetricValue(drawnAttemptReview, "shortest-legal-distance")}
+                      {learnerReviewMetricValue(submittedAttemptReview, "shortest-legal-distance")}
                     </dd>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Extra distance</dt>
                     <dd className="mt-1 font-semibold text-slate-950">
-                      {learnerReviewMetricValue(drawnAttemptReview, "extra-distance")}
+                      {learnerReviewMetricValue(submittedAttemptReview, "extra-distance")}
                     </dd>
                   </div>
                 </dl>
@@ -8971,6 +9176,15 @@ export function RouteRunnerClient({
                   {hasBlockedCurrentDrawnSubmit && drawnSubmitState.message ? (
                     <p className="mt-1 text-xs leading-5 text-slate-600">{drawnSubmitState.message}</p>
                   ) : null}
+                  {drawnSubmitState.state === "failed" ? (
+                    <button
+                      type="button"
+                      onClick={submitDrawnAttempt}
+                      className="mt-3 min-h-11 rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                    >
+                      Try again
+                    </button>
+                  ) : null}
                 </div>
 
                 {shortestLegalRouteComparisonAvailable ? (
@@ -8978,9 +9192,9 @@ export function RouteRunnerClient({
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Route comparison</p>
                       <p className="mt-1 leading-6">
-                        {learnerRouteMatchesShortestLegalRoute(drawnAttemptReview)
+                        {learnerRouteMatchesShortestLegalRoute(submittedAttemptReview)
                           ? "Your route matches the shortest legal route."
-                          : drawnAttemptReview.missedRestrictions.some(isRouteEfficiencyReviewItem)
+                          : submittedAttemptReview.missedRestrictions.some(isRouteEfficiencyReviewItem)
                             ? "Compare your route with the shortest legal route to remove unnecessary detours."
                             : "Compare your route with the shortest legal route while keeping your attempt visible."}
                       </p>
@@ -9009,7 +9223,10 @@ export function RouteRunnerClient({
                               section.id !== "route-efficiency" &&
                               Boolean(
                                 resolveRestrictionFocusTarget({
-                                  reviewItem: item,
+                                  reviewItem: trainingRestrictionFocusReviewItem(
+                                    item,
+                                    isTrainingModeOnly ? learnerTrainingModeState.review : null
+                                  ),
                                   visualItems: restrictionMapVisualItems
                                 })
                               );
@@ -9054,10 +9271,10 @@ export function RouteRunnerClient({
                   </details>
                 ) : null}
 
-                {showLearnerAttemptReviewDetails && drawnAttemptReview.correctionHints.length > 0 ? (
+                {showLearnerAttemptReviewDetails && submittedAttemptReview.correctionHints.length > 0 ? (
                   <div className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Try next</p>
-                    <p className="mt-1 leading-6">{drawnAttemptReview.correctionHints[0]}</p>
+                    <p className="mt-1 leading-6">{submittedAttemptReview.correctionHints[0]}</p>
                   </div>
                 ) : null}
 

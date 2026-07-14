@@ -132,6 +132,24 @@ test("Stage 8.9 learner-facing ownership hides technical route diagnostics", () 
   assert.equal(submitted.renderSnapPreview, false);
 });
 
+test("shared Training submission keeps beta attempt and comparison overlays authoritative", () => {
+  const ownership = buildRouteRunnerOverlayOwnership({
+    trainingOverlay: { visible: true },
+    trainingReviewVisible: true,
+    learnerFacing: true,
+    submittedReview: true,
+    sharedSubmissionReview: true
+  });
+
+  assert.equal(ownership.activeOverlayMode, "training");
+  assert.equal(ownership.renderNormalCorrectRoute, true);
+  assert.equal(ownership.renderNormalAttemptRoute, true);
+  assert.equal(ownership.renderNormalReviewIssues, true);
+  assert.equal(ownership.renderNormalRouteEndpoints, false);
+  assert.equal(ownership.renderTrainingRouteEndpoints, true);
+  assert.equal(ownership.renderPipelineMatchDiagnostics, false);
+});
+
 test("closing learner training restores normal Route Runner endpoint ownership", () => {
   const ownership = buildRouteRunnerOverlayOwnership({
     trainingOverlay: null

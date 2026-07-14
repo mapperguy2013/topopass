@@ -881,8 +881,8 @@ export function buildLearnerTrainingModePanelModel(input: {
       },
       {
         id: "complete-review",
-        label: "Complete and review",
-        ariaLabel: "Complete learner training attempt and review feedback",
+        label: "Submit route",
+        ariaLabel: "Submit learner training route",
         disabled: !exercise
       }
     ],

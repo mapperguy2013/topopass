@@ -6,7 +6,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
-  outputFileTracingRoot: __dirname
+  outputFileTracingRoot: __dirname,
+  experimental: {
+    cpus: 2
+  }
 };
 
 export default nextConfig;

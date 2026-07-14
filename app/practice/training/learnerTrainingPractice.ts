@@ -52,7 +52,7 @@ export type LearnerTrainingPracticePageModel = {
     exerciseTypeSelectorLabel: "Exercise type";
     generateActionLabel: "Generate exercise";
     hintActionLabel: "Get hint";
-    reviewActionLabel: "Complete and review";
+    reviewActionLabel: "Submit route";
     mapPanDefault: true;
   };
   mobile: {
@@ -113,7 +113,7 @@ export function buildLearnerTrainingPracticePageModel(input: {
       exerciseTypeSelectorLabel: "Exercise type",
       generateActionLabel: "Generate exercise",
       hintActionLabel: "Get hint",
-      reviewActionLabel: "Complete and review",
+      reviewActionLabel: "Submit route",
       mapPanDefault: true
     },
     mobile: {
