@@ -11,6 +11,7 @@ import {
 } from "./routeRunnerMaps.ts";
 import {
   buildRouteRunnerMobileQaReport,
+  categorizeRouteRunnerOrientation,
   categorizeRouteRunnerViewport,
   type RouteRunnerMobileQaPanelId
 } from "./routeRunnerMobileQa.ts";
@@ -33,6 +34,10 @@ test("Mobile Route Runner QA keeps Marlowe default route-runner layout passing",
 
   assert.equal(report.isPassing, true, report.failures.map((failure) => failure.message).join("\n"));
   assert.equal(report.viewportCategory, "mobile");
+  assert.equal(report.orientation, "portrait");
+  assert.equal(report.minimumTouchTargetPx, 44);
+  assert.equal(report.setupCollapsedByDefault, true);
+  assert.equal(report.safeAreaInsetsSupported, true);
   assert.equal(report.mapId, marloweDistrictMap.id);
   assert.equal(report.mapArea.visible, true);
   assert.equal(report.mapArea.bounded, true);
@@ -50,6 +55,35 @@ test("Mobile Route Runner QA keeps Marlowe default route-runner layout passing",
     report.panelRows.map((panel) => panel.id),
     ["main-controls", "selected-exercise", "drawing-controls", "zoom-controls", "map-area", "version-metadata"]
   );
+});
+
+test("Stage 8.10 responsive matrix classifies portrait and landscape layouts deterministically", () => {
+  const matrix = [
+    [1440, 900, "desktop", "landscape", false],
+    [1024, 768, "tablet", "landscape", true],
+    [768, 1024, "tablet", "portrait", true],
+    [390, 844, "mobile", "portrait", true],
+    [360, 800, "mobile", "portrait", true],
+    [844, 390, "tablet", "landscape", true]
+  ] as const;
+  const option = getRouteRunnerMapOption(DEFAULT_ROUTE_RUNNER_MAP_ID);
+
+  assert.ok(option);
+
+  for (const [width, height, category, orientation, collapsed] of matrix) {
+    const report = buildRouteRunnerMobileQaReport({
+      mapOption: option,
+      viewportWidth: width,
+      viewportHeight: height
+    });
+
+    assert.equal(report.viewportCategory, category);
+    assert.equal(report.orientation, orientation);
+    assert.equal(report.setupCollapsedByDefault, collapsed);
+    assert.equal(report.isPassing, true, `${width}x${height}: ${report.failures.map((failure) => failure.code).join(", ")}`);
+  }
+
+  assert.equal(categorizeRouteRunnerOrientation(500, 500), "square");
 });
 
 test("Stage 161.6.29 mobile practice layout uses reduced gutters and near full-width map", () => {
@@ -120,6 +154,16 @@ test("Stage 161.6.29 RouteRunner renders mobile feedback banner and collapsible 
   assert.ok(source.includes("setRouteFeedbackDrawerOpen(!isStudentBetaPhoneMap)"));
   assert.ok(source.includes("visibleOsmDebugOverlayAvailable"));
   assert.ok(source.includes("!routeRunnerPanelVisibility.isRealLondonBetaPractice"));
+  assert.ok(source.includes("ROUTE_RUNNER_FEEDBACK_PANEL_ID"));
+  assert.ok(source.includes('aria-controls={ROUTE_RUNNER_FEEDBACK_PANEL_ID}'));
+  assert.ok(source.includes("routeFeedbackTriggerRef"));
+  assert.ok(source.includes("closeRouteFeedbackDrawer(true)"));
+  assert.ok(source.includes("safe-area-inset-bottom"));
+  assert.ok(source.includes("handlePointerCancel"));
+  assert.ok(source.includes("onPointerCancel={handlePointerCancel}"));
+  assert.ok(source.includes("role=\"img\""));
+  assert.ok(source.includes("ROUTE_RUNNER_MAP_INSTRUCTIONS_ID"));
+  assert.ok(source.includes("grid-cols-[minmax(0,1fr)] gap-4"));
 });
 
 test("Mobile Route Runner QA keeps tiny and medium OSM maps compatible", () => {

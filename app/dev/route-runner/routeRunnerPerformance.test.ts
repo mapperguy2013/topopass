@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  ROUTE_RUNNER_MAX_CANVAS_PIXEL_COUNT,
+  assessRouteRunnerCanvasBudget,
   createActiveDrawingPipelineResult,
   createRouteRunnerMapGraphMemo,
+  getRouteRunnerCanvasBackingStore,
   prepareTraceForRoutePipeline
 } from "./routeRunnerPerformance.ts";
 import { createDrawnRouteTrace, tinyMap, type MapDefinition, type MapGraph } from "../../../lib/map-engine/index.ts";
@@ -106,4 +109,29 @@ test("createActiveDrawingPipelineResult avoids snapping matching and scoring whi
 
   result.simplifiedTrace.points[0].x = 999;
   assert.equal(trace.points[0].x, 1);
+});
+
+test("Stage 8.10 canvas backing stores remain crisp and bounded across responsive profiles", () => {
+  const development = getRouteRunnerCanvasBackingStore({ studentBeta: false, phone: false });
+  const desktop = getRouteRunnerCanvasBackingStore({ studentBeta: true, phone: false });
+  const phone = getRouteRunnerCanvasBackingStore({ studentBeta: true, phone: true });
+
+  assert.deepEqual([development.width, development.height], [1120, 760]);
+  assert.deepEqual([desktop.width, desktop.height], [1920, 912]);
+  assert.deepEqual([phone.width, phone.height], [900, 2160]);
+
+  for (const profile of [development, desktop, phone]) {
+    assert.ok(profile.pixelCount <= ROUTE_RUNNER_MAX_CANVAS_PIXEL_COUNT);
+    assert.equal(profile.estimatedRgbaBytes, profile.pixelCount * 4);
+  }
+});
+
+test("Stage 8.10 high-DPR devices do not multiply the fixed canvas allocation", () => {
+  const normal = assessRouteRunnerCanvasBudget({ studentBeta: true, phone: true, devicePixelRatio: 1 });
+  const highDpr = assessRouteRunnerCanvasBudget({ studentBeta: true, phone: true, devicePixelRatio: 8 });
+
+  assert.equal(highDpr.boundedDevicePixelRatio, 3);
+  assert.equal(highDpr.allocationChangesWithDevicePixelRatio, false);
+  assert.equal(highDpr.pixelCount, normal.pixelCount);
+  assert.equal(highDpr.withinPixelBudget, true);
 });

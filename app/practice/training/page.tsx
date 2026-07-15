@@ -18,9 +18,13 @@ export default function LearnerTrainingPracticePage() {
   const model = buildLearnerTrainingPracticePageModel();
 
   return (
-    <AppShell title={model.title} frameClassName="max-w-[1900px]">
+    <AppShell
+      title={model.title}
+      frameClassName="max-w-[1900px]"
+      framePaddingClassName="px-2 py-3 sm:px-6 sm:py-6 lg:px-8"
+    >
       <div className="space-y-4 sm:space-y-5">
-        <section className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6">
+        <section className="hidden rounded-2xl border border-blue-100 bg-white p-5 shadow-sm sm:p-6 xl:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wide text-road">Training Mode</p>

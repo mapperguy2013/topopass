@@ -8,6 +8,10 @@ import {
   type MapGraph,
   type Vec2
 } from "../../../lib/map-engine/index.ts";
+import {
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
+  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH
+} from "./mapViewport.ts";
 
 export type RouteRunnerMapGraphMemo = {
   getGraph(map: MapDefinition): MapGraph;
@@ -30,6 +34,75 @@ export type RouteTracePerformanceResult = {
 
 const DEFAULT_MAX_PIPELINE_POINT_COUNT = 1200;
 const DEFAULT_LARGE_TRACE_SIMPLIFY_TOLERANCE = 2;
+const ROUTE_RUNNER_DEV_CANVAS_WIDTH = 1120;
+const ROUTE_RUNNER_DEV_CANVAS_HEIGHT = 760;
+const ROUTE_RUNNER_STUDENT_CANVAS_WIDTH = 1920;
+const ROUTE_RUNNER_STUDENT_CANVAS_HEIGHT = 912;
+
+export const ROUTE_RUNNER_MAX_CANVAS_PIXEL_COUNT = 2_000_000;
+export const ROUTE_RUNNER_MAX_REPORTED_DEVICE_PIXEL_RATIO = 3;
+
+export type RouteRunnerCanvasBackingStore = {
+  profile: "development" | "student" | "student-phone";
+  width: number;
+  height: number;
+  pixelCount: number;
+  estimatedRgbaBytes: number;
+};
+
+export type RouteRunnerCanvasBudgetAssessment = RouteRunnerCanvasBackingStore & {
+  reportedDevicePixelRatio: number;
+  boundedDevicePixelRatio: number;
+  allocationChangesWithDevicePixelRatio: false;
+  withinPixelBudget: boolean;
+};
+
+export function getRouteRunnerCanvasBackingStore(input: {
+  studentBeta: boolean;
+  phone: boolean;
+}): RouteRunnerCanvasBackingStore {
+  const profile = input.studentBeta ? (input.phone ? "student-phone" : "student") : "development";
+  const width =
+    profile === "student-phone"
+      ? ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH
+      : profile === "student"
+        ? ROUTE_RUNNER_STUDENT_CANVAS_WIDTH
+        : ROUTE_RUNNER_DEV_CANVAS_WIDTH;
+  const height =
+    profile === "student-phone"
+      ? ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT
+      : profile === "student"
+        ? ROUTE_RUNNER_STUDENT_CANVAS_HEIGHT
+        : ROUTE_RUNNER_DEV_CANVAS_HEIGHT;
+  const pixelCount = width * height;
+
+  return {
+    profile,
+    width,
+    height,
+    pixelCount,
+    estimatedRgbaBytes: pixelCount * 4
+  };
+}
+
+export function assessRouteRunnerCanvasBudget(input: {
+  studentBeta: boolean;
+  phone: boolean;
+  devicePixelRatio: number;
+}): RouteRunnerCanvasBudgetAssessment {
+  const backingStore = getRouteRunnerCanvasBackingStore(input);
+  const reportedDevicePixelRatio = Number.isFinite(input.devicePixelRatio)
+    ? Math.max(1, input.devicePixelRatio)
+    : 1;
+
+  return {
+    ...backingStore,
+    reportedDevicePixelRatio,
+    boundedDevicePixelRatio: Math.min(reportedDevicePixelRatio, ROUTE_RUNNER_MAX_REPORTED_DEVICE_PIXEL_RATIO),
+    allocationChangesWithDevicePixelRatio: false,
+    withinPixelBudget: backingStore.pixelCount <= ROUTE_RUNNER_MAX_CANVAS_PIXEL_COUNT
+  };
+}
 
 export function createRouteRunnerMapGraphMemo(
   graphBuilder: (map: MapDefinition) => MapGraph = buildMapGraph

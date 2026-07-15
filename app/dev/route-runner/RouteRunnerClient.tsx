@@ -135,6 +135,7 @@ import {
   formatRouteAttemptVersionSnapshot
 } from "./routeAttemptVersionSnapshot";
 import {
+  getRouteRunnerCanvasBackingStore,
   createActiveDrawingPipelineResult,
   prepareTraceForRoutePipeline
 } from "./routeRunnerPerformance";
@@ -239,9 +240,8 @@ import {
   mapZoomDisplayPercent,
   routeRunnerMapZoomLimitsForViewport,
   resetMapViewport,
+  ROUTE_RUNNER_COMPACT_VIEWPORT_MAX_WIDTH_PX,
   ROUTE_RUNNER_MAP_ZOOM_LIMITS,
-  ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT,
-  ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH,
   ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX,
   setMapInteractionMode,
   shouldPreventWheelPageScrollOverMap,
@@ -379,14 +379,16 @@ import {
   type OsmExerciseDebugStopMarker
 } from "./routeRunnerOsmExerciseDebugOverlay";
 
-const CANVAS_WIDTH = 1120;
-const STUDENT_BETA_CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 760;
-const STUDENT_BETA_CANVAS_HEIGHT = 912;
 const STUDENT_BETA_PHONE_MEDIA_QUERY = `(max-width: ${ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX}px)`;
+const STUDENT_BETA_COMPACT_MEDIA_QUERY = `(max-width: ${ROUTE_RUNNER_COMPACT_VIEWPORT_MAX_WIDTH_PX}px)`;
 const STUDENT_BETA_MAP_MAX_WIDTH_CSS = "min(100%, 1920px, max(640px, calc(210.5dvh - 168px)))";
 const STUDENT_BETA_MAP_MAX_HEIGHT_CSS = "min(912px, calc(100dvh - 80px))";
 const STUDENT_BETA_COMPACT_LEGEND_MAX_HEIGHT_PX = 144;
+const ROUTE_RUNNER_SETUP_PANEL_ID = "route-runner-setup-panel";
+const ROUTE_RUNNER_FEEDBACK_PANEL_ID = "route-runner-feedback-panel";
+const ROUTE_RUNNER_HINT_PANEL_ID = "route-runner-training-hint";
+const ROUTE_RUNNER_MAP_INSTRUCTIONS_ID = "route-runner-map-instructions";
+const ROUTE_RUNNER_MAP_STATUS_ID = "route-runner-map-status";
 const SNAP_TOLERANCE = 24;
 const MIN_DRAWN_GESTURE_POINT_COUNT = 3;
 const MIN_DRAWN_GESTURE_DISTANCE = 10;
@@ -4284,17 +4286,15 @@ export function RouteRunnerClient({
   const isTrainingModeOnly = isStudentBetaRouteRunner && trainingModeOnly;
   const shouldRenderTrainingModePanel = showTrainingModePanel || isTrainingModeOnly;
   const [isStudentBetaPhoneViewport, setIsStudentBetaPhoneViewport] = useState(false);
+  const [isStudentBetaCompactViewport, setIsStudentBetaCompactViewport] = useState(false);
+  const [studentSetupOpen, setStudentSetupOpen] = useState(!isStudentBetaRouteRunner || isTrainingModeOnly);
   const isStudentBetaPhoneMap = isStudentBetaRouteRunner && isStudentBetaPhoneViewport;
-  const canvasWidth = isStudentBetaPhoneMap
-    ? ROUTE_RUNNER_PHONE_MAP_CANVAS_WIDTH
-    : isStudentBetaRouteRunner
-      ? STUDENT_BETA_CANVAS_WIDTH
-      : CANVAS_WIDTH;
-  const canvasHeight = isStudentBetaPhoneMap
-    ? ROUTE_RUNNER_PHONE_MAP_CANVAS_HEIGHT
-    : isStudentBetaRouteRunner
-      ? STUDENT_BETA_CANVAS_HEIGHT
-      : CANVAS_HEIGHT;
+  const canvasBackingStore = getRouteRunnerCanvasBackingStore({
+    studentBeta: isStudentBetaRouteRunner,
+    phone: isStudentBetaPhoneMap
+  });
+  const canvasWidth = canvasBackingStore.width;
+  const canvasHeight = canvasBackingStore.height;
   const activeMapZoomLimits = routeRunnerMapZoomLimitsForViewport({
     studentBeta: isStudentBetaRouteRunner,
     viewportWidth: isStudentBetaPhoneViewport ? ROUTE_RUNNER_PHONE_VIEWPORT_MAX_WIDTH_PX : Number.POSITIVE_INFINITY
@@ -4303,7 +4303,9 @@ export function RouteRunnerClient({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const submitRouteButtonRef = useRef<HTMLButtonElement | null>(null);
   const routeFeedbackPanelRef = useRef<HTMLElement | null>(null);
+  const routeFeedbackTriggerRef = useRef<HTMLButtonElement | null>(null);
   const learnerHintPanelRef = useRef<HTMLElement | null>(null);
+  const learnerHintReturnFocusRef = useRef<HTMLElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const panPointerIdRef = useRef<number | null>(null);
@@ -4415,27 +4417,34 @@ export function RouteRunnerClient({
       return;
     }
 
-    const mediaQuery = window.matchMedia(STUDENT_BETA_PHONE_MEDIA_QUERY);
-    const syncPhoneViewport = () => {
-      setIsStudentBetaPhoneViewport(mediaQuery.matches);
+    const phoneMediaQuery = window.matchMedia(STUDENT_BETA_PHONE_MEDIA_QUERY);
+    const compactMediaQuery = window.matchMedia(STUDENT_BETA_COMPACT_MEDIA_QUERY);
+    const syncResponsiveViewport = () => {
+      setIsStudentBetaPhoneViewport(phoneMediaQuery.matches);
+      setIsStudentBetaCompactViewport(compactMediaQuery.matches);
+      setStudentSetupOpen(isTrainingModeOnly && !compactMediaQuery.matches);
     };
 
-    syncPhoneViewport();
+    syncResponsiveViewport();
 
-    if (typeof mediaQuery.addEventListener === "function") {
-      mediaQuery.addEventListener("change", syncPhoneViewport);
+    if (typeof phoneMediaQuery.addEventListener === "function") {
+      phoneMediaQuery.addEventListener("change", syncResponsiveViewport);
+      compactMediaQuery.addEventListener("change", syncResponsiveViewport);
 
       return () => {
-        mediaQuery.removeEventListener("change", syncPhoneViewport);
+        phoneMediaQuery.removeEventListener("change", syncResponsiveViewport);
+        compactMediaQuery.removeEventListener("change", syncResponsiveViewport);
       };
     }
 
-    mediaQuery.addListener(syncPhoneViewport);
+    phoneMediaQuery.addListener(syncResponsiveViewport);
+    compactMediaQuery.addListener(syncResponsiveViewport);
 
     return () => {
-      mediaQuery.removeListener(syncPhoneViewport);
+      phoneMediaQuery.removeListener(syncResponsiveViewport);
+      compactMediaQuery.removeListener(syncResponsiveViewport);
     };
-  }, [isStudentBetaRouteRunner]);
+  }, [isStudentBetaRouteRunner, isTrainingModeOnly]);
 
   useEffect(() => {
     if (typeof document === "undefined") {
@@ -5105,6 +5114,13 @@ export function RouteRunnerClient({
     submitted: hasSubmittedCurrentDrawnAttempt,
     blocked: hasBlockedCurrentDrawnSubmit
   });
+  const routeRunnerAccessibleStatus = isSubmittingCurrentDrawnAttempt
+    ? "Submitting route."
+    : hasSubmittedCurrentDrawnAttempt
+      ? `Route submitted. ${learnerDrawnDisplayText}.`
+      : hasBlockedCurrentDrawnSubmit
+        ? `Route could not be scored. ${drawnSubmitState.message ?? learnerDrawnDisplayText}`
+        : `Route status: ${learnerDrawnDisplayText}.`;
   const pipelineStageBadges = getPipelineStageBadges(drawnPipelineResult, isDrawing);
   const pipelineIssueGroups = getPipelineIssueGroups(drawnPipelineResult, isDrawing);
   const visibleDrawnExerciseResult =
@@ -5525,6 +5541,35 @@ export function RouteRunnerClient({
 
     routeFeedbackPanelRef.current?.focus({ preventScroll: true });
   }, [routeFeedbackDrawerOpen, showAttemptFeedbackPanel]);
+
+  useEffect(() => {
+    if (!showLearnerTrainingHintPanel && !(routeFeedbackDrawerOpen && showAttemptFeedbackPanel)) {
+      return;
+    }
+
+    const handleDismissiblePanelKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (showLearnerTrainingHintPanel) {
+        event.preventDefault();
+        closeLearnerTrainingHint(true);
+        return;
+      }
+
+      if (routeFeedbackDrawerOpen && showAttemptFeedbackPanel) {
+        event.preventDefault();
+        closeRouteFeedbackDrawer(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleDismissiblePanelKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleDismissiblePanelKeyDown);
+    };
+  }, [routeFeedbackDrawerOpen, showAttemptFeedbackPanel, showLearnerTrainingHintPanel]);
 
   useEffect(() => {
     if (!isStudentBetaRouteRunner || showAttemptFeedbackPanel || !routeFeedbackDrawerOpen) {
@@ -6405,8 +6450,33 @@ export function RouteRunnerClient({
       return;
     }
 
+    learnerHintReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setRouteFeedbackDrawerOpen(false);
     setLearnerTrainingModeState((currentState) => requestLearnerTrainingHint({ state: currentState }));
+  }
+
+  function handleReopenLearnerTrainingHint() {
+    learnerHintReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setLearnerHintPresentation((currentState) => reopenLearnerTrainingHint(currentState));
+  }
+
+  function closeLearnerTrainingHint(restoreFocus: boolean) {
+    setLearnerHintInteractionPaused(false);
+    setLearnerHintPresentation((currentState) => dismissLearnerTrainingHint(currentState));
+
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => learnerHintReturnFocusRef.current?.focus({ preventScroll: true }));
+    }
+  }
+
+  function closeRouteFeedbackDrawer(restoreFocus: boolean) {
+    setRouteFeedbackDrawerOpen(false);
+
+    if (restoreFocus) {
+      window.requestAnimationFrame(() =>
+        (routeFeedbackTriggerRef.current ?? submitRouteButtonRef.current)?.focus({ preventScroll: true })
+      );
+    }
   }
 
   function handleReviewLearnerTrainingAttempt(
@@ -6767,6 +6837,27 @@ export function RouteRunnerClient({
     releaseMapPointerCapture(canvas, event.pointerId);
   }
 
+  function handlePointerCancel(event: PointerEvent<HTMLCanvasElement>) {
+    if (shouldPreventNativeMapGesture(event.pointerType)) {
+      event.preventDefault();
+    }
+
+    const cancelledDrawingPointer =
+      drawingPointerIdRef.current === event.pointerId ||
+      (drawingPointerIdRef.current !== null && activePinchGestureRef.current !== null);
+
+    releaseMapPointerCapture(event.currentTarget, event.pointerId);
+    clearMapPointerGestureState();
+    setIsPanningMap(false);
+    setIsDrawing(false);
+
+    if (cancelledDrawingPointer) {
+      setDrawnRouteDraft((currentDraft) =>
+        currentDraft.activeStrokeIndex === null ? currentDraft : undoLastRouteStroke(currentDraft)
+      );
+    }
+  }
+
   function handleMapAuxClick(event: MouseEvent<HTMLCanvasElement>) {
     if (isMiddleButtonMapPanPointer({ button: event.button, pointerType: "mouse" })) {
       event.preventDefault();
@@ -6946,7 +7037,10 @@ export function RouteRunnerClient({
   }
 
   return (
-    <div className={isStudentBetaRouteRunner ? "space-y-2" : "space-y-6"}>
+    <div
+      className={`min-w-0 ${isStudentBetaRouteRunner ? "space-y-2" : "space-y-6"}`}
+      data-route-runner
+    >
       <section
         className={
           isStudentBetaRouteRunner
@@ -7062,21 +7156,35 @@ export function RouteRunnerClient({
         </div>
       </section>
 
-      <section className={isStudentBetaRouteRunner ? "grid gap-2" : "grid gap-4"}>
+      <section
+        className={
+          isStudentBetaRouteRunner
+            ? "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2"
+            : "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4"
+        }
+      >
         <div
-          className={`grid gap-4 ${
+          className={`grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 ${
             isStudentBetaRouteRunner ? "order-1" : "order-3 xl:grid-cols-[minmax(320px,0.95fr)_minmax(280px,0.65fr)]"
           }`}
         >
           <details
-            open={!isStudentBetaRouteRunner || isTrainingModeOnly}
+            open={!isStudentBetaRouteRunner || studentSetupOpen}
+            onToggle={(event) => {
+              if (isStudentBetaRouteRunner) {
+                setStudentSetupOpen(event.currentTarget.open);
+              }
+            }}
             className={
               isStudentBetaRouteRunner
-                ? "group rounded-lg border border-slate-200 bg-white/95 shadow-sm"
-                : "rounded-lg border border-slate-200 bg-white shadow-sm"
+                ? "group min-w-0 rounded-lg border border-slate-200 bg-white/95 shadow-sm"
+                : "min-w-0 rounded-lg border border-slate-200 bg-white shadow-sm"
             }
           >
             <summary
+              aria-controls={ROUTE_RUNNER_SETUP_PANEL_ID}
+              aria-expanded={!isStudentBetaRouteRunner || studentSetupOpen}
+              role={isStudentBetaRouteRunner ? "button" : undefined}
               className={
                 isStudentBetaRouteRunner
                   ? "flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-3 text-sm font-semibold text-slate-950 marker:hidden sm:px-4"
@@ -7102,6 +7210,7 @@ export function RouteRunnerClient({
               </span>
             </summary>
             <div
+              id={ROUTE_RUNNER_SETUP_PANEL_ID}
               className={
                 isStudentBetaRouteRunner
                   ? "border-t border-slate-100 p-2 sm:p-3"
@@ -7545,6 +7654,8 @@ export function RouteRunnerClient({
                         isSubmittingCurrentDrawnAttempt
                       }
                       aria-label={learnerTrainingModePanel.primaryActions[2].ariaLabel}
+                      aria-controls={ROUTE_RUNNER_HINT_PANEL_ID}
+                      aria-expanded={showLearnerTrainingHintPanel}
                       className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
                     >
                       {learnerTrainingModePanel.primaryActions[2].label}
@@ -7835,9 +7946,9 @@ export function RouteRunnerClient({
                   {learnerTrainingModePanel.hint && !showAttemptFeedbackPanel && !learnerHintPresentation.isOpen ? (
                     <button
                       type="button"
-                      onClick={() =>
-                        setLearnerHintPresentation((currentState) => reopenLearnerTrainingHint(currentState))
-                      }
+                      onClick={handleReopenLearnerTrainingHint}
+                      aria-controls={ROUTE_RUNNER_HINT_PANEL_ID}
+                      aria-expanded={false}
                       className="mt-3 min-h-11 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-950 shadow-sm transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-200"
                     >
                       View hint
@@ -7962,12 +8073,12 @@ export function RouteRunnerClient({
         <div
           className={
             isStudentBetaRouteRunner
-              ? "grid gap-3"
+              ? "grid min-w-0 gap-3"
               : "contents"
           }
         >
           <section
-            className={`overflow-hidden border border-slate-200 bg-white shadow-sm ${
+            className={`min-w-0 overflow-hidden border border-slate-200 bg-white shadow-sm ${
               isStudentBetaRouteRunner ? "rounded-xl p-2 sm:p-3" : "rounded-lg p-4 sm:p-5"
             } ${isStudentBetaRouteRunner ? "order-2" : "order-1"}`}
           >
@@ -8090,8 +8201,26 @@ export function RouteRunnerClient({
                   : {})
               }}
             >
-              <div className="pointer-events-none absolute right-2 top-2 z-20 flex max-w-[calc(100%-1rem)] flex-wrap justify-end gap-1.5 sm:right-4 sm:top-4 sm:max-w-[calc(100%-2rem)] sm:gap-2">
-                <div className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm">
+              <p id={ROUTE_RUNNER_MAP_INSTRUCTIONS_ID} className="sr-only">
+                Interactive examination-atlas map. Use Draw with a pointer to trace a route, or switch to Pan to move
+                the map. Zoom controls and route status are available outside the canvas. Freehand drawing requires a
+                mouse, touch contact, or stylus.
+              </p>
+              <p
+                id={ROUTE_RUNNER_MAP_STATUS_ID}
+                className="sr-only"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+              >
+                {routeRunnerAccessibleStatus}
+              </p>
+              <div className="pointer-events-none absolute right-16 top-2 z-20 flex max-w-[calc(100%-4.5rem)] flex-wrap justify-end gap-1.5 sm:right-4 sm:top-4 sm:max-w-[calc(100%-2rem)] sm:gap-2">
+                <div
+                  className="pointer-events-auto inline-flex overflow-hidden rounded-md border border-slate-300 bg-white/95 shadow-sm"
+                  role="group"
+                  aria-label="Map interaction mode"
+                >
                   <button
                     type="button"
                     onClick={() => setRouteMapInteractionMode("draw")}
@@ -8193,7 +8322,7 @@ export function RouteRunnerClient({
                   Reset view
                 </button>
               </div>
-              <div className="pointer-events-auto absolute right-2 top-28 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md sm:right-4 sm:top-24">
+              <div className="pointer-events-auto absolute right-2 top-2 z-20 flex flex-col overflow-hidden rounded-lg border border-slate-300 bg-white/95 shadow-md sm:right-4 sm:top-24">
                 <button
                   type="button"
                   onClick={zoomInRouteMap}
@@ -8220,9 +8349,11 @@ export function RouteRunnerClient({
               </div>
               {showRouteFeedbackReopenButton ? (
                 <button
+                  ref={routeFeedbackTriggerRef}
                   type="button"
                   onClick={() => setRouteFeedbackDrawerOpen(true)}
                   aria-expanded={routeFeedbackDrawerOpen}
+                  aria-controls={ROUTE_RUNNER_FEEDBACK_PANEL_ID}
                   className="pointer-events-auto absolute bottom-14 right-2 z-30 inline-flex min-h-11 items-center justify-center rounded-full border border-blue-200 bg-white/95 px-4 py-2 text-sm font-semibold text-blue-900 shadow-md transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-100 sm:bottom-16 sm:right-4"
                 >
                   View feedback
@@ -8303,7 +8434,7 @@ export function RouteRunnerClient({
                 onPointerEnter={handlePointerEnter}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerEnd}
-                onPointerCancel={handlePointerEnd}
+                onPointerCancel={handlePointerCancel}
                 onPointerLeave={handlePointerLeave}
                 onAuxClick={handleMapAuxClick}
                 className={`block w-full touch-none select-none overscroll-contain ${
@@ -8313,6 +8444,8 @@ export function RouteRunnerClient({
                 }`}
                 style={isStudentBetaPhoneMap ? { aspectRatio: `${canvasWidth} / ${canvasHeight}` } : undefined}
                 aria-label={`${activeMap.name} drawing capture canvas`}
+                aria-describedby={`${ROUTE_RUNNER_MAP_INSTRUCTIONS_ID} ${ROUTE_RUNNER_MAP_STATUS_ID}`}
+                role="img"
               />
             </div>
 
@@ -8938,6 +9071,7 @@ export function RouteRunnerClient({
 
           {showLearnerTrainingHintPanel && learnerTrainingModePanel.hint ? (
             <aside
+              id={ROUTE_RUNNER_HINT_PANEL_ID}
               ref={learnerHintPanelRef}
               aria-label="Training hint"
               aria-describedby="learner-training-hint-timer"
@@ -8951,8 +9085,8 @@ export function RouteRunnerClient({
               }}
               className={
                 `${isStudentBetaPhoneMap
-                  ? "fixed inset-x-2 bottom-2 z-50 max-h-[58dvh] overflow-auto rounded-xl border border-sky-200 bg-white p-4 pb-16 shadow-2xl"
-                  : "fixed right-4 top-4 z-50 aspect-square w-[min(21rem,calc(100vw-2rem),calc(100dvh-2rem))] overflow-auto rounded-lg border border-sky-200 bg-white p-4 shadow-2xl"
+                  ? "fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-[calc(0.5rem+env(safe-area-inset-left))] right-[calc(0.5rem+env(safe-area-inset-right))] z-50 max-h-[58dvh] overflow-auto rounded-xl border border-sky-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl"
+                  : "fixed right-[calc(1rem+env(safe-area-inset-right))] top-[calc(1rem+env(safe-area-inset-top))] z-50 aspect-square w-[min(21rem,calc(100vw-2rem),calc(100dvh-2rem))] overflow-auto rounded-lg border border-sky-200 bg-white p-4 shadow-2xl"
                 } transition-opacity duration-[2000ms] ease-linear motion-reduce:transition-none ${
                   learnerHintIsFading ? "opacity-0" : "opacity-100"
                 }`
@@ -9006,10 +9140,7 @@ export function RouteRunnerClient({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    setLearnerHintInteractionPaused(false);
-                    setLearnerHintPresentation((currentState) => dismissLearnerTrainingHint(currentState));
-                  }}
+                  onClick={() => closeLearnerTrainingHint(true)}
                   className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-200"
                 >
                   Close
@@ -9044,9 +9175,15 @@ export function RouteRunnerClient({
                     </button>
                   ) : null}
                   <button
+                    ref={routeFeedbackTriggerRef}
                     type="button"
-                    onClick={() => setRouteFeedbackDrawerOpen((currentValue) => !currentValue)}
+                    onClick={() =>
+                      routeFeedbackDrawerOpen
+                        ? closeRouteFeedbackDrawer(true)
+                        : setRouteFeedbackDrawerOpen(true)
+                    }
                     aria-expanded={routeFeedbackDrawerOpen}
+                    aria-controls={ROUTE_RUNNER_FEEDBACK_PANEL_ID}
                     className="min-h-11 rounded-md border border-current/20 bg-white/90 px-3 py-2 text-sm font-semibold shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-current/20"
                   >
                     {routeFeedbackDrawerOpen ? "Hide details" : "View details"}
@@ -9058,6 +9195,7 @@ export function RouteRunnerClient({
 
           {shouldRenderAttemptFeedbackPanel ? (
             <section
+              id={ROUTE_RUNNER_FEEDBACK_PANEL_ID}
               ref={routeFeedbackPanelRef}
               tabIndex={-1}
               aria-label={isStudentBetaRouteRunner ? "Route feedback details" : "Attempt review"}
@@ -9065,7 +9203,9 @@ export function RouteRunnerClient({
                 isStudentBetaRouteRunner
                   ? isStudentBetaPhoneMap
                     ? "order-3 max-h-[55dvh] overflow-auto rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                    : "fixed inset-x-2 bottom-2 z-50 max-h-[78dvh] overflow-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-4 lg:w-[min(26rem,calc(100vw-2rem))] lg:max-h-none"
+                    : `fixed bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-[calc(0.5rem+env(safe-area-inset-left))] right-[calc(0.5rem+env(safe-area-inset-right))] z-50 overflow-auto rounded-2xl border border-slate-200 bg-white p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl lg:left-auto lg:bottom-[calc(1rem+env(safe-area-inset-bottom))] lg:right-[calc(1rem+env(safe-area-inset-right))] lg:top-[calc(1rem+env(safe-area-inset-top))] lg:w-[min(26rem,calc(100vw-2rem))] lg:max-h-none ${
+                        isStudentBetaCompactViewport ? "max-h-[68dvh]" : "max-h-[78dvh]"
+                      }`
                   : "order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
               }
             >
@@ -9091,10 +9231,7 @@ export function RouteRunnerClient({
                   {isStudentBetaRouteRunner ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setRouteFeedbackDrawerOpen(false);
-                        submitRouteButtonRef.current?.focus({ preventScroll: true });
-                      }}
+                      onClick={() => closeRouteFeedbackDrawer(true)}
                       className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                     >
                       {isStudentBetaPhoneMap ? "Hide details" : "Close"}

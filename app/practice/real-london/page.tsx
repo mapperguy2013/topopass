@@ -66,7 +66,7 @@ export default async function RealLondonBetaPracticePage({
       framePaddingClassName="px-2 py-3 sm:px-6 sm:py-6 lg:px-8"
     >
       <div className="space-y-3 sm:space-y-5">
-        <section className="rounded-lg border border-blue-100 bg-white p-3 shadow-sm sm:rounded-xl sm:p-5">
+        <section className="hidden rounded-lg border border-blue-100 bg-white p-3 shadow-sm sm:rounded-xl sm:p-5 xl:block">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-wide text-road">Learner Training</p>

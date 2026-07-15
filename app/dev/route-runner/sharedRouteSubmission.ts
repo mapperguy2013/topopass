@@ -159,6 +159,19 @@ function formatExtraDistance(distanceMeters: number): string {
   return distanceMeters <= 0 ? "0 m" : `+${Math.round(distanceMeters)} m`;
 }
 
+const INTERNAL_ROUTE_IDENTIFIER_PATTERN =
+  /\b(?:movement|node|road|segment)\s+(?:[a-z]*\d+(?:[-_:][a-z0-9]+)*|[a-z0-9]+(?:[-_:][a-z0-9]+)+)\b|\bosm-(?:way|node|relation)-[a-z0-9_-]+\b/i;
+
+function learnerSafeFeedbackLabel(value: string): string {
+  return INTERNAL_ROUTE_IDENTIFIER_PATTERN.test(value) ? "Route matching issue" : value;
+}
+
+function learnerSafeFeedbackDetail(value: string): string {
+  return INTERNAL_ROUTE_IDENTIFIER_PATTERN.test(value)
+    ? "The submitted line could not be matched to a continuous legal road sequence."
+    : value;
+}
+
 function feedbackItem(
   message: LearnerTrainingModeReview["feedback"]["messages"][number],
   index: number
@@ -173,12 +186,12 @@ function feedbackItem(
           ? "Wrong destination"
           : whatHappened.includes("checkpoint") && (whatHappened.includes("miss") || whatHappened.includes("not"))
             ? "Missed required stop"
-            : message.whatHappened;
+            : learnerSafeFeedbackLabel(message.whatHappened);
 
   return {
     id: `training-feedback-${index + 1}`,
     label,
-    detail: message.whyItMatters,
+    detail: learnerSafeFeedbackDetail(message.whyItMatters),
     severity:
       message.severity === "dangerous" || message.severity === "serious"
         ? "error"

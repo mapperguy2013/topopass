@@ -181,6 +181,45 @@ test("Training scoring adapts to beta feedback without exposing diagnostic ident
   assert.doesNotMatch(learnerText, /osm-way|segment-7|feedback-osm/);
 });
 
+test("Training feedback replaces raw route graph identifiers with learner-safe text", () => {
+  const review = {
+    scoring: {
+      status: "blocked",
+      passed: false,
+      scorePercent: 0,
+      metrics: {
+        attemptedDistanceMeters: Number.NaN,
+        expectedDistanceMeters: Number.NaN,
+        extraDistanceMeters: Number.NaN
+      }
+    },
+    feedback: {
+      summary: "The route could not be scored.",
+      improvements: [],
+      messages: [
+        {
+          id: "feedback-route-matching",
+          issueType: "route-drawing",
+          severity: "serious",
+          whatHappened: "Movement n13 to n12 on road r13 has no legal directed edge.",
+          whyItMatters: "Pipeline matching stopped at osm-way-123-segment-7.",
+          improvementSuggestion: "Draw one continuous line along connected roads."
+        }
+      ]
+    }
+  } as unknown as LearnerTrainingModeReview;
+
+  const adapted = trainingReviewToRouteAttemptReview(review);
+  const learnerText = JSON.stringify(adapted);
+
+  assert.equal(adapted.missedRestrictions[0].label, "Route matching issue");
+  assert.equal(
+    adapted.missedRestrictions[0].detail,
+    "The submitted line could not be matched to a continuous legal road sequence."
+  );
+  assert.doesNotMatch(learnerText, /n13|n12|r13|osm-way|segment-7|directed edge|pipeline/i);
+});
+
 test("beta and Learner Training pages use the same authoritative submission implementation", () => {
   const betaPage = readFileSync(new URL("../../practice/real-london/page.tsx", import.meta.url), "utf8");
   const trainingPage = readFileSync(new URL("../../practice/training/page.tsx", import.meta.url), "utf8");

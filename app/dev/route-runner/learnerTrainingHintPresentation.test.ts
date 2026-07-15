@@ -92,19 +92,23 @@ test("stale or invalid timer ticks do not advance the hint timer", () => {
 test("RouteRunner renders compact desktop and responsive mobile hint presentations", () => {
   const client = readFileSync(new URL("./RouteRunnerClient.tsx", import.meta.url), "utf8");
 
-  assert.match(client, /fixed right-4 top-4 z-50 aspect-square/);
+  assert.match(client, /fixed right-\[calc\(1rem\+env\(safe-area-inset-right\)\)\] top-\[calc\(1rem\+env\(safe-area-inset-top\)\)\] z-50 aspect-square/);
   assert.match(client, /w-\[min\(21rem,calc\(100vw-2rem\),calc\(100dvh-2rem\)\)\]/);
-  assert.match(client, /fixed inset-x-2 bottom-2 z-50 max-h-\[58dvh\]/);
+  assert.match(client, /fixed bottom-\[calc\(0\.5rem\+env\(safe-area-inset-bottom\)\)\].*max-h-\[58dvh\]/);
   assert.doesNotMatch(client, /fixed bottom-4 right-4 top-4/);
   assert.match(client, /transition-opacity duration-\[2000ms\] ease-linear/);
   assert.match(client, /onPointerEnter=\{\(\) => setLearnerHintInteractionPaused\(true\)\}/);
   assert.match(client, /onFocusCapture=\{\(\) => setLearnerHintInteractionPaused\(true\)\}/);
-  assert.match(client, /submitRouteButtonRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(client, /learnerHintReturnFocusRef\.current\?\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(
+    client,
+    /\(routeFeedbackTriggerRef\.current \?\? submitRouteButtonRef\.current\)\?\.focus\(\{ preventScroll: true \}\)/
+  );
 });
 
 test("Training hint panel avoids diagnostic identifiers and turn-by-turn instructions", () => {
   const client = readFileSync(new URL("./RouteRunnerClient.tsx", import.meta.url), "utf8");
-  const panelStart = client.indexOf("{showLearnerTrainingHintPanel");
+  const panelStart = client.indexOf("{showLearnerTrainingHintPanel && learnerTrainingModePanel.hint ? (");
   const panelEnd = client.indexOf("{showMobileRouteFeedbackBanner", panelStart);
   const hintPanel = client.slice(panelStart, panelEnd);
 

@@ -14,7 +14,7 @@ export default function DevRouteRunnerPage() {
   return (
     <AppShell title="Dev Route Runner" frameClassName="max-w-[1900px]">
       <div className="space-y-5">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section className="hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm xl:block">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Internal dev tool</p>

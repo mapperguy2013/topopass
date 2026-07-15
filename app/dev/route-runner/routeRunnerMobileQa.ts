@@ -30,6 +30,7 @@ import {
 } from "./routeRunnerRealLondonPilotQaPanel.ts";
 
 export type RouteRunnerMobileViewportCategory = "mobile" | "tablet" | "desktop";
+export type RouteRunnerViewportOrientation = "portrait" | "landscape" | "square";
 
 export type RouteRunnerMobileQaControlId =
   | "map-selector"
@@ -127,6 +128,7 @@ export type RouteRunnerMobileQaReport = {
   viewportWidth: number;
   viewportHeight: number;
   viewportCategory: RouteRunnerMobileViewportCategory;
+  orientation: RouteRunnerViewportOrientation;
   mapArea: RouteRunnerMobileQaMapArea;
   outerHorizontalPadding: number;
   practiceCardWidthRatio: number;
@@ -138,6 +140,9 @@ export type RouteRunnerMobileQaReport = {
   touchDrawingAvailable: boolean;
   zoomControlsReachable: boolean;
   pageScrollAccessible: boolean;
+  minimumTouchTargetPx: 44;
+  setupCollapsedByDefault: boolean;
+  safeAreaInsetsSupported: true;
   horizontalOverflowRisk: boolean;
   failures: RouteRunnerMobileQaFailure[];
   isPassing: boolean;
@@ -235,6 +240,7 @@ export function buildRouteRunnerMobileQaReport(
   const viewportWidth = normalizeDimension(input.viewportWidth);
   const viewportHeight = normalizeDimension(input.viewportHeight);
   const viewportCategory = categorizeRouteRunnerViewport(viewportWidth);
+  const orientation = categorizeRouteRunnerOrientation(viewportWidth, viewportHeight);
   const selectedExercise = selectRouteRunnerExercise(input.mapOption, input.selectedExerciseId);
   const mapArea = buildRouteRunnerMobileQaMapArea(input.mapOption, viewportWidth, viewportHeight, viewportCategory);
   const outerHorizontalPadding = routeRunnerPracticeHorizontalPadding(viewportCategory);
@@ -275,6 +281,7 @@ export function buildRouteRunnerMobileQaReport(
     viewportWidth,
     viewportHeight,
     viewportCategory,
+    orientation,
     mapArea,
     outerHorizontalPadding,
     practiceCardWidthRatio,
@@ -286,6 +293,9 @@ export function buildRouteRunnerMobileQaReport(
     touchDrawingAvailable,
     zoomControlsReachable,
     pageScrollAccessible,
+    minimumTouchTargetPx: 44,
+    setupCollapsedByDefault: viewportCategory !== "desktop",
+    safeAreaInsetsSupported: true,
     horizontalOverflowRisk,
     failures,
     isPassing: failures.length === 0
@@ -302,6 +312,14 @@ export function categorizeRouteRunnerViewport(width: number): RouteRunnerMobileV
   }
 
   return "desktop";
+}
+
+export function categorizeRouteRunnerOrientation(width: number, height: number): RouteRunnerViewportOrientation {
+  if (width === height) {
+    return "square";
+  }
+
+  return width > height ? "landscape" : "portrait";
 }
 
 function normalizeDimension(value: number): number {

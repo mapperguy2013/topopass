@@ -198,3 +198,22 @@ readable, and the Thames / bridge / Lambeth / Kennington context reads more
 strongly. King's Cross confirms the earlier A501 corridor correction remains
 intact. Hints, submission, review, scoring and learner progress were not
 changed.
+
+## Stage 8.10 Responsive and Accessibility Evidence
+
+Stage 8.10 captures are under `screenshots/stage-8-10/` and are indexed in
+`stage-8-10-mobile-tablet-accessibility-performance.md`. The dense Victoria
+benchmark was inspected at 1440 by 900, 1024 by 768, 768 by 1024, 390 by 844,
+360 by 800 and 844 by 390. Additional evidence covers desktop and mobile active
+routes, open/collapsed/reopened feedback, needs-review and comparison states,
+desktop and mobile hints, one-way/restriction context, Waterloo water and bridge
+context, keyboard focus and a 200% reflow-equivalent viewport.
+
+Normal-size inspection against both Phase 8 masters found that compact layouts
+retain the dense road, label, building, symbol and water treatment rather than
+suppressing geography. Toolbars wrap within the map, fixed zoom controls do not
+collide, learner setup collapses on compact widths, feedback and hints remain
+bounded, attribution stays visible and final document widths do not overflow.
+Stage 8.10 is implemented and browser-validated. Physical two-finger pinch,
+orientation, cutout-safe-area, feedback scrolling and hint interaction checks
+remain required before physical-device acceptance.

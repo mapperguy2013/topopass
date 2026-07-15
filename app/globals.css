@@ -38,3 +38,16 @@ body.mock-exam-focused [data-app-shell-frame] {
 body.mock-exam-focused [data-app-shell-heading] {
   margin-bottom: 1rem;
 }
+
+@media (forced-colors: active) {
+  [data-route-runner] button,
+  [data-route-runner] select,
+  [data-route-runner] summary {
+    border-color: ButtonText;
+  }
+
+  [data-route-runner] :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}

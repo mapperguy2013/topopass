@@ -70,6 +70,7 @@ stages may be split if implementation audit shows that a stage is too large.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
    Completed and visually accepted.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
+    Implemented and browser-validated; physical touch-device acceptance pending.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
     evidence.
 12. Stage 8.12: Final visual, functional, responsive, performance, accuracy and
@@ -117,6 +118,16 @@ drawing order. Learner-facing active and submitted states suppress pipeline
 diagnostics that competed with the route and atlas geography. Desktop and
 mobile evidence covers active, correct, incorrect, mistake and hint states at
 displayed 100%.
+Stage 8.10 now applies compact layout through tablet width, keeps the map early
+in learner page flow, bounds the development toolbar, adds safe-area-aware
+feedback and hint surfaces, improves disclosure and focus-return behavior, and
+separates interrupted pointer cancellation from completed route strokes. Its
+deterministic responsive model covers all six required desktop, tablet and
+mobile viewports, while explicit fixed backing-store profiles keep high-DPR
+canvas allocation below two million pixels. Browser visual QA covers dense map,
+active route, review, comparison, hint, restriction, water, focus and 200%
+reflow-equivalent states without weakening Stage 8.8.2 cartography. Physical
+two-finger, orientation and safe-area checks remain manual.
 
 ## Documents
 
@@ -132,4 +143,5 @@ displayed 100%.
 - [Stage 8.8.1 near-master visual correction](stage-8-8-1-visual-acceptance-correction.md)
 - [Stage 8.8.2 revised visual-master alignment](stage-8-8-2-revised-visual-master-alignment.md)
 - [Stage 8.9 learner and review overlay rebalance](stage-8-9-learner-review-overlay-rebalance.md)
+- [Stage 8.10 mobile, tablet, accessibility and performance](stage-8-10-mobile-tablet-accessibility-performance.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)
