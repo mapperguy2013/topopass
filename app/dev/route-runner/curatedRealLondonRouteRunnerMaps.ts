@@ -13,6 +13,12 @@ import {
   type CuratedRealLondonOverpassFixtureId
 } from "./curatedLondonOsmEnrichment.ts";
 import {
+  ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID,
+  PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID,
+  QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID,
+  WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID
+} from "./curatedRealLondonContextSupplements.ts";
+import {
   buildCuratedFixtureRoutableExercise,
   type CuratedFixtureRouteDiversityInput,
   type CuratedFixtureRoutePreflight
@@ -460,6 +466,7 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     attribution: getCuratedRealLondonFixtureMetadata("piccadilly-circus").attribution.text,
     fixtureName: "piccadillyCircusOverpass.json",
     sourceOverpassFixture: piccadillyCircusOverpassFixture,
+    contextSupplementLazyLoadId: PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID,
     devOnly: true,
     fixtureUse: piccadillyCircusOsmRoutePreflight.fixtureUse,
     fixturePerformanceGate: "betaPracticeAllowed",
@@ -477,6 +484,7 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     attribution: getCuratedRealLondonFixtureMetadata("waterloo-bridge").attribution.text,
     fixtureName: "waterlooBridgeOverpass.json",
     sourceOverpassFixture: waterlooBridgeOverpassFixture,
+    contextSupplementLazyLoadId: WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID,
     devOnly: true,
     fixtureUse: waterlooBridgeOsmRoutePreflight.fixtureUse,
     fixturePerformanceGate: "betaPracticeAllowed",
@@ -494,6 +502,7 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     attribution: getCuratedRealLondonFixtureMetadata("one-way-system-area").attribution.text,
     fixtureName: "oneWaySystemAreaOverpass.json",
     sourceOverpassFixture: oneWaySystemAreaOverpassFixture,
+    contextSupplementLazyLoadId: ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID,
     devOnly: true,
     fixtureUse: oneWaySystemAreaOsmRoutePreflight.fixtureUse,
     fixturePerformanceGate: "betaPracticeAllowed",
@@ -511,6 +520,7 @@ export const CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS: RouteRunnerMapOption[
     attribution: getCuratedRealLondonFixtureMetadata("quiet-residential-roads").attribution.text,
     fixtureName: "quietResidentialRoadsOverpass.json",
     sourceOverpassFixture: quietResidentialRoadsOverpassFixture,
+    contextSupplementLazyLoadId: QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID,
     devOnly: true,
     fixtureUse: quietResidentialRoadsOsmRoutePreflight.fixtureUse,
     fixturePerformanceGate: "betaPracticeAllowed",

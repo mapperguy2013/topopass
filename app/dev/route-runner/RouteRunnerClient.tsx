@@ -296,6 +296,10 @@ import {
   routeRunnerMapOptionNeedsLazyLoad
 } from "./lazyRouteRunnerMapOptions";
 import {
+  loadCuratedRealLondonContextSupplement,
+  mergeCuratedRealLondonContextFixture
+} from "./curatedRealLondonContextSupplements";
+import {
   buildCompactRestrictionOverlayModel,
   buildPracticeExercisesPanelModel,
   buildRouteRunnerPanelVisibility
@@ -4405,6 +4409,11 @@ export function RouteRunnerClient({
   const [lazyMapOptionsById, setLazyMapOptionsById] = useState<Record<string, RouteRunnerMapOption>>({});
   const [lazyMapLoadingById, setLazyMapLoadingById] = useState<Record<string, boolean>>({});
   const [lazyMapLoadErrorById, setLazyMapLoadErrorById] = useState<Record<string, string | null>>({});
+  const [contextSupplementsByMapId, setContextSupplementsByMapId] = useState<Record<string, unknown>>({});
+  const [contextSupplementLoadingByMapId, setContextSupplementLoadingByMapId] = useState<Record<string, boolean>>({});
+  const [contextSupplementLoadErrorByMapId, setContextSupplementLoadErrorByMapId] = useState<
+    Record<string, string | null>
+  >({});
   const [learnerTrainingModeState, setLearnerTrainingModeState] = useState<LearnerTrainingModeState>(() => {
     const initialState = isTrainingModeOnly
       ? openLearnerTrainingMode(createLearnerTrainingModeState())
@@ -4637,13 +4646,35 @@ export function RouteRunnerClient({
   );
   const selectedMapOption = betaMapAccess.selectedMapOption;
   const selectedMapOptionNeedsLazyLoad = routeRunnerMapOptionNeedsLazyLoad(selectedMapOption);
+  const selectedContextSupplementLazyLoadId = selectedMapOption.contextSupplementLazyLoadId;
+  const selectedContextSupplement = selectedContextSupplementLazyLoadId
+    ? contextSupplementsByMapId[selectedMapOption.id]
+    : undefined;
+  const selectedContextSupplementIsLoading =
+    Boolean(selectedContextSupplementLazyLoadId) &&
+    (selectedContextSupplement === undefined || contextSupplementLoadingByMapId[selectedMapOption.id] === true);
   const selectedMapOptionIsLoading =
-    selectedMapOptionNeedsLazyLoad &&
-    (lazyMapOptionsById[selectedMapOption.id] === undefined || lazyMapLoadingById[selectedMapOption.id] === true);
-  const selectedMapLoadingLabel = selectedMapOption.lazyLoadingLabel ?? `Loading ${selectedMapOption.label} map...`;
-  const selectedMapLoadError = lazyMapLoadErrorById[selectedMapOption.id] ?? null;
+    (selectedMapOptionNeedsLazyLoad &&
+      (lazyMapOptionsById[selectedMapOption.id] === undefined || lazyMapLoadingById[selectedMapOption.id] === true)) ||
+    selectedContextSupplementIsLoading;
+  const selectedMapLoadingLabel = selectedMapOptionNeedsLazyLoad
+    ? selectedMapOption.lazyLoadingLabel ?? `Loading ${selectedMapOption.label} map...`
+    : `Loading ${selectedMapOption.label} visual context...`;
+  const selectedMapLoadError =
+    lazyMapLoadErrorById[selectedMapOption.id] ?? contextSupplementLoadErrorByMapId[selectedMapOption.id] ?? null;
   const activeMap = selectedMapOption.map;
   const activeExercises = selectedMapOption.exercises;
+  const selectedSourceOverpassFixture = useMemo(
+    () =>
+      selectedContextSupplementLazyLoadId && selectedContextSupplement
+        ? mergeCuratedRealLondonContextFixture(selectedMapOption.sourceOverpassFixture, selectedContextSupplement)
+        : selectedMapOption.sourceOverpassFixture,
+    [
+      selectedContextSupplement,
+      selectedContextSupplementLazyLoadId,
+      selectedMapOption.sourceOverpassFixture
+    ]
+  );
   const isConvertedOsmMap = isConvertedOsmRouteRunnerMap(selectedMapOption);
   const selectedMapIsScoreable = routeRunnerMapOptionIsScoreable(selectedMapOption);
   const adaptivePracticeExercises = useMemo(
@@ -4846,6 +4877,61 @@ export function RouteRunnerClient({
   }, [lazyMapOptionsById, selectedMapOption.id, selectedMapOption.lazyLoadId]);
 
   useEffect(() => {
+    const contextSupplementLazyLoadId = selectedMapOption.contextSupplementLazyLoadId;
+
+    if (!contextSupplementLazyLoadId || contextSupplementsByMapId[selectedMapOption.id] !== undefined) {
+      return;
+    }
+
+    let cancelled = false;
+
+    setContextSupplementLoadingByMapId((currentState) => ({
+      ...currentState,
+      [selectedMapOption.id]: true
+    }));
+    setContextSupplementLoadErrorByMapId((currentState) => ({
+      ...currentState,
+      [selectedMapOption.id]: null
+    }));
+
+    loadCuratedRealLondonContextSupplement(contextSupplementLazyLoadId)
+      .then((contextFixture) => {
+        if (cancelled) {
+          return;
+        }
+
+        setContextSupplementsByMapId((currentState) => ({
+          ...currentState,
+          [selectedMapOption.id]: contextFixture
+        }));
+      })
+      .catch((caughtError) => {
+        if (cancelled) {
+          return;
+        }
+
+        setContextSupplementLoadErrorByMapId((currentState) => ({
+          ...currentState,
+          [selectedMapOption.id]: readableError(caughtError)
+        }));
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+
+        setContextSupplementLoadingByMapId((currentState) => ({
+          ...currentState,
+          [selectedMapOption.id]: false
+        }));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contextSupplementsByMapId, selectedMapOption.contextSupplementLazyLoadId, selectedMapOption.id]);
+
+  useEffect(() => {
     if (exerciseId !== selectedExerciseId) {
       setExerciseId(selectedExerciseId);
     }
@@ -4919,16 +5005,16 @@ export function RouteRunnerClient({
   const syntheticBackgroundFeatures = useMemo(
     () =>
       buildSyntheticBackgroundFeatures(activeMap, {
-        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+        sourceOverpassFixture: selectedSourceOverpassFixture
       }),
-    [activeMap, selectedMapOption.sourceOverpassFixture]
+    [activeMap, selectedSourceOverpassFixture]
   );
   const syntheticLinearFeatures = useMemo(
     () =>
       buildSyntheticLinearFeatures(activeMap, {
-        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+        sourceOverpassFixture: selectedSourceOverpassFixture
       }),
-    [activeMap, selectedMapOption.sourceOverpassFixture]
+    [activeMap, selectedSourceOverpassFixture]
   );
   const syntheticRoadVisuals = useMemo(() => buildSyntheticRoadVisuals(activeMap), [activeMap]);
   const trainingRouteExercise = useMemo(
@@ -4950,9 +5036,9 @@ export function RouteRunnerClient({
   const syntheticLandmarkVisuals = useMemo(
     () =>
       buildSyntheticLandmarkVisuals(activeMap, selectedExercise, {
-        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+        sourceOverpassFixture: selectedSourceOverpassFixture
       }),
-    [activeMap, selectedExercise, selectedMapOption.sourceOverpassFixture]
+    [activeMap, selectedExercise, selectedSourceOverpassFixture]
   );
   const syntheticMapLabels = useMemo(
     () =>
@@ -4960,12 +5046,12 @@ export function RouteRunnerClient({
         includeOsmRoadLabels: true,
         backgroundFeatures: syntheticBackgroundFeatures,
         linearFeatures: syntheticLinearFeatures,
-        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+        sourceOverpassFixture: selectedSourceOverpassFixture
       }),
     [
       activeMap,
       selectedExercise,
-      selectedMapOption.sourceOverpassFixture,
+      selectedSourceOverpassFixture,
       syntheticBackgroundFeatures,
       syntheticLinearFeatures
     ]
@@ -5033,7 +5119,7 @@ export function RouteRunnerClient({
         enabled: true,
         isConvertedOsmMap,
         renderBounds: baseViewport.mapBounds,
-        sourceOverpassFixture: selectedMapOption.sourceOverpassFixture
+        sourceOverpassFixture: selectedSourceOverpassFixture
       });
     },
     [
@@ -5043,7 +5129,7 @@ export function RouteRunnerClient({
       isConvertedOsmMap,
       osmExerciseDebugOverlayState.visible,
       selectedExercise,
-      selectedMapOption.sourceOverpassFixture,
+      selectedSourceOverpassFixture,
       visibleOsmExerciseDebugOverlayAvailable
     ]
   );

@@ -63,6 +63,14 @@ import {
   kingsCrossEustonOsmRouteRunnerMapOption
 } from "./curatedKingsCrossEustonRouteRunnerMap.ts";
 import {
+  KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID,
+  ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID,
+  PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID,
+  QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID,
+  WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID,
+  mergeCuratedRealLondonContextFixture
+} from "./curatedRealLondonContextSupplements.ts";
+import {
   VICTORIA_WESTMINSTER_VAUXHALL_FIXTURE_LOAD_TIMING,
   victoriaWestminsterVauxhallOsmRouteMap,
   victoriaWestminsterVauxhallOsmRouteRunnerMapOption
@@ -927,6 +935,105 @@ test("Stage 158 final Phase 6 layer stack preserves visual overlay order", () =>
   assert.ok(layerIndex("hints") < layerIndex("review-callouts"));
   assert.ok(layerIndex("review-callouts") < layerIndex("selected-focused-overlays"));
 });
+
+test("Stage 8.8.3 context supplements enrich visual fabric without replacing route graphs", () => {
+  const optionForFixture = (fixtureName: string) => {
+    const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find(
+      (candidate) => candidate.fixtureName === fixtureName
+    );
+
+    assert.ok(option, fixtureName);
+    return option;
+  };
+  const cases = [
+    {
+      fixtureName: "piccadillyCircusOverpass.json",
+      routeFixture: piccadillyCircusOverpassFixture,
+      option: optionForFixture("piccadillyCircusOverpass.json"),
+      contextSupplementLazyLoadId: PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID,
+      expectedRoads: 905,
+      minimumRenderedBuildings: 2400
+    },
+    {
+      fixtureName: "waterlooBridgeOverpass.json",
+      routeFixture: waterlooBridgeOverpassFixture,
+      option: optionForFixture("waterlooBridgeOverpass.json"),
+      contextSupplementLazyLoadId: WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID,
+      expectedRoads: 2147,
+      minimumRenderedBuildings: 2200
+    },
+    {
+      fixtureName: "oneWaySystemAreaOverpass.json",
+      routeFixture: oneWaySystemAreaOverpassFixture,
+      option: optionForFixture("oneWaySystemAreaOverpass.json"),
+      contextSupplementLazyLoadId: ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID,
+      expectedRoads: 2662,
+      minimumRenderedBuildings: 4400
+    },
+    {
+      fixtureName: "quietResidentialRoadsOverpass.json",
+      routeFixture: quietResidentialRoadsOverpassFixture,
+      option: optionForFixture("quietResidentialRoadsOverpass.json"),
+      contextSupplementLazyLoadId: QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID,
+      expectedRoads: 1259,
+      minimumRenderedBuildings: 4200
+    },
+    {
+      fixtureName: "kingsCrossEustonOverpass.json",
+      routeFixture: kingsCrossEustonOverpassFixture,
+      option: kingsCrossEustonOsmRouteRunnerMapOption,
+      contextSupplementLazyLoadId: KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID,
+      expectedRoads: 7838,
+      minimumRenderedBuildings: 3500
+    }
+  ] as const;
+
+  for (const fixtureCase of cases) {
+    const contextFixture = loadContextSupplementFixture(fixtureCase.contextSupplementLazyLoadId);
+    const renderFixture = mergeCuratedRealLondonContextFixture(fixtureCase.routeFixture, contextFixture);
+    const routeCoverage = auditRealLondonContextCoverage(fixtureCase.routeFixture).counts;
+    const renderCoverage = auditRealLondonContextCoverage(renderFixture).counts;
+    const backgroundFeatures = buildSyntheticBackgroundFeatures(fixtureCase.option.map, {
+      sourceOverpassFixture: renderFixture
+    });
+    const renderedBuildings = backgroundFeatures.filter((feature) => feature.kind === "building");
+
+    assert.equal(fixtureCase.option.map.roads.length, fixtureCase.expectedRoads, fixtureCase.fixtureName);
+    assert.equal(fixtureCase.option.sourceOverpassFixture, fixtureCase.routeFixture, fixtureCase.fixtureName);
+    assert.equal(
+      fixtureCase.option.contextSupplementLazyLoadId,
+      fixtureCase.contextSupplementLazyLoadId,
+      fixtureCase.fixtureName
+    );
+    assert.ok(
+      renderCoverage.buildingFootprintFeatures > routeCoverage.buildingFootprintFeatures,
+      fixtureCase.fixtureName
+    );
+    assert.ok(renderCoverage.landUseBlockFeatures >= routeCoverage.landUseBlockFeatures, fixtureCase.fixtureName);
+    assert.ok(renderCoverage.parkOpenSpaceFeatures >= routeCoverage.parkOpenSpaceFeatures, fixtureCase.fixtureName);
+    assert.ok(
+      renderedBuildings.length >= fixtureCase.minimumRenderedBuildings,
+      `${fixtureCase.fixtureName} rendered buildings=${renderedBuildings.length}`
+    );
+  }
+});
+
+function loadContextSupplementFixture(supplementId: string): unknown {
+  const fixtureNameBySupplementId = new Map([
+    [PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID, "piccadillyCircusContextOverpass.json"],
+    [WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID, "waterlooBridgeContextOverpass.json"],
+    [KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID, "kingsCrossEustonContextOverpass.json"],
+    [ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID, "oneWaySystemAreaContextOverpass.json"],
+    [QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID, "quietResidentialRoadsContextOverpass.json"]
+  ]);
+  const fixtureName = fixtureNameBySupplementId.get(supplementId);
+
+  if (!fixtureName) {
+    throw new Error(`Unknown Stage 8.8.3 context supplement ${supplementId}.`);
+  }
+
+  return JSON.parse(readFileSync(`lib/map-engine/osm/fixtures/${fixtureName}`, "utf8")) as unknown;
+}
 
 test("Stage 8.4 road corridors stay below labels restrictions and learner overlays", () => {
   const layerIndex = (layer: RealLondonFinalPhase6Layer) => FINAL_PHASE_6_REAL_LONDON_LAYER_STACK.indexOf(layer);

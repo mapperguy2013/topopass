@@ -1,5 +1,6 @@
 import type { RouteExercise } from "../../../lib/map-engine/index.ts";
 import kingsCrossEustonOverpassFixture from "../../../lib/map-engine/osm/fixtures/kingsCrossEustonOverpass.json" with { type: "json" };
+import { KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID } from "./curatedRealLondonContextSupplements.ts";
 import {
   KINGS_CROSS_EUSTON_OSM_MAP_ID,
   buildCuratedRealLondonOsmMap,
@@ -105,6 +106,7 @@ export const kingsCrossEustonOsmRouteRunnerMapOption: RouteRunnerMapOption = {
   attribution: getCuratedRealLondonFixtureMetadata("kingsCrossEuston").attribution.text,
   fixtureName: "kingsCrossEustonOverpass.json",
   sourceOverpassFixture: kingsCrossEustonOverpassFixture,
+  contextSupplementLazyLoadId: KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID,
   devOnly: true,
   fixtureUse: kingsCrossEustonOsmRoutePreflight.fixtureUse,
   fixturePerformanceGate: "betaPracticeAllowedWithLoading"

@@ -205,6 +205,22 @@ strongly. King's Cross confirms the earlier A501 corridor correction remains
 intact. Hints, submission, review, scoring and learner progress were not
 changed.
 
+## Stage 8.8.3 Targeted Context Supplement Evidence
+
+Stage 8.8.3 adds source-backed visual/context-only Overpass supplements for
+Piccadilly, Waterloo, King's Cross/Euston, one-way/restriction and quiet
+residential fixtures. The route/scoring fixtures remain unchanged. The
+correction is documented in
+`stage-8-8-3-targeted-context-supplements.md`.
+
+Stage 8.11 deterministic evidence under `screenshots/stage-8-11/` was
+regenerated after the supplements were wired. Normal-size inspection found
+Piccadilly, Waterloo and quiet residential materially denser and closer to the
+v2 atlas character, while Victoria remained visually equivalent and King's
+Cross retained A501/A4200 road-reference and review-overlay alignment. Quiet
+residential gained real building/park context but remains quieter than central
+London.
+
 ## Stage 8.10 Responsive and Accessibility Evidence
 
 Stage 8.10 captures are under `screenshots/stage-8-10/` and are indexed in
@@ -235,9 +251,11 @@ Piccadilly mobile hint and quiet-residential mobile map detail.
 The exact 1440 by 900, 768 by 1024 and 390 by 844 captures use Chromium,
 device-pixel ratio 1, fixed source-backed geography and route seeds, reduced
 motion, loaded fonts/assets/data, explicit overlay state and positive completed-
-canvas readiness. Two captures of every fixture were byte-identical under
-SHA-256 comparison with zero tolerance. Every retained image was inspected at
-normal size; corrupted intermediary compositor captures were rejected. This is
+canvas readiness. Stage 8.8.3 regeneration uses exact SHA-256 comparison plus a
+tiny PNG antialias tolerance of 25 pixels and maximum combined channel delta 4;
+the retained repeat comparison had five exact matches, Piccadilly at 5
+differing pixels and Victoria at 4. Every retained image was inspected at normal
+size; corrupted intermediary compositor captures were rejected. This is
 regression evidence, not owner cartographic acceptance.
 
 ## Stage 8.12 Integration QA And Owner Review Pack

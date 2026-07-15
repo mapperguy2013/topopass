@@ -23,6 +23,14 @@ import {
   ROUTE_RUNNER_MAP_OPTIONS_WITH_CURATED_REAL_LONDON
 } from "./curatedRealLondonRouteRunnerMaps.ts";
 import {
+  KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID,
+  ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID,
+  PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID,
+  QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID,
+  WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID,
+  mergeCuratedRealLondonContextFixture
+} from "./curatedRealLondonContextSupplements.ts";
+import {
   atlasSymbolKindForVisual,
   buildSyntheticBackgroundFeatures,
   buildSyntheticLandmarkVisuals,
@@ -491,6 +499,15 @@ function hydrateStressFixtureOption(option: RouteRunnerMapOption, options: Phase
     };
   }
 
+  if (option.contextSupplementLazyLoadId && option.sourceOverpassFixture) {
+    const contextFixture = loadContextSupplementFixture(option.contextSupplementLazyLoadId);
+
+    return {
+      ...option,
+      sourceOverpassFixture: mergeCuratedRealLondonContextFixture(option.sourceOverpassFixture, contextFixture)
+    };
+  }
+
   return option;
 }
 
@@ -499,7 +516,34 @@ function loadCentralLondonOverpassFixture(): OverpassJsonResponse {
 }
 
 function loadKingsCrossEustonOverpassFixture(): OverpassJsonResponse {
-  return requireJson("../../../lib/map-engine/osm/fixtures/kingsCrossEustonOverpass.json") as OverpassJsonResponse;
+  const routeFixture = requireJson("../../../lib/map-engine/osm/fixtures/kingsCrossEustonOverpass.json") as OverpassJsonResponse;
+  const contextFixture = loadContextSupplementFixture(KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID);
+
+  return mergeCuratedRealLondonContextFixture(routeFixture, contextFixture) as OverpassJsonResponse;
+}
+
+function loadContextSupplementFixture(supplementId: string): OverpassJsonResponse {
+  if (supplementId === PICCADILLY_CIRCUS_CONTEXT_SUPPLEMENT_ID) {
+    return requireJson("../../../lib/map-engine/osm/fixtures/piccadillyCircusContextOverpass.json") as OverpassJsonResponse;
+  }
+
+  if (supplementId === WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID) {
+    return requireJson("../../../lib/map-engine/osm/fixtures/waterlooBridgeContextOverpass.json") as OverpassJsonResponse;
+  }
+
+  if (supplementId === KINGS_CROSS_EUSTON_CONTEXT_SUPPLEMENT_ID) {
+    return requireJson("../../../lib/map-engine/osm/fixtures/kingsCrossEustonContextOverpass.json") as OverpassJsonResponse;
+  }
+
+  if (supplementId === ONE_WAY_SYSTEM_AREA_CONTEXT_SUPPLEMENT_ID) {
+    return requireJson("../../../lib/map-engine/osm/fixtures/oneWaySystemAreaContextOverpass.json") as OverpassJsonResponse;
+  }
+
+  if (supplementId === QUIET_RESIDENTIAL_ROADS_CONTEXT_SUPPLEMENT_ID) {
+    return requireJson("../../../lib/map-engine/osm/fixtures/quietResidentialRoadsContextOverpass.json") as OverpassJsonResponse;
+  }
+
+  throw new Error(`Unknown Phase 8.8.3 context supplement ${supplementId}.`);
 }
 
 function loadVictoriaWestminsterVauxhallOverpassFixture(): OverpassJsonResponse {

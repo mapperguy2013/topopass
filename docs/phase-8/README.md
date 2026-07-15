@@ -67,6 +67,9 @@ stages may be split if implementation audit shows that a stage is too large.
    Completed and visually accepted.
    Stage 8.8.2 is the revised visual-master base-map alignment pass.
    Completed and visually accepted.
+   Stage 8.8.3 is the targeted source-backed context-supplement pass for
+   lighter non-Victoria visual fixtures. Completed; owner visual acceptance and
+   physical touch-device QA remain separate.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
    Completed and visually accepted.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
@@ -74,8 +77,8 @@ stages may be split if implementation audit shows that a stage is too large.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
     evidence. Completed and browser-validated.
 12. Stage 8.12: Integration QA, archive manifest and owner review pack.
-    Completed. Phase 8 remains pending owner visual inspection, with a focused
-    Stage 8.8.3 correction still possible.
+    Completed. Phase 8 remains pending owner visual inspection and physical
+    touch-device QA.
 
 ## Current Status
 
@@ -112,7 +115,13 @@ principal reset to include Lambeth and Kennington context, strengthens the
 yellow/orange road hierarchy, darkens casings, increases compact local labels,
 preserves red A/B references and adds richer source-backed symbols without
 changing source geography or overlays. The benchmark remains dev-only,
-unscoreable and absent from learner beta map catalogues. Stage 8.9 now uses
+unscoreable and absent from learner beta map catalogues. Stage 8.8.3 adds
+targeted source-backed visual context supplements for Piccadilly, Waterloo,
+King's Cross/Euston, one-way/restriction and quiet residential fixtures after
+auditing that their route exports contained sparse building/context coverage.
+The supplements are separate Overpass JSON files, are used only through the
+renderer source context path, and leave route graphs, scoring and learner
+interactions unchanged. Stage 8.9 now uses
 typed learner/review route and marker tokens, compact visible markers with
 separate interaction targets, deterministic overlay ownership and a stable
 drawing order. Learner-facing active and submitted states suppress pipeline
@@ -133,14 +142,14 @@ Stage 8.11 now provides seven typed deterministic production-renderer fixtures
 covering dense neutral geography, an active route, hint, correct review,
 incorrect review, desktop, tablet and mobile states. Positive canvas readiness
 waits for fonts, source data, marker assets, requested overlay state, scroll
-target and a completed draw. Repeated Chromium captures are byte-identical at
-zero tolerance, and committed PNG evidence preserves attribution and the Phase
+target and a completed draw. Repeated Chromium captures are byte-identical
+except for a tiny documented PNG antialias tolerance in the regenerated Stage
+8.8.3 evidence, and committed PNG evidence preserves attribution and the Phase
 8.8.2/8.9 visual hierarchy. Stage 8.12 indexes and verifies both approved
 references, the Phase 8 screenshot archive and the deterministic evidence. Its
 normal-size desktop, tablet and mobile review found no integration regression,
 but automated checks do not establish final cartographic acceptance. Phase 8
-remains pending owner visual inspection; Stage 8.8.3 remains available for a
-focused visual correction if that inspection identifies a material gap.
+remains pending owner visual inspection and physical touch-device QA.
 
 ## Documents
 
@@ -155,6 +164,7 @@ focused visual correction if that inspection identifies a material gap.
 - [Stage 8.8 principal scale and density](stage-8-8-principal-scale-and-density.md)
 - [Stage 8.8.1 near-master visual correction](stage-8-8-1-visual-acceptance-correction.md)
 - [Stage 8.8.2 revised visual-master alignment](stage-8-8-2-revised-visual-master-alignment.md)
+- [Stage 8.8.3 targeted context supplements](stage-8-8-3-targeted-context-supplements.md)
 - [Stage 8.9 learner and review overlay rebalance](stage-8-9-learner-review-overlay-rebalance.md)
 - [Stage 8.10 mobile, tablet, accessibility and performance](stage-8-10-mobile-tablet-accessibility-performance.md)
 - [Stage 8.11 deterministic visual regression](stage-8-11-deterministic-visual-regression.md)

@@ -33,6 +33,7 @@ export type RouteRunnerMapOption = {
   scoreable?: boolean;
   lazyLoadId?: string;
   lazyLoadingLabel?: string;
+  contextSupplementLazyLoadId?: string;
 };
 
 export type RouteRunnerMapBounds = {

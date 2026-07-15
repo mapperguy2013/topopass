@@ -1,9 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { convertOverpassJsonToRouteMap, type OverpassJsonResponse } from "../../../lib/map-engine/osm/index.ts";
 import { buildRealLondonContextFeatures } from "./realLondonContextData.ts";
 import { CURATED_REAL_LONDON_OVERPASS_FIXTURES } from "./curatedLondonOsmEnrichment.ts";
 import { CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS } from "./curatedRealLondonRouteRunnerMaps.ts";
+import {
+  WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID,
+  mergeCuratedRealLondonContextFixture
+} from "./curatedRealLondonContextSupplements.ts";
 import {
   buildPhase8AuditReportForFixture,
   buildPhase8GeographicRenderDataAuditReport,
@@ -238,10 +243,20 @@ test("Phase 8 context feature totals agree with buildRealLondonContextFeatures",
   const option = CURATED_REAL_LONDON_ROUTE_RUNNER_MAP_OPTIONS.find((candidate) => candidate.fixtureName === "waterlooBridgeOverpass.json");
 
   assert.ok(option?.sourceOverpassFixture);
-  const contextFeatures = buildRealLondonContextFeatures(option.map, option.sourceOverpassFixture);
+  const contextFixture = loadWaterlooContextSupplementFixture();
+  const renderFixture = mergeCuratedRealLondonContextFixture(option.sourceOverpassFixture, contextFixture);
+  const contextFeatures = buildRealLondonContextFeatures(option.map, renderFixture);
 
   assert.equal(fixtureReport("waterlooBridgeOverpass.json").contextAdapterCoverage.totalFeatures, contextFeatures.length);
 });
+
+function loadWaterlooContextSupplementFixture(): unknown {
+  assert.equal(WATERLOO_BRIDGE_CONTEXT_SUPPLEMENT_ID, "waterlooBridgeContext");
+
+  return JSON.parse(
+    readFileSync("lib/map-engine/osm/fixtures/waterlooBridgeContextOverpass.json", "utf8")
+  ) as unknown;
+}
 
 test("Stage 8.6 audit reports source-backed building renderer output", () => {
   const waterloo = fixtureReport("waterlooBridgeOverpass.json");
@@ -258,15 +273,15 @@ test("Stage 8.8 audit includes the bounded Victoria building-only context source
   assert.equal(victoria.sourceCoverage.usableClosedBuildingPolygons, 5970);
 });
 
-test("Stage 8.6 renderer-consumed real fixture polygon counts stay stable behind existing gates", () => {
+test("Stage 8.8.3 renderer-consumed real fixture polygon counts include targeted context supplements", () => {
   const expectedByFixture = new Map([
     ["centralLondonOverpass.json", [0, 0, 0]],
     ["kingsCrossEustonOverpass.json", [0, 0, 0]],
-    ["oneWaySystemAreaOverpass.json", [11, 18, 0]],
-    ["piccadillyCircusOverpass.json", [9, 9, 0]],
-    ["quietResidentialRoadsOverpass.json", [3, 8, 0]],
+    ["oneWaySystemAreaOverpass.json", [4411, 247, 218]],
+    ["piccadillyCircusOverpass.json", [2439, 57, 108]],
+    ["quietResidentialRoadsOverpass.json", [4297, 62, 72]],
     ["realLondonPilotOverpass.json", [0, 0, 0]],
-    ["waterlooBridgeOverpass.json", [15, 9, 0]]
+    ["waterlooBridgeOverpass.json", [2244, 139, 146]]
   ]);
 
   for (const [fixtureName, expected] of expectedByFixture) {
@@ -278,9 +293,9 @@ test("Stage 8.6 renderer-consumed real fixture polygon counts stay stable behind
     );
   }
 
-  assert.equal(report.aggregate.totals.generalBuildingPolygonsRendered, 38);
-  assert.equal(report.aggregate.totals.institutionalPolygonsRendered, 44);
-  assert.equal(report.aggregate.totals.landUsePolygonsRendered, 0);
+  assert.equal(report.aggregate.totals.generalBuildingPolygonsRendered, 13391);
+  assert.equal(report.aggregate.totals.institutionalPolygonsRendered, 505);
+  assert.equal(report.aggregate.totals.landUsePolygonsRendered, 544);
 });
 
 test("Phase 8 audit represents water multipolygon coverage where present", () => {

@@ -7,9 +7,10 @@ The evidence, references, deterministic fixtures and reproduction commands are
 now indexed and machine-checkable. Phase 8 remains pending owner visual
 inspection and is not complete.
 
-The owner may request a focused Stage 8.8.3 visual correction after comparing
-the current production evidence with both approved appearance references.
-Stage 8.12 does not make that decision and does not retune the map.
+The owner requested a focused Stage 8.8.3 visual correction after comparing
+the production evidence with both approved appearance references. Stage 8.8.3
+adds targeted source-backed context supplements for lighter non-Victoria
+fixtures; Stage 8.12 still does not declare final visual acceptance.
 
 ## Appearance References
 
@@ -58,9 +59,10 @@ Stage 8.11 provides the current regression anchor:
 | `quiet-residential-mobile` | 390 by 844 | Quiet residential context |
 
 The comparator verifies repeated capture directories by exact screenshot
-SHA-256 equality. The Stage 8.12 manifest check additionally verifies both
-master hashes, every evidence-folder image count, and the hash and dimensions of
-all seven committed Stage 8.11 images.
+SHA-256 equality or a tiny PNG pixel tolerance for browser antialias variance
+only. The Stage 8.12 manifest check additionally verifies both master hashes,
+every evidence-folder image count, and the hash and dimensions of all seven
+committed Stage 8.11 images.
 
 ### Missing Or Superseded Evidence
 
@@ -103,24 +105,18 @@ surfaces remain above the map. Compared with v2, the current output remains
 less typographically compressed and less uniformly dense. That difference is
 an owner decision, not an automated acceptance result.
 
-## Candidate For Stage 8.8.3
+## Stage 8.8.3 Correction
 
-Open Stage 8.8.3 only if owner review identifies a material visual gap. Candidate
-items are:
+Stage 8.8.3 has been opened and completed as a targeted context-supplement
+pass. It does not close owner acceptance. It added source-backed visual context
+supplements for Piccadilly, Waterloo, King's Cross/Euston, one-way/restriction
+and quiet residential fixtures while preserving route, scoring, snapping and
+restriction behavior.
 
-- increase useful source-backed local-label or building density where the
-  current production view still feels substantially more open than v2;
-- tighten district/place hierarchy if it reads too large or consumer-like;
-- rebalance major-road width, casing or junction authority if corridors feel
-  either weak or overpowering at displayed 100%;
-- strengthen genuine A/B reference prominence or spacing without repetition;
-- enrich missing bridge, river, rail, station, park, civic or institutional
-  context only after confirming the fixture contains that source data;
-- correct mobile clipping, overload or excessive suppression found during
-  owner or physical-device inspection.
-
-Any correction must be reusable, source-backed and independently validated.
-The visual masters must not supply geography or screenshot-specific constants.
+The correction addressed the owner-review gap around useful source-backed
+building and contextual density in non-Victoria fixtures. It did not rebalance
+major-road styling, labels or overlays, and it did not use the visual masters as
+geography. Details are in `stage-8-8-3-targeted-context-supplements.md`.
 
 ## Reproduction
 
@@ -140,6 +136,8 @@ npm.cmd run dev -- --hostname 127.0.0.1 --port 3011
 
 The other fixture ids are the names in the Stage 8.11 table. Follow
 `stage-8-11-deterministic-visual-regression.md` for the browser capture process.
+Stage 8.8.3 also adds `scripts/maps/capture-phase8-visual-regression.mjs` for
+isolated DevTools-driven captures that wait for the visual-ready canvas.
 Compare two capture directories with:
 
 ```powershell
@@ -162,16 +160,18 @@ size. Automated success and byte-identical PNGs do not complete Phase 8.
 
 ## Validation Results
 
-Validation completed on 15 July 2026:
+Latest validation completed on 15 July 2026 after the Stage 8.8.3 targeted
+context-supplement pass:
 
 - `npm.cmd run map:qa:phase8-owner-review`: passed; 2 references, 12 evidence
   folders and 7 deterministic screenshots matched the archive manifest.
 - `npm.cmd run lint`: passed.
-- `npm.cmd run test:map`: 1,229 passed, 0 failed, 0 skipped.
+- `npm.cmd run test:map`: 1,230 passed, 0 failed, 0 skipped.
 - `npm.cmd test`: all required constituent suites passed, 0 failed and 0
   skipped.
-- `npm.cmd run build`: passed. Six static pages exceeded the first 60-second
-  prerender attempt, retried automatically, and all 70 pages completed.
+- `npm.cmd run build`: passed.
+- `npm.cmd run map:visual:compare:phase8 -- docs/phase-8/screenshots/stage-8-11 .tmp/stage-8-11-repeat`:
+  passed.
 - `git diff --check`: passed.
 
 ## Preserved Non-Goals

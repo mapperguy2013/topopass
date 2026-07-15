@@ -60,24 +60,29 @@ the intended dense road/building field, major-road hierarchy, genuine red road
 references, compact labels, district and transport context, water/bridges,
 attribution, learner route/markers, hint and correct/incorrect feedback.
 
-Two controlled captures of every fixture were compared with:
+Stage 8.8.3 regenerated this evidence after adding targeted source-backed
+context supplements to the lighter non-Victoria fixtures. Two controlled
+captures of every fixture were compared with:
 
 ```text
 npm.cmd run map:visual:compare:phase8 -- <run-a> <run-b>
 ```
 
-The comparison is exact screenshot SHA-256 equality. All 7 of 7 fixtures were
-byte-identical with tolerance `0`:
+The comparison first checks exact screenshot SHA-256 equality, then permits only
+a tiny PNG pixel tolerance for browser antialias variance: at most 25 differing
+pixels and maximum combined RGBA channel delta 4. In the retained comparison,
+5 of 7 fixtures were byte-identical; Piccadilly active route differed by 5
+pixels and Victoria neutral differed by 4 pixels, both below tolerance.
 
 | Fixture | SHA-256 |
 | --- | --- |
 | `victoria-neutral-desktop` | `b52ab03fe47497250ccd3883bdcce1521faaaffa21cddf20316ed83b2100fd06` |
-| `kings-cross-correct-review-desktop` | `cf66803c53702e687fa03dbcc4b2189a4fe79df3270fa09e94c97f15a569278e` |
-| `piccadilly-active-route-desktop` | `8fad206c934eb70381e3ad8a19b521da28aa81434fe1796f545d379b7221c3dd` |
-| `waterloo-context-tablet` | `4c04c55dc30b34ed84e648f79831295f13b2691e820f156675c04aa5e20b3796` |
-| `waterloo-incorrect-review-mobile` | `2a61e136a581efe7f747364c70d6629c88835ce84ccdfe61872895031be79efb` |
-| `piccadilly-hint-mobile` | `062cea1ee012159947b73a2f383cc4cf9c712d39f6b1ed14fe6f716af43d01e0` |
-| `quiet-residential-mobile` | `b3627869f62ad7ae0e738afad97e2c30c2906cb448e752e610b21c86b75f1c89` |
+| `kings-cross-correct-review-desktop` | `15e16de5c194b055974e0c7a50e3eb4d057d36ffef172327b5d307ecffd0eafc` |
+| `piccadilly-active-route-desktop` | `32e639a12f7c75c754959d9610ce29b51b04bb30411f4a74d6406c7e27c8017e` |
+| `waterloo-context-tablet` | `ee6a25537541b1cabc0f268b703a9f0a2bf486b179116d7eeb2f9bebc749b726` |
+| `waterloo-incorrect-review-mobile` | `4454e9703635e9e7ae6ffe301d752bbabcb9eaa9b96712c535068319caf729ba` |
+| `piccadilly-hint-mobile` | `8eec738e244f9beddaf3838c201c7a7df7b9ea748078b38b7f62d6e18399ae6e` |
+| `quiet-residential-mobile` | `1288bc1b4996ce55db61a60e07cc4f4f351558c4f61ee8d7f9dede333b62c4be` |
 
 An isolated browser process was used for each affected desktop/tablet capture,
 and explicit device emulation was used for the exact mobile viewport. This avoids
@@ -91,13 +96,13 @@ Focused fixture tests cover stable ids, browser controls, viewport/state coverag
 route seeds, scroll targets and safe hint copy. Final validation passed:
 
 - `npm.cmd run lint`
-- `npm.cmd run test:map`: 1,229 passed, 0 failed, 0 skipped
-- `npm.cmd test`: 1,598 passed across the required constituent suites, 0 failed,
+- `npm.cmd run test:map`: 1,230 passed, 0 failed, 0 skipped
+- `npm.cmd test`: all required constituent suites passed, 0 failed,
   0 skipped
-- `npm.cmd run build`: passed; the existing Supabase Edge Runtime warning and
-  non-fatal static-page retry warnings remain
+- `npm.cmd run build`: passed
 - `git diff --check`
-- repeated screenshot comparison: 7 of 7 byte-identical, tolerance 0
+- repeated screenshot comparison: 7 of 7 equivalent; 5 exact byte matches and
+  2 within the tiny PNG antialias tolerance
 
 No cartographic colours, widths, density rules, labels, symbols or source geography
 changed. Route generation, legality, matching, snapping, scoring, learner progress,

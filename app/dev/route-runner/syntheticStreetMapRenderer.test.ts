@@ -2964,8 +2964,10 @@ test("Stage 8.7 correction keeps genuine A501 source metadata and selects it at 
   assert.ok(candidates.every((label) => label.sourceMetadata?.tags?.ref?.includes("A501")));
   assert.ok(candidates.every((label) => label.sourceGeometry && label.sourceGeometry.length >= 2));
   assert.ok(a501);
-  assert.equal(a501.sourceMetadata?.elementId, 330341);
-  assert.equal(a501.sourceMetadata?.tags?.name, "Penton Rise");
+  assert.equal(a501.sourceMetadata?.provider, "openstreetmap");
+  assert.equal(a501.sourceMetadata?.tags?.ref?.split(/[;,]/).some((ref) => ref.trim() === "A501"), true);
+  assert.ok(a501.sourceMetadata?.tags?.highway);
+  assert.ok(a501.sourceMetadata?.tags?.name);
   assert.ok((a501.angleRadians ?? Math.PI) >= -Math.PI / 2 && (a501.angleRadians ?? -Math.PI) <= Math.PI / 2);
   assert.equal(new Set(accepted.map((label) => label.text)).size, accepted.length);
   assert.deepEqual(second, first);

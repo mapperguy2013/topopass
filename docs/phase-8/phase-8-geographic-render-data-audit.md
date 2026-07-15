@@ -24,7 +24,10 @@ Victoria / Westminster / Vauxhall benchmark and uses it to gate principal-scale
 density without exposing the fixture to learner beta catalogues. Its correction
 adds a bounded building-only context source after proving that the lightweight
 route export held only 293 building ways and that semantic scale gates also
-suppressed the retained footprints at displayed 100%.
+suppressed the retained footprints at displayed 100%. Stage 8.8.3 adds targeted
+source-backed visual/context-only supplements for lighter non-Victoria fixtures.
+Those supplements are merged only into renderer source context and do not
+replace route conversion, preflights or scoring fixtures.
 
 ## Scope And Methodology
 
@@ -70,6 +73,25 @@ from current registry metadata, but full renderer preparation is intentionally
 not run in normal test paths because the existing gate records it as a
 dev-only stress fixture.
 
+## Stage 8.8.3 Supplement Counts
+
+Stage 8.8.3 leaves the route fixture rows above intact and adds separate
+context supplements. Counts below are source-backed adapted features before and
+after merging each supplement for rendering:
+
+| Fixture | Supplement raw elements | Buildings before / after | Land-use before / after | Parks before / after | Water before / after | Rendered buildings |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Piccadilly | 8,245 | 9 / 2,458 | 0 / 110 | 3 / 19 | 2 / 5 | 2,439 |
+| Waterloo | 9,875 | 15 / 2,283 | 0 / 147 | 60 / 171 | 13 / 21 | 2,244 |
+| King's Cross / Euston | 7,588 | 58 / 3,637 | 128 / 234 | 259 / 270 | 14 / 12 | 3,613 |
+| One-way / restriction | 12,889 | 11 / 4,458 | 0 / 219 | 49 / 157 | 2 / 4 | 4,411 |
+| Quiet residential | 5,994 | 3 / 4,302 | 0 / 73 | 19 / 128 | 4 / 22 | 4,297 |
+
+The King's Cross / Euston supplement uses a tighter Euston Road / King's Cross
+/ St Pancras visual corridor after the first wider pull proved too heavy for
+browser QA. The optional `barrier=*` group was skipped there after Overpass
+endpoint failures; all required visual context groups completed.
+
 ## Coverage Matrix
 
 | Category | Current source evidence | Current render-ready status | Current implication |
@@ -101,7 +123,10 @@ source behind an explicit lazy selection boundary and uses their dense road,
 reference, building, institution, land-use, park, water, rail, station and
 public-feature coverage only for development visual QA. The supplement changes
 context coverage only; route conversion remains based on the lightweight route
-fixture.
+fixture. Stage 8.8.3 applies the same separation to non-Victoria fixtures:
+Piccadilly, Waterloo, King's Cross/Euston, one-way/restriction and quiet
+residential receive separate visual context supplements while their route graph
+road counts and learner exercise behavior remain unchanged.
 
 The approved visual master therefore remains an appearance target only. Stage
 8.2 does not claim visual completion and does not change production map

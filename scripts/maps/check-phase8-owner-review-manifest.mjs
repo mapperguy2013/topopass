@@ -33,12 +33,12 @@ const evidenceFolders = [
 
 const deterministicScreenshots = [
   ["victoria-neutral-desktop.png", "b52ab03fe47497250ccd3883bdcce1521faaaffa21cddf20316ed83b2100fd06", 1440, 900],
-  ["kings-cross-correct-review-desktop.png", "cf66803c53702e687fa03dbcc4b2189a4fe79df3270fa09e94c97f15a569278e", 1440, 900],
-  ["piccadilly-active-route-desktop.png", "8fad206c934eb70381e3ad8a19b521da28aa81434fe1796f545d379b7221c3dd", 1440, 900],
-  ["waterloo-context-tablet.png", "4c04c55dc30b34ed84e648f79831295f13b2691e820f156675c04aa5e20b3796", 768, 1024],
-  ["waterloo-incorrect-review-mobile.png", "2a61e136a581efe7f747364c70d6629c88835ce84ccdfe61872895031be79efb", 390, 844],
-  ["piccadilly-hint-mobile.png", "062cea1ee012159947b73a2f383cc4cf9c712d39f6b1ed14fe6f716af43d01e0", 390, 844],
-  ["quiet-residential-mobile.png", "b3627869f62ad7ae0e738afad97e2c30c2906cb448e752e610b21c86b75f1c89", 390, 844]
+  ["kings-cross-correct-review-desktop.png", "15e16de5c194b055974e0c7a50e3eb4d057d36ffef172327b5d307ecffd0eafc", 1440, 900],
+  ["piccadilly-active-route-desktop.png", "32e639a12f7c75c754959d9610ce29b51b04bb30411f4a74d6406c7e27c8017e", 1440, 900],
+  ["waterloo-context-tablet.png", "ee6a25537541b1cabc0f268b703a9f0a2bf486b179116d7eeb2f9bebc749b726", 768, 1024],
+  ["waterloo-incorrect-review-mobile.png", "4454e9703635e9e7ae6ffe301d752bbabcb9eaa9b96712c535068319caf729ba", 390, 844],
+  ["piccadilly-hint-mobile.png", "8eec738e244f9beddaf3838c201c7a7df7b9ea748078b38b7f62d6e18399ae6e", 390, 844],
+  ["quiet-residential-mobile.png", "1288bc1b4996ce55db61a60e07cc4f4f351558c4f61ee8d7f9dede333b62c4be", 390, 844]
 ];
 
 function digest(bytes) {
