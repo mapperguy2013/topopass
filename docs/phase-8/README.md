@@ -73,8 +73,9 @@ stages may be split if implementation audit shows that a stage is too large.
     Implemented and browser-validated; physical touch-device acceptance pending.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
     evidence. Completed and browser-validated.
-12. Stage 8.12: Final visual, functional, responsive, performance, accuracy and
-    originality acceptance gate.
+12. Stage 8.12: Integration QA, archive manifest and owner review pack.
+    Completed. Phase 8 remains pending owner visual inspection, with a focused
+    Stage 8.8.3 correction still possible.
 
 ## Current Status
 
@@ -134,7 +135,12 @@ incorrect review, desktop, tablet and mobile states. Positive canvas readiness
 waits for fonts, source data, marker assets, requested overlay state, scroll
 target and a completed draw. Repeated Chromium captures are byte-identical at
 zero tolerance, and committed PNG evidence preserves attribution and the Phase
-8.8.2/8.9 visual hierarchy. Stage 8.12 has not started.
+8.8.2/8.9 visual hierarchy. Stage 8.12 indexes and verifies both approved
+references, the Phase 8 screenshot archive and the deterministic evidence. Its
+normal-size desktop, tablet and mobile review found no integration regression,
+but automated checks do not establish final cartographic acceptance. Phase 8
+remains pending owner visual inspection; Stage 8.8.3 remains available for a
+focused visual correction if that inspection identifies a material gap.
 
 ## Documents
 
@@ -152,4 +158,5 @@ zero tolerance, and committed PNG evidence preserves attribution and the Phase
 - [Stage 8.9 learner and review overlay rebalance](stage-8-9-learner-review-overlay-rebalance.md)
 - [Stage 8.10 mobile, tablet, accessibility and performance](stage-8-10-mobile-tablet-accessibility-performance.md)
 - [Stage 8.11 deterministic visual regression](stage-8-11-deterministic-visual-regression.md)
+- [Stage 8.12 integration QA and owner review](stage-8-12-integration-qa-owner-review.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

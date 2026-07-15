@@ -238,4 +238,24 @@ motion, loaded fonts/assets/data, explicit overlay state and positive completed-
 canvas readiness. Two captures of every fixture were byte-identical under
 SHA-256 comparison with zero tolerance. Every retained image was inspected at
 normal size; corrupted intermediary compositor captures were rejected. This is
-regression evidence, not the Stage 8.12 final acceptance or correction gate.
+regression evidence, not owner cartographic acceptance.
+
+## Stage 8.12 Integration QA And Owner Review Pack
+
+Stage 8.12 indexes the complete screenshot archive, verifies both appearance
+reference hashes, and verifies the count and integrity of the seven Stage 8.11
+deterministic images. Its review document is
+`stage-8-12-integration-qa-owner-review.md`, and its deterministic archive check
+is:
+
+```powershell
+npm.cmd run map:qa:phase8-owner-review
+```
+
+Representative desktop, tablet and mobile evidence was inspected at normal
+displayed size against both masters. The integration evidence is coherent and
+the learner/review layers remain readable above the dense base map. Phase 8 is
+still pending owner visual inspection. Physical-device checks remain pending,
+and the owner may request a focused Stage 8.8.3 visual correction if the current
+map remains materially too open, weakly compressed or understated in road
+reference hierarchy relative to the denser v2 direction.

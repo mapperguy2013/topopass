@@ -37,6 +37,7 @@
     "map:audit:phase8": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/maps/audit-phase8-geographic-render-data.ts",
     "map:audit:stage8-density": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/maps/audit-stage-8-8-1-density.ts",
     "map:visual:compare:phase8": "node scripts/maps/compare-phase8-visual-regression.mjs",
+    "map:qa:phase8-owner-review": "node scripts/maps/check-phase8-owner-review-manifest.mjs",
     "map:build:kings-cross-euston": "npm run map:render:kings-cross-euston && npm run map:graph:kings-cross-euston",
     "seed:questions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/seed-question-bank.ts"
   },

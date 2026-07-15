@@ -1,6 +1,10 @@
 # Phase 8 Cartography Acceptance
 
-The image below is the controlling Phase 8 visual master:
+The revised v2 image below is the primary controlling Phase 8 visual master:
+
+![Phase 8 revised approved examination atlas visual master](references/phase-8-approved-exam-atlas-visual-master-v2.png)
+
+The original v1 image remains a secondary appearance reference:
 
 ![Phase 8 approved examination atlas visual master](references/phase-8-approved-exam-atlas-visual-master.png)
 
@@ -64,5 +68,7 @@ the Real London renderer. Those screenshots must visibly belong to the same
 cartographic family as the approved visual master while remaining an original
 TOPOPASS implementation based only on permitted and attributed geography.
 
-Passing lint, unit tests, build, or fixture metadata checks is not enough
-without screenshot evidence and side-by-side visual review.
+Passing lint, unit tests, build, fixture metadata checks, or byte-identical
+screenshots is not enough without owner inspection and side-by-side visual
+review. Stage 8.12 archives the evidence but does not complete this gate. A
+focused Stage 8.8.3 correction remains possible after owner review.

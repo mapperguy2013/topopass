@@ -104,7 +104,8 @@ changed. Route generation, legality, matching, snapping, scoring, learner progre
 hint timing, submission/review behaviour, authentication, payments and deployment
 did not change. The Stage 8.10 fixed canvas backing-store bounds remain intact.
 
-Stage 8.12 still owns the final representative visual-acceptance and targeted
-correction gate. Stage 8.4's independent manual visual acceptance and Stage 8.10's
-physical two-finger, orientation, safe-area and touch checks remain pending.
-Stage 8.12 was not started.
+Stage 8.12 owns integration QA, evidence archiving and the owner review pack;
+it does not declare final visual acceptance. Stage 8.4's independent manual
+visual acceptance and Stage 8.10's physical two-finger, orientation, safe-area
+and touch checks remain pending. Owner review may request a focused Stage 8.8.3
+visual correction.
