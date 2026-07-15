@@ -370,6 +370,12 @@ import {
   toggleLearnerTrainingHintTimer
 } from "./learnerTrainingHintPresentation";
 import {
+  phase8VisualRegressionHintText,
+  type Phase8VisualRegressionRouteSeed,
+  type Phase8VisualRegressionScrollTarget,
+  type Phase8VisualRegressionState
+} from "./phase8VisualRegressionFixtures";
+import {
   buildOsmExerciseDebugOverlayModel,
   canOfferOsmExerciseDebugOverlay,
   createDefaultOsmExerciseDebugOverlayState,
@@ -466,6 +472,13 @@ export type RouteRunnerClientProps = {
   allowDevQaToggle?: boolean;
   trainingModeOnly?: boolean;
   showTrainingModePanel?: boolean;
+  visualRegressionFixture?: {
+    id: string;
+    state: Phase8VisualRegressionState;
+    routeSeed: Phase8VisualRegressionRouteSeed;
+    openFeedback: boolean;
+    scrollTarget: Phase8VisualRegressionScrollTarget;
+  };
 };
 
 function emptySnapPreview(): SnappedRouteTraceResult {
@@ -4275,7 +4288,8 @@ export function RouteRunnerClient({
   mode = "dev",
   allowDevQaToggle = mode === "dev",
   trainingModeOnly = false,
-  showTrainingModePanel = true
+  showTrainingModePanel = true,
+  visualRegressionFixture
 }: RouteRunnerClientProps = {}) {
   const initialHydrationState = createRouteRunnerInitialHydrationState({
     initialMapOptionId,
@@ -4334,6 +4348,14 @@ export function RouteRunnerClient({
   const [learnerHintInteractionPaused, setLearnerHintInteractionPaused] = useState(false);
   const [learnerHintDocumentHidden, setLearnerHintDocumentHidden] = useState(false);
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
+  const visualRegressionRouteAppliedRef = useRef(false);
+  const [visualRegressionRouteApplied, setVisualRegressionRouteApplied] = useState(
+    visualRegressionFixture?.routeSeed === "none"
+  );
+  const [visualRegressionScrollReady, setVisualRegressionScrollReady] = useState(
+    !visualRegressionFixture || visualRegressionFixture.scrollTarget === "none"
+  );
+  const [visualRegressionFontsReady, setVisualRegressionFontsReady] = useState(!visualRegressionFixture);
   const [isDrawing, setIsDrawing] = useState(false);
   const studentBetaPhoneInitialZoomAppliedRef = useRef(false);
   const [showRoadRestrictions, setShowRoadRestrictions] = useState(true);
@@ -4383,9 +4405,50 @@ export function RouteRunnerClient({
   const [lazyMapOptionsById, setLazyMapOptionsById] = useState<Record<string, RouteRunnerMapOption>>({});
   const [lazyMapLoadingById, setLazyMapLoadingById] = useState<Record<string, boolean>>({});
   const [lazyMapLoadErrorById, setLazyMapLoadErrorById] = useState<Record<string, string | null>>({});
-  const [learnerTrainingModeState, setLearnerTrainingModeState] = useState<LearnerTrainingModeState>(() =>
-    isTrainingModeOnly ? openLearnerTrainingMode(createLearnerTrainingModeState()) : createLearnerTrainingModeState()
-  );
+  const [learnerTrainingModeState, setLearnerTrainingModeState] = useState<LearnerTrainingModeState>(() => {
+    const initialState = isTrainingModeOnly
+      ? openLearnerTrainingMode(createLearnerTrainingModeState())
+      : createLearnerTrainingModeState();
+
+    if (!isTrainingModeOnly || visualRegressionFixture?.state !== "hint") {
+      return initialState;
+    }
+
+    const initialMap = mapOptions.find((option) => option.id === initialHydrationState.mapOptionId)?.map;
+    if (!initialMap) {
+      return initialState;
+    }
+
+    const generatedState = startLearnerTrainingExercise({
+      state: initialState,
+      map: initialMap,
+      curatedRoutes: CURATED_LEARNER_ROUTE_PACK,
+      allowExperimentalGenerationFallback: true,
+      generationCache: null,
+      seed: `phase-8-11:${visualRegressionFixture.id}:training-exercise`
+    });
+
+    const hintedState = requestLearnerTrainingHint({
+      state: generatedState,
+      attemptId: `phase-8-11:${visualRegressionFixture.id}:hint`
+    });
+
+    return {
+      ...hintedState,
+      hints: hintedState.hints.map((result) =>
+        result.status === "generated"
+          ? {
+              ...result,
+              hint: {
+                ...result.hint,
+                text: phase8VisualRegressionHintText(),
+                checkpointLabel: undefined
+              }
+            }
+          : result
+      )
+    };
+  });
   const learnerTrainingProgressStorage = useMemo(
     () =>
       createLocalLearnerTrainingProgressStorage({
@@ -4464,6 +4527,24 @@ export function RouteRunnerClient({
   }, []);
 
   useEffect(() => {
+    if (!visualRegressionFixture || typeof document === "undefined") {
+      return;
+    }
+
+    let cancelled = false;
+
+    document.fonts.ready.then(() => {
+      if (!cancelled) {
+        setVisualRegressionFontsReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visualRegressionFixture]);
+
+  useEffect(() => {
     if (
       !learnerHintPresentation.isOpen ||
       learnerHintPresentation.keptOpen ||
@@ -4490,11 +4571,16 @@ export function RouteRunnerClient({
   ]);
 
   useEffect(() => {
+    if (visualRegressionFixture) {
+      setLearnerTrainingProgressMessage(null);
+      return;
+    }
+
     const result = learnerTrainingProgressStorage.load();
 
     setLearnerTrainingProgress(result.progress);
     setLearnerTrainingProgressMessage(result.ok ? null : result.reason ?? "Learner training progress is unavailable.");
-  }, [learnerTrainingProgressStorage]);
+  }, [learnerTrainingProgressStorage, visualRegressionFixture]);
 
   const visibleMapOptions = useMemo(
     () => {
@@ -4665,6 +4751,18 @@ export function RouteRunnerClient({
         : presentLearnerTrainingHint(currentState, learnerTrainingHintKey)
     );
   }, [isTrainingModeOnly, learnerTrainingHintKey, learnerTrainingModeState.review]);
+
+  useEffect(() => {
+    if (
+      visualRegressionFixture?.state !== "hint" ||
+      !learnerHintPresentation.isOpen ||
+      learnerHintPresentation.keptOpen
+    ) {
+      return;
+    }
+
+    setLearnerHintPresentation((currentState) => keepLearnerTrainingHintOpen(currentState));
+  }, [learnerHintPresentation.isOpen, learnerHintPresentation.keptOpen, visualRegressionFixture?.state]);
 
   const trainingOverlayForMap = useMemo<LearnerTrainingRouteOverlay>(
     () =>
@@ -5104,6 +5202,126 @@ export function RouteRunnerClient({
     Boolean(learnerTrainingModePanel.hint) &&
     learnerHintPresentation.isOpen &&
     !showAttemptFeedbackPanel;
+
+  useEffect(() => {
+    if (
+      !visualRegressionFixture ||
+      visualRegressionFixture.routeSeed === "none" ||
+      visualRegressionRouteAppliedRef.current ||
+      selectedMapOptionIsLoading ||
+      shortestRouteReplayOverlay.status !== "available"
+    ) {
+      return;
+    }
+
+    const shortestPoints = shortestRouteReplayOverlay.points;
+    const points =
+      visualRegressionFixture.routeSeed === "incomplete-shortest"
+        ? shortestPoints.slice(0, Math.max(3, Math.min(shortestPoints.length - 1, Math.floor(shortestPoints.length * 0.6))))
+        : shortestPoints;
+
+    if (points.length < 2) {
+      return;
+    }
+
+    visualRegressionRouteAppliedRef.current = true;
+    setDrawnRouteDraft(createEmptyRouteDraft([points]));
+    setVisualRegressionRouteApplied(true);
+  }, [
+    selectedMapOptionIsLoading,
+    shortestRouteReplayOverlay,
+    visualRegressionFixture,
+    visualRegressionFixture?.routeSeed
+  ]);
+
+  useEffect(() => {
+    const needsSubmittedReview =
+      visualRegressionFixture?.state === "correct-review" ||
+      visualRegressionFixture?.state === "incorrect-review";
+
+    if (
+      !needsSubmittedReview ||
+      !visualRegressionRouteApplied ||
+      !currentDrawnSubmitAttemptKey ||
+      !drawnPipelineResult.exerciseResult ||
+      hasSubmittedCurrentDrawnAttempt
+    ) {
+      return;
+    }
+
+    const submittedState: SharedRouteSubmissionState = {
+      state: "submitted",
+      requestId: 0,
+      attemptKey: currentDrawnSubmitAttemptKey,
+      code: null,
+      message: null,
+      devMessage: null
+    };
+
+    drawnSubmitStateRef.current = submittedState;
+    setDrawnSubmitState(submittedState);
+    setRouteFeedbackDrawerOpen(visualRegressionFixture.openFeedback);
+  }, [
+    currentDrawnSubmitAttemptKey,
+    drawnPipelineResult.exerciseResult,
+    hasSubmittedCurrentDrawnAttempt,
+    visualRegressionFixture,
+    visualRegressionRouteApplied
+  ]);
+
+  useEffect(() => {
+    if (
+      visualRegressionFixture?.scrollTarget !== "map" ||
+      visualRegressionScrollReady ||
+      selectedMapOptionIsLoading ||
+      !canvasRef.current
+    ) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      canvasRef.current?.scrollIntoView({ block: "center" });
+      setVisualRegressionScrollReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [selectedMapOptionIsLoading, visualRegressionFixture?.scrollTarget, visualRegressionScrollReady]);
+
+  useEffect(() => {
+    if (
+      visualRegressionFixture?.scrollTarget !== "feedback" ||
+      !hasSubmittedCurrentDrawnAttempt ||
+      !routeFeedbackDrawerOpen ||
+      !isStudentBetaPhoneMap ||
+      !routeFeedbackPanelRef.current
+    ) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      routeFeedbackPanelRef.current?.scrollIntoView({ block: "start" });
+      setVisualRegressionScrollReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [
+    hasSubmittedCurrentDrawnAttempt,
+    isStudentBetaPhoneMap,
+    routeFeedbackDrawerOpen,
+    visualRegressionFixture?.scrollTarget
+  ]);
+
+  const visualRegressionContentStateReady = !visualRegressionFixture
+    ? true
+    : visualRegressionFixture.state === "neutral"
+      ? true
+      : visualRegressionFixture.state === "active-route"
+        ? visualRegressionRouteApplied && drawnTrace.points.length >= 2
+        : visualRegressionFixture.state === "hint"
+          ? showLearnerTrainingHintPanel && learnerHintPresentation.keptOpen
+          : hasSubmittedCurrentDrawnAttempt &&
+            (!visualRegressionFixture.openFeedback || routeFeedbackDrawerOpen);
+  const visualRegressionStateReady = visualRegressionContentStateReady && visualRegressionScrollReady;
   const learnerHintRemainingSeconds = Math.ceil(learnerHintPresentation.remainingMs / 1000);
   const learnerHintFadeStartsInSeconds = Math.ceil(
     Math.max(0, learnerHintPresentation.remainingMs - LEARNER_TRAINING_HINT_FADE_MS) / 1000
@@ -5586,24 +5804,34 @@ export function RouteRunnerClient({
   }, [selectedRestrictionReviewItem, selectedRestrictionReviewItemId]);
 
   useEffect(() => {
-    if (!weakAreaAttemptKey || weakAreaAttemptKey === lastProfileAttemptKey) {
+    if (visualRegressionFixture || !weakAreaAttemptKey || weakAreaAttemptKey === lastProfileAttemptKey) {
       return;
     }
 
     setWeakAreaProfile((currentProfile) => updateLearnerWeakAreaProfile(currentProfile, drawnAttemptReview));
     setLastProfileAttemptKey(weakAreaAttemptKey);
-  }, [drawnAttemptReview, lastProfileAttemptKey, weakAreaAttemptKey]);
+  }, [drawnAttemptReview, lastProfileAttemptKey, visualRegressionFixture, weakAreaAttemptKey]);
 
   useEffect(() => {
-    if (!weakAreaAttemptKey || weakAreaAttemptKey === lastHistoryAttemptKey) {
+    if (visualRegressionFixture || !weakAreaAttemptKey || weakAreaAttemptKey === lastHistoryAttemptKey) {
       return;
     }
 
     setAttemptHistory((currentHistory) => appendRouteAttemptToHistory(currentHistory, drawnAttemptReview));
     setLastHistoryAttemptKey(weakAreaAttemptKey);
-  }, [drawnAttemptReview, lastHistoryAttemptKey, weakAreaAttemptKey]);
+  }, [drawnAttemptReview, lastHistoryAttemptKey, visualRegressionFixture, weakAreaAttemptKey]);
 
   useEffect(() => {
+    if (visualRegressionFixture) {
+      setSavedAttemptHistory({
+        state: "loaded",
+        attempts: [],
+        message: null,
+        selectedAttemptId: null
+      });
+      return;
+    }
+
     let cancelled = false;
 
     setSavedAttemptHistory((currentHistory) => ({
@@ -5667,9 +5895,13 @@ export function RouteRunnerClient({
     return () => {
       cancelled = true;
     };
-  }, [exerciseTitleById, savedHistoryRefreshKey]);
+  }, [exerciseTitleById, savedHistoryRefreshKey, visualRegressionFixture]);
 
   useEffect(() => {
+    if (visualRegressionFixture) {
+      return;
+    }
+
     if (!weakAreaAttemptKey) {
       setAttemptSaveStatus((currentStatus) =>
         currentStatus.state === "idle"
@@ -5750,6 +5982,7 @@ export function RouteRunnerClient({
     drawnPipelineResult,
     selectedExercise?.exerciseVersion,
     selectedExerciseId,
+    visualRegressionFixture,
     weakAreaAttemptKey
   ]);
 
@@ -5882,26 +6115,30 @@ export function RouteRunnerClient({
   }, [routeReplayRunId, routeReplayState.status]);
 
   useEffect(() => {
-    if (!browserStorageRestoredRef.current) {
+    if (visualRegressionFixture || !browserStorageRestoredRef.current) {
       return;
     }
 
     writeStoredWeakAreaProfile(weakAreaProfile);
-  }, [weakAreaProfile]);
+  }, [visualRegressionFixture, weakAreaProfile]);
 
   useEffect(() => {
-    if (!browserStorageRestoredRef.current) {
+    if (visualRegressionFixture || !browserStorageRestoredRef.current) {
       return;
     }
 
     writeStoredAdaptivePracticeLauncherState(adaptiveLauncherState);
-  }, [adaptiveLauncherState]);
+  }, [adaptiveLauncherState, visualRegressionFixture]);
 
   useEffect(() => {
+    if (visualRegressionFixture) {
+      return;
+    }
+
     setWeakAreaProfile(readStoredWeakAreaProfile());
     setAdaptiveLauncherState(readStoredAdaptivePracticeLauncherState());
     browserStorageRestoredRef.current = true;
-  }, []);
+  }, [visualRegressionFixture]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -5942,6 +6179,18 @@ export function RouteRunnerClient({
       osmDebugOverlay: visibleOsmDebugOverlayAvailable ? osmDebugOverlay : null,
       osmExerciseDebugOverlay: visibleOsmExerciseDebugOverlayAvailable ? osmExerciseDebugOverlay : null
     });
+
+    if (visualRegressionFixture) {
+      canvas.dataset.phase8VisualFixture = visualRegressionFixture.id;
+      canvas.dataset.phase8VisualState = visualRegressionFixture.state;
+      canvas.dataset.phase8VisualReady = String(
+        visualRegressionFontsReady &&
+          learnerMarkerImageAssets.allLoaded &&
+          !selectedMapOptionIsLoading &&
+          !selectedMapLoadError &&
+          visualRegressionStateReady
+      );
+    }
   }, [
     activeMap,
     drawnPipelineResult,
@@ -5972,10 +6221,15 @@ export function RouteRunnerClient({
     syntheticRoadVisuals,
     syntheticStopLabels,
     trainingOverlayForMap,
+    visualRegressionFixture,
+    visualRegressionFontsReady,
+    visualRegressionStateReady,
     visibleOsmDebugOverlayAvailable,
     visibleOsmExerciseDebugOverlayAvailable,
     viewport,
-    visibleRoadRestrictionOverlays
+    visibleRoadRestrictionOverlays,
+    selectedMapLoadError,
+    selectedMapOptionIsLoading
   ]);
 
   function pointerToScreenPoint(canvas: HTMLCanvasElement | null, clientX: number, clientY: number): Vec2 | null {
@@ -8428,6 +8682,8 @@ export function RouteRunnerClient({
               ) : null}
               <canvas
                 ref={canvasRef}
+                data-phase8-visual-fixture={visualRegressionFixture?.id}
+                data-phase8-visual-state={visualRegressionFixture?.state}
                 width={canvasWidth}
                 height={canvasHeight}
                 onPointerDown={handlePointerDown}

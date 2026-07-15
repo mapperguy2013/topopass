@@ -3,6 +3,12 @@
 Phase 8 final visual QA requires representative screenshots and side-by-side
 comparison against the approved visual master:
 
+Primary revised reference:
+
+`docs/phase-8/references/phase-8-approved-exam-atlas-visual-master-v2.png`
+
+Secondary original reference:
+
 `docs/phase-8/references/phase-8-approved-exam-atlas-visual-master.png`
 
 Do not create fake screenshot baselines during Stage 8.1. Later stages must
@@ -217,3 +223,19 @@ bounded, attribution stays visible and final document widths do not overflow.
 Stage 8.10 is implemented and browser-validated. Physical two-finger pinch,
 orientation, cutout-safe-area, feedback scrolling and hint interaction checks
 remain required before physical-device acceptance.
+
+## Stage 8.11 Deterministic Regression Evidence
+
+Stage 8.11 captures are under `screenshots/stage-8-11/` and are indexed in
+`stage-8-11-deterministic-visual-regression.md`. Seven typed fixtures cover
+Victoria neutral density, King's Cross correct review, Piccadilly active route,
+Waterloo tablet water/bridge context, Waterloo mobile incorrect review,
+Piccadilly mobile hint and quiet-residential mobile map detail.
+
+The exact 1440 by 900, 768 by 1024 and 390 by 844 captures use Chromium,
+device-pixel ratio 1, fixed source-backed geography and route seeds, reduced
+motion, loaded fonts/assets/data, explicit overlay state and positive completed-
+canvas readiness. Two captures of every fixture were byte-identical under
+SHA-256 comparison with zero tolerance. Every retained image was inspected at
+normal size; corrupted intermediary compositor captures were rejected. This is
+regression evidence, not the Stage 8.12 final acceptance or correction gate.

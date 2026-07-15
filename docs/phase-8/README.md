@@ -72,7 +72,7 @@ stages may be split if implementation audit shows that a stage is too large.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
     Implemented and browser-validated; physical touch-device acceptance pending.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
-    evidence.
+    evidence. Completed and browser-validated.
 12. Stage 8.12: Final visual, functional, responsive, performance, accuracy and
     originality acceptance gate.
 
@@ -128,6 +128,13 @@ canvas allocation below two million pixels. Browser visual QA covers dense map,
 active route, review, comparison, hint, restriction, water, focus and 200%
 reflow-equivalent states without weakening Stage 8.8.2 cartography. Physical
 two-finger, orientation and safe-area checks remain manual.
+Stage 8.11 now provides seven typed deterministic production-renderer fixtures
+covering dense neutral geography, an active route, hint, correct review,
+incorrect review, desktop, tablet and mobile states. Positive canvas readiness
+waits for fonts, source data, marker assets, requested overlay state, scroll
+target and a completed draw. Repeated Chromium captures are byte-identical at
+zero tolerance, and committed PNG evidence preserves attribution and the Phase
+8.8.2/8.9 visual hierarchy. Stage 8.12 has not started.
 
 ## Documents
 
@@ -144,4 +151,5 @@ two-finger, orientation and safe-area checks remain manual.
 - [Stage 8.8.2 revised visual-master alignment](stage-8-8-2-revised-visual-master-alignment.md)
 - [Stage 8.9 learner and review overlay rebalance](stage-8-9-learner-review-overlay-rebalance.md)
 - [Stage 8.10 mobile, tablet, accessibility and performance](stage-8-10-mobile-tablet-accessibility-performance.md)
+- [Stage 8.11 deterministic visual regression](stage-8-11-deterministic-visual-regression.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)
