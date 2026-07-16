@@ -22,6 +22,19 @@ export type ExamModePracticePageModel = {
   suppressesHintsDuringAttempt: true;
   locksAttemptAfterSubmission: true;
   reviewVisibleOnlyAfterSubmission: true;
+  scoring: {
+    runsOnlyAfterSubmission: true;
+    deterministic: true;
+    officialTfLScore: false;
+    categoryIds: readonly [
+      "legality",
+      "destination-completion",
+      "route-efficiency",
+      "detour-backtracking",
+      "road-suitability",
+      "avoidable-mistakes"
+    ];
+  };
   timer: {
     type: "elapsed";
     usesExistingExamTimeFormatter: true;
@@ -85,6 +98,19 @@ export function buildExamModePracticePageModel(): ExamModePracticePageModel {
     suppressesHintsDuringAttempt: true,
     locksAttemptAfterSubmission: true,
     reviewVisibleOnlyAfterSubmission: true,
+    scoring: {
+      runsOnlyAfterSubmission: true,
+      deterministic: true,
+      officialTfLScore: false,
+      categoryIds: [
+        "legality",
+        "destination-completion",
+        "route-efficiency",
+        "detour-backtracking",
+        "road-suitability",
+        "avoidable-mistakes"
+      ]
+    },
     timer: {
       type: "elapsed",
       usesExistingExamTimeFormatter: true

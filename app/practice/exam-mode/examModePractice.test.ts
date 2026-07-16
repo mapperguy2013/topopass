@@ -72,3 +72,30 @@ test("Stage 9.1 route runner suppresses exam hints and locks submitted attempts"
   assert.match(source, /disabled=\{drawnSubmitDisabled \|\| isSubmittingCurrentDrawnAttempt \|\| isExamAttemptLocked\}/);
   assert.match(source, /isDrawing \|\| \(isExamRouteRunner && !hasSubmittedCurrentDrawnAttempt\)/);
 });
+
+test("Stage 9.2 exam model exposes deterministic post-submit scoring without an official TfL claim", () => {
+  const model = buildExamModePracticePageModel();
+
+  assert.equal(model.scoring.runsOnlyAfterSubmission, true);
+  assert.equal(model.scoring.deterministic, true);
+  assert.equal(model.scoring.officialTfLScore, false);
+  assert.deepEqual(model.scoring.categoryIds, [
+    "legality",
+    "destination-completion",
+    "route-efficiency",
+    "detour-backtracking",
+    "road-suitability",
+    "avoidable-mistakes"
+  ]);
+});
+
+test("Stage 9.2 route runner gates the rubric to locked submitted exam attempts", () => {
+  const source = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.match(source, /resolveSubmittedExamScoringResult/);
+  assert.match(source, /mode,/);
+  assert.match(source, /submitted: hasSubmittedCurrentDrawnAttempt/);
+  assert.match(source, /exerciseResult: drawnPipelineResult\.exerciseResult/);
+  assert.match(source, /data-testid="exam-scoring-breakdown"/);
+  assert.match(source, /isExamAttemptLocked = isExamRouteRunner && hasSubmittedCurrentDrawnAttempt/);
+});

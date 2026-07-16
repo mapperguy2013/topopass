@@ -43,6 +43,10 @@ import {
   type LearnerTrainingProgressState
 } from "@/lib/training";
 import { formatExamTime } from "@/lib/mockExamTimer";
+import {
+  resolveSubmittedExamScoringResult,
+  type ExamScoringCategoryResult
+} from "@/app/practice/exam-mode/examScoringRubric";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
 import { buildRouteRunnerOverlayOwnership } from "./routeRunnerOverlayOwnership";
 import {
@@ -758,6 +762,46 @@ function learnerFeedbackBadgeClass(status: RouteAttemptReview["status"]): string
   }
 
   return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function examScoringCategoryBadgeClass(category: ExamScoringCategoryResult): string {
+  if (category.outcome === "met") {
+    return "border-green-200 bg-green-50 text-green-800";
+  }
+
+  if (category.outcome === "needs-practice") {
+    return "border-red-200 bg-red-50 text-red-800";
+  }
+
+  if (category.outcome === "limited") {
+    return "border-amber-200 bg-amber-50 text-amber-900";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-700";
+}
+
+function examScoringCategoryBadgeLabel(category: ExamScoringCategoryResult): string {
+  if (category.outcome === "met") {
+    return "Met";
+  }
+
+  if (category.outcome === "needs-practice") {
+    return "Needs practice";
+  }
+
+  if (category.outcome === "limited") {
+    return "Limited";
+  }
+
+  return "Unavailable";
+}
+
+function examScoringCategoryPointsLabel(category: ExamScoringCategoryResult): string {
+  if (category.scorePercent === null) {
+    return category.assessment === "unavailable" ? "Not assessed" : "Limited evidence";
+  }
+
+  return `${category.weightedPoints.toFixed(1)} / ${category.weightPercent} points`;
 }
 
 function learnerFeedbackBannerClass(status: RouteAttemptReview["status"]): string {
@@ -5545,6 +5589,15 @@ export function RouteRunnerClient({
     },
     [drawnAttemptReview, drawnSubmitState.message, drawnSubmitState.state, isTrainingModeOnly, learnerTrainingModeState.review]
   );
+  const examScoringResult = useMemo(
+    () =>
+      resolveSubmittedExamScoringResult({
+        mode,
+        submitted: hasSubmittedCurrentDrawnAttempt,
+        exerciseResult: drawnPipelineResult.exerciseResult
+      }),
+    [drawnPipelineResult.exerciseResult, hasSubmittedCurrentDrawnAttempt, mode]
+  );
   const realLondonPilotPlaythroughPanel = buildRealLondonPilotPlaythroughPanelModel({
     mapId: activeMap.id,
     selectedExerciseId: selectedExercise?.id ?? null,
@@ -9740,14 +9793,20 @@ export function RouteRunnerClient({
                         Submitted route
                       </span>
                     </div>
-                    <h3 className="mt-3 text-lg font-semibold text-slate-950">{learnerFeedbackSummary}</h3>
+                    <h3 className="mt-3 text-lg font-semibold text-slate-950">
+                      {examScoringResult?.summary ?? learnerFeedbackSummary}
+                    </h3>
                   </div>
                 </div>
 
                 <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</dt>
-                    <dd className="mt-1 font-semibold text-slate-950">{submittedAttemptReview.scoreLabel}</dd>
+                    <dd className="mt-1 font-semibold text-slate-950">
+                      {examScoringResult
+                        ? `${examScoringResult.scorePercent.toFixed(1)}% (${examScoringResult.statusLabel.toLowerCase()})`
+                        : submittedAttemptReview.scoreLabel}
+                    </dd>
                   </div>
                   <div className="rounded-lg bg-slate-50 px-3 py-2">
                     <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your route</dt>
@@ -9768,6 +9827,66 @@ export function RouteRunnerClient({
                     </dd>
                   </div>
                 </dl>
+
+                {examScoringResult ? (
+                  <section
+                    data-testid="exam-scoring-breakdown"
+                    aria-label="Exam scoring breakdown"
+                    className="mt-4 border-y border-slate-200 py-4"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          Exam-practice rubric
+                        </p>
+                        <h4 className="mt-1 text-base font-semibold text-slate-950">
+                          {examScoringResult.statusLabel}: {examScoringResult.scorePercent.toFixed(1)}%
+                        </h4>
+                      </div>
+                      <span
+                        className={`w-fit shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${
+                          examScoringResult.status === "pass"
+                            ? "border-green-200 bg-green-50 text-green-800"
+                            : "border-amber-200 bg-amber-50 text-amber-900"
+                        }`}
+                      >
+                        {examScoringResult.passThresholdPercent}% pass threshold
+                      </span>
+                    </div>
+
+                    <dl className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
+                      {examScoringResult.categories.map((category) => (
+                        <div key={category.id} className="min-w-0 py-3 first:pt-0 last:pb-0">
+                          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                            <dt className="min-w-0 font-semibold text-slate-950">{category.label}</dt>
+                            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                              <span className="text-xs font-semibold text-slate-600">
+                                {examScoringCategoryPointsLabel(category)}
+                              </span>
+                              <span
+                                className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${examScoringCategoryBadgeClass(
+                                  category
+                                )}`}
+                              >
+                                {examScoringCategoryBadgeLabel(category)}
+                              </span>
+                            </div>
+                          </div>
+                          <dd className="mt-1 break-words text-sm leading-6 text-slate-700">{category.summary}</dd>
+                          {category.evidence.length > 0 ? (
+                            <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-600">
+                              {category.evidence.map((evidence) => (
+                                <li key={evidence}>{evidence}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      ))}
+                    </dl>
+
+                    <p className="mt-3 text-xs leading-5 text-slate-600">{examScoringResult.disclaimer}</p>
+                  </section>
+                ) : null}
 
                 <div className="mt-4 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What happened</p>
