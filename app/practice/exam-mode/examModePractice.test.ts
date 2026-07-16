@@ -99,3 +99,27 @@ test("Stage 9.2 route runner gates the rubric to locked submitted exam attempts"
   assert.match(source, /data-testid="exam-scoring-breakdown"/);
   assert.match(source, /isExamAttemptLocked = isExamRouteRunner && hasSubmittedCurrentDrawnAttempt/);
 });
+
+test("Stage 9.3 exam model exposes grounded review only after submission", () => {
+  const model = buildExamModePracticePageModel();
+
+  assert.equal(model.review.visibleOnlyAfterSubmission, true);
+  assert.equal(model.review.includesOverallResult, true);
+  assert.equal(model.review.includesCategoryExplanations, true);
+  assert.equal(model.review.includesGroundedStrengthsAndImprovements, true);
+  assert.equal(model.review.reportsAssessmentLimits, true);
+  assert.equal(model.review.keepsSubmittedRouteLocked, true);
+});
+
+test("Stage 9.3 route runner gates exam review and preserves route locking and practice feedback", () => {
+  const source = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.match(source, /resolveSubmittedExamReviewFeedback/);
+  assert.match(source, /submitted: hasSubmittedCurrentDrawnAttempt/);
+  assert.match(source, /scoringResult: examScoringResult/);
+  assert.match(source, /data-testid="exam-review-feedback"/);
+  assert.match(source, /examScoringResult\.categories\.map/);
+  assert.match(source, /isExamRouteRunner && !hasSubmittedCurrentDrawnAttempt/);
+  assert.match(source, /isExamAttemptLocked = isExamRouteRunner && hasSubmittedCurrentDrawnAttempt/);
+  assert.match(source, /learnerFeedbackIssueSections\.map/);
+});

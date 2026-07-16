@@ -47,6 +47,7 @@ import {
   resolveSubmittedExamScoringResult,
   type ExamScoringCategoryResult
 } from "@/app/practice/exam-mode/examScoringRubric";
+import { resolveSubmittedExamReviewFeedback } from "@/app/practice/exam-mode/examReviewFeedback";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
 import { buildRouteRunnerOverlayOwnership } from "./routeRunnerOverlayOwnership";
 import {
@@ -5598,6 +5599,23 @@ export function RouteRunnerClient({
       }),
     [drawnPipelineResult.exerciseResult, hasSubmittedCurrentDrawnAttempt, mode]
   );
+  const examReviewFeedback = useMemo(
+    () =>
+      resolveSubmittedExamReviewFeedback({
+        mode,
+        submitted: hasSubmittedCurrentDrawnAttempt,
+        scoringResult: examScoringResult,
+        exerciseResult: drawnPipelineResult.exerciseResult,
+        attemptEvidence: submittedAttemptReview
+      }),
+    [
+      drawnPipelineResult.exerciseResult,
+      examScoringResult,
+      hasSubmittedCurrentDrawnAttempt,
+      mode,
+      submittedAttemptReview
+    ]
+  );
   const realLondonPilotPlaythroughPanel = buildRealLondonPilotPlaythroughPanelModel({
     mapId: activeMap.id,
     selectedExerciseId: selectedExercise?.id ?? null,
@@ -9885,6 +9903,93 @@ export function RouteRunnerClient({
                     </dl>
 
                     <p className="mt-3 text-xs leading-5 text-slate-600">{examScoringResult.disclaimer}</p>
+                  </section>
+                ) : null}
+
+                {examReviewFeedback ? (
+                  <section
+                    data-testid="exam-review-feedback"
+                    aria-label="Post-submit exam review"
+                    className="mt-4 min-w-0 border-b border-slate-200 pb-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Post-submit exam review
+                    </p>
+                    <h4 className="mt-1 break-words text-base font-semibold text-slate-950">
+                      {examReviewFeedback.statusLabel}: {examReviewFeedback.scorePercent.toFixed(1)}%
+                    </h4>
+                    <p className="mt-2 break-words text-sm leading-6 text-slate-700">
+                      {examReviewFeedback.summary}
+                    </p>
+
+                    {examReviewFeedback.strengths.length > 0 ? (
+                      <div className="mt-4 min-w-0">
+                        <h5 className="text-xs font-semibold uppercase tracking-wide text-green-800">
+                          What went well
+                        </h5>
+                        <ul className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
+                          {examReviewFeedback.strengths.map((item) => (
+                            <li key={item.id} className="min-w-0 py-3">
+                              <p className="break-words text-xs font-semibold text-green-800">{item.principle}</p>
+                              <p className="mt-1 break-words font-semibold text-slate-950">{item.title}</p>
+                              <p className="mt-1 break-words text-sm leading-6 text-slate-700">{item.explanation}</p>
+                              {item.evidence.length > 0 ? (
+                                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-5 text-slate-600">
+                                  {item.evidence.map((evidence) => (
+                                    <li key={evidence} className="break-words">{evidence}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {examReviewFeedback.improvements.length > 0 ? (
+                      <div className="mt-4 min-w-0">
+                        <h5 className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+                          Focus for the next attempt
+                        </h5>
+                        <ul className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
+                          {examReviewFeedback.improvements.map((item) => (
+                            <li key={item.id} className="min-w-0 py-3">
+                              <p className="break-words text-xs font-semibold text-amber-900">{item.principle}</p>
+                              <p className="mt-1 break-words font-semibold text-slate-950">{item.title}</p>
+                              <p className="mt-1 break-words text-sm leading-6 text-slate-700">{item.explanation}</p>
+                              {item.evidence.length > 0 ? (
+                                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-5 text-slate-600">
+                                  {item.evidence.map((evidence) => (
+                                    <li key={evidence} className="break-words">{evidence}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {examReviewFeedback.overlaySummary ? (
+                      <p className="mt-4 break-words border-l-2 border-red-300 pl-3 text-xs leading-5 text-slate-700">
+                        {examReviewFeedback.overlaySummary}
+                      </p>
+                    ) : null}
+
+                    <details className="mt-4 min-w-0 border-t border-slate-200 pt-3">
+                      <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                        Assessment limits ({examReviewFeedback.limitations.length})
+                      </summary>
+                      <ul className="mt-2 min-w-0 divide-y divide-slate-200">
+                        {examReviewFeedback.limitations.map((item) => (
+                          <li key={item.id} className="min-w-0 py-3">
+                            <p className="break-words text-xs font-semibold text-slate-600">{item.principle}</p>
+                            <p className="mt-1 break-words font-semibold text-slate-900">{item.title}</p>
+                            <p className="mt-1 break-words text-sm leading-6 text-slate-700">{item.explanation}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
                   </section>
                 ) : null}
 

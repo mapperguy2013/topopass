@@ -35,6 +35,14 @@ export type ExamModePracticePageModel = {
       "avoidable-mistakes"
     ];
   };
+  review: {
+    visibleOnlyAfterSubmission: true;
+    includesOverallResult: true;
+    includesCategoryExplanations: true;
+    includesGroundedStrengthsAndImprovements: true;
+    reportsAssessmentLimits: true;
+    keepsSubmittedRouteLocked: true;
+  };
   timer: {
     type: "elapsed";
     usesExistingExamTimeFormatter: true;
@@ -110,6 +118,14 @@ export function buildExamModePracticePageModel(): ExamModePracticePageModel {
         "road-suitability",
         "avoidable-mistakes"
       ]
+    },
+    review: {
+      visibleOnlyAfterSubmission: true,
+      includesOverallResult: true,
+      includesCategoryExplanations: true,
+      includesGroundedStrengthsAndImprovements: true,
+      reportsAssessmentLimits: true,
+      keepsSubmittedRouteLocked: true
     },
     timer: {
       type: "elapsed",
