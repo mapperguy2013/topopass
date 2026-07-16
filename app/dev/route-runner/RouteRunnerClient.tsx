@@ -107,6 +107,7 @@ import {
   getDrawnPipelineDisplayStatus,
   getDrawnRouteScoreDisplay,
   getLearnerDrawnPipelineStatusText,
+  getLearnerRouteStopLabel,
   getPipelineIssueGroups,
   getPipelineStageBadges,
   getRouteIssueLineStyle,
@@ -562,18 +563,6 @@ function stopLabel(stop: RouteStop, map: MapDefinition): string {
   const nearestNode = landmark?.nearestNodeId ? `, nearest node ${landmark.nearestNodeId}` : "";
 
   return `${landmark?.name ?? stop.landmarkId} (${stop.landmarkId}${nearestNode})`;
-}
-
-function learnerStopLabel(stop: RouteStop, map: MapDefinition, fallback: string): string {
-  if (stop.type === "node") {
-    const node = map.nodes.find((candidate) => candidate.id === stop.nodeId);
-
-    return node?.label?.trim() || fallback;
-  }
-
-  const landmark = map.landmarks.find((candidate) => candidate.id === stop.landmarkId);
-
-  return landmark?.name?.trim() || fallback;
 }
 
 function resolveStopNode(stop: RouteStop, map: MapDefinition): MapNode | undefined {
@@ -5714,9 +5703,9 @@ export function RouteRunnerClient({
       mapId: activeMap.id,
       taskVersion: selectedExercise.exerciseVersion,
       originLabel:
-        routeMetadata?.origin.label ?? learnerStopLabel(selectedStartStop, activeMap, "Origin"),
+        routeMetadata?.origin.label ?? getLearnerRouteStopLabel(selectedStartStop, activeMap, "Origin"),
       destinationLabel:
-        routeMetadata?.destination.label ?? learnerStopLabel(selectedFinishStop, activeMap, "Destination"),
+        routeMetadata?.destination.label ?? getLearnerRouteStopLabel(selectedFinishStop, activeMap, "Destination"),
       completedAt,
       elapsedSeconds: examElapsedSeconds,
       scoringResult: examScoringResult,
@@ -7777,12 +7766,12 @@ export function RouteRunnerClient({
           ) : null}
           {isExamRouteRunner && selectedStartStop ? (
             <span className="rounded-full border border-green-100 bg-green-50 px-3 py-1 font-semibold text-green-900">
-              Origin: {learnerStopLabel(selectedStartStop, activeMap, "Start")}
+              Origin: {getLearnerRouteStopLabel(selectedStartStop, activeMap, "Start")}
             </span>
           ) : null}
           {isExamRouteRunner && selectedFinishStop ? (
             <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 font-semibold text-red-900">
-              Destination: {learnerStopLabel(selectedFinishStop, activeMap, "Destination")}
+              Destination: {getLearnerRouteStopLabel(selectedFinishStop, activeMap, "Destination")}
             </span>
           ) : null}
           {selectedMapOption.attribution && !isStudentBetaRouteRunner ? (
@@ -8166,7 +8155,7 @@ export function RouteRunnerClient({
                     <dd className="mt-1">
                       {selectedStartStop
                         ? isStudentBetaRouteRunner
-                          ? learnerStopLabel(selectedStartStop, activeMap, "Start")
+                          ? getLearnerRouteStopLabel(selectedStartStop, activeMap, "Start")
                           : stopLabel(selectedStartStop, activeMap)
                         : "Not set"}
                     </dd>
@@ -8179,7 +8168,7 @@ export function RouteRunnerClient({
                           {selectedCheckpointStops.map((stop, index) => (
                             <li key={`${selectedExercise.id}-checkpoint-${index}`}>
                               {isStudentBetaRouteRunner
-                                ? learnerStopLabel(stop, activeMap, `Checkpoint ${index + 1}`)
+                                ? getLearnerRouteStopLabel(stop, activeMap, `Checkpoint ${index + 1}`)
                                 : stopLabel(stop, activeMap)}
                             </li>
                           ))}
@@ -8194,7 +8183,7 @@ export function RouteRunnerClient({
                     <dd className="mt-1">
                       {selectedFinishStop
                         ? isStudentBetaRouteRunner
-                          ? learnerStopLabel(selectedFinishStop, activeMap, "Destination")
+                          ? getLearnerRouteStopLabel(selectedFinishStop, activeMap, "Destination")
                           : stopLabel(selectedFinishStop, activeMap)
                         : "Not set"}
                     </dd>

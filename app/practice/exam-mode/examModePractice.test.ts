@@ -2,6 +2,22 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  buildMapGraph,
+  findShortestLegalRouteThroughStops,
+  runRouteExercise,
+  validateRouteExerciseLegalReachability
+} from "../../../lib/map-engine/index.ts";
+import {
+  buildCompletedExamProgressAttempt,
+  createEmptyExamProgressState,
+  createLocalExamProgressStorage,
+  recordExamProgressAttempt
+} from "./examProgressTracking.ts";
+import { buildExamReadinessSummary } from "./examReadiness.ts";
+import { resolveSubmittedExamReviewFeedback } from "./examReviewFeedback.ts";
+import { getExamRouteTaskMetadata, listExamRouteTasks } from "./examRoutePack.ts";
+import { resolveSubmittedExamScoringResult } from "./examScoringRubric.ts";
+import {
   EXAM_MODE_PRACTICE_CARD_CTA,
   EXAM_MODE_PRACTICE_PATH,
   buildExamModePracticeEntryModel,
@@ -184,4 +200,103 @@ test("Stage 9.6 exposes a non-official readiness dashboard in the learner progre
   assert.match(dashboardSource, /sm:grid-cols-2/);
   assert.match(dashboardSource, /lg:grid-cols-2/);
   assert.doesNotMatch(dashboardSource, /official TfL readiness/i);
+});
+
+test("Stage 9.7 carries one committed exam task through scoring review persistence and readiness", () => {
+  const model = buildExamModePracticePageModel();
+  const task = listExamRouteTasks(model.mapOptions)[0];
+
+  assert.ok(task);
+
+  const mapOption = model.mapOptions.find((option) => option.map.id === task.mapId);
+  const metadata = getExamRouteTaskMetadata(task);
+
+  assert.ok(mapOption);
+  assert.ok(metadata);
+
+  const validation = validateRouteExerciseLegalReachability(task, mapOption.map);
+  assert.equal(validation.valid, true, validation.errors.join("; "));
+
+  const shortestRoute = findShortestLegalRouteThroughStops({
+    graph: buildMapGraph(mapOption.map),
+    stopNodeIds: validation.stopNodeIds,
+    restrictions: mapOption.map.restrictions
+  });
+  assert.equal(shortestRoute.found, true);
+
+  if (!shortestRoute.found) {
+    return;
+  }
+
+  const exerciseResult = runRouteExercise({
+    map: mapOption.map,
+    exercises: mapOption.exercises,
+    exerciseId: task.id,
+    userRoute: {
+      nodeIds: shortestRoute.nodeIds,
+      roadIds: shortestRoute.roadIds
+    }
+  });
+
+  assert.equal(
+    resolveSubmittedExamScoringResult({
+      mode: "student-exam",
+      submitted: false,
+      exerciseResult
+    }),
+    null
+  );
+
+  const scoringResult = resolveSubmittedExamScoringResult({
+    mode: "student-exam",
+    submitted: true,
+    exerciseResult
+  });
+  assert.ok(scoringResult);
+
+  const review = resolveSubmittedExamReviewFeedback({
+    mode: "student-exam",
+    submitted: true,
+    scoringResult,
+    exerciseResult,
+    attemptEvidence: { illegalMovements: [] }
+  });
+  assert.ok(review);
+
+  const attempt = buildCompletedExamProgressAttempt({
+    mode: "student-exam",
+    submitted: true,
+    attemptId: "stage-9-7-integrated-attempt",
+    taskId: task.id,
+    taskTitle: task.title,
+    mapId: mapOption.map.id,
+    taskVersion: task.exerciseVersion,
+    originLabel: metadata.origin.label,
+    destinationLabel: metadata.destination.label,
+    completedAt: "2026-07-16T12:00:00.000Z",
+    elapsedSeconds: 180,
+    scoringResult,
+    routeTags: metadata.tags
+  });
+  assert.ok(attempt);
+
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => values.set(key, value),
+    removeItem: (key: string) => values.delete(key)
+  };
+  const adapter = createLocalExamProgressStorage({ storage });
+  const progress = recordExamProgressAttempt(createEmptyExamProgressState(), attempt);
+
+  assert.equal(adapter.save(progress).ok, true);
+
+  const reloaded = createLocalExamProgressStorage({ storage }).load();
+  const readiness = buildExamReadinessSummary(reloaded.progress);
+
+  assert.equal(reloaded.ok, true);
+  assert.equal(readiness.totalCompletedAttempts, 1);
+  assert.equal(readiness.status.id, "not-enough-attempts");
+  assert.equal(readiness.officialTfLReadiness, false);
+  assert.equal(review.scorePercent, scoringResult.scorePercent);
 });

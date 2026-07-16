@@ -3,6 +3,7 @@ import type {
   IllegalDrawnMovement,
   MapDefinition,
   MapRoad,
+  RouteStop,
   RunRouteExerciseResult,
   TurnRestrictionVisual,
   TurnRestrictionVisualKind,
@@ -480,6 +481,28 @@ function overlayFromIllegalDrawnMovement(map: MapDefinition, highlight: IllegalD
   }
 
   return overlayFromIllegalRoadHighlight(map, highlight, kind);
+}
+
+export function getLearnerRouteStopLabel(
+  stop: RouteStop,
+  map: MapDefinition,
+  fallback: string
+): string {
+  const explicitLabel = stop.label?.trim();
+
+  if (explicitLabel) {
+    return explicitLabel;
+  }
+
+  if (stop.type === "node") {
+    const node = map.nodes.find((candidate) => candidate.id === stop.nodeId);
+
+    return node?.label?.trim() || fallback;
+  }
+
+  const landmark = map.landmarks.find((candidate) => candidate.id === stop.landmarkId);
+
+  return landmark?.name?.trim() || fallback;
 }
 
 function overlayFromGroupedIllegalDrawnMovement(

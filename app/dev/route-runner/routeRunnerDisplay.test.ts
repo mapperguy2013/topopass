@@ -17,6 +17,7 @@ import {
   getDrawnRouteSubmitOutcome,
   getDrawnRouteSubmitReadiness,
   getLearnerDrawnPipelineStatusText,
+  getLearnerRouteStopLabel,
   getPipelineIssueGroups,
   getPipelineStageBadges,
   getRoadRestrictionDirectionAngleRadians,
@@ -189,6 +190,38 @@ function turnRestrictionVisual(value: Pick<TurnRestrictionVisual, "turnKind" | "
     ...value
   };
 }
+
+test("learner route stop labels prefer explicit source-backed exercise labels", () => {
+  const map: MapDefinition = {
+    id: "learner-stop-label-map",
+    name: "Learner stop label map",
+    nodes: [{ id: "osm-node-1", x: 0, y: 0, label: "OSM node 1" }],
+    roads: [],
+    restrictions: [],
+    landmarks: [{ id: "landmark-1", name: "Mapped landmark", nearestNodeId: "osm-node-1" }]
+  };
+
+  assert.equal(
+    getLearnerRouteStopLabel(
+      { type: "node", nodeId: "osm-node-1", label: "Regent Street" },
+      map,
+      "Origin"
+    ),
+    "Regent Street"
+  );
+  assert.equal(
+    getLearnerRouteStopLabel({ type: "node", nodeId: "osm-node-1" }, map, "Origin"),
+    "OSM node 1"
+  );
+  assert.equal(
+    getLearnerRouteStopLabel(
+      { type: "landmark", landmarkId: "landmark-1", label: "Crown Court" },
+      map,
+      "Destination"
+    ),
+    "Crown Court"
+  );
+});
 
 test("restriction overlays include one-way road direction", () => {
   const overlays = buildRoadRestrictionOverlays(restrictionOverlayMap);
