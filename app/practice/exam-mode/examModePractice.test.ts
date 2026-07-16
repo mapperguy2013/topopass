@@ -137,3 +137,25 @@ test("Stage 9.4 exam model exposes the exam-only route pack contract", () => {
   assert.equal(model.routePack.usesExistingFixtureStopsOnly, true);
   assert.equal(model.routePack.leavesPracticeCatalogueUnchanged, true);
 });
+
+test("Stage 9.5 exam model exposes local submitted-attempt progress without a readiness dashboard", () => {
+  const model = buildExamModePracticePageModel();
+
+  assert.equal(model.progress.schemaVersion, 1);
+  assert.equal(model.progress.recordsSubmittedExamAttemptsOnly, true);
+  assert.equal(model.progress.persistence, "local-storage");
+  assert.equal(model.progress.includesScoringCategories, true);
+  assert.equal(model.progress.includesRouteTags, true);
+  assert.equal(model.progress.fullReadinessDashboard, false);
+});
+
+test("Stage 9.5 route runner gates recording and progress display to submitted exam attempts", () => {
+  const source = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.match(source, /buildCompletedExamProgressAttempt/);
+  assert.match(source, /submitted: hasSubmittedCurrentDrawnAttempt/);
+  assert.match(source, /routeTags: routeMetadata\?\.tags \?\? \[\]/);
+  assert.match(source, /data-testid="exam-progress-summary"/);
+  assert.match(source, /isExamRouteRunner && hasSubmittedCurrentDrawnAttempt/);
+  assert.match(source, /createLocalExamProgressStorage/);
+});

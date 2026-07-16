@@ -10,6 +10,7 @@ import {
   listExamRouteTasks,
   type ExamRouteTag
 } from "./examRoutePack.ts";
+import { EXAM_PROGRESS_SCHEMA_VERSION } from "./examProgressTracking.ts";
 
 export const EXAM_MODE_PRACTICE_PATH = "/practice/exam-mode";
 export const EXAM_MODE_PRACTICE_TITLE = "Exam Mode";
@@ -56,6 +57,14 @@ export type ExamModePracticePageModel = {
     tags: ExamRouteTag[];
     usesExistingFixtureStopsOnly: true;
     leavesPracticeCatalogueUnchanged: true;
+  };
+  progress: {
+    schemaVersion: typeof EXAM_PROGRESS_SCHEMA_VERSION;
+    recordsSubmittedExamAttemptsOnly: true;
+    persistence: "local-storage";
+    includesScoringCategories: true;
+    includesRouteTags: true;
+    fullReadinessDashboard: false;
   };
   timer: {
     type: "elapsed";
@@ -150,6 +159,14 @@ export function buildExamModePracticePageModel(): ExamModePracticePageModel {
       tags: routeTags,
       usesExistingFixtureStopsOnly: true,
       leavesPracticeCatalogueUnchanged: true
+    },
+    progress: {
+      schemaVersion: EXAM_PROGRESS_SCHEMA_VERSION,
+      recordsSubmittedExamAttemptsOnly: true,
+      persistence: "local-storage",
+      includesScoringCategories: true,
+      includesRouteTags: true,
+      fullReadinessDashboard: false
     },
     timer: {
       type: "elapsed",

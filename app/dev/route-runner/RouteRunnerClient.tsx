@@ -48,6 +48,15 @@ import {
   type ExamScoringCategoryResult
 } from "@/app/practice/exam-mode/examScoringRubric";
 import { resolveSubmittedExamReviewFeedback } from "@/app/practice/exam-mode/examReviewFeedback";
+import {
+  buildCompletedExamProgressAttempt,
+  buildExamProgressSummary,
+  createEmptyExamProgressState,
+  createLocalExamProgressStorage,
+  formatExamProgressDate,
+  recordExamProgressAttempt
+} from "@/app/practice/exam-mode/examProgressTracking";
+import { getExamRouteTaskMetadata } from "@/app/practice/exam-mode/examRoutePack";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
 import { buildRouteRunnerOverlayOwnership } from "./routeRunnerOverlayOwnership";
 import {
@@ -4204,6 +4213,34 @@ function readableError(caughtError: unknown): string {
   return caughtError instanceof Error ? caughtError.message : "Route runner failed with an unknown error.";
 }
 
+function examProgressScoreLabel(scorePercent: number | null): string {
+  return scorePercent === null ? "n/a" : `${scorePercent.toFixed(1)}%`;
+}
+
+function examProgressTrendLabel(
+  direction: "improving" | "declining" | "steady" | "insufficient-data",
+  changePercent: number | null
+): string {
+  if (direction === "insufficient-data" || changePercent === null) {
+    return "Complete another attempt to compare scores.";
+  }
+
+  if (direction === "steady") {
+    return "Latest score matches the previous attempt.";
+  }
+
+  const signedChange = changePercent > 0 ? `+${changePercent.toFixed(1)}` : changePercent.toFixed(1);
+
+  return `${direction === "improving" ? "Improving" : "Lower than previous"}: ${signedChange} points.`;
+}
+
+function examProgressTagLabel(tag: string): string {
+  return tag
+    .split("-")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
 function drawnSubmitAttemptKey(input: {
   mapId: string;
   exerciseId: string | null;
@@ -4372,6 +4409,7 @@ export function RouteRunnerClient({
   const learnerHintPanelRef = useRef<HTMLElement | null>(null);
   const learnerHintReturnFocusRef = useRef<HTMLElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
+  const lastExamProgressAttemptKeyRef = useRef<string | null>(null);
   const examAttemptStartedAtMsRef = useRef<number | null>(isExamRouteRunner ? Date.now() : null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const panPointerIdRef = useRef<number | null>(null);
@@ -4401,6 +4439,10 @@ export function RouteRunnerClient({
   const [learnerHintDocumentHidden, setLearnerHintDocumentHidden] = useState(false);
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
   const [examElapsedSeconds, setExamElapsedSeconds] = useState(0);
+  const examProgressStorage = useMemo(() => createLocalExamProgressStorage(), []);
+  const [examProgress, setExamProgress] = useState(() => createEmptyExamProgressState());
+  const [examProgressLoaded, setExamProgressLoaded] = useState(false);
+  const [examProgressStorageMessage, setExamProgressStorageMessage] = useState<string | null>(null);
   const visualRegressionRouteAppliedRef = useRef(false);
   const [visualRegressionRouteApplied, setVisualRegressionRouteApplied] = useState(
     visualRegressionFixture?.routeSeed === "none"
@@ -5616,6 +5658,102 @@ export function RouteRunnerClient({
       submittedAttemptReview
     ]
   );
+  const examProgressSummary = useMemo(
+    () => buildExamProgressSummary(examProgress),
+    [examProgress]
+  );
+
+  useEffect(() => {
+    if (!isExamRouteRunner) {
+      return;
+    }
+
+    if (visualRegressionFixture) {
+      setExamProgress(createEmptyExamProgressState());
+      setExamProgressLoaded(true);
+      setExamProgressStorageMessage(null);
+      return;
+    }
+
+    const loadResult = examProgressStorage.load();
+
+    setExamProgress(loadResult.progress);
+    setExamProgressLoaded(true);
+    setExamProgressStorageMessage(loadResult.ok ? null : loadResult.reason ?? "Exam progress is unavailable.");
+  }, [examProgressStorage, isExamRouteRunner, visualRegressionFixture]);
+
+  useEffect(() => {
+    const progressAttemptKey =
+      currentDrawnSubmitAttemptKey && drawnSubmitState.requestId !== null
+        ? `${drawnSubmitState.requestId}:${currentDrawnSubmitAttemptKey}`
+        : null;
+
+    if (
+      !isExamRouteRunner ||
+      visualRegressionFixture ||
+      !examProgressLoaded ||
+      !hasSubmittedCurrentDrawnAttempt ||
+      !progressAttemptKey ||
+      !examScoringResult ||
+      !selectedExercise ||
+      !selectedStartStop ||
+      !selectedFinishStop ||
+      lastExamProgressAttemptKeyRef.current === progressAttemptKey
+    ) {
+      return;
+    }
+
+    const completedAt = new Date().toISOString();
+    const routeMetadata = getExamRouteTaskMetadata(selectedExercise);
+    const attempt = buildCompletedExamProgressAttempt({
+      mode,
+      submitted: hasSubmittedCurrentDrawnAttempt,
+      attemptId: `${progressAttemptKey}:${completedAt}`,
+      taskId: selectedExercise.id,
+      taskTitle: selectedExercise.title,
+      mapId: activeMap.id,
+      taskVersion: selectedExercise.exerciseVersion,
+      originLabel:
+        routeMetadata?.origin.label ?? learnerStopLabel(selectedStartStop, activeMap, "Origin"),
+      destinationLabel:
+        routeMetadata?.destination.label ?? learnerStopLabel(selectedFinishStop, activeMap, "Destination"),
+      completedAt,
+      elapsedSeconds: examElapsedSeconds,
+      scoringResult: examScoringResult,
+      routeTags: routeMetadata?.tags ?? []
+    });
+
+    if (!attempt) {
+      return;
+    }
+
+    lastExamProgressAttemptKeyRef.current = progressAttemptKey;
+    const nextProgress = recordExamProgressAttempt(examProgress, attempt);
+    const saveResult = examProgressStorage.save(nextProgress);
+
+    setExamProgress(nextProgress);
+    setExamProgressStorageMessage(
+      saveResult.ok
+        ? "Progress saved locally on this device."
+        : saveResult.reason ?? "Progress is available only for this session."
+    );
+  }, [
+    activeMap,
+    currentDrawnSubmitAttemptKey,
+    drawnSubmitState.requestId,
+    examElapsedSeconds,
+    examProgress,
+    examProgressLoaded,
+    examProgressStorage,
+    examScoringResult,
+    hasSubmittedCurrentDrawnAttempt,
+    isExamRouteRunner,
+    mode,
+    selectedExercise,
+    selectedFinishStop,
+    selectedStartStop,
+    visualRegressionFixture
+  ]);
   const realLondonPilotPlaythroughPanel = buildRealLondonPilotPlaythroughPanelModel({
     mapId: activeMap.id,
     selectedExerciseId: selectedExercise?.id ?? null,
@@ -9990,6 +10128,139 @@ export function RouteRunnerClient({
                         ))}
                       </ul>
                     </details>
+                  </section>
+                ) : null}
+
+                {isExamRouteRunner && hasSubmittedCurrentDrawnAttempt && examProgressSummary.attemptCount > 0 ? (
+                  <section
+                    data-testid="exam-progress-summary"
+                    aria-label="Exam progress summary"
+                    className="mt-4 min-w-0 border-b border-slate-200 pb-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exam progress</p>
+                    <h4 className="mt-1 break-words text-base font-semibold text-slate-950">
+                      {examProgressSummary.attemptCount} completed attempt{examProgressSummary.attemptCount === 1 ? "" : "s"}
+                    </h4>
+                    <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                      Scores and focus areas use only submitted exam attempts recorded in this browser.
+                    </p>
+
+                    <dl className="mt-4 grid min-w-0 grid-cols-2 border-y border-slate-200 text-sm sm:grid-cols-4">
+                      <div className="min-w-0 border-b border-r border-slate-200 px-3 py-3 sm:border-b-0">
+                        <dt className="text-xs font-semibold text-slate-500">Latest</dt>
+                        <dd className="mt-1 break-words font-semibold text-slate-950">
+                          {examProgressScoreLabel(examProgressSummary.latestScorePercent)}
+                        </dd>
+                      </div>
+                      <div className="min-w-0 border-b border-slate-200 px-3 py-3 sm:border-b-0 sm:border-r">
+                        <dt className="text-xs font-semibold text-slate-500">Best</dt>
+                        <dd className="mt-1 break-words font-semibold text-slate-950">
+                          {examProgressScoreLabel(examProgressSummary.bestScorePercent)}
+                        </dd>
+                      </div>
+                      <div className="min-w-0 border-r border-slate-200 px-3 py-3">
+                        <dt className="text-xs font-semibold text-slate-500">Average</dt>
+                        <dd className="mt-1 break-words font-semibold text-slate-950">
+                          {examProgressScoreLabel(examProgressSummary.averageScorePercent)}
+                        </dd>
+                      </div>
+                      <div className="min-w-0 px-3 py-3">
+                        <dt className="text-xs font-semibold text-slate-500">Latest result</dt>
+                        <dd className="mt-1 break-words font-semibold text-slate-950">
+                          {examProgressSummary.latestAttempt?.statusLabel ?? "n/a"}
+                        </dd>
+                      </div>
+                    </dl>
+
+                    <p className="mt-3 break-words text-xs leading-5 text-slate-700">
+                      {examProgressTrendLabel(
+                        examProgressSummary.trend.direction,
+                        examProgressSummary.trend.changePercent
+                      )}
+                    </p>
+
+                    <div className="mt-4 grid min-w-0 gap-5 lg:grid-cols-2">
+                      <div className="min-w-0">
+                        <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                          Repeated weak categories
+                        </h5>
+                        {examProgressSummary.repeatedWeakCategories.length > 0 ? (
+                          <ul className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
+                            {examProgressSummary.repeatedWeakCategories.map((category) => (
+                              <li key={category.id} className="min-w-0 py-3">
+                                <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                                  <p className="break-words font-semibold text-slate-950">{category.label}</p>
+                                  <span className="shrink-0 text-xs font-semibold text-amber-900">
+                                    {category.needsPracticeCount} attempts
+                                  </span>
+                                </div>
+                                <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                                  {category.latestSummary}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 break-words text-xs leading-5 text-slate-600">
+                            No category has been marked needs practice on two or more stored attempts.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                          Route tags on attempts needing practice
+                        </h5>
+                        {examProgressSummary.routeTagsNeedingPractice.length > 0 ? (
+                          <ul className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
+                            {examProgressSummary.routeTagsNeedingPractice.slice(0, 5).map((tagFocus) => (
+                              <li key={tagFocus.tag} className="min-w-0 py-3">
+                                <p className="break-words font-semibold text-slate-950">
+                                  {examProgressTagLabel(tagFocus.tag)}
+                                </p>
+                                <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                                  {tagFocus.needsPracticeAttemptCount} of {tagFocus.attemptCount} stored attempt{tagFocus.attemptCount === 1 ? "" : "s"} with this tag needed practice.
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 break-words text-xs leading-5 text-slate-600">
+                            No stored needs-practice result currently has Stage 9.4 route tags.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 min-w-0">
+                      <h5 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Recent attempts</h5>
+                      <ol className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
+                        {examProgressSummary.recentAttempts.map((attempt) => (
+                          <li key={attempt.id} className="min-w-0 py-3">
+                            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0">
+                                <p className="break-words font-semibold text-slate-950">{attempt.taskTitle}</p>
+                                <p className="mt-1 break-words text-xs leading-5 text-slate-600">
+                                  {attempt.originLabel} to {attempt.destinationLabel}
+                                </p>
+                                <p className="mt-1 break-words text-xs leading-5 text-slate-500">
+                                  {formatExamProgressDate(attempt.completedAt)} | {formatExamTime(attempt.elapsedSeconds)}
+                                </p>
+                              </div>
+                              <p className="shrink-0 text-sm font-semibold text-slate-950">
+                                {attempt.scorePercent.toFixed(1)}% | {attempt.statusLabel}
+                              </p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+
+                    {examProgressStorageMessage ? (
+                      <p className="mt-3 break-words text-xs leading-5 text-slate-500">
+                        {examProgressStorageMessage}
+                      </p>
+                    ) : null}
                   </section>
                 ) : null}
 
