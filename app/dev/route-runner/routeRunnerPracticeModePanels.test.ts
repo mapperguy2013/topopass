@@ -57,6 +57,7 @@ import {
 import {
   ROUTE_RUNNER_BETA_CORE_PANEL_LABELS,
   ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS,
+  ROUTE_RUNNER_EXAM_CORE_PANEL_LABELS,
   buildRouteRunnerPracticeModePanelVisibility
 } from "./routeRunnerPracticeModePanels.ts";
 
@@ -121,6 +122,19 @@ test("beta practice mode preserves core student-facing route-runner labels", () 
   assert.equal((visibility.visibleCorePanelLabels as readonly string[]).includes("Route map workspace"), false);
   assert.equal((visibility.visibleCorePanelLabels as readonly string[]).includes("Attempt review"), false);
   assert.equal((visibility.visibleCorePanelLabels as readonly string[]).includes("Submit Attempt"), false);
+});
+
+test("exam route-runner mode keeps practice hidden while exposing exam rules", () => {
+  const visibility = buildRouteRunnerPracticeModePanelVisibility({ mode: "student-exam" });
+
+  assert.equal(visibility.showDeveloperPanels, false);
+  assert.deepEqual(visibility.visibleDevOnlyPanelLabels, []);
+  assert.deepEqual(visibility.hiddenDevOnlyPanelLabels, [...ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS]);
+  assert.deepEqual(visibility.visibleCorePanelLabels, [...ROUTE_RUNNER_EXAM_CORE_PANEL_LABELS]);
+  assert.ok(visibility.visibleCorePanelLabels.includes("Exam Mode"));
+  assert.ok(visibility.visibleCorePanelLabels.includes("Elapsed time"));
+  assert.ok(visibility.visibleCorePanelLabels.includes("Attempt locked"));
+  assert.equal((visibility.visibleCorePanelLabels as readonly string[]).includes("Training Mode"), false);
 });
 
 test("dev tools home exposes route-runner and curated training authoring tools", () => {

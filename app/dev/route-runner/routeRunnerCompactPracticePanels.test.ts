@@ -205,6 +205,22 @@ test("Stage 161.6.10 student beta mode hides diagnostics even when the beta flag
   assert.equal(visibility.hiddenInternalPanelIds.includes("raw-osm-node-ids"), true);
 });
 
+test("Stage 9.1 student exam mode hides diagnostics and exposes exam rules", () => {
+  const visibility = buildRouteRunnerPanelVisibility({
+    mapId: realLondonOsmPilotRouteMap.id,
+    betaEnabled: false,
+    devQaVisible: false,
+    mode: "student-exam"
+  });
+
+  assert.equal(visibility.audience, "beta-student");
+  assert.equal(visibility.showInternalQaPanels, false);
+  assert.equal(visibility.visiblePanelIds.includes("exam-mode-rules"), true);
+  assert.equal(visibility.visiblePanelIds.includes("converted-osm-qa"), false);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("manual-route-input"), true);
+  assert.equal(visibility.hiddenInternalPanelIds.includes("route-replay-panel"), true);
+});
+
 test("Stage 131.5 dev QA users can reveal real London readiness diagnostics", () => {
   const visibility = buildRouteRunnerPanelVisibility({
     mapId: realLondonOsmPilotRouteMap.id,

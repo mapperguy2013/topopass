@@ -5,7 +5,7 @@ import { isRealLondonBetaMapId } from "./routeRunnerBetaPracticeAccess.ts";
 import type { RestrictionMapVisualItem } from "./restrictionMapVisuals.ts";
 
 export type RouteRunnerPanelAudience = "dev-qa" | "beta-student";
-export type RouteRunnerPanelMode = "dev" | "student-beta";
+export type RouteRunnerPanelMode = "dev" | "student-beta" | "student-exam";
 
 export type RouteRunnerPanelVisibility = {
   audience: RouteRunnerPanelAudience;
@@ -68,7 +68,8 @@ export function buildRouteRunnerPanelVisibility(input: {
   devQaVisible: boolean;
   mode?: RouteRunnerPanelMode;
 }): RouteRunnerPanelVisibility {
-  const isStudentBetaMode = input.mode === "student-beta";
+  const isStudentBetaMode = input.mode === "student-beta" || input.mode === "student-exam";
+  const isStudentExamMode = input.mode === "student-exam";
   const isDevMode = input.mode === "dev";
   const isRealLondonBetaPractice = isStudentBetaMode || (input.betaEnabled && isRealLondonBetaMapId(input.mapId));
   const audience: RouteRunnerPanelAudience = isDevMode
@@ -83,6 +84,7 @@ export function buildRouteRunnerPanelVisibility(input: {
     "map-workspace",
     "map-legend",
     ...(isRealLondonBetaPractice ? ["real-london-practice-beta"] : []),
+    ...(isStudentExamMode ? ["exam-mode-rules"] : []),
     ...(showInternalQaPanels ? ["converted-osm-qa", "real-london-readiness-qa", "restriction-debug-details"] : [])
   ];
   const hiddenInternalPanelIds = showInternalQaPanels

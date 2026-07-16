@@ -42,6 +42,7 @@ import {
   recordLearnerTrainingAttempt,
   type LearnerTrainingProgressState
 } from "@/lib/training";
+import { formatExamTime } from "@/lib/mockExamTimer";
 import { parseCommaSeparatedIds } from "./routeRunnerInput";
 import { buildRouteRunnerOverlayOwnership } from "./routeRunnerOverlayOwnership";
 import {
@@ -466,7 +467,7 @@ type SavedAttemptHistoryState = {
   selectedAttemptId: string | null;
 };
 
-export type RouteRunnerClientMode = "dev" | "student-beta";
+export type RouteRunnerClientMode = "dev" | "student-beta" | "student-exam";
 
 export type RouteRunnerClientProps = {
   initialMapOptionId?: string;
@@ -4300,9 +4301,10 @@ export function RouteRunnerClient({
     initialExerciseId,
     mapOptions
   });
-  const isStudentBetaRouteRunner = mode === "student-beta";
+  const isExamRouteRunner = mode === "student-exam";
+  const isStudentBetaRouteRunner = mode === "student-beta" || isExamRouteRunner;
   const isTrainingModeOnly = isStudentBetaRouteRunner && trainingModeOnly;
-  const shouldRenderTrainingModePanel = showTrainingModePanel || isTrainingModeOnly;
+  const shouldRenderTrainingModePanel = !isExamRouteRunner && (showTrainingModePanel || isTrainingModeOnly);
   const [isStudentBetaPhoneViewport, setIsStudentBetaPhoneViewport] = useState(false);
   const [isStudentBetaCompactViewport, setIsStudentBetaCompactViewport] = useState(false);
   const [studentSetupOpen, setStudentSetupOpen] = useState(!isStudentBetaRouteRunner || isTrainingModeOnly);
@@ -4325,6 +4327,7 @@ export function RouteRunnerClient({
   const learnerHintPanelRef = useRef<HTMLElement | null>(null);
   const learnerHintReturnFocusRef = useRef<HTMLElement | null>(null);
   const lastSaveAttemptKeyRef = useRef<string | null>(null);
+  const examAttemptStartedAtMsRef = useRef<number | null>(isExamRouteRunner ? Date.now() : null);
   const panDragPointRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const panPointerIdRef = useRef<number | null>(null);
   const drawingPointerIdRef = useRef<number | null>(null);
@@ -4352,6 +4355,7 @@ export function RouteRunnerClient({
   const [learnerHintInteractionPaused, setLearnerHintInteractionPaused] = useState(false);
   const [learnerHintDocumentHidden, setLearnerHintDocumentHidden] = useState(false);
   const [drawnRouteDraft, setDrawnRouteDraft] = useState<DrawnRouteDraft>(() => createEmptyRouteDraft());
+  const [examElapsedSeconds, setExamElapsedSeconds] = useState(0);
   const visualRegressionRouteAppliedRef = useRef(false);
   const [visualRegressionRouteApplied, setVisualRegressionRouteApplied] = useState(
     visualRegressionFixture?.routeSeed === "none"
@@ -5288,6 +5292,40 @@ export function RouteRunnerClient({
     Boolean(learnerTrainingModePanel.hint) &&
     learnerHintPresentation.isOpen &&
     !showAttemptFeedbackPanel;
+  const isExamAttemptLocked = isExamRouteRunner && hasSubmittedCurrentDrawnAttempt;
+  const isRouteEditingLocked = isExamRouteRunner && (hasSubmittedCurrentDrawnAttempt || isSubmittingCurrentDrawnAttempt);
+  const examTimerLabel = formatExamTime(examElapsedSeconds);
+
+  useEffect(() => {
+    if (!isExamRouteRunner) {
+      examAttemptStartedAtMsRef.current = null;
+      setExamElapsedSeconds(0);
+      return;
+    }
+
+    examAttemptStartedAtMsRef.current = Date.now();
+    setExamElapsedSeconds(0);
+  }, [activeMap.id, isExamRouteRunner, selectedExerciseId]);
+
+  useEffect(() => {
+    if (!isExamRouteRunner || hasSubmittedCurrentDrawnAttempt) {
+      return;
+    }
+
+    const updateExamTimer = () => {
+      const startedAt = examAttemptStartedAtMsRef.current ?? Date.now();
+
+      examAttemptStartedAtMsRef.current = startedAt;
+      setExamElapsedSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    };
+
+    updateExamTimer();
+    const intervalId = window.setInterval(updateExamTimer, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [activeMap.id, hasSubmittedCurrentDrawnAttempt, isExamRouteRunner, selectedExerciseId]);
 
   useEffect(() => {
     if (
@@ -5438,8 +5476,11 @@ export function RouteRunnerClient({
       }
     : drawnPipelineResult;
   const routeIssueOverlays = useMemo(
-    () => (isDrawing ? [] : buildRouteIssueOverlays(activeMap, drawnPipelineResult)),
-    [activeMap, drawnPipelineResult, isDrawing]
+    () =>
+      isDrawing || (isExamRouteRunner && !hasSubmittedCurrentDrawnAttempt)
+        ? []
+        : buildRouteIssueOverlays(activeMap, drawnPipelineResult),
+    [activeMap, drawnPipelineResult, hasSubmittedCurrentDrawnAttempt, isDrawing, isExamRouteRunner]
   );
   const restrictionZoomTier = restrictionZoomTierForViewport(viewport);
   const restrictionMapVisualItems = useMemo(
@@ -6470,7 +6511,11 @@ export function RouteRunnerClient({
     resetRouteReplay();
   }
 
-  function clearDrawnAttempt() {
+  function clearDrawnAttempt(options: { force?: boolean } = {}) {
+    if (isExamAttemptLocked && !options.force) {
+      return;
+    }
+
     setIsDrawing(false);
     drawingPointerIdRef.current = null;
     setDrawnRouteDraft(clearRouteDraft());
@@ -6516,13 +6561,19 @@ export function RouteRunnerClient({
     clearMapPointerGestureState();
     setIsPanningMap(false);
     setIsDrawing(false);
-    setDrawnRouteDraft((currentDraft) =>
-      currentDraft.activeStrokeIndex === null ? currentDraft : finishRouteStroke(currentDraft)
-    );
+    if (!isRouteEditingLocked) {
+      setDrawnRouteDraft((currentDraft) =>
+        currentDraft.activeStrokeIndex === null ? currentDraft : finishRouteStroke(currentDraft)
+      );
+    }
     setMapViewportState((currentState) => setMapInteractionMode(currentState, interactionMode));
   }
 
   function undoLastDrawnStroke() {
+    if (isRouteEditingLocked) {
+      return;
+    }
+
     setIsDrawing(false);
     setDrawnRouteDraft((currentDraft) => undoLastRouteStroke(currentDraft));
     setSelectedRestrictionReviewItemId(null);
@@ -6530,6 +6581,10 @@ export function RouteRunnerClient({
   }
 
   async function submitDrawnAttempt() {
+    if (isExamAttemptLocked) {
+      return;
+    }
+
     setIsDrawing(false);
     setLearnerHintPresentation((currentState) => dismissLearnerTrainingHint(currentState));
 
@@ -6654,7 +6709,7 @@ export function RouteRunnerClient({
     });
     lastSaveAttemptKeyRef.current = null;
     setFastestRouteRevealState(hideFastestRouteReveal());
-    clearDrawnAttempt();
+    clearDrawnAttempt({ force: true });
   }
 
   function handleStartAdaptivePractice(item: AdaptivePracticeQueueItem) {
@@ -6748,7 +6803,7 @@ export function RouteRunnerClient({
   }
 
   function handleGenerateLearnerTrainingExercise() {
-    clearDrawnAttempt();
+    clearDrawnAttempt({ force: true });
     setLearnerTrainingModeState((currentState) =>
       startLearnerTrainingExercise({
         state: currentState,
@@ -6766,7 +6821,7 @@ export function RouteRunnerClient({
   }
 
   function handleGenerateExperimentalLearnerTrainingExercise() {
-    clearDrawnAttempt();
+    clearDrawnAttempt({ force: true });
     setLearnerTrainingModeState((currentState) =>
       startLearnerTrainingExercise({
         state: currentState,
@@ -6887,7 +6942,7 @@ export function RouteRunnerClient({
     setOsmExerciseDebugOverlayState(createDefaultOsmExerciseDebugOverlayState());
     setMapViewportState(resetMapViewport(activeMapZoomLimits));
     setFastestRouteRevealState(hideFastestRouteReveal());
-    clearDrawnAttempt();
+    clearDrawnAttempt({ force: true });
   }
 
   function handleMapOptionChange(nextMapOptionId: string) {
@@ -6932,7 +6987,7 @@ export function RouteRunnerClient({
     setMapViewportState(resetMapViewport(activeMapZoomLimits));
     setFastestRouteRevealState(hideFastestRouteReveal());
     resetLearnerTrainingExerciseForMapChange();
-    clearDrawnAttempt();
+    clearDrawnAttempt({ force: true });
   }
 
   function toggleRestrictionReviewFocus(item: RestrictionFocusReviewItem) {
@@ -6979,6 +7034,10 @@ export function RouteRunnerClient({
       };
       setIsPanningMap(true);
       setIsDrawing(false);
+      return;
+    }
+
+    if (isRouteEditingLocked) {
       return;
     }
 
@@ -7066,6 +7125,10 @@ export function RouteRunnerClient({
       return;
     }
 
+    if (isRouteEditingLocked) {
+      return;
+    }
+
     if (drawingPointerIdRef.current !== null && event.pointerId !== drawingPointerIdRef.current) {
       return;
     }
@@ -7143,6 +7206,12 @@ export function RouteRunnerClient({
     }
 
     if (!isDrawing) {
+      return;
+    }
+
+    if (isRouteEditingLocked) {
+      drawingPointerIdRef.current = null;
+      setIsDrawing(false);
       return;
     }
 
@@ -7395,13 +7464,21 @@ export function RouteRunnerClient({
         >
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-              {isStudentBetaRouteRunner ? "Real London Practice - Beta" : "TOPOPASS / Route Runner"}
+              {isExamRouteRunner
+                ? "Exam Mode"
+                : isStudentBetaRouteRunner
+                  ? "Real London Practice - Beta"
+                  : "TOPOPASS / Route Runner"}
             </p>
             <h1 className="mt-1 text-lg font-bold text-slate-950 sm:text-xl">
               {selectedExerciseDisplay?.title ?? `${selectedMapOption.label} route exercise runner`}
             </h1>
             <p className="mt-1 text-sm leading-5 text-slate-600">
-              {isStudentBetaRouteRunner
+              {isExamRouteRunner
+                ? selectedMapIsScoreable
+                  ? "Read the atlas, plan independently, draw your route, then submit for post-attempt review."
+                  : "Review this map with pan, zoom, legend, and attribution. Scored exam attempts are not available for this map."
+                : isStudentBetaRouteRunner
                 ? selectedMapIsScoreable
                   ? "Draw from the start marker to the destination marker. Visit checkpoints in order and follow road restrictions."
                   : "Review this map with pan, zoom, legend, and attribution. Scored exercises are not available yet."
@@ -7412,7 +7489,11 @@ export function RouteRunnerClient({
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {!isStudentBetaRouteRunner ? (
+            {isExamRouteRunner ? (
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                Elapsed {examTimerLabel}
+              </div>
+            ) : !isStudentBetaRouteRunner ? (
               <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
                 Elapsed --:--
               </div>
@@ -7430,8 +7511,8 @@ export function RouteRunnerClient({
                   </button>
                   <button
                     type="button"
-                    onClick={clearDrawnAttempt}
-                    disabled={drawnTrace.points.length === 0 && !isDrawing}
+                    onClick={() => clearDrawnAttempt()}
+                    disabled={(drawnTrace.points.length === 0 && !isDrawing) || isRouteEditingLocked}
                     className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Clear
@@ -7443,10 +7524,12 @@ export function RouteRunnerClient({
                   ref={submitRouteButtonRef}
                   type="button"
                   onClick={submitDrawnAttempt}
-                  disabled={drawnSubmitDisabled || isSubmittingCurrentDrawnAttempt}
+                  disabled={drawnSubmitDisabled || isSubmittingCurrentDrawnAttempt || isExamAttemptLocked}
                   className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  {isSubmittingCurrentDrawnAttempt
+                  {isExamAttemptLocked
+                    ? "Attempt locked"
+                    : isSubmittingCurrentDrawnAttempt
                     ? "Submitting..."
                     : isStudentBetaRouteRunner
                       ? SHARED_ROUTE_SUBMIT_LABEL
@@ -7476,6 +7559,21 @@ export function RouteRunnerClient({
           {isStudentBetaRouteRunner && selectedRealLondonExerciseMetadata ? (
             <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
               {selectedRealLondonExerciseMetadata.routeType.replaceAll("-", " ")}
+            </span>
+          ) : null}
+          {isExamRouteRunner ? (
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold">
+              {isExamAttemptLocked ? "Locked after submission" : "No hints during attempt"}
+            </span>
+          ) : null}
+          {isExamRouteRunner && selectedStartStop ? (
+            <span className="rounded-full border border-green-100 bg-green-50 px-3 py-1 font-semibold text-green-900">
+              Origin: {learnerStopLabel(selectedStartStop, activeMap, "Start")}
+            </span>
+          ) : null}
+          {isExamRouteRunner && selectedFinishStop ? (
+            <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 font-semibold text-red-900">
+              Destination: {learnerStopLabel(selectedFinishStop, activeMap, "Destination")}
             </span>
           ) : null}
           {selectedMapOption.attribution && !isStudentBetaRouteRunner ? (
@@ -7575,7 +7673,7 @@ export function RouteRunnerClient({
             {isStudentBetaRouteRunner ? (
               <>
                 <label htmlFor="route-map-option" className="mt-4 block text-sm font-semibold text-slate-900">
-                  Practice map
+                  {isExamRouteRunner ? "Exam map" : "Practice map"}
                 </label>
                 <select
                   id="route-map-option"
@@ -7591,7 +7689,11 @@ export function RouteRunnerClient({
                 </select>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
                   <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-blue-800">
-                    {selectedMapIsScoreable ? "Ready for practice" : "Preview only"}
+                    {selectedMapIsScoreable
+                      ? isExamRouteRunner
+                        ? "Ready for exam attempt"
+                        : "Ready for practice"
+                      : "Preview only"}
                   </span>
                   {selectedMapOptionIsLoading ? (
                     <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-sky-900">
@@ -7688,7 +7790,7 @@ export function RouteRunnerClient({
             {!isTrainingModeOnly ? (
               <>
                 <label htmlFor="route-exercise" className="mt-4 block text-sm font-semibold text-slate-900">
-                  Route exercise
+                  {isExamRouteRunner ? "Exam route" : "Route exercise"}
                 </label>
                 <select
                   id="route-exercise"
@@ -7727,7 +7829,7 @@ export function RouteRunnerClient({
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
                     <p className="font-semibold">{selectedExerciseAvailability.reason}</p>
                     <p className="mt-1 leading-5">
-                      This route is available for fixture debugging, but it is not treated as a normal scored practice
+                      This route is available for fixture debugging, but it is not treated as a normal scored route
                       question until the required stops are legally reachable.
                     </p>
                     {selectedExerciseAvailability.errors.length > 0 ? (
@@ -7889,9 +7991,16 @@ export function RouteRunnerClient({
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rules</dt>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {isExamRouteRunner ? "Exam rules" : "Rules"}
+                    </dt>
                     <dd className="mt-1 space-y-1">
-                      {selectedSyntheticScenario ? (
+                      {isExamRouteRunner ? (
+                        <>
+                          <p>Plan the route independently from the atlas map.</p>
+                          <p>Hints and shortest-route guidance stay unavailable until after submission.</p>
+                        </>
+                      ) : selectedSyntheticScenario ? (
                         selectedSyntheticScenario.exerciseRules.map((rule) => <p key={rule}>{rule}</p>)
                       ) : (
                         <>
@@ -8589,15 +8698,15 @@ export function RouteRunnerClient({
                 <button
                   type="button"
                   onClick={undoLastDrawnStroke}
-                  disabled={!hasUndoableDrawnStroke}
+                  disabled={!hasUndoableDrawnStroke || isRouteEditingLocked}
                   className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   Undo
                 </button>
                 <button
                   type="button"
-                  onClick={clearDrawnAttempt}
-                  disabled={drawnTrace.points.length === 0 && !isDrawing}
+                  onClick={() => clearDrawnAttempt()}
+                  disabled={(drawnTrace.points.length === 0 && !isDrawing) || isRouteEditingLocked}
                   className="pointer-events-auto inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-slate-300 bg-white/95 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-100"
                 >
                   {isStudentBetaRouteRunner ? "Erase route" : "Clear drawing"}

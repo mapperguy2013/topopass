@@ -1,4 +1,4 @@
-export type RouteRunnerPracticeMode = "dev" | "student-beta";
+export type RouteRunnerPracticeMode = "dev" | "student-beta" | "student-exam";
 
 export const ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS = [
   "Manual route input",
@@ -37,6 +37,18 @@ export const ROUTE_RUNNER_BETA_CORE_PANEL_LABELS = [
   "OpenStreetMap contributors"
 ] as const;
 
+export const ROUTE_RUNNER_EXAM_CORE_PANEL_LABELS = [
+  "Exam Mode",
+  "Practice Exercises",
+  "Route instructions",
+  "Practice map",
+  "Route feedback",
+  "Submit route",
+  "Elapsed time",
+  "Attempt locked",
+  "OpenStreetMap contributors"
+] as const;
+
 export type RouteRunnerPracticeModePanelVisibility = {
   mode: RouteRunnerPracticeMode;
   showDeveloperPanels: boolean;
@@ -55,6 +67,9 @@ export function buildRouteRunnerPracticeModePanelVisibility(input: {
     showDeveloperPanels,
     visibleDevOnlyPanelLabels: showDeveloperPanels ? [...ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS] : [],
     hiddenDevOnlyPanelLabels: showDeveloperPanels ? [] : [...ROUTE_RUNNER_DEV_ONLY_PANEL_LABELS],
-    visibleCorePanelLabels: [...ROUTE_RUNNER_BETA_CORE_PANEL_LABELS]
+    visibleCorePanelLabels:
+      input.mode === "student-exam"
+        ? [...ROUTE_RUNNER_EXAM_CORE_PANEL_LABELS]
+        : [...ROUTE_RUNNER_BETA_CORE_PANEL_LABELS]
   };
 }

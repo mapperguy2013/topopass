@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { buildPageMetadata } from "@/lib/seo";
 import { buildBetaTesterEntryModel } from "@/app/beta/betaTesterEntry";
 import { buildLearnerTrainingPracticeEntryModel } from "@/app/practice/training/learnerTrainingPractice";
+import { buildExamModePracticeEntryModel } from "@/app/practice/exam-mode/examModePractice";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
@@ -114,6 +115,7 @@ function PracticeHubVisual() {
 export default function PracticePage() {
   const betaEntry = buildBetaTesterEntryModel();
   const trainingEntry = buildLearnerTrainingPracticeEntryModel();
+  const examEntry = buildExamModePracticeEntryModel();
 
   return (
     <AppShell title="Practice">
@@ -221,6 +223,34 @@ export default function PracticePage() {
               href={trainingEntry.href}
             >
               {trainingEntry.ctaLabel}
+            </TrackedLink>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-wide text-road">
+                {examEntry.title}
+              </p>
+              <h3 className="mt-2 text-xl font-bold text-ink">
+                Practise under exam-mode rules
+              </h3>
+              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">
+                {examEntry.message} Draw and edit before submitting; after submission the attempt locks and review
+                becomes available.
+              </p>
+            </div>
+            <TrackedLink
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              eventName="practice_start_click"
+              eventProperties={{
+                location: "practice-hub",
+                practice: "exam-mode"
+              }}
+              href={examEntry.href}
+            >
+              {examEntry.ctaLabel}
             </TrackedLink>
           </div>
         </section>
