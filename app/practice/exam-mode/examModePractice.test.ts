@@ -123,3 +123,17 @@ test("Stage 9.3 route runner gates exam review and preserves route locking and p
   assert.match(source, /isExamAttemptLocked = isExamRouteRunner && hasSubmittedCurrentDrawnAttempt/);
   assert.match(source, /learnerFeedbackIssueSections\.map/);
 });
+
+test("Stage 9.4 exam model exposes the exam-only route pack contract", () => {
+  const model = buildExamModePracticePageModel();
+
+  assert.equal(model.routePack.stage, "9.4");
+  assert.ok(model.routePack.taskCount > 0);
+  assert.equal(model.routePack.taskIds.length, model.routePack.taskCount);
+  assert.ok(model.routePack.tags.includes("bridge"));
+  assert.ok(model.routePack.tags.includes("one-way-awareness"));
+  assert.ok(model.routePack.tags.includes("station"));
+  assert.ok(model.routePack.tags.includes("hospital"));
+  assert.equal(model.routePack.usesExistingFixtureStopsOnly, true);
+  assert.equal(model.routePack.leavesPracticeCatalogueUnchanged, true);
+});

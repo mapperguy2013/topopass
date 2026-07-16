@@ -4,6 +4,12 @@ import {
 } from "../real-london/realLondonBetaPracticeScreen.ts";
 import { routeRunnerMapOptionIsScoreable } from "../../dev/route-runner/routeRunnerBetaPracticeAccess.ts";
 import type { RouteRunnerMapOption } from "../../dev/route-runner/routeRunnerMapOptionUtils.ts";
+import {
+  EXAM_ROUTE_PACK_STAGE,
+  buildExamRoutePackMapOptions,
+  listExamRouteTasks,
+  type ExamRouteTag
+} from "./examRoutePack.ts";
 
 export const EXAM_MODE_PRACTICE_PATH = "/practice/exam-mode";
 export const EXAM_MODE_PRACTICE_TITLE = "Exam Mode";
@@ -43,6 +49,14 @@ export type ExamModePracticePageModel = {
     reportsAssessmentLimits: true;
     keepsSubmittedRouteLocked: true;
   };
+  routePack: {
+    stage: typeof EXAM_ROUTE_PACK_STAGE;
+    taskCount: number;
+    taskIds: string[];
+    tags: ExamRouteTag[];
+    usesExistingFixtureStopsOnly: true;
+    leavesPracticeCatalogueUnchanged: true;
+  };
   timer: {
     type: "elapsed";
     usesExistingExamTimeFormatter: true;
@@ -70,7 +84,7 @@ export type ExamModePracticeEntryModel = {
 };
 
 function examModeMapOptions(): RouteRunnerMapOption[] {
-  return REAL_LONDON_BETA_MAP_OPTIONS.filter(
+  return buildExamRoutePackMapOptions(REAL_LONDON_BETA_MAP_OPTIONS).filter(
     (option) => routeRunnerMapOptionIsScoreable(option) && option.exercises.length > 0
   );
 }
@@ -87,6 +101,8 @@ export function buildExamModePracticeEntryModel(): ExamModePracticeEntryModel {
 
 export function buildExamModePracticePageModel(): ExamModePracticePageModel {
   const mapOptions = examModeMapOptions();
+  const routeTasks = listExamRouteTasks(mapOptions);
+  const routeTags = [...new Set(routeTasks.flatMap((task) => task.examRouteMetadata.tags))];
   const defaultMapOption =
     mapOptions.find((option) => option.map.id === REAL_LONDON_BETA_DEFAULT_MAP_ID) ?? mapOptions[0];
 
@@ -126,6 +142,14 @@ export function buildExamModePracticePageModel(): ExamModePracticePageModel {
       includesGroundedStrengthsAndImprovements: true,
       reportsAssessmentLimits: true,
       keepsSubmittedRouteLocked: true
+    },
+    routePack: {
+      stage: EXAM_ROUTE_PACK_STAGE,
+      taskCount: routeTasks.length,
+      taskIds: routeTasks.map((task) => task.id),
+      tags: routeTags,
+      usesExistingFixtureStopsOnly: true,
+      leavesPracticeCatalogueUnchanged: true
     },
     timer: {
       type: "elapsed",
