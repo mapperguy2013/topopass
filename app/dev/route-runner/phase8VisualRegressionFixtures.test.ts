@@ -40,6 +40,11 @@ test("Stage 8.11 uses the smallest representative desktop, tablet and mobile sta
   assert.ok(protectedSystems.has("rail context"));
   assert.ok(protectedSystems.has("building context"));
   assert.ok(protectedSystems.has("coordinate alignment"));
+  assert.ok(protectedSystems.has("one-way restrictions"));
+  assert.equal(
+    getPhase8VisualRegressionFixture("one-way-restrictions-desktop")?.mapId,
+    "osm-curated-one-way-system-area"
+  );
 });
 
 test("Stage 8.11 review fixtures use deterministic source-backed route seeds", () => {

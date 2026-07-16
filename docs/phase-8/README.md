@@ -55,7 +55,7 @@ stages may be split if implementation audit shows that a stage is too large.
 3. Stage 8.3: Atlas render-data adapter for buildings, land use, institutions,
    places, transport context and road references. Completed.
 4. Stage 8.4: Printed-atlas road hierarchy and major-road corridor system.
-   Implemented; manual visual acceptance pending.
+   Completed; accepted through the integrated Stage 8.13 review.
 5. Stage 8.5: Atlas label density and place-name pass. Completed.
 6. Stage 8.6: Buildings, built-up fabric, institutional areas, parks and water.
    Completed.
@@ -68,8 +68,8 @@ stages may be split if implementation audit shows that a stage is too large.
    Stage 8.8.2 is the revised visual-master base-map alignment pass.
    Completed and visually accepted.
    Stage 8.8.3 is the targeted source-backed context-supplement pass for
-   lighter non-Victoria visual fixtures. Completed; owner visual acceptance and
-   physical touch-device QA remain separate.
+   lighter non-Victoria visual fixtures. Completed; Stage 8.13 later completed
+   owner visual acceptance while physical touch-device QA remains separate.
 9. Stage 8.9: Learner-route, marker, hint and review-overlay rebalance.
    Completed and visually accepted.
 10. Stage 8.10: Mobile, tablet, accessibility and performance pass.
@@ -77,8 +77,9 @@ stages may be split if implementation audit shows that a stage is too large.
 11. Stage 8.11: Deterministic visual-regression fixtures and screenshot
     evidence. Completed and browser-validated.
 12. Stage 8.12: Integration QA, archive manifest and owner review pack.
-    Completed. Phase 8 remains pending owner visual inspection and physical
-    touch-device QA.
+    Completed.
+13. Stage 8.13: Final acceptance and closure. Completed. Phase 8 cartography is
+    accepted and closed; physical touch-device checks remain release QA.
 
 ## Current Status
 
@@ -92,8 +93,9 @@ diagnostics. Stage 8.5 visual QA is accepted with committed desktop and mobile
 screenshots. Stage 8.6 now renders source-backed buildings, institutional
 areas, land use, parks and water with deterministic layer order, inner-ring
 holes, viewport filtering and bounded semantic zoom. Its desktop/mobile visual
-QA and full local validation are complete. Stage 8.4's independent manual
-visual acceptance remains pending. Stage 8.7 now has a typed source-backed
+QA and full local validation are complete. Stage 8.4's road hierarchy is
+accepted through the integrated Stage 8.13 review. Stage 8.7 now has a typed
+source-backed
 symbol pipeline, original compact marks, deterministic coordinated symbol and
 label placement, and class-aware A/B reference placement. Its focused visual-QA
 correction strengthens genuine references and compact marks, selects distinct
@@ -138,9 +140,10 @@ canvas allocation below two million pixels. Browser visual QA covers dense map,
 active route, review, comparison, hint, restriction, water, focus and 200%
 reflow-equivalent states without weakening Stage 8.8.2 cartography. Physical
 two-finger, orientation and safe-area checks remain manual.
-Stage 8.11 now provides seven typed deterministic production-renderer fixtures
+Stage 8.11 now provides eight typed production-renderer fixtures
 covering dense neutral geography, an active route, hint, correct review,
-incorrect review, desktop, tablet and mobile states. Positive canvas readiness
+incorrect review, one-way/restriction context, desktop, tablet and mobile
+states. Positive canvas readiness
 waits for fonts, source data, marker assets, requested overlay state, scroll
 target and a completed draw. Repeated Chromium captures are byte-identical
 except for a tiny documented PNG antialias tolerance in the regenerated Stage
@@ -148,8 +151,10 @@ except for a tiny documented PNG antialias tolerance in the regenerated Stage
 8.8.2/8.9 visual hierarchy. Stage 8.12 indexes and verifies both approved
 references, the Phase 8 screenshot archive and the deterministic evidence. Its
 normal-size desktop, tablet and mobile review found no integration regression,
-but automated checks do not establish final cartographic acceptance. Phase 8
-remains pending owner visual inspection and physical touch-device QA.
+but automated checks did not establish final cartographic acceptance. Stage
+8.13 completed the side-by-side visual inspection and accepted the result as an
+original, source-backed member of the approved examination-atlas family. Phase
+8 cartography is closed. Physical touch-device checks remain release QA.
 
 ## Documents
 
@@ -169,4 +174,5 @@ remains pending owner visual inspection and physical touch-device QA.
 - [Stage 8.10 mobile, tablet, accessibility and performance](stage-8-10-mobile-tablet-accessibility-performance.md)
 - [Stage 8.11 deterministic visual regression](stage-8-11-deterministic-visual-regression.md)
 - [Stage 8.12 integration QA and owner review](stage-8-12-integration-qa-owner-review.md)
+- [Stage 8.13 final acceptance and closure](stage-8-13-final-acceptance-and-closure.md)
 - [Phase 8 visual QA plan](phase-8-visual-qa-plan.md)

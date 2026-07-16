@@ -47,6 +47,7 @@ function defaultExerciseId(mapId: string): string | null {
 
 const PICCADILLY_CIRCUS_MAP_ID = "osm-curated-piccadilly-circus";
 const WATERLOO_BRIDGE_MAP_ID = "osm-curated-waterloo-bridge";
+const ONE_WAY_SYSTEM_AREA_MAP_ID = "osm-curated-one-way-system-area";
 const QUIET_RESIDENTIAL_MAP_ID = "osm-curated-quiet-residential-roads";
 
 export const PHASE8_VISUAL_REGRESSION_FIXTURES: readonly Phase8VisualRegressionFixture[] = [
@@ -85,6 +86,18 @@ export const PHASE8_VISUAL_REGRESSION_FIXTURES: readonly Phase8VisualRegressionF
     scrollTarget: "none",
     viewport: { width: 1440, height: 900, devicePixelRatio: 1 },
     protects: ["dense junctions", "active learner route", "markers", "overlay ordering"]
+  },
+  {
+    id: "one-way-restrictions-desktop",
+    description: "One-way and restriction context after the Stage 8.8.3 source-backed supplement.",
+    mapId: ONE_WAY_SYSTEM_AREA_MAP_ID,
+    exerciseId: defaultExerciseId(ONE_WAY_SYSTEM_AREA_MAP_ID),
+    state: "neutral",
+    routeSeed: "none",
+    openFeedback: false,
+    scrollTarget: "none",
+    viewport: { width: 1440, height: 900, devicePixelRatio: 1 },
+    protects: ["one-way restrictions", "building context", "local-road labels", "attribution"]
   },
   {
     id: "waterloo-context-tablet",

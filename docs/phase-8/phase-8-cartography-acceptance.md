@@ -70,5 +70,19 @@ TOPOPASS implementation based only on permitted and attributed geography.
 
 Passing lint, unit tests, build, fixture metadata checks, or byte-identical
 screenshots is not enough without owner inspection and side-by-side visual
-review. Stage 8.12 archives the evidence but does not complete this gate. A
-focused Stage 8.8.3 correction remains possible after owner review.
+review. Stage 8.12 archived the evidence without completing this gate. The
+focused Stage 8.8.3 correction and Stage 8.13 owner review subsequently
+completed it.
+
+## Final Decision
+
+Stage 8.13 completed the normal-size owner inspection against v2 first and v1
+second after the Stage 8.8.3 context-supplement correction. The representative
+desktop, tablet and mobile production evidence belongs to the approved dense
+printed-atlas family while remaining an original, source-backed TOPOPASS
+renderer. Phase 8 cartography is accepted and closed on 16 July 2026.
+
+Physical-device pinch, orientation, cutout/safe-area, feedback-scroll and hint
+interaction checks remain release QA. They do not alter the cartographic
+acceptance decision, but any defect found there must still be fixed before the
+affected mobile experience is released.

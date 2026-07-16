@@ -243,10 +243,11 @@ remain required before physical-device acceptance.
 ## Stage 8.11 Deterministic Regression Evidence
 
 Stage 8.11 captures are under `screenshots/stage-8-11/` and are indexed in
-`stage-8-11-deterministic-visual-regression.md`. Seven typed fixtures cover
+`stage-8-11-deterministic-visual-regression.md`. Eight typed fixtures cover
 Victoria neutral density, King's Cross correct review, Piccadilly active route,
-Waterloo tablet water/bridge context, Waterloo mobile incorrect review,
-Piccadilly mobile hint and quiet-residential mobile map detail.
+one-way/restriction context, Waterloo tablet water/bridge context, Waterloo
+mobile incorrect review, Piccadilly mobile hint and quiet-residential mobile
+map detail.
 
 The exact 1440 by 900, 768 by 1024 and 390 by 844 captures use Chromium,
 device-pixel ratio 1, fixed source-backed geography and route seeds, reduced
@@ -261,8 +262,8 @@ regression evidence, not owner cartographic acceptance.
 ## Stage 8.12 Integration QA And Owner Review Pack
 
 Stage 8.12 indexes the complete screenshot archive, verifies both appearance
-reference hashes, and verifies the count and integrity of the seven Stage 8.11
-deterministic images. Its review document is
+reference hashes, and verifies the count and integrity of the eight Stage 8.11
+images. Its review document is
 `stage-8-12-integration-qa-owner-review.md`, and its deterministic archive check
 is:
 
@@ -272,8 +273,13 @@ npm.cmd run map:qa:phase8-owner-review
 
 Representative desktop, tablet and mobile evidence was inspected at normal
 displayed size against both masters. The integration evidence is coherent and
-the learner/review layers remain readable above the dense base map. Phase 8 is
-still pending owner visual inspection. Physical-device checks remain pending,
-and the owner may request a focused Stage 8.8.3 visual correction if the current
-map remains materially too open, weakly compressed or understated in road
-reference hierarchy relative to the denser v2 direction.
+the learner/review layers remain readable above the dense base map. Stage 8.13
+completed owner visual inspection and accepted Phase 8 cartography.
+Physical-device interaction checks remain release QA.
+
+## Stage 8.13 Final Acceptance
+
+Stage 8.13 inspected the v2 and v1 references and representative production
+evidence at normal displayed size, closed the post-Stage 8.8.3 one-way evidence
+gap, reran the full validation suite and recorded the final acceptance decision
+in `stage-8-13-final-acceptance-and-closure.md`.

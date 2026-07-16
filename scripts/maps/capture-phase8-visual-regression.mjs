@@ -13,6 +13,7 @@ const fixtures = [
   { id: "victoria-neutral-desktop", file: "victoria-neutral-desktop.png", width: 1440, height: 900 },
   { id: "kings-cross-correct-review-desktop", file: "kings-cross-correct-review-desktop.png", width: 1440, height: 900 },
   { id: "piccadilly-active-route-desktop", file: "piccadilly-active-route-desktop.png", width: 1440, height: 900 },
+  { id: "one-way-restrictions-desktop", file: "one-way-restrictions-desktop.png", width: 1440, height: 900 },
   { id: "waterloo-context-tablet", file: "waterloo-context-tablet.png", width: 768, height: 1024 },
   { id: "waterloo-incorrect-review-mobile", file: "waterloo-incorrect-review-mobile.png", width: 390, height: 844 },
   { id: "piccadilly-hint-mobile", file: "piccadilly-hint-mobile.png", width: 390, height: 844 },
@@ -70,7 +71,7 @@ async function captureFixture(fixture) {
 
   const outputPath = path.join(outputDirectory, fixture.file);
   try {
-    const endpoint = await createTarget(port, fixtureUrl(fixture.id));
+    const endpoint = await createTarget(port, "about:blank");
     const client = await connectCdp(endpoint.webSocketDebuggerUrl);
     try {
       await sendCdp(client, "Page.enable");
@@ -84,7 +85,20 @@ async function captureFixture(fixture) {
         screenHeight: fixture.height
       });
       await sendCdp(client, "Page.navigate", { url: fixtureUrl(fixture.id) });
-      await waitForVisualReady(client, fixture.id);
+      try {
+        await waitForVisualReady(client, fixture.id);
+      } catch (error) {
+        const diagnostic = await sendCdp(client, "Page.captureScreenshot", {
+          format: "png",
+          fromSurface: true,
+          captureBeyondViewport: false
+        });
+        await writeFile(
+          path.join(repositoryRoot, ".tmp", `${fixture.id}-capture-timeout.png`),
+          Buffer.from(diagnostic.data, "base64")
+        );
+        throw error;
+      }
       await pause(750);
       const screenshot = await sendCdp(client, "Page.captureScreenshot", {
         format: "png",
@@ -190,13 +204,13 @@ async function connectCdp(webSocketUrl) {
 }
 
 function sendCdp(client, method, params = {}) {
-  return withTimeout(client.send(method, params), 120000, `${method} timed out`);
+  return withTimeout(client.send(method, params), 300000, `${method} timed out`);
 }
 
 async function waitForVisualReady(client, fixtureId) {
   const startedAt = Date.now();
   let lastState = null;
-  while (Date.now() - startedAt < 180000) {
+  while (Date.now() - startedAt < 300000) {
     const result = await sendCdp(client, "Runtime.evaluate", {
       returnByValue: true,
       expression: `(() => {
@@ -207,7 +221,9 @@ async function waitForVisualReady(client, fixtureId) {
           state: canvas?.getAttribute('data-phase8-visual-state') ?? null,
           width: window.innerWidth,
           height: window.innerHeight,
-          title: document.title
+          title: document.title,
+          canvasCount: document.querySelectorAll('canvas').length,
+          bodyText: document.body?.innerText?.slice(0, 500) ?? null
         };
       })()`
     });

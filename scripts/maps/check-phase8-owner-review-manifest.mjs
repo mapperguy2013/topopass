@@ -28,13 +28,14 @@ const evidenceFolders = [
   ["stage-8-8-2", 19, "current-cartography"],
   ["stage-8-9", 15, "current-overlays"],
   ["stage-8-10", 23, "current-responsive"],
-  ["stage-8-11", 7, "current-deterministic"]
+  ["stage-8-11", 8, "current-deterministic"]
 ];
 
 const deterministicScreenshots = [
   ["victoria-neutral-desktop.png", "b52ab03fe47497250ccd3883bdcce1521faaaffa21cddf20316ed83b2100fd06", 1440, 900],
   ["kings-cross-correct-review-desktop.png", "15e16de5c194b055974e0c7a50e3eb4d057d36ffef172327b5d307ecffd0eafc", 1440, 900],
   ["piccadilly-active-route-desktop.png", "32e639a12f7c75c754959d9610ce29b51b04bb30411f4a74d6406c7e27c8017e", 1440, 900],
+  ["one-way-restrictions-desktop.png", "1d8707958cfbbcebbd837ded1652d15230acdac0ddae3d5637de327933a37281", 1440, 900],
   ["waterloo-context-tablet.png", "ee6a25537541b1cabc0f268b703a9f0a2bf486b179116d7eeb2f9bebc749b726", 768, 1024],
   ["waterloo-incorrect-review-mobile.png", "4454e9703635e9e7ae6ffe301d752bbabcb9eaa9b96712c535068319caf729ba", 390, 844],
   ["piccadilly-hint-mobile.png", "8eec738e244f9beddaf3838c201c7a7df7b9ea748078b38b7f62d6e18399ae6e", 390, 844],
@@ -110,9 +111,8 @@ const result = {
   deterministicScreenshots: checkedDeterministicScreenshots,
   limitations: [
     "Stage 8.8 evidence is retained but superseded by Stage 8.8.1.",
-    "Stage 8.4 independent manual visual acceptance remains pending.",
     "Physical touch, orientation and safe-area checks remain manual.",
-    "Deterministic evidence does not constitute owner cartographic acceptance."
+    "The Stage 8.13 closure decision depends on normal-size owner inspection as well as this manifest."
   ],
   failures
 };

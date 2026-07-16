@@ -16,6 +16,7 @@ as geography or product raster content.
 | `victoria-neutral-desktop` | 1440 x 900 | Neutral | Dense buildings, local labels, major roads, red A/B references and district context |
 | `kings-cross-correct-review-desktop` | 1440 x 900 | Correct review | A501 geometry, route/marker alignment and submitted feedback |
 | `piccadilly-active-route-desktop` | 1440 x 900 | Active route | Dense junctions, learner route, markers and overlay order |
+| `one-way-restrictions-desktop` | 1440 x 900 | Neutral | Post-Stage 8.8.3 building/context density, one-way restrictions and attribution |
 | `waterloo-context-tablet` | 768 x 1024 | Neutral | Thames, bridges, rail context, attribution and tablet layout |
 | `waterloo-incorrect-review-mobile` | 390 x 844 | Incorrect review | Incomplete route, needs-review feedback and mobile layout |
 | `piccadilly-hint-mobile` | 390 x 844 | Hint | Compact hint, safe-area layout, map visibility and overlay hierarchy |
@@ -60,9 +61,9 @@ the intended dense road/building field, major-road hierarchy, genuine red road
 references, compact labels, district and transport context, water/bridges,
 attribution, learner route/markers, hint and correct/incorrect feedback.
 
-Stage 8.8.3 regenerated this evidence after adding targeted source-backed
-context supplements to the lighter non-Victoria fixtures. Two controlled
-captures of every fixture were compared with:
+Stage 8.8.3 regenerated the original seven-image evidence after adding targeted
+source-backed context supplements to the lighter non-Victoria fixtures. Two
+controlled captures of those seven fixtures were compared with:
 
 ```text
 npm.cmd run map:visual:compare:phase8 -- <run-a> <run-b>
@@ -79,6 +80,7 @@ pixels and Victoria neutral differed by 4 pixels, both below tolerance.
 | `victoria-neutral-desktop` | `b52ab03fe47497250ccd3883bdcce1521faaaffa21cddf20316ed83b2100fd06` |
 | `kings-cross-correct-review-desktop` | `15e16de5c194b055974e0c7a50e3eb4d057d36ffef172327b5d307ecffd0eafc` |
 | `piccadilly-active-route-desktop` | `32e639a12f7c75c754959d9610ce29b51b04bb30411f4a74d6406c7e27c8017e` |
+| `one-way-restrictions-desktop` | `1d8707958cfbbcebbd837ded1652d15230acdac0ddae3d5637de327933a37281` |
 | `waterloo-context-tablet` | `ee6a25537541b1cabc0f268b703a9f0a2bf486b179116d7eeb2f9bebc749b726` |
 | `waterloo-incorrect-review-mobile` | `4454e9703635e9e7ae6ffe301d752bbabcb9eaa9b96712c535068319caf729ba` |
 | `piccadilly-hint-mobile` | `8eec738e244f9beddaf3838c201c7a7df7b9ea748078b38b7f62d6e18399ae6e` |
@@ -89,6 +91,14 @@ and explicit device emulation was used for the exact mobile viewport. This avoid
 a platform-level Chrome basic-headless minimum-layout-width limitation and an
 intermittent Windows compositor tile artifact. Corrupted intermediary captures
 were rejected and are not retained.
+
+Stage 8.13 added `one-way-restrictions-desktop` to close the only
+post-supplement fixture-evidence gap. It was captured from the validated
+production build and inspected at normal size. A second capture attempt returned
+the application's generic error page after the first large context run, so no
+repeat-equivalence claim is made for this eighth image. Its dimensions and
+SHA-256 are protected by the archive verifier; the original seven-fixture
+repeated comparison remains unchanged.
 
 ## Validation And Non-Goals
 
@@ -109,8 +119,7 @@ changed. Route generation, legality, matching, snapping, scoring, learner progre
 hint timing, submission/review behaviour, authentication, payments and deployment
 did not change. The Stage 8.10 fixed canvas backing-store bounds remain intact.
 
-Stage 8.12 owns integration QA, evidence archiving and the owner review pack;
-it does not declare final visual acceptance. Stage 8.4's independent manual
-visual acceptance and Stage 8.10's physical two-finger, orientation, safe-area
-and touch checks remain pending. Owner review may request a focused Stage 8.8.3
-visual correction.
+Stage 8.12 owns integration QA, evidence archiving and the owner review pack.
+Stage 8.13 records final cartographic acceptance, including the integrated
+Stage 8.4 road hierarchy. Stage 8.10's physical two-finger, orientation,
+safe-area and touch checks remain release QA.

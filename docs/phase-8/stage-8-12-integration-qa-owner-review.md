@@ -2,10 +2,10 @@
 
 ## Status
 
-Stage 8.12 is the non-final Phase 8 integration-QA and archive-readiness pass.
-The evidence, references, deterministic fixtures and reproduction commands are
-now indexed and machine-checkable. Phase 8 remains pending owner visual
-inspection and is not complete.
+Stage 8.12 is the Phase 8 integration-QA and archive-readiness pass. The
+evidence, references, deterministic fixtures and reproduction commands are
+indexed and machine-checkable. It did not itself declare acceptance; Stage 8.13
+subsequently completed the owner visual review and closed Phase 8 cartography.
 
 The owner requested a focused Stage 8.8.3 visual correction after comparing
 the production evidence with both approved appearance references. Stage 8.8.3
@@ -44,7 +44,7 @@ All paths below are under `docs/phase-8/screenshots/`.
 | `stage-8-8-2/` | 19 | Current base-map alignment evidence |
 | `stage-8-9/` | 15 | Current learner/review overlay evidence |
 | `stage-8-10/` | 23 | Current responsive/accessibility browser evidence |
-| `stage-8-11/` | 7 | Current deterministic production-renderer evidence |
+| `stage-8-11/` | 8 | Current deterministic evidence plus the Stage 8.13 one-way closure image |
 
 Stage 8.11 provides the current regression anchor:
 
@@ -53,6 +53,7 @@ Stage 8.11 provides the current regression anchor:
 | `victoria-neutral-desktop` | 1440 by 900 | Dense neutral geography |
 | `kings-cross-correct-review-desktop` | 1440 by 900 | Correct review |
 | `piccadilly-active-route-desktop` | 1440 by 900 | Active route |
+| `one-way-restrictions-desktop` | 1440 by 900 | One-way/restriction context |
 | `waterloo-context-tablet` | 768 by 1024 | Water, bridge and tablet context |
 | `waterloo-incorrect-review-mobile` | 390 by 844 | Incorrect review |
 | `piccadilly-hint-mobile` | 390 by 844 | Hint over the map |
@@ -68,13 +69,14 @@ committed Stage 8.11 images.
 
 - Stage 8.8's first acceptance was rejected and is retained only as historical
   before-evidence; Stage 8.8.1 and Stage 8.8.2 supersede it.
-- Stage 8.4 remains implemented without an independent final manual visual
-  acceptance set.
+- Stage 8.4 did not receive a separate evidence set; its road-hierarchy result
+  is accepted through the later integrated Stage 8.13 visual review.
 - Stage 8.10 browser evidence does not replace physical-device checks for
   two-finger pinch, orientation changes, cutout/safe-area behavior, feedback
   scrolling or hint interaction.
-- Stage 8.11 proves deterministic rendering for its seven fixtures, not final
-  cartographic quality across London.
+- Stage 8.11 proves deterministic rendering for its original seven-fixture
+  matrix. Stage 8.13 adds a manually inspected eighth one-way closure image;
+  neither mechanism alone proves cartographic quality across London.
 
 ## Owner Visual QA Checklist
 
@@ -156,17 +158,17 @@ git diff --check
 
 Finally, repeat the physical checks listed above and inspect both references
 and representative desktop, tablet and mobile evidence side by side at normal
-size. Automated success and byte-identical PNGs do not complete Phase 8.
+size. Stage 8.13 records that visual decision. Automated success and
+byte-identical PNGs did not substitute for that inspection.
 
 ## Validation Results
 
-Latest validation completed on 15 July 2026 after the Stage 8.8.3 targeted
-context-supplement pass:
+Latest validation completed on 16 July 2026 during Stage 8.13 closure:
 
-- `npm.cmd run map:qa:phase8-owner-review`: passed; 2 references, 12 evidence
-  folders and 7 deterministic screenshots matched the archive manifest.
+- `npm.cmd run map:qa:phase8-owner-review`: passed after Stage 8.13 expanded
+  the manifest to 2 references, 12 evidence folders and 8 screenshots.
 - `npm.cmd run lint`: passed.
-- `npm.cmd run test:map`: 1,230 passed, 0 failed, 0 skipped.
+- `npm.cmd run test:map`: 1,245 passed, 0 failed, 0 skipped.
 - `npm.cmd test`: all required constituent suites passed, 0 failed and 0
   skipped.
 - `npm.cmd run build`: passed.
