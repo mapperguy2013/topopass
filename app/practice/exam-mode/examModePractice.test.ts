@@ -138,7 +138,7 @@ test("Stage 9.4 exam model exposes the exam-only route pack contract", () => {
   assert.equal(model.routePack.leavesPracticeCatalogueUnchanged, true);
 });
 
-test("Stage 9.5 exam model exposes local submitted-attempt progress without a readiness dashboard", () => {
+test("Stage 9.5 exam model exposes local submitted-attempt progress", () => {
   const model = buildExamModePracticePageModel();
 
   assert.equal(model.progress.schemaVersion, 1);
@@ -146,7 +146,6 @@ test("Stage 9.5 exam model exposes local submitted-attempt progress without a re
   assert.equal(model.progress.persistence, "local-storage");
   assert.equal(model.progress.includesScoringCategories, true);
   assert.equal(model.progress.includesRouteTags, true);
-  assert.equal(model.progress.fullReadinessDashboard, false);
 });
 
 test("Stage 9.5 route runner gates recording and progress display to submitted exam attempts", () => {
@@ -158,4 +157,31 @@ test("Stage 9.5 route runner gates recording and progress display to submitted e
   assert.match(source, /data-testid="exam-progress-summary"/);
   assert.match(source, /isExamRouteRunner && hasSubmittedCurrentDrawnAttempt/);
   assert.match(source, /createLocalExamProgressStorage/);
+});
+
+test("Stage 9.6 exposes a non-official readiness dashboard in the learner progress area", () => {
+  const model = buildExamModePracticePageModel();
+  const progressPageSource = readFileSync("app/progress/page.tsx", "utf8");
+  const dashboardSource = readFileSync(
+    "src/components/progress/ExamReadinessDashboard.tsx",
+    "utf8"
+  );
+
+  assert.equal(model.progress.fullReadinessDashboard, true);
+  assert.equal(model.progress.readinessDashboardPath, "/progress#exam-readiness");
+  assert.equal(model.progress.officialTfLReadiness, false);
+  assert.deepEqual(model.progress.readinessStatusIds, [
+    "ready-for-harder-practice",
+    "nearly-ready",
+    "needs-more-practice",
+    "not-enough-attempts"
+  ]);
+  assert.match(progressPageSource, /ExamReadinessDashboard/);
+  assert.match(dashboardSource, /data-testid="exam-readiness-dashboard"/);
+  assert.match(dashboardSource, /createLocalExamProgressStorage/);
+  assert.match(dashboardSource, /buildExamReadinessSummary/);
+  assert.match(dashboardSource, /min-w-0/);
+  assert.match(dashboardSource, /sm:grid-cols-2/);
+  assert.match(dashboardSource, /lg:grid-cols-2/);
+  assert.doesNotMatch(dashboardSource, /official TfL readiness/i);
 });

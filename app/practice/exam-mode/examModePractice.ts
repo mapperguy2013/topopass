@@ -11,6 +11,7 @@ import {
   type ExamRouteTag
 } from "./examRoutePack.ts";
 import { EXAM_PROGRESS_SCHEMA_VERSION } from "./examProgressTracking.ts";
+import type { ExamReadinessStatusId } from "./examReadiness.ts";
 
 export const EXAM_MODE_PRACTICE_PATH = "/practice/exam-mode";
 export const EXAM_MODE_PRACTICE_TITLE = "Exam Mode";
@@ -64,7 +65,10 @@ export type ExamModePracticePageModel = {
     persistence: "local-storage";
     includesScoringCategories: true;
     includesRouteTags: true;
-    fullReadinessDashboard: false;
+    fullReadinessDashboard: true;
+    readinessDashboardPath: "/progress#exam-readiness";
+    readinessStatusIds: readonly ExamReadinessStatusId[];
+    officialTfLReadiness: false;
   };
   timer: {
     type: "elapsed";
@@ -166,7 +170,15 @@ export function buildExamModePracticePageModel(): ExamModePracticePageModel {
       persistence: "local-storage",
       includesScoringCategories: true,
       includesRouteTags: true,
-      fullReadinessDashboard: false
+      fullReadinessDashboard: true,
+      readinessDashboardPath: "/progress#exam-readiness",
+      readinessStatusIds: [
+        "ready-for-harder-practice",
+        "nearly-ready",
+        "needs-more-practice",
+        "not-enough-attempts"
+      ],
+      officialTfLReadiness: false
     },
     timer: {
       type: "elapsed",
