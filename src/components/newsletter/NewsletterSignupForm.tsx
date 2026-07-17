@@ -64,7 +64,7 @@ export function NewsletterSignupForm() {
         </button>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-300">
-        By signing up, you agree to receive TopoPass updates. You can ask to be
+        By signing up, you agree to receive PCO Ready updates. You can ask to be
         removed by contacting{" "}
         <a
           className="font-semibold text-white underline-offset-4 hover:underline"

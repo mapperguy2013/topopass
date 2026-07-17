@@ -5,7 +5,7 @@ import type {
 
 export const EXAM_SCORING_PASS_THRESHOLD_PERCENT = 80;
 export const EXAM_SCORING_DISCLAIMER =
-  "This is a TOPOPASS practice score based on the current route data and is not an official TfL assessment.";
+  "This is a PCO Ready practice score based on the current route data and is not an official TfL assessment.";
 
 export type ExamScoringCategoryId =
   | "legality"

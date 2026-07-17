@@ -133,7 +133,7 @@ export function chooseAccountProgressDisplay({
       label: "Account progress",
       note: localHasProgress
         ? "Showing account-backed progress. Browser-local history remains available separately until account sync is finalised."
-        : "Showing progress saved to your signed-in TopoPass account."
+        : "Showing progress saved to your signed-in PCO Ready account."
     };
   }
 

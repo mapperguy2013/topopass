@@ -136,7 +136,7 @@ export function RouteQuestionAdmin() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "topopass-route-questions.json";
+    link.download = "pco-ready-route-questions.json";
     link.click();
     URL.revokeObjectURL(url);
     setStorageMessage("Exported the current admin question bank as JSON.");

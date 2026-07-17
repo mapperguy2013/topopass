@@ -5,9 +5,9 @@ import { buildPageMetadata } from "@/lib/seo";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
-  title: "How the TopoPass Course Works",
+  title: "How the PCO Ready Course Works",
   description:
-    "See how the TopoPass preparation course combines topographical practice, SERU-style learning, mock exams, explanations, mistake review, and progress tracking.",
+    "See how the PCO Ready preparation course combines topographical practice, SERU-style learning, mock exams, explanations, mistake review, and progress tracking.",
   path: "/course"
 });
 
@@ -129,7 +129,7 @@ export default function CoursePage() {
             A guided preparation course for TfL private hire learners
           </h1>
           <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-700">
-            TopoPass brings topographical practice, SERU-style learning, mock
+            PCO Ready brings topographical practice, SERU-style learning, mock
             exams, explanations, mistake review, and progress tracking into one
             structured course. Work through focused topics, review what you get
             wrong, and build confidence step by step before test day.
@@ -237,7 +237,7 @@ export default function CoursePage() {
               Built for focused revision
             </h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
-              TopoPass is designed for short, focused study sessions. You can
+              PCO Ready is designed for short, focused study sessions. You can
               practise signed out with local progress, or sign in to save new
               progress across devices.
             </p>
@@ -247,7 +247,7 @@ export default function CoursePage() {
               Independent learning support
             </h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
-              TopoPass is an independent learning tool. It is not affiliated
+              PCO Ready is an independent learning tool. It is not affiliated
               with, endorsed by, or sponsored by Transport for London, Uber,
               Bolt, FREENOW, or any private hire operator.
             </p>

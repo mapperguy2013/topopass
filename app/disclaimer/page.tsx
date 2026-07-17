@@ -3,20 +3,20 @@ import { Navbar } from "@/components/layout/Navbar";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Disclaimer - TopoPass",
+  title: "Disclaimer - PCO Ready",
   description:
-    "Read the TopoPass disclaimer about independent learning support, original SERU-style questions, and no pass guarantee.",
+    "Read the PCO Ready disclaimer about independent learning support, original SERU-style questions, and no pass guarantee.",
   path: "/disclaimer"
 });
 
 const sections = [
   {
     title: "Independent learning support",
-    text: "TopoPass is independent and is not affiliated with, endorsed by, sponsored by, or approved by Transport for London."
+    text: "PCO Ready is independent and is not affiliated with, endorsed by, sponsored by, or approved by Transport for London."
   },
   {
     title: "Original SERU-style questions",
-    text: "SERU-style questions on TopoPass are original learning questions and are not official TfL questions."
+    text: "SERU-style questions on PCO Ready are original learning questions and are not official TfL questions."
   },
   {
     title: "Topographical preparation",
@@ -24,11 +24,11 @@ const sections = [
   },
   {
     title: "No pass guarantee",
-    text: "TopoPass can help learners practise and review, but it does not guarantee that any learner will pass any assessment."
+    text: "PCO Ready can help learners practise and review, but it does not guarantee that any learner will pass any assessment."
   },
   {
     title: "Official materials",
-    text: "Learners should use official TfL guidance and materials where appropriate. TopoPass content may be updated over time."
+    text: "Learners should use official TfL guidance and materials where appropriate. PCO Ready content may be updated over time."
   }
 ] as const;
 
@@ -45,7 +45,7 @@ export default function DisclaimerPage() {
             Disclaimer
           </h1>
           <p className="mt-5 text-base leading-8 text-slate-700">
-            This page explains the limits of TopoPass learning content and
+            This page explains the limits of PCO Ready learning content and
             should be reviewed before full public launch.
           </p>
         </div>

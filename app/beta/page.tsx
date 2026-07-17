@@ -7,9 +7,9 @@ import {
 } from "./betaTesterEntry";
 
 export const metadata = buildPageMetadata({
-  title: "TopoPass Beta",
+  title: "PCO Ready Beta",
   description:
-    "Public beta-gated entry point for TopoPass real London route practice.",
+    "Public beta-gated entry point for PCO Ready real London route practice.",
   path: BETA_TESTER_ENTRY_PATH
 });
 

@@ -3,20 +3,20 @@ import { Navbar } from "@/components/layout/Navbar";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Terms - TopoPass",
+  title: "Terms - PCO Ready",
   description:
-    "Read the TopoPass beta terms for educational practice, content use, access rules, and launch limitations.",
+    "Read the PCO Ready beta terms for educational practice, content use, access rules, and launch limitations.",
   path: "/terms"
 });
 
 const sections = [
   {
     title: "Educational practice tool",
-    text: "TopoPass is provided as an educational practice tool for private hire preparation. It does not guarantee that any learner will pass an assessment."
+    text: "PCO Ready is provided as an educational practice tool for private hire preparation. It does not guarantee that any learner will pass an assessment."
   },
   {
     title: "Content and intellectual property",
-    text: "Practice questions, explanations, design, branding, and content belong to TopoPass unless stated otherwise. Users must not copy, scrape, resell, redistribute, or reproduce TopoPass content or questions."
+    text: "Practice questions, explanations, design, branding, and content belong to PCO Ready unless stated otherwise. Users must not copy, scrape, resell, redistribute, or reproduce PCO Ready content or questions."
   },
   {
     title: "Fair use of the service",
@@ -24,7 +24,7 @@ const sections = [
   },
   {
     title: "Official guidance",
-    text: "Users should refer to official TfL guidance and materials where appropriate. TopoPass is independent and is not official TfL exam material."
+    text: "Users should refer to official TfL guidance and materials where appropriate. PCO Ready is independent and is not official TfL exam material."
   },
   {
     title: "Beta changes",
@@ -50,7 +50,7 @@ export default function TermsPage() {
           </h1>
           <p className="mt-5 text-base leading-8 text-slate-700">
             These plain-English beta terms explain the basic rules for using
-            TopoPass. They should be reviewed before full public launch.
+            PCO Ready. They should be reviewed before full public launch.
           </p>
         </div>
       </section>

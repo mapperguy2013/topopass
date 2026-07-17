@@ -78,7 +78,7 @@ export default function LearnPage() {
             SERU preparation support is presented as a separate learning area.
           </p>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">
-            TopoPass is independent and not affiliated with or endorsed by
+            PCO Ready is independent and not affiliated with or endorsed by
             Transport for London. SERU-style questions are original learning
             questions for preparation, not official TfL questions.
           </p>

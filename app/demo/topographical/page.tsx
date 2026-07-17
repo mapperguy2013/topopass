@@ -8,7 +8,7 @@ import { DemoQuestionFlow } from "@/src/components/demo/DemoQuestionFlow";
 export const metadata = buildPageMetadata({
   title: "Topographical Demo",
   description:
-    "Try 10 timed topographical-style TopoPass demo questions with instant feedback.",
+    "Try 10 timed topographical-style PCO Ready demo questions with instant feedback.",
   path: "/demo/topographical"
 });
 

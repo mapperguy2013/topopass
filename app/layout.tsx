@@ -10,32 +10,32 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "TopoPass - TfL Topographical & SERU Practice",
-    template: "%s | TopoPass"
+    default: "PCO Ready - TfL Topographical & SERU Practice",
+    template: "%s | PCO Ready"
   },
   description:
-    "Practise London map skills, SERU-style knowledge, mock exams, and progress tracking for private hire preparation.",
+    "Prepare for the TfL Topographical and SERU assessments with map-based practice, mock-style questions, explanations, and progress tracking.",
   openGraph: {
-    title: "TopoPass - TfL Topographical & SERU Practice",
+    title: "PCO Ready - TfL Topographical & SERU Practice",
     description:
-      "Practise London map skills, SERU-style knowledge, mock exams, and progress tracking for private hire preparation.",
-    siteName: "TopoPass",
+      "Prepare for the TfL Topographical and SERU assessments with map-based practice, mock-style questions, explanations, and progress tracking.",
+    siteName: "PCO Ready",
     type: "website",
     images: [
       {
-        url: "/social/topopass-social.svg",
+        url: "/social/pco-ready-social.svg",
         width: 1200,
         height: 630,
-        alt: "TopoPass private hire learner practice"
+        alt: "PCO Ready private hire assessment practice"
       }
     ]
   },
   twitter: {
     card: "summary_large_image",
-    title: "TopoPass - TfL Topographical & SERU Practice",
+    title: "PCO Ready - TfL Topographical & SERU Practice",
     description:
-      "Practise London map skills, SERU-style knowledge, mock exams, and progress tracking for private hire preparation.",
-    images: ["/social/topopass-social.svg"]
+      "Prepare for the TfL Topographical and SERU assessments with map-based practice, mock-style questions, explanations, and progress tracking.",
+    images: ["/social/pco-ready-social.svg"]
   }
 };
 

@@ -298,7 +298,7 @@ export function importLocalDatabaseSnapshot(input: string | unknown) {
   if (!hasImportableShape(parsed)) {
     return {
       ok: false,
-      error: "Import JSON is not a TopoPass progress snapshot."
+      error: "Import JSON is not a PCO Ready progress snapshot."
     } satisfies LocalDatabaseImportResult;
   }
 

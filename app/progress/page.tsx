@@ -6,7 +6,7 @@ import { ProgressDashboard } from "@/src/components/progress/ProgressDashboard";
 export const metadata = buildPageMetadata({
   title: "Progress",
   description:
-    "Review TopoPass practice progress, exam readiness, score trends, and latest attempts.",
+    "Review PCO Ready practice progress, exam readiness, score trends, and latest attempts.",
   path: "/progress"
 });
 

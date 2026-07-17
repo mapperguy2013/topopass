@@ -9,7 +9,7 @@ import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 export const metadata = buildPageMetadata({
   title: "Pricing Preview",
   description:
-    "Preview TopoPass free and coming-soon upgrade plans for Topographical and SERU-style private hire preparation.",
+    "Preview PCO Ready free and coming-soon upgrade plans for Topographical and SERU-style private hire preparation.",
   path: "/pricing"
 });
 
@@ -28,8 +28,8 @@ export default function PricingPage() {
             Start free. Upgrade options are being prepared for beta.
           </h1>
           <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700">
-            TopoPass is available as a free preparation course while paid
-            upgrades are still being shaped. One TopoPass account is planned to
+            PCO Ready is available as a free preparation course while paid
+            upgrades are still being shaped. One PCO Ready account is planned to
             support both Topographical map preparation and SERU-style private
             hire knowledge practice.
           </p>
@@ -149,7 +149,7 @@ export default function PricingPage() {
               Independent preparation
             </h2>
             <p className="mt-2 text-sm leading-6 text-slate-700">
-              TopoPass is an independent learning tool. Practice content is for
+              PCO Ready is an independent learning tool. Practice content is for
               preparation only, and SERU-style questions are original learning
               questions, not official TfL questions.
             </p>

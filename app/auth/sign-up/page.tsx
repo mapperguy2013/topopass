@@ -17,7 +17,7 @@ export default async function SignUpPage({ searchParams }: SignUpPageProps) {
     <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-10 sm:px-6">
       <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
         <p className="text-sm font-semibold uppercase tracking-wide text-road">
-          TopoPass account
+          PCO Ready account
         </p>
         <h1 className="mt-3 text-3xl font-bold text-ink">Create account</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">

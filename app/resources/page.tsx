@@ -6,7 +6,7 @@ import { buildPageMetadata } from "@/lib/seo";
 export const metadata = buildPageMetadata({
   title: "Resources",
   description:
-    "Find TopoPass resources for TfL topographical map practice, SERU-style preparation support, and private hire learning links.",
+    "Find PCO Ready resources for TfL topographical map practice, SERU-style preparation support, and private hire learning links.",
   path: "/resources"
 });
 
@@ -79,13 +79,13 @@ const resourceCategories: {
       {
         title: "Separate from topographical mocks",
         description:
-          "SERU-style private hire knowledge is a separate TopoPass learning area, not mixed into topographical map mock exams.",
+          "SERU-style private hire knowledge is a separate PCO Ready learning area, not mixed into topographical map mock exams.",
         href: "/practice/seru"
       },
       {
         title: "Original learning content",
         description:
-          "TopoPass SERU support should use original public guidance-style learning content and must not copy official TfL questions."
+          "PCO Ready SERU support should use original public guidance-style learning content and must not copy official TfL questions."
       }
     ]
   },
@@ -110,12 +110,12 @@ const resourceCategories: {
     ]
   },
   {
-    title: "TopoPass study tools",
+    title: "PCO Ready study tools",
     resources: [
       {
         title: "Practice questions",
         description:
-          "Start a focused practice session using TopoPass question components.",
+          "Start a focused practice session using PCO Ready question components.",
         href: "/practice"
       },
       {
@@ -194,7 +194,7 @@ export default function ResourcesPage() {
             private hire knowledge.
           </p>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-            TopoPass is an independent learning tool and is not affiliated with
+            PCO Ready is an independent learning tool and is not affiliated with
             or endorsed by Transport for London. Practice content is for
             preparation only; learners should refer to official TfL guidance
             where appropriate.

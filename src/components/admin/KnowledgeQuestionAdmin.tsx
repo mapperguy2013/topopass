@@ -62,7 +62,7 @@ export function KnowledgeQuestionAdmin() {
           <label className="flex-1 text-sm font-semibold">Search<input className={inputClass} onChange={(event) => setSearch(event.target.value)} placeholder="ID, prompt, or category" value={search} /></label>
           <label className="text-sm font-semibold">Difficulty<select className={inputClass} onChange={(event) => setDifficulty(event.target.value)} value={difficulty}><option value="all">All</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></label>
           <label className="text-sm font-semibold">Status<select className={inputClass} onChange={(event) => setActive(event.target.value)} value={active}><option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
-          <button className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-semibold" onClick={() => exportDraftBank("topopass-knowledge-questions.json", questions)} type="button">Export JSON</button>
+          <button className="min-h-11 rounded-md border border-slate-300 px-4 text-sm font-semibold" onClick={() => exportDraftBank("pco-ready-knowledge-questions.json", questions)} type="button">Export JSON</button>
           <button className="min-h-11 rounded-md bg-road px-4 text-sm font-semibold text-white" onClick={() => openEditor("new")} type="button">Create new</button>
         </div>
         <p className="px-4 pt-3 text-xs text-slate-500">Categories: {categories.join(", ") || "None"}</p>

@@ -8,7 +8,7 @@ import { DemoQuestionFlow } from "@/src/components/demo/DemoQuestionFlow";
 export const metadata = buildPageMetadata({
   title: "SERU Demo",
   description:
-    "Try 10 timed SERU-style TopoPass demo questions with instant feedback.",
+    "Try 10 timed SERU-style PCO Ready demo questions with instant feedback.",
   path: "/demo/seru"
 });
 

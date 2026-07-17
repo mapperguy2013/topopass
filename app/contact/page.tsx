@@ -3,9 +3,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Contact TopoPass",
+  title: "Contact PCO Ready",
   description:
-    "Contact TopoPass for account, content, privacy, or general support questions.",
+    "Contact PCO Ready for account, content, privacy, or general support questions.",
   path: "/contact"
 });
 
@@ -19,11 +19,11 @@ export default function ContactPage() {
             Contact
           </p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">
-            Contact TopoPass
+            Contact PCO Ready
           </h1>
           <p className="mt-5 text-base leading-8 text-slate-700">
             For account, content, privacy, or general support questions, contact
-            TopoPass by email.
+            PCO Ready by email.
           </p>
         </div>
       </section>
@@ -40,7 +40,7 @@ export default function ContactPage() {
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold">Location</h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
-              TopoPass, London, United Kingdom.
+              PCO Ready, London, United Kingdom.
             </p>
             <p className="mt-2 text-sm leading-7 text-slate-700">
               Business address to be added before launch.

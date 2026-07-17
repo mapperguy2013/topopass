@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     recordCount: result.items.length
   });
   const datePart = payload.exportedAt.slice(0, 10);
-  const fileName = `topopass-question-bank-${statusFilter}-${datePart}.json`;
+  const fileName = `pco-ready-question-bank-${statusFilter}-${datePart}.json`;
 
   return new NextResponse(JSON.stringify(payload, null, 2), {
     headers: {

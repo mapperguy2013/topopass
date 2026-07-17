@@ -7,7 +7,7 @@ export type DevToolCard = {
 
 export type DevToolsHomeModel = {
   path: "/dev";
-  title: "TOPOPASS Dev Tools";
+  title: "PCO Ready Dev Tools";
   devOnlyNotice: string;
   cards: DevToolCard[];
   linkedFromLearnerNavigation: false;
@@ -16,7 +16,7 @@ export type DevToolsHomeModel = {
 export function buildDevToolsHomeModel(): DevToolsHomeModel {
   return {
     path: "/dev",
-    title: "TOPOPASS Dev Tools",
+    title: "PCO Ready Dev Tools",
     devOnlyNotice:
       "Development and admin QA tools only. These routes are intentionally not linked from normal learner navigation.",
     linkedFromLearnerNavigation: false,

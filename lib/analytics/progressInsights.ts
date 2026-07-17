@@ -252,7 +252,7 @@ function getStudyRecommendation({
   | "mistakeSummary"
 >) {
   if (totalAttempts === 0) {
-    return "Start with a few short practice sessions so TopoPass can build a useful progress picture.";
+    return "Start with a few short practice sessions so PCO Ready can build a useful progress picture.";
   }
 
   if (mistakeSummary.unreviewedMistakes > 0) {

@@ -174,7 +174,7 @@ test("localDatabase imports a valid snapshot and rejects invalid JSON", () => {
   assert.equal(invalid.ok, false);
 });
 
-test("localDatabase rejects non TopoPass import shapes", () => {
+test("localDatabase rejects non PCO Ready import shapes", () => {
   const result = importLocalDatabaseSnapshot(JSON.stringify({ hello: "world" }));
 
   assert.equal(result.ok, false);

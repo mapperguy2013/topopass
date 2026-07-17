@@ -512,7 +512,7 @@ function recommendationForProgress(input: {
       kind: "build-history",
       recommendedDifficulty: "beginner",
       recommendedExerciseType: "follow-planned-route",
-      reason: "Complete a first learner route so TopoPass can build a training baseline."
+      reason: "Complete a first learner route so PCO Ready can build a training baseline."
     };
   }
 

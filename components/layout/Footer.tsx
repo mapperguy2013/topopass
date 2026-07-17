@@ -2,7 +2,7 @@ import Link from "next/link";
 import { NewsletterSignupForm } from "@/src/components/newsletter/NewsletterSignupForm";
 
 const disclaimer =
-  "TopoPass is an independent learning tool and is not affiliated with or endorsed by Transport for London. SERU-style questions are original learning questions and are not official TfL questions.";
+  "PCO Ready is an independent learning tool and is not affiliated with or endorsed by Transport for London. SERU-style questions are original learning questions and are not official TfL questions.";
 
 const footerGroups = [
   {
@@ -86,14 +86,14 @@ export function Footer() {
               href="/"
             >
               <span className="flex size-9 items-center justify-center rounded-md bg-white text-sm font-bold text-ink">
-                TP
+                PCO
               </span>
-              <span>TopoPass</span>
+              <span>PCO Ready</span>
             </Link>
             <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">
-              A structured preparation course for London private hire learners
-              building confidence with topographical skills and SERU-style
-              knowledge.
+              A learning platform for TfL private hire learners building
+              confidence through Topographical and SERU practice, mock tests,
+              explanations, and progress tracking.
             </p>
             <p className="mt-4 text-sm text-slate-300">
               Contact:{" "}
@@ -105,12 +105,12 @@ export function Footer() {
               </a>
             </p>
             <p className="mt-1 text-sm text-slate-400">
-              TopoPass, London, United Kingdom
+              PCO Ready, London, United Kingdom
             </p>
           </div>
 
           <div className="rounded-xl border border-slate-700 bg-slate-950 p-5">
-            <h2 className="text-lg font-bold">Get TopoPass updates</h2>
+            <h2 className="text-lg font-bold">Get PCO Ready updates</h2>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               Be the first to hear about new Topographical and SERU-style
               practice features, launch updates, and pricing news.
@@ -144,7 +144,7 @@ export function Footer() {
         <div className="mt-8 flex flex-col gap-4 border-t border-slate-700 pt-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm text-slate-300">
-              © 2026 TopoPass. All rights reserved.
+              © 2026 PCO Ready. All rights reserved.
             </p>
             <p className="mt-2 max-w-4xl text-xs leading-5 text-slate-400">
               {disclaimer}

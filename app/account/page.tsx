@@ -77,7 +77,7 @@ export default async function AccountPage() {
               Learner profile
             </p>
             <h2 className="mt-2 text-2xl font-bold text-ink">
-              Your TopoPass account
+              Your PCO Ready account
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
               Signed-in practice and mock exam completions now save to your

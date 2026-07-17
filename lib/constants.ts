@@ -1,4 +1,4 @@
-export const APP_NAME = "TopoPass";
+export const APP_NAME = "PCO Ready";
 
 export const LONDON_CENTER = {
   latitude: 51.5072,

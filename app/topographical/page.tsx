@@ -7,7 +7,7 @@ import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 export const metadata = buildPageMetadata({
   title: "Topographical Course",
   description:
-    "Use the TopoPass topographical course to practise London map, route, direction, and location skills for private-hire preparation.",
+    "Use the PCO Ready topographical course to practise London map, route, direction, and location skills for private-hire preparation.",
   path: "/topographical"
 });
 
@@ -128,13 +128,13 @@ export default function TopographicalPage() {
             <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700">
               The topographical assessment is designed to check whether
               private-hire applicants can use maps, understand routes, recognise
-              locations, and make sensible journey-planning decisions. TopoPass
+              locations, and make sensible journey-planning decisions. PCO Ready
               gives learners a guided learning path for these skills with
               focused questions, route practice, mistake review, and mock-style
               preparation.
             </p>
             <p className="mt-4 max-w-3xl text-xs leading-5 text-slate-500">
-              TopoPass is an independent learning tool and is not affiliated
+              PCO Ready is an independent learning tool and is not affiliated
               with or endorsed by Transport for London.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -223,7 +223,7 @@ export default function TopographicalPage() {
       <section className="border-b border-slate-200 bg-surface px-6 py-14 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-sm font-bold uppercase tracking-wide text-road">
-            How TopoPass helps
+            How PCO Ready helps
           </p>
           <h2 className="mt-2 text-3xl font-bold text-ink">
             Focused practice, review, and progress tracking

@@ -7,7 +7,7 @@ import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 export const metadata = buildPageMetadata({
   title: "SERU Course",
   description:
-    "Use the TopoPass SERU-style preparation course to practise safety, equality, accessibility, customer care, safeguarding, licensing, and professional conduct topics.",
+    "Use the PCO Ready SERU-style preparation course to practise safety, equality, accessibility, customer care, safeguarding, licensing, and professional conduct topics.",
   path: "/seru"
 });
 
@@ -109,12 +109,12 @@ export default function SeruPage() {
               SERU-style preparation helps private-hire learners build
               confidence with safety, equality, accessibility, customer service,
               safeguarding, licensing awareness, driver responsibilities, and
-              professional conduct. TopoPass gives you a guided learning path
+              professional conduct. PCO Ready gives you a guided learning path
               with original practice questions, explanations, and topic-based
               review so you can focus on the areas that need more work.
             </p>
             <p className="mt-4 max-w-3xl text-xs leading-5 text-slate-500">
-              TopoPass is an independent learning tool. Its SERU-style practice
+              PCO Ready is an independent learning tool. Its SERU-style practice
               is original revision content, not official TfL questions.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -202,7 +202,7 @@ export default function SeruPage() {
       <section className="border-b border-slate-200 bg-surface px-6 py-14 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <p className="text-sm font-bold uppercase tracking-wide text-orange-700">
-            How TopoPass helps
+            How PCO Ready helps
           </p>
           <h2 className="mt-2 text-3xl font-bold text-ink">
             Original practice with review tools

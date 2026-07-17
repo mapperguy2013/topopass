@@ -10,7 +10,7 @@ import {
 export const metadata = buildPageMetadata({
   title: "Learner Training",
   description:
-    "Open TopoPass Training Mode for learner-driver route practice with exercises, hints, scoring, and feedback.",
+    "Open PCO Ready Training Mode for learner-driver route practice with exercises, hints, scoring, and feedback.",
   path: LEARNER_TRAINING_PRACTICE_PATH
 });
 

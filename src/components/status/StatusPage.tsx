@@ -15,7 +15,7 @@ type StatusPageProps = {
 };
 
 export function StatusPage({
-  eyebrow = "TopoPass",
+  eyebrow = "PCO Ready",
   title,
   message,
   primaryHref = "/",
@@ -74,7 +74,7 @@ export function LoadingPage({
     <main className="min-h-screen bg-surface px-4 py-10 sm:px-6">
       <section className="mx-auto max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
         <p className="text-sm font-semibold uppercase tracking-wide text-road">
-          TopoPass
+          PCO Ready
         </p>
         <h1 className="mt-3 text-3xl font-bold text-ink">{title}</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">{message}</p>

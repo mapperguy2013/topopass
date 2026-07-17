@@ -175,10 +175,10 @@ export default function SeruPracticePage() {
               Practise PHV handbook knowledge, SERU-style English sentence
               completion, and reading-understanding questions in separate
               sessions. Your progress continues to save through the same
-              TopoPass practice history.
+              PCO Ready practice history.
             </p>
             <p className="mt-3 max-w-4xl rounded-md bg-orange-50 p-3 text-sm leading-6 text-slate-700">
-              {handbookDisclaimer} TopoPass is independent and is not
+              {handbookDisclaimer} PCO Ready is independent and is not
               affiliated with or endorsed by Transport for London.
             </p>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">

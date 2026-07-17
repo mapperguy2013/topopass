@@ -24,7 +24,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-amber-950">
             You are signed in as {email}, but this profile is not marked as an
-            admin in the current TopoPass role model.
+            admin in the current PCO Ready role model.
           </p>
           <p className="mt-2 text-sm leading-6 text-amber-950">
             Learner practice, mock tests, progress, and account pages remain

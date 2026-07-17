@@ -9,7 +9,7 @@ import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 export const metadata = buildPageMetadata({
   title: "Practice",
   description:
-    "Choose focused TopoPass practice for topographical map skills or SERU-style private hire knowledge.",
+    "Choose focused PCO Ready practice for topographical map skills or SERU-style private hire knowledge.",
   path: "/practice"
 });
 
@@ -130,7 +130,7 @@ export default function PracticePage() {
             </h2>
             <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">
               Build confidence step by step with focused practice for your TfL
-              private hire preparation. Use TopoPass to revise topographical map
+              private hire preparation. Use PCO Ready to revise topographical map
               skills, route and location knowledge, SERU-style topics, mistakes,
               and weak areas before moving into mock exams.
             </p>
@@ -304,7 +304,7 @@ export default function PracticePage() {
           >
             <span className="font-bold text-ink">Try the short demo</span>
             <span className="mt-1 block">
-              Preview how TopoPass works before starting full practice.
+              Preview how PCO Ready works before starting full practice.
             </span>
           </TrackedLink>
         </section>

@@ -2,10 +2,10 @@ import Link from "next/link";
 import { signOutAction } from "@/app/auth/actions";
 import { getCurrentAuthState } from "@/lib/auth/session";
 
-const courseItems = [
-  { href: "/topographical", label: "Topographical Course" },
-  { href: "/seru", label: "SERU Course" },
-  { href: "/course", label: "How the course works" }
+const learningItems = [
+  { href: "/practice/topographical", label: "Topographical practice" },
+  { href: "/practice/seru", label: "SERU practice" },
+  { href: "/course", label: "How the platform works" }
 ];
 
 const publicNavItems = [
@@ -36,18 +36,18 @@ export async function Navbar() {
           href="/"
         >
           <span className="flex size-9 items-center justify-center rounded-md bg-ink text-sm font-bold text-white">
-            TP
+            PCO
           </span>
-          <span>TopoPass</span>
+          <span>PCO Ready</span>
         </Link>
         <div className="order-3 flex w-full items-center gap-2 overflow-x-auto pb-1 md:order-2 md:w-auto md:overflow-visible md:pb-0">
           {!user && (
             <details className="group relative shrink-0">
               <summary className="inline-flex min-h-11 cursor-pointer list-none items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-slate-600 transition hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road">
-                Course
+                Learn
               </summary>
               <div className="mt-1 min-w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-soft md:absolute md:left-0 md:top-full md:z-50">
-                {courseItems.map((item) => (
+                {learningItems.map((item) => (
                   <Link
                     className="block rounded-md px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-blue-50 hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                     href={item.href}

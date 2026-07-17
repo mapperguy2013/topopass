@@ -240,7 +240,7 @@ export const phvHandbookQuestions: KnowledgeQuestionData[] =
         sectionId: section.id,
         sectionName: section.name,
         source: PHV_HANDBOOK_SOURCE,
-        sourceNote: `${PHV_HANDBOOK_SOURCE} - original TopoPass practice question`,
+        sourceNote: `${PHV_HANDBOOK_SOURCE} - original PCO Ready practice question`,
         handbookSection: section.handbookSection,
         topic,
         isActive: true,

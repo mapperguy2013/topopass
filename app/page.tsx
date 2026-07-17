@@ -1,29 +1,33 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { buildPageMetadata } from "@/lib/seo";
 import { TrackedLink } from "@/src/components/analytics/TrackedLink";
 
 export const metadata = buildPageMetadata({
-  title: "TopoPass - TfL Topographical & SERU Practice",
+  title: "PCO Ready - TfL Topographical & SERU Practice",
   description:
-    "Practise London map skills, SERU-style knowledge, mock exams, and progress tracking for TfL private hire preparation.",
+    "Prepare for the TfL Topographical and SERU assessments with focused practice, mock-style questions, route learning, explanations, and progress tracking.",
   path: "/"
 });
 
-const productAreas = [
+const learningJourneys = [
   {
-    title: "Topographical course",
+    eyebrow: "Maps, routes and locations",
+    title: "Topographical practice",
     description:
-      "Build confidence with London map reading, routes, locations, and topographical-style mock preparation.",
-    href: "/topographical"
+      "Build confidence reading London maps, choosing sensible routes, recognising locations, and applying direction skills through focused practice.",
+    href: "/practice/topographical",
+    cta: "Start topographical practice"
   },
   {
-    title: "SERU-style preparation course",
+    eyebrow: "Safety, equality and responsibilities",
+    title: "SERU practice",
     description:
-      "Practise questions on safety, equality, accessibility, customer care, licensing awareness, and professional responsibilities.",
-    href: "/seru"
+      "Work through original SERU-style learning questions covering the PHV Driver Handbook, customer care, accessibility, safety, and professional responsibilities.",
+    href: "/practice/seru",
+    cta: "Start SERU practice"
   }
 ] as const;
 
@@ -31,45 +35,30 @@ const howItWorks = [
   {
     title: "Practise",
     description:
-      "Answer focused topographical and SERU-style questions."
+      "Choose a focused Topographical or SERU topic and answer questions at your own pace."
   },
   {
-    title: "Review",
+    title: "Understand",
     description:
-      "Read explanations, revisit mistakes, and understand what to improve."
+      "Use clear explanations and mistake review to understand why an answer needs more work."
   },
   {
-    title: "Build confidence",
+    title: "Check your readiness",
     description:
-      "Track progress over time and move into mock exams when you feel ready."
+      "Move into mock-style tests and use your progress history to decide what to revise next."
   }
 ] as const;
 
-const benefitCards = [
+const learningTools = [
   {
-    title: "Focused map and route practice",
+    title: "Mock tests and review",
     description:
-      "Work on locations, route choices, map reading, and London direction sense in short sessions."
-  },
-  {
-    title: "SERU-style learning support",
-    description:
-      "Revise safety, equality, accessibility, customer care, licensing awareness, and driver responsibilities."
-  },
-  {
-    title: "Mock exams and review",
-    description:
-      "Use mock-style practice, explanations, and answer review to understand what needs more work."
+      "Practise under mock-style conditions, revisit mistakes, and use explanations to turn weak answers into useful revision."
   },
   {
     title: "Progress tracking",
     description:
-      "See recent answers, accuracy, mistakes, and weak areas as your revision history grows."
-  },
-  {
-    title: "One account for your revision",
-    description:
-      "Use the same login for topographical practice and SERU-style preparation when you want account progress."
+      "See recent answers, accuracy, developing strengths, and topics that need more attention across both learning journeys."
   }
 ] as const;
 
@@ -77,7 +66,7 @@ function HeroLearningVisual() {
   return (
     <div className="relative">
       <Image
-        alt="Practice overview dashboard showing topographical skills, SERU preparation, route practice, and progress stats"
+        alt="PCO Ready learning dashboard showing Topographical skills, SERU preparation, route practice, and progress"
         className="block h-auto w-full"
         height="1100"
         priority
@@ -98,22 +87,19 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8 lg:py-16">
           <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              TfL private hire and PCO preparation
+              PCO Ready
             </p>
             <h1 className="mt-4 text-4xl font-bold leading-tight text-ink sm:text-5xl lg:text-6xl">
-              Prepare for your TfL private hire assessment with confidence
+              Learn, practise, and build confidence for your TfL private hire
+              assessments
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-700 sm:text-lg">
-              TopoPass helps private-hire learners practise topographical map
-              skills, SERU-style knowledge, mock exams, and progress review in
-              one clear place. Build confidence step by step, learn from
-              mistakes, and focus on the areas that need more work.
-            </p>
-            <p className="mt-4 max-w-2xl text-sm font-semibold leading-6 text-slate-600">
-              Designed for focused revision before test day.
+            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-700 sm:text-lg">
+              Prepare for the Topographical Assessment and SERU with focused
+              practice, mock-style questions, route learning, explanations,
+              and progress tracking.
             </p>
 
-            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap">
+            <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
               <TrackedLink
                 className="inline-flex min-h-12 items-center justify-center rounded-md bg-road px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 eventName="home_cta_click"
@@ -125,23 +111,15 @@ export default function Home() {
               <TrackedLink
                 className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
                 eventName="home_cta_click"
-                eventProperties={{ cta: "seru-practice", location: "hero" }}
-                href="/practice/seru"
+                eventProperties={{ cta: "explore-platform", location: "hero" }}
+                href="#learning-platform"
               >
-                Try SERU practice
-              </TrackedLink>
-              <TrackedLink
-                className="inline-flex min-h-12 items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:border-road hover:text-road focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-                eventName="home_cta_click"
-                eventProperties={{ cta: "progress", location: "hero" }}
-                href="/progress"
-              >
-                View progress
+                Explore the learning platform
               </TrackedLink>
             </div>
 
             <p className="mt-5 max-w-2xl text-xs leading-5 text-slate-500">
-              TopoPass is an independent learning tool and is not affiliated
+              PCO Ready is an independent learning tool and is not affiliated
               with or endorsed by Transport for London.
             </p>
           </div>
@@ -152,111 +130,149 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-slate-200 bg-surface px-6 py-14 lg:px-8">
+      <section
+        className="border-b border-slate-200 bg-surface px-6 py-14 lg:px-8"
+        id="learning-platform"
+      >
         <div className="mx-auto max-w-7xl">
           <div className="max-w-3xl">
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              TopoPass preparation course
+              Learning first
             </p>
             <h2 className="mt-2 text-3xl font-bold text-ink">
-              A structured preparation course for TfL private hire learners
+              Learn for your TfL private hire assessments
             </h2>
             <p className="mt-3 text-base leading-8 text-slate-700">
-              TopoPass brings together topographical practice, SERU-style
-              learning, mock exams, explanations, mistake review, and progress
-              tracking in one guided course. Work through focused topics, build
-              confidence step by step, and know what to revise next.
+              Choose the assessment you want to work on. Each journey keeps
+              practice focused while explanations, review, and progress tools
+              help you decide what to learn next.
             </p>
           </div>
 
-          <div className="mt-7 grid gap-4 md:grid-cols-2">
-            {productAreas.map((area) => (
-              <Link
-                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-road/50 hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
-                href={area.href}
-                key={area.title}
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
+            {learningJourneys.map((journey) => (
+              <article
+                className="flex flex-col rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                key={journey.title}
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <h3 className="text-xl font-bold text-ink">{area.title}</h3>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-600">
-                  {area.description}
+                <p className="text-xs font-bold uppercase tracking-wide text-road">
+                  {journey.eyebrow}
                 </p>
-              </Link>
+                <h3 className="mt-3 text-2xl font-bold text-ink">
+                  {journey.title}
+                </h3>
+                <p className="mt-3 flex-1 text-sm leading-6 text-slate-600">
+                  {journey.description}
+                </p>
+                <Link
+                  className="mt-6 inline-flex min-h-11 items-center justify-center self-start rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+                  href={journey.href}
+                >
+                  {journey.cta}
+                </Link>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section
-        className="border-b border-slate-200 bg-white px-6 py-14 lg:px-8"
-        id="how-it-works"
-      >
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+      <section className="border-b border-slate-200 bg-white px-6 py-14 lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
           <div>
             <p className="text-sm font-bold uppercase tracking-wide text-road">
-              How it works
+              Map-based learning
             </p>
             <h2 className="mt-2 text-3xl font-bold text-ink">
-              Practise, review, build confidence
+              Learn routes by working with the map
             </h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">
-              The learning loop is simple: start with focused questions, learn
-              from feedback, and keep practising the areas that need attention.
+            <p className="mt-4 text-base leading-8 text-slate-700">
+              Topographical learning is easier to understand when streets,
+              junctions, stations, one-way roads, landmarks, and route choices
+              are visible together. PCO Ready uses detailed atlas-style maps
+              to make route learning practical, not abstract.
             </p>
+            <Link
+              className="mt-6 inline-flex min-h-11 items-center justify-center rounded-md border border-road px-4 py-2 text-sm font-semibold text-road transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
+              href="/practice/routes"
+            >
+              Explore route practice
+            </Link>
           </div>
 
-          <ol className="grid gap-4 sm:grid-cols-2">
-            {howItWorks.map((step, index) => (
-              <li
-                className="rounded-lg border border-slate-200 bg-slate-50 p-5"
-                key={step.title}
-              >
-                <p className="flex size-10 items-center justify-center rounded-md bg-road text-sm font-bold text-white">
-                  {index + 1}
-                </p>
-                <h3 className="mt-5 text-lg font-bold text-ink">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {step.description}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-[#f2ead7] shadow-soft">
+            <Image
+              alt="Detailed PCO Ready training atlas showing roads and landmarks around King's Cross and Euston"
+              className="h-auto w-full"
+              height="1600"
+              loading="lazy"
+              sizes="(min-width: 1024px) 58vw, calc(100vw - 48px)"
+              src="/maps/generated/kings-cross-euston-driver-training-atlas.png"
+              width="2400"
+            />
+          </div>
         </div>
       </section>
 
       <section className="border-b border-slate-200 bg-slate-50 px-6 py-14 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-wide text-road">
-                Why learners use TopoPass
-              </p>
-              <h2 className="mt-2 text-3xl font-bold text-ink">
-                Focused practice without the clutter
-              </h2>
-            </div>
-            <p className="max-w-xl text-sm leading-6 text-slate-600">
-              Practise quickly, review clearly, and keep track of what to work
-              on next.
+          <div className="max-w-3xl">
+            <p className="text-sm font-bold uppercase tracking-wide text-road">
+              Practise, review, improve
             </p>
+            <h2 className="mt-2 text-3xl font-bold text-ink">
+              Mock tests and progress that support your revision
+            </h2>
           </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {benefitCards.map((benefit) => (
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
+            {learningTools.map((tool) => (
               <article
-                className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-                key={benefit.title}
+                className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+                key={tool.title}
               >
-                <h3 className="text-lg font-bold text-ink">{benefit.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {benefit.description}
+                <h3 className="text-xl font-bold text-ink">{tool.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {tool.description}
                 </p>
               </article>
             ))}
           </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {howItWorks.map((step, index) => (
+              <article
+                className="rounded-lg border border-slate-200 bg-white p-5"
+                key={step.title}
+              >
+                <p className="flex size-9 items-center justify-center rounded-md bg-road text-sm font-bold text-white">
+                  {index + 1}
+                </p>
+                <h3 className="mt-4 text-lg font-bold text-ink">
+                  {step.title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {step.description}
+                </p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-slate-200 bg-white px-6 py-12 lg:px-8">
+        <div className="mx-auto max-w-7xl rounded-xl border border-blue-200 bg-blue-50 p-6 sm:p-8">
+          <p className="text-sm font-bold uppercase tracking-wide text-road">
+            Coming later
+          </p>
+          <h2 className="mt-2 text-2xl font-bold text-ink">
+            Built for the wider PCO journey
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700">
+            PCO Ready is learning-first today. In a future expansion, the
+            platform will also guide learners through the wider PCO application
+            journey, from getting started through to receiving a licence.
+            Application guidance is not available yet.
+          </p>
         </div>
       </section>
 
@@ -267,21 +283,21 @@ export default function Home() {
               Start today
             </p>
             <h2 className="mt-3 text-3xl font-bold">
-              Start preparing today
+              Choose what you want to practise
             </h2>
             <p className="mt-3 text-sm leading-6 text-slate-200">
-              Practise topographical skills, improve SERU-style knowledge, and
-              build confidence for your TfL private hire journey.
+              Build Topographical route confidence or work through focused
+              SERU-style learning questions.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <TrackedLink
               className="inline-flex min-h-11 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               eventName="home_cta_click"
-              eventProperties={{ cta: "start-practice", location: "footer" }}
-              href="/practice"
+              eventProperties={{ cta: "topographical-practice", location: "footer" }}
+              href="/practice/topographical"
             >
-              Start practising
+              Topographical practice
             </TrackedLink>
             <TrackedLink
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/40 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -289,7 +305,7 @@ export default function Home() {
               eventProperties={{ cta: "seru-practice", location: "footer" }}
               href="/practice/seru"
             >
-              Try SERU practice
+              SERU practice
             </TrackedLink>
           </div>
         </div>

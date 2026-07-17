@@ -194,7 +194,7 @@ test("PHV Driver Handbook practice has exactly 100 valid original questions", ()
       assert.equal(question.sectionName, section.name, question.id);
       assert.equal(question.handbookSection, section.handbookSection, question.id);
       assert.equal(question.source, PHV_HANDBOOK_SOURCE, question.id);
-      assert.match(question.sourceNote, /original TopoPass practice question/);
+      assert.match(question.sourceNote, /original PCO Ready practice question/);
       assert.ok(question.topic?.trim(), `${question.id} needs topic`);
       assert.ok(question.explanation?.trim(), `${question.id} needs explanation`);
       assert.ok(question.tip?.trim(), `${question.id} needs tip`);

@@ -32,10 +32,10 @@ export function AppShell({
           >
             <div className="flex min-w-0 items-center gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded bg-white text-xs font-bold text-slate-950">
-                TP
+                PCO
               </span>
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold uppercase text-slate-400">TopoPass</p>
+                <p className="truncate text-xs font-semibold uppercase text-slate-400">PCO Ready</p>
                 <p className="truncate text-sm font-semibold text-white">{focusMode.label}</p>
               </div>
             </div>
@@ -67,7 +67,7 @@ export function AppShell({
         <main className={`min-w-0 flex-1 ${mainClassName}`}>
           <div className="mb-6" data-app-shell-heading>
             <p className="text-sm font-semibold uppercase tracking-wide text-road">
-              TopoPass
+              PCO Ready
             </p>
             <h1 className="mt-2 text-3xl font-bold text-ink">{title}</h1>
           </div>

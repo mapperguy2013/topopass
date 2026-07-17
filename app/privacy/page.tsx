@@ -3,16 +3,16 @@ import { Navbar } from "@/components/layout/Navbar";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Privacy Policy - TopoPass",
+  title: "Privacy Policy - PCO Ready",
   description:
-    "Read the TopoPass beta privacy policy for account data, progress data, newsletter signups, and technical logs.",
+    "Read the PCO Ready beta privacy policy for account data, progress data, newsletter signups, and technical logs.",
   path: "/privacy"
 });
 
 const sections = [
   {
     title: "What data may be collected",
-    text: "TopoPass may collect account email if you sign in, learner progress, practice activity, newsletter email if you sign up, and technical logs needed to run the service."
+    text: "PCO Ready may collect account email if you sign in, learner progress, practice activity, newsletter email if you sign up, and technical logs needed to run the service."
   },
   {
     title: "Why data is used",
@@ -20,7 +20,7 @@ const sections = [
   },
   {
     title: "Newsletter updates",
-    text: "Newsletter emails are used for TopoPass updates and are not sold. You can ask to be removed by contacting support@pcoready.co.uk."
+    text: "Newsletter emails are used for PCO Ready updates and are not sold. You can ask to be removed by contacting support@pcoready.co.uk."
   },
   {
     title: "Analytics and logs",
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="mt-5 text-base leading-8 text-slate-700">
-            This practical beta privacy page explains how TopoPass handles data.
+            This practical beta privacy page explains how PCO Ready handles data.
             It should be reviewed before full public launch.
           </p>
         </div>

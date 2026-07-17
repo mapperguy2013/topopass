@@ -14,7 +14,7 @@ import {
 } from "../practice/real-london/realLondonBetaPracticeScreen.ts";
 
 export const BETA_TESTER_ENTRY_PATH = "/beta";
-export const BETA_TESTER_ENTRY_LABEL = "TopoPass Beta";
+export const BETA_TESTER_ENTRY_LABEL = "PCO Ready Beta";
 export const BETA_TESTER_ENTRY_TITLE = "Real London Practice Beta";
 
 export type BetaTesterEntryModel =

@@ -27,7 +27,7 @@ export default function AllPhvHandbookPracticePage() {
             Practice all PHV Handbook questions
           </h2>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-700">
-            Work through all {activePhvQuestions.length} original TopoPass PHV
+            Work through all {activePhvQuestions.length} original PCO Ready PHV
             Handbook questions across licensing, journeys, safety, behaviour,
             parking, equality, safeguarding, and ridesharing.
           </p>

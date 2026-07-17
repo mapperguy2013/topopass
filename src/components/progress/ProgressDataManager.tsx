@@ -31,7 +31,7 @@ export function ProgressDataManager() {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `topopass-progress-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `pco-ready-progress-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -129,7 +129,7 @@ export function ProgressDataManager() {
           <textarea
             className="mt-2 min-h-40 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs font-normal text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
             onChange={(event) => setJsonText(event.target.value)}
-            placeholder="Paste exported TopoPass progress JSON here."
+            placeholder="Paste exported PCO Ready progress JSON here."
             value={jsonText}
           />
         </label>

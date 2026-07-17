@@ -17,7 +17,7 @@ export const EXAM_READINESS_MIN_DISTINCT_TAGS = 3;
 export const EXAM_READINESS_READY_SCORE_PERCENT = EXAM_SCORING_PASS_THRESHOLD_PERCENT;
 export const EXAM_READINESS_NEARLY_SCORE_PERCENT = 70;
 export const EXAM_READINESS_DISCLAIMER =
-  "This TOPOPASS practice signal uses only saved exam attempts. It is not an official TfL assessment or certification.";
+  "This PCO Ready practice signal uses only saved exam attempts. It is not an official TfL assessment or certification.";
 
 export type ExamReadinessStatusId =
   | "ready-for-harder-practice"
@@ -206,7 +206,7 @@ function readinessStatus(input: {
     return {
       id: "not-enough-attempts",
       label: "Not enough attempts yet",
-      summary: "More varied completed exam attempts are needed before TOPOPASS can show a stable practice signal."
+      summary: "More varied completed exam attempts are needed before PCO Ready can show a stable practice signal."
     };
   }
 
@@ -225,7 +225,7 @@ function readinessStatus(input: {
     return {
       id: "ready-for-harder-practice",
       label: "Ready for harder practice",
-      summary: "Recent stored attempts meet the current TOPOPASS consistency checks for moving to harder or less familiar practice routes."
+      summary: "Recent stored attempts meet the current PCO Ready consistency checks for moving to harder or less familiar practice routes."
     };
   }
 
@@ -249,7 +249,7 @@ function readinessStatus(input: {
   return {
     id: "needs-more-practice",
     label: "Needs more practice",
-    summary: "Recent stored attempts do not yet meet the current TOPOPASS consistency checks for harder practice."
+    summary: "Recent stored attempts do not yet meet the current PCO Ready consistency checks for harder practice."
   };
 }
 

@@ -6,7 +6,7 @@ import { buildPageMetadata } from "@/lib/seo";
 export const metadata = buildPageMetadata({
   title: "Free Demo",
   description:
-    "Try short Topographical and SERU-style TopoPass demos before starting the full preparation course.",
+    "Try short Topographical and SERU-style PCO Ready demos before starting the full preparation course.",
   path: "/demo"
 });
 
@@ -54,11 +54,11 @@ export default function DemoPage() {
             Free demo
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight text-ink sm:text-5xl">
-            Try TopoPass before you start the full course
+            Try PCO Ready before you start the full course
           </h1>
           <p className="mx-auto mt-5 max-w-3xl text-base leading-8 text-slate-700">
             Answer a short sample of Topographical or SERU-style questions, see
-            instant feedback, and get a feel for how TopoPass helps you revise.
+            instant feedback, and get a feel for how PCO Ready helps you revise.
           </p>
           <p className="mx-auto mt-4 max-w-3xl text-sm leading-6 text-slate-600">
             Demo is a public preview only. It does not include the full learning

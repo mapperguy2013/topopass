@@ -175,7 +175,7 @@ function guidance({
   accuracy: number | null;
 }) {
   if (totalQuestionsAttempted === 0) {
-    return "Start with knowledge or map-click practice so TopoPass can build your progress picture.";
+    return "Start with knowledge or map-click practice so PCO Ready can build your progress picture.";
   }
 
   if (weakTopics.length > 0) {

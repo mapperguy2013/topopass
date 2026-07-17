@@ -265,7 +265,7 @@ export const REAL_LONDON_VISUAL_COMPARISON_MODES: RealLondonVisualComparisonMode
     id: "phase-6-street-atlas",
     label: "Phase 6 street atlas",
     description:
-      "Current TOPOPASS street-atlas styling with road hierarchy, street labels, context features, one-way arrows, and base restrictions.",
+      "Current PCO Ready street-atlas styling with road hierarchy, street labels, context features, one-way arrows, and base restrictions.",
     visibleLayers: [
       "road-hierarchy",
       "street-labels",

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-const siteName = "TopoPass";
-const socialImage = "/social/topopass-social.svg";
+const siteName = "PCO Ready";
+const socialImage = "/social/pco-ready-social.svg";
 
 type PageMetadataInput = {
   title: string;
@@ -31,7 +31,7 @@ export function buildPageMetadata({
           url: socialImage,
           width: 1200,
           height: 630,
-          alt: "TopoPass private hire learner practice"
+          alt: "PCO Ready private hire assessment practice"
         }
       ]
     },

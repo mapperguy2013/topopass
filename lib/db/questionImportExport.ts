@@ -574,7 +574,7 @@ export function parseQuestionImportJson(rawJson: string): {
         {
           index: -1,
           field: "json",
-          message: "Import JSON must be an array or a TopoPass export object."
+          message: "Import JSON must be an array or a PCO Ready export object."
         }
       ]
     };

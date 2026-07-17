@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = buildPageMetadata({
   title: "Dev Content Library",
-  description: "Dev-only content library manager for TOPOPASS maps and curated training routes.",
+  description: "Dev-only content library manager for PCO Ready maps and curated training routes.",
   path: "/dev/library"
 });
 

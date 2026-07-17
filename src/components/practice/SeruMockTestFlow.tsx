@@ -378,7 +378,7 @@ export function SeruMockTestFlow() {
           </div>
           <p className="mt-4 text-sm font-semibold text-slate-700">
             {saveStatus === "saved" &&
-              "Answers were saved to your TopoPass practice history where persistence is available."}
+              "Answers were saved to your PCO Ready practice history where persistence is available."}
             {saveStatus === "failed" &&
               "Some answers could not be saved in this browser."}
           </p>
@@ -418,8 +418,8 @@ export function SeruMockTestFlow() {
           sentence questions, and 5 reading-understanding questions.
         </p>
         <p className="mt-3 max-w-3xl rounded-md bg-orange-50 p-3 text-sm leading-6 text-slate-700">
-          Questions are original TopoPass practice content. They are not
-          official TfL questions and TopoPass is not affiliated with or endorsed
+          Questions are original PCO Ready practice content. They are not
+          official TfL questions and PCO Ready is not affiliated with or endorsed
           by Transport for London.
         </p>
         <button

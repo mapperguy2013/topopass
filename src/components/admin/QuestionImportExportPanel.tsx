@@ -57,7 +57,7 @@ export function QuestionImportExportPanel() {
             <h2 className="text-xl font-bold text-ink">Export question bank</h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
               Download JSON directly from Supabase question_bank_items. Exports
-              use the TopoPass question_bank_items envelope and keep current
+              use the PCO Ready question_bank_items envelope and keep current
               publishing status.
             </p>
           </div>
@@ -85,7 +85,7 @@ export function QuestionImportExportPanel() {
       <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-xl font-bold text-ink">Import question bank</h2>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-          Paste a TopoPass question_bank_items export or choose a JSON file.
+          Paste a PCO Ready question_bank_items export or choose a JSON file.
           Preview validates every record before anything is written.
         </p>
 

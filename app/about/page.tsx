@@ -3,9 +3,9 @@ import { Navbar } from "@/components/layout/Navbar";
 import { buildPageMetadata } from "@/lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "About TopoPass",
+  title: "About PCO Ready",
   description:
-    "Learn what TopoPass is and how it supports private hire learners with topographical and SERU-style preparation.",
+    "Learn what PCO Ready is and how it supports private hire learners with topographical and SERU-style preparation.",
   path: "/about"
 });
 
@@ -19,10 +19,10 @@ export default function AboutPage() {
             About
           </p>
           <h1 className="mt-3 text-4xl font-bold sm:text-5xl">
-            About TopoPass
+            About PCO Ready
           </h1>
           <p className="mt-5 text-base leading-8 text-slate-700">
-            TopoPass is a preparation tool for London private-hire learners. It
+            PCO Ready is a preparation tool for London private-hire learners. It
             helps learners practise topographical skills, route confidence,
             location knowledge, SERU-style private hire knowledge, explanations,
             mock-style revision, and progress review.
@@ -32,9 +32,9 @@ export default function AboutPage() {
       <section className="px-6 py-12 lg:px-8">
         <div className="mx-auto grid max-w-4xl gap-5">
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-bold">What TopoPass does</h2>
+            <h2 className="text-2xl font-bold">What PCO Ready does</h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
-              TopoPass is designed for confidence-building: practise in focused
+              PCO Ready is designed for confidence-building: practise in focused
               sessions, read explanations, review mistakes, and track what needs
               more work before test day.
             </p>
@@ -42,7 +42,7 @@ export default function AboutPage() {
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold">Independent project</h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
-              TopoPass is independent and is not affiliated with or endorsed by
+              PCO Ready is independent and is not affiliated with or endorsed by
               Transport for London. It is a sole trader project for now.
             </p>
           </article>

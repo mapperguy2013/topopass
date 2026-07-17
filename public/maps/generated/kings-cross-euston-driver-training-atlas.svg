@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="2400" height="1600" viewBox="0 0 2400 1600" role="img" aria-labelledby="title description">
   <title id="title">Cleanroom London driver training atlas concept for King's Cross and Euston</title>
-  <description id="description">A dense printed street-atlas style map generated from local OpenStreetMap GeoJSON for TopoPass driver training review.</description>
+  <description id="description">A dense printed street-atlas style map generated from local OpenStreetMap GeoJSON for PCO Ready route learning.</description>
   <style>
     .atlas-grid path { fill: none; stroke: #dccfb1; stroke-width: .7; opacity: .38; }
     .building { fill: #e6dcc8; stroke: #c8bea8; stroke-width: .72; }

@@ -19,7 +19,7 @@ export default async function LogInPage({ searchParams }: LogInPageProps) {
     <main className="flex min-h-screen items-center justify-center bg-surface px-4 py-10 sm:px-6">
       <section className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-soft">
         <p className="text-sm font-semibold uppercase tracking-wide text-road">
-          TopoPass account
+          PCO Ready account
         </p>
         <h1 className="mt-3 text-3xl font-bold text-ink">Log in</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
@@ -77,7 +77,7 @@ export default async function LogInPage({ searchParams }: LogInPageProps) {
         </form>
 
         <p className="mt-5 text-sm text-slate-600">
-          New to TopoPass?{" "}
+          New to PCO Ready?{" "}
           <Link
             className="font-semibold text-road hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-road"
             href="/create-account"

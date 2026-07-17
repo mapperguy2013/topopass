@@ -8,7 +8,7 @@ export type NewsletterSignupState = {
 };
 
 const consentText =
-  "By signing up, you agree to receive TopoPass updates. You can ask to be removed by contacting support@pcoready.co.uk.";
+  "By signing up, you agree to receive PCO Ready updates. You can ask to be removed by contacting support@pcoready.co.uk.";
 
 function normalizeEmail(value: FormDataEntryValue | null) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -56,7 +56,7 @@ export async function newsletterSignupAction(
     if (error.code === "23505") {
       return {
         status: "success",
-        message: "You are already on the TopoPass update list."
+        message: "You are already on the PCO Ready update list."
       };
     }
 
@@ -68,7 +68,7 @@ export async function newsletterSignupAction(
 
   return {
     status: "success",
-    message: "Thanks - you're on the TopoPass update list."
+    message: "Thanks - you're on the PCO Ready update list."
   };
 }
 

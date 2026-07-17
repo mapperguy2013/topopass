@@ -4,8 +4,8 @@ import { buildPageMetadata } from "@/lib/seo";
 import { buildDevToolsHomeModel } from "./devTools";
 
 export const metadata = buildPageMetadata({
-  title: "TOPOPASS Dev Tools",
-  description: "Development and admin QA tools for TOPOPASS route maps and learner training.",
+  title: "PCO Ready Dev Tools",
+  description: "Development and admin QA tools for PCO Ready route maps and learner training.",
   path: "/dev"
 });
 

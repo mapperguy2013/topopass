@@ -127,18 +127,20 @@ const infoPageSources = [
 ].map((file) => readFileSync(path.join(projectRoot, file), "utf8"));
 const socialPreview = path.join(
   projectRoot,
-  "public/social/topopass-social.svg"
+  "public/social/pco-ready-social.svg"
 );
 const heroVisual = path.join(
   projectRoot,
   "public/images/home-practice-overview-hero.svg"
 );
 
-test("home page promotes learner CTAs and map practice routes", () => {
+test("home page promotes the two assessment learning journeys", () => {
   assert.match(homeSource, /Start practising/);
-  assert.match(homeSource, /Try SERU practice/);
-  assert.match(homeSource, /View progress/);
+  assert.match(homeSource, /Explore the learning platform/);
+  assert.match(homeSource, /Start topographical practice/);
+  assert.match(homeSource, /Start SERU practice/);
   assert.match(homeSource, /\/practice/);
+  assert.match(homeSource, /\/practice\/topographical/);
   assert.match(homeSource, /\/practice\/seru/);
 });
 
@@ -147,30 +149,33 @@ test("home page stays public and does not expose admin tooling", () => {
   assert.doesNotMatch(homeSource, /draft|archived|question_bank_items/i);
 });
 
-test("home page is outcome-focused and keeps SERU visible without internal headings", () => {
-  assert.match(homeSource, /TfL private hire and PCO preparation/);
+test("home page positions PCO Ready as learning-first and keeps the future honest", () => {
+  assert.match(homeSource, /PCO Ready/);
   assert.match(
     homeSource,
-    /Prepare for your TfL private hire assessment with confidence/
+    /Learn, practise, and build confidence for your TfL private hire/
   );
-  assert.match(homeSource, /Designed for focused revision before test day/);
   assert.match(
     homeSource,
-    /A structured preparation course for TfL private hire learners/
+    /Prepare for the Topographical Assessment and SERU with focused/
   );
-  assert.match(homeSource, /Topographical course/);
-  assert.match(homeSource, /SERU-style preparation course/);
+  assert.match(homeSource, /Learn for your TfL private hire assessments/);
+  assert.match(homeSource, /Topographical practice/);
+  assert.match(homeSource, /SERU practice/);
+  assert.match(homeSource, /Mock tests and review/);
+  assert.match(homeSource, /Progress tracking/);
   assert.match(homeSource, /\/images\/home-practice-overview-hero\.svg/);
-  assert.match(homeSource, /\/topographical/);
-  assert.match(homeSource, /\/seru/);
+  assert.match(
+    homeSource,
+    /\/maps\/generated\/kings-cross-euston-driver-training-atlas\.png/
+  );
+  assert.match(homeSource, /Coming later/);
+  assert.match(homeSource, /Built for the wider PCO journey/);
+  assert.match(homeSource, /Application guidance is not available yet/);
+  assert.doesNotMatch(homeSource, /Topographical course|SERU-style preparation course/);
   assert.match(homeSource, /\/practice\/seru/);
   assert.match(homeSource, /not affiliated\s+with or endorsed by Transport for London/);
   assert.doesNotMatch(homeSource, /official course|TfL-approved course|guaranteed pass/i);
-  assert.doesNotMatch(homeSource, /Two preparation areas/);
-  assert.doesNotMatch(
-    homeSource,
-    /Topographical skills now, SERU support as a separate category/
-  );
 });
 
 test("pricing page defines beta plans without live payments", () => {
@@ -179,7 +184,7 @@ test("pricing page defines beta plans without live payments", () => {
   assert.match(pricingSource, /UpgradeInterestButton/);
   assert.match(pricingSource, /free_practice_continued/);
   assert.match(pricingSource, /No live payment provider is connected yet/);
-  assert.match(pricingSource, /One TopoPass account/);
+  assert.match(pricingSource, /One PCO Ready account/);
   assert.match(pricingSource, /Topographical map preparation/);
   assert.match(pricingSource, /SERU-style private\s+hire knowledge practice/);
   assert.doesNotMatch(pricingSource, /from\s+["']stripe/i);
@@ -189,7 +194,7 @@ test("footer carries independent preparation disclaimer", () => {
   assert.match(footerSource, /independent learning tool/);
   assert.match(footerSource, /not affiliated with or endorsed by Transport for London/);
   assert.match(footerSource, /SERU-style questions are original learning questions/);
-  assert.match(footerSource, /© 2026 TopoPass\. All rights reserved\./);
+  assert.match(footerSource, /© 2026 PCO Ready\. All rights reserved\./);
   assert.match(footerSource, /support@pcoready\.co\.uk/);
   assert.match(footerSource, /\/about/);
   assert.match(footerSource, /\/contact/);
@@ -203,12 +208,14 @@ test("footer carries independent preparation disclaimer", () => {
 
 test("newsletter signup is Supabase-backed without an email provider", () => {
   assert.match(footerSource, /NewsletterSignupForm/);
-  assert.match(newsletterFormSource, /Get TopoPass updates|Get updates/);
+  assert.match(footerSource, /Get PCO Ready updates/);
+  assert.match(newsletterFormSource, /PCO Ready updates/);
   assert.match(newsletterFormSource, /newsletter_signup_started/);
   assert.match(newsletterFormSource, /newsletter_signup_submitted/);
   assert.match(newsletterFormSource, /newsletter_signup_success/);
   assert.match(newsletterFormSource, /newsletter_signup_error/);
   assert.match(newsletterActionSource, /\.from\("newsletter_signups"\)/);
+  assert.match(newsletterActionSource, /PCO Ready update list/);
   assert.match(newsletterActionSource, /support@pcoready\.co\.uk/);
   assert.doesNotMatch(newsletterActionSource, /mailchimp|sendgrid|resend|convertkit/i);
   assert.doesNotMatch(newsletterFormSource, /mailchimp|sendgrid|resend|convertkit/i);
@@ -219,14 +226,14 @@ test("information and legal pages exist with beta-ready placeholder copy", () =>
     assert.match(source, /<Navbar \/>/);
     assert.match(source, /<Footer \/>/);
     assert.match(source, /buildPageMetadata/);
-    assert.match(source, /support@pcoready\.co\.uk|TopoPass|Last updated: 2026/);
+    assert.match(source, /support@pcoready\.co\.uk|PCO Ready|Last updated: 2026/);
     assert.doesNotMatch(source, /Company number|registered office|guaranteed pass/i);
   }
 });
 
 test("public social preview asset exists", () => {
   const source = readFileSync(socialPreview, "utf8");
-  assert.match(source, /TopoPass private hire learner practice/);
+  assert.match(source, /PCO Ready private hire assessment practice/);
 });
 
 test("home page uses the high-resolution practice overview visual asset", () => {
@@ -357,19 +364,19 @@ test("demo is positioned as a public preview, not full practice", () => {
 test("navigation separates public marketing links from signed-in learner links", () => {
   const publicNavSection =
     navbarSource.match(/const publicNavItems = \[[\s\S]*?\];/)?.[0] ?? "";
-  const courseSection =
-    navbarSource.match(/const courseItems = \[[\s\S]*?\];/)?.[0] ?? "";
+  const learningSection =
+    navbarSource.match(/const learningItems = \[[\s\S]*?\];/)?.[0] ?? "";
 
-  assert.match(navbarSource, /Course/);
-  assert.match(navbarSource, /courseItems/);
-  assert.match(courseSection, /\/topographical/);
-  assert.match(courseSection, /\/seru/);
-  assert.match(courseSection, /\/course/);
-  assert.match(courseSection, /Topographical Course/);
-  assert.match(courseSection, /SERU Course/);
-  assert.match(courseSection, /How the course works/);
-  assert.doesNotMatch(courseSection, /Free demo/);
-  assert.doesNotMatch(courseSection, /\/demo/);
+  assert.match(navbarSource, /Learn/);
+  assert.match(navbarSource, /learningItems/);
+  assert.match(learningSection, /\/practice\/topographical/);
+  assert.match(learningSection, /\/practice\/seru/);
+  assert.match(learningSection, /\/course/);
+  assert.match(learningSection, /Topographical practice/);
+  assert.match(learningSection, /SERU practice/);
+  assert.match(learningSection, /How the platform works/);
+  assert.doesNotMatch(learningSection, /Free demo/);
+  assert.doesNotMatch(learningSection, /\/demo/);
   assert.match(navbarSource, /publicNavItems/);
   assert.match(navbarSource, /\/demo/);
   assert.match(navbarSource, /learnerNavItems/);

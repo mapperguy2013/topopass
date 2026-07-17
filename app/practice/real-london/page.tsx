@@ -16,7 +16,7 @@ import {
 export const metadata = buildPageMetadata({
   title: "Real London Practice Beta",
   description:
-    "Beta-gated real London route practice for selected TopoPass testers, using local map data.",
+    "Beta-gated real London route practice for selected PCO Ready testers, using local map data.",
   path: REAL_LONDON_BETA_PRACTICE_PATH
 });
 
