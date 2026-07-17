@@ -36,6 +36,7 @@ remains in use without a `supabase.pcoready.co.uk` record.
 
 ## Related documents
 
+- [PCO Ready disaster recovery runbook](disaster-recovery.md)
 - [AWS EC2 deployment and operations guide](aws-ec2-devops-deployment.md)
 - [AWS go-live checklist](../AWS_GO_LIVE_CHECKLIST.md)
 - [Terraform guide](../infra/terraform/README.md)

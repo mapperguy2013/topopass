@@ -1,12 +1,15 @@
-# TopoPass
+# PCO Ready
 
-TopoPass is a responsive learning web app for London private-hire applicants.
+PCO Ready is a responsive learning web app for London private-hire applicants.
 It supports Topographical and SERU study through focused practice, route
 planning, route drawing, mock assessments, review, and progress tracking.
 
-TopoPass is an independent study tool. It is not affiliated with, endorsed by,
+PCO Ready is an independent study tool. It is not affiliated with, endorsed by,
 or sponsored by Transport for London or any private-hire operator. It does not
 provide official questions, certification, or a pass prediction.
+
+Some internal infrastructure names still use the legacy `topopass` identifier
+for compatibility. The public product and domain are PCO Ready.
 
 ## Current status
 
@@ -22,9 +25,9 @@ As of 17 July 2026:
   been implemented.
 - Phase 7 is paused with a working 15-route curated beta pack; it is not marked
   complete.
-- The AWS/Caddy deployment configuration now targets `pcoready.co.uk` as the
-  canonical production site; the owner-side Terraform, Cloudflare, Supabase,
-  and EC2 cutover actions are still required.
+- The AWS/Caddy deployment targets `pcoready.co.uk` as the canonical
+  production site, with Cloudflare in front of the EC2/Caddy origin and
+  managed Supabase providing accounts and persistence.
 - PC Ready domain, Cloudflare routing, and Zoho Mail setup are complete, and
   the existing support mailbox is now used by the application.
 
@@ -38,7 +41,7 @@ its stage-by-stage history, boundaries, validation, and remaining work.
 | 1 - Prototype foundation | Complete | Established the application shell, knowledge/map-click/route questions, route scoring, mock exams, review, and local admin prototypes. | [Phase 1](docs/PHASE_1_CLOSURE.md) |
 | 2 - Learning MVP hardening | Complete | Added local progress, mistake review, learning feedback, broader content, stronger route/map interactions, and mobile/accessibility work. | [Phase 2](docs/phase-2-learning-mvp.md) |
 | 3 - Backend foundation | Complete | Added Supabase accounts and persistence, protected admin publishing, seed/import/export tooling, production-safe errors/logging, and launch polish. | [Phase 3](docs/phase-3-backend-foundation.md) |
-| 4 - Deployment and domains | PC Ready cutover prepared | Added Docker, ECR publishing, Terraform/EC2, Caddy HTTPS, monitoring, backups, scheduling, and the PC Ready Cloudflare/Zoho setup. | [Phase 4](docs/phase-4-deployment.md) |
+| 4 - Deployment and domains | PC Ready live; recovery documented | Added Docker, ECR publishing, Terraform/EC2, Caddy HTTPS, monitoring, backups, scheduling, the PC Ready Cloudflare/Zoho setup, and a full recovery runbook. | [Phase 4](docs/phase-4-deployment.md) |
 | 5 - Real London beta | Complete and frozen | Built the route graph, matching, legality, scoring, review, OSM import, Real London fixtures, beta feedback, and readiness gates. | [Phase 5](docs/phase-5-beta-ready.md) |
 | 6 - Learner-map cartography | Complete | Matured the first-generation Real London visual system, overlays, responsive interaction, performance, fixtures, and visual QA. | [Phase 6](docs/phase-6-real-london-cartography.md) |
 | 7 - Learner Training Mode | Paused | Provides Training Mode, route authoring tools, and 15 curated beta routes; wider curriculum and workflow maturity remain unfinished. | [Phase 7](docs/phase-7-paused-state.md) |
@@ -185,6 +188,8 @@ npm.cmd run seed:questions
 
 ## Deployment and DNS
 
+- Complete rebuild and incident recovery instructions:
+  [PCO Ready disaster recovery runbook](docs/disaster-recovery.md)
 - AWS architecture, EC2 operations, Caddy, monitoring, backups, and recovery:
   [AWS deployment guide](docs/aws-ec2-devops-deployment.md)
 - Terraform inputs and lifecycle:
@@ -196,7 +201,9 @@ npm.cmd run seed:questions
   [PC Ready production cutover](docs/pc-ready-production-cutover.md)
 
 Cloudflare remains authoritative for DNS. Terraform configures the AWS host and
-HTTPS ingress but deliberately does not create Route 53 records.
+HTTPS ingress but deliberately does not create Route 53 records. The recovery
+runbook records which components Terraform can recreate and which external
+accounts/configuration must be restored manually.
 
 ## Important limitations
 
@@ -210,11 +217,12 @@ HTTPS ingress but deliberately does not create Route 53 records.
 - Typed analytics events exist, but no third-party analytics provider is wired.
 - Physical-device Safari/Chrome touch, orientation, browser-zoom, reduced-motion,
   and high-contrast checks remain recommended before widening the beta.
-- Do not begin broad production onboarding or payment handling until the
-  PC Ready DNS/HTTPS cutover and post-cutover checks are complete.
+- Do not begin broad production onboarding or payment handling until managed
+  Supabase exports and an end-to-end recovery drill have been tested.
 
 ## Documentation index
 
+- [Disaster recovery runbook](docs/disaster-recovery.md)
 - [Manual QA checklist](docs/MANUAL_QA_CHECKLIST.md)
 - [Mobile and accessibility QA](docs/mobile-accessibility-qa.md)
 - [Technical debt](docs/TECHNICAL_DEBT.md)
