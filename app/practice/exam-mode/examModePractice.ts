@@ -86,6 +86,16 @@ export type ExamModePracticePageModel = {
     avoidsHorizontalOverflow: true;
     keepsTouchControlsAvailable: true;
   };
+  presentation: {
+    focusedShell: true;
+    globalNavigationVisible: false;
+    exitHref: "/practice";
+    exitLabel: "Exit exam";
+    compactSubmittedReview: true;
+    scoreBreakdownCollapsedByDefault: true;
+    progressDetailsCollapsedByDefault: true;
+    adaptivePracticePlanVisibleInReview: false;
+  };
 };
 
 export type ExamModePracticeEntryModel = {
@@ -195,6 +205,16 @@ export function buildExamModePracticePageModel(): ExamModePracticePageModel {
       routeRunnerMode: "student-exam",
       avoidsHorizontalOverflow: true,
       keepsTouchControlsAvailable: true
+    },
+    presentation: {
+      focusedShell: true,
+      globalNavigationVisible: false,
+      exitHref: "/practice",
+      exitLabel: "Exit exam",
+      compactSubmittedReview: true,
+      scoreBreakdownCollapsedByDefault: true,
+      progressDetailsCollapsedByDefault: true,
+      adaptivePracticePlanVisibleInReview: false
     }
   };
 }

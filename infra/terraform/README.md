@@ -9,7 +9,7 @@ It creates:
 - Docker and Docker Compose plugin through `user_data`
 - persistent EBS data volume
 - Elastic IP
-- HTTP security group for temporary public-IP access
+- HTTP/HTTPS security group for the PC Ready Caddy origin
 - SSH disabled by default
 - optional SSH ingress only when `ssh_cidr_blocks` is set
 - IAM role for SSM Session Manager
@@ -67,18 +67,18 @@ Important defaults:
 - EC2 stop time: `02:00 Europe/London`
 - EC2 start time: `09:00 Europe/London`
 
-Optional domain defaults:
+Current production-domain values:
 
-- `domain_name = "example.com"`
+- `domain_name = "pcoready.co.uk"`
 - `supabase_subdomain = "supabase"`
+- `enable_supabase_gateway_dns = false`
 - `enable_route53_records = false`
 
-When `enable_route53_records = true`, Terraform creates A records pointing to
-the Elastic IP for:
-
-- `example.com`
-- `www.example.com`
-- `supabase.example.com`
+Cloudflare is authoritative for `pcoready.co.uk`. Keep Route 53 disabled.
+Terraform uses `domain_name` for app URL outputs only and does not manage the
+Cloudflare records. If a future domain deliberately moves to Route 53,
+Terraform can create apex and `www` A records pointing to the Elastic IP. The
+Supabase record is created only when `enable_supabase_gateway_dns = true`.
 
 ## Terraform Commands
 
@@ -340,17 +340,15 @@ sudo nano /srv/topopass/env/proxy.env
 If Secrets Manager is disabled, create `/srv/topopass/env/app.env` manually on
 the host. Do not put these values in Terraform state. Do not commit them to Git.
 
-`proxy.env` should contain placeholder-derived production values only on the
-host:
+`proxy.env` should contain the PC Ready production values on the host:
 
 ```bash
-APP_DOMAIN=:80
-ACME_EMAIL=admin@example.com
+APP_DOMAIN=pcoready.co.uk
+WWW_DOMAIN=www.pcoready.co.uk
+ACME_EMAIL=admin@pcoready.co.uk
 ```
 
-For real DNS later, change `APP_DOMAIN` to the apex domain and deliberately add
-back any `www` redirect or Supabase gateway subdomain config when the
-domain/HTTPS stage resumes.
+Do not add a Supabase gateway hostname while managed Supabase remains active.
 
 ## Deploy With Docker Compose Later
 
@@ -402,12 +400,9 @@ The Compose containers also keep their own `restart: unless-stopped` policies.
 
 Production containers are not started automatically by Terraform.
 
-The production Compose template currently publishes only Caddy on port `80`
-for the temporary public-IP HTTP smoke test. Port `443` stays closed in the
-Terraform security group until the domain/HTTPS stage resumes. The Next.js app
-stays internal on `app:3000`, and the Supabase gateway is expected to be
-internal on `kong:8000` when the self-hosted Supabase stack is added. Do not
-publish Postgres, Kong, Studio, or app ports directly.
+The production Compose template publishes only Caddy on ports `80` and `443`.
+The Next.js app stays internal on `app:3000`. Managed Supabase remains active;
+do not publish Postgres, Kong, Studio, or app ports directly.
 
 ## HTTPS Checks
 
@@ -419,17 +414,17 @@ curl -fsS http://127.0.0.1/api/health
 curl -I http://<EC2_PUBLIC_IP>
 ```
 
-After DNS has propagated, the 443 ingress rule has been deliberately restored,
-and Caddy has started:
+After the Cloudflare records point to the EC2 Elastic IP and Caddy has started:
 
-- `http://example.com` should redirect to `https://example.com`.
-- `https://example.com` should load the Next.js app.
-- `https://www.example.com` should redirect to `https://example.com`.
-- `https://supabase.example.com` should reach the Supabase gateway.
+- `http://pcoready.co.uk` should redirect to `https://pcoready.co.uk`.
+- `https://pcoready.co.uk` should load the Next.js app.
+- `https://www.pcoready.co.uk` should redirect to `https://pcoready.co.uk`.
 - Browser console should show no mixed-content errors.
-- Public scans should show only ports `80` and `443` open after HTTPS is
-  enabled. During Step 48A they should show port `80` only.
+- Public scans should show only ports `80` and `443` open.
 - Caddy logs should show successful certificate issuance.
+
+Follow `docs/pc-ready-production-cutover.md` for the ordered Terraform,
+Cloudflare, Supabase, EC2, and certificate steps.
 
 ## Enable Backup Timer
 
@@ -466,5 +461,4 @@ contain data that must be retained or exported.
   backend separately.
 - Do not commit local state files.
 - Do not add application secrets to Terraform.
-- If Route 53 is enabled, set `route53_zone_name`, `domain_name`, and
-  `create_route53_record = true`.
+- Keep Route 53 disabled for `pcoready.co.uk`; Cloudflare is authoritative.

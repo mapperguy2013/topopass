@@ -100,6 +100,12 @@ variable "supabase_subdomain" {
   default     = "supabase"
 }
 
+variable "enable_supabase_gateway_dns" {
+  description = "Whether Route 53 should create the optional self-hosted Supabase gateway record. Keep false while using managed Supabase."
+  type        = bool
+  default     = false
+}
+
 variable "backup_retention_days" {
   description = "Number of daily EBS snapshots and S3 backup objects to retain."
   type        = number

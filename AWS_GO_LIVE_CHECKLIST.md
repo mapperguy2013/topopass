@@ -11,9 +11,9 @@ files in Git.
 
 - Next.js is built with the production `Dockerfile`.
 - GitHub Actions publishes the app Docker image to private ECR.
-- Terraform provisions one EC2 Docker host, Elastic IP, optional Route 53
-  records, CloudWatch monitoring, S3 backups, EBS snapshots, and an optional
-  AWS Budget kill switch.
+- Terraform provisions one EC2 Docker host, Elastic IP, HTTPS ingress,
+  CloudWatch monitoring, S3 backups, EBS snapshots, and an optional AWS Budget
+  kill switch. Route 53 support exists but stays disabled for PC Ready.
 - `deploy/docker-compose.prod.yml` runs Caddy plus the app container.
 - Self-hosted Supabase containers are planned but not deployed by Terraform yet.
 - Runtime secrets are expected to live on the EC2 host or a future secret sync
@@ -42,8 +42,8 @@ files in Git.
 - [ ] Run `terraform -chdir=infra/terraform fmt -recursive`.
 - [ ] Run `terraform -chdir=infra/terraform validate`.
 - [ ] Run `terraform -chdir=infra/terraform plan`.
-- [ ] Review the plan for public ports, tags, IAM scope, Route 53 records, and
-      cost-related resources.
+- [ ] Review the plan for public ports, tags, IAM scope, absence of Route 53
+      changes, and cost-related resources.
 
 ## Brand-New AWS Account Setup
 
@@ -57,8 +57,8 @@ files in Git.
 - [ ] Default production region is `eu-west-2`.
 - [ ] GitHub OIDC IAM role is created for image publishing.
 - [ ] Private ECR repository exists for the app image.
-- [ ] Route 53 hosted zone exists if Terraform will manage DNS records.
-- [ ] Domain registrar nameservers point at the Route 53 hosted zone.
+- [x] Cloudflare is authoritative for `pcoready.co.uk`.
+- [x] Fasthosts remains registrar only; Route 53 is not used for this domain.
 - [ ] SSM Session Manager access works for the operator identity.
 - [ ] EC2 key pair is created only if SSH is required.
 - [ ] SSH CIDR blocks stay empty unless a temporary owner-IP exception is
@@ -142,6 +142,7 @@ review before first apply:
 - `route53_zone_id`
 - `domain_name`
 - `supabase_subdomain`
+- `enable_supabase_gateway_dns`
 - `backup_bucket_name`
 - `backup_s3_prefix`
 - `backup_retention_days`
@@ -207,18 +208,19 @@ Before launch:
 - [ ] Confirm SSM Session Manager works for admin access.
 - [ ] Confirm Docker services do not publish database or Studio ports.
 
-## Route 53 And Domain
+## Cloudflare And PC Ready Domain
 
-- [ ] Buy or transfer the production domain.
-- [ ] Create the Route 53 hosted zone.
-- [ ] Update registrar nameservers to Route 53.
-- [ ] Wait for nameserver propagation.
-- [ ] Set `domain_name`.
-- [ ] Set `route53_zone_name` or `route53_zone_id`.
-- [ ] Keep `enable_route53_records = false` until the hosted zone is ready.
-- [ ] Enable Route 53 records only when DNS ownership is confirmed.
-- [ ] Confirm Caddy can issue certificates for the apex, `www`, and Supabase
-      gateway hostnames.
+- [x] Purchase `pcoready.co.uk` and retain Fasthosts as registrar.
+- [x] Delegate authoritative nameservers to Cloudflare.
+- [x] Set Terraform `domain_name = "pcoready.co.uk"`.
+- [x] Keep `enable_route53_records = false`; do not create a competing hosted zone.
+- [x] Keep `enable_supabase_gateway_dns = false` while managed Supabase is active.
+- [ ] Apply Terraform so the EC2 security group accepts ports `80` and `443`.
+- [ ] Deploy Caddy with the apex and `www` production hostnames.
+- [ ] Point the Cloudflare apex and `www` A records to `13.134.170.158`.
+- [ ] Confirm Caddy issues valid certificates for the apex and `www`.
+- [ ] Enable Cloudflare proxying and `Full (strict)` after origin HTTPS passes.
+- [ ] Confirm Zoho MX, SPF, DKIM, and DMARC records remain unchanged.
 
 ## CloudWatch Monitoring
 

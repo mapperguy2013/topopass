@@ -63,7 +63,7 @@ jobs:
           IMAGE_SHA_TAG: ${{ github.sha }}
         run: |
           docker build \
-            --build-arg NEXT_PUBLIC_SITE_URL="${{ vars.NEXT_PUBLIC_SITE_URL || 'https://topopass.co.uk' }}" \
+            --build-arg NEXT_PUBLIC_SITE_URL="${{ vars.NEXT_PUBLIC_SITE_URL || 'https://pcoready.co.uk' }}" \
             --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
             --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
             --build-arg NEXT_PUBLIC_MAPBOX_TOKEN="${{ vars.NEXT_PUBLIC_MAPBOX_TOKEN }}" \

@@ -20,7 +20,7 @@ const sections = [
   },
   {
     title: "Newsletter updates",
-    text: "Newsletter emails are used for TopoPass updates and are not sold. You can ask to be removed by contacting support@topopass.co.uk."
+    text: "Newsletter emails are used for TopoPass updates and are not sold. You can ask to be removed by contacting support@pcoready.co.uk."
   },
   {
     title: "Analytics and logs",
@@ -28,7 +28,7 @@ const sections = [
   },
   {
     title: "Your questions",
-    text: "Contact support@topopass.co.uk to ask about privacy or to request removal from the newsletter."
+    text: "Contact support@pcoready.co.uk to ask about privacy or to request removal from the newsletter."
   }
 ] as const;
 

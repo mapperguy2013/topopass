@@ -20,13 +20,15 @@ public_subnet_id = null
 # Optional ECR registry hint used by host documentation only.
 ecr_registry = "123456789012.dkr.ecr.eu-west-2.amazonaws.com"
 
-# Optional Route 53 records for example.com, www.example.com, and
-# supabase.example.com. Keep disabled until the hosted zone is ready.
+# Cloudflare remains authoritative for pcoready.co.uk, so Terraform must not
+# create competing Route 53 records. domain_name still controls Terraform URL
+# outputs and documents the domain attached to this EC2 deployment.
 enable_route53_records = false
-route53_zone_name      = "example.com"
+route53_zone_name      = ""
 route53_zone_id        = ""
-domain_name            = "example.com"
+domain_name            = "pcoready.co.uk"
 supabase_subdomain     = "supabase"
+enable_supabase_gateway_dns = false
 
 backup_retention_days          = 14
 backup_bucket_name             = ""

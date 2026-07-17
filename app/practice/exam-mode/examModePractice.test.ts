@@ -202,6 +202,34 @@ test("Stage 9.6 exposes a non-official readiness dashboard in the learner progre
   assert.doesNotMatch(dashboardSource, /official TfL readiness/i);
 });
 
+test("Stage 9.6.1 uses a focused exam shell and a compact submitted review", () => {
+  const model = buildExamModePracticePageModel();
+  const pageSource = readFileSync("app/practice/exam-mode/page.tsx", "utf8");
+  const appShellSource = readFileSync("components/layout/AppShell.tsx", "utf8");
+  const routeRunnerSource = readFileSync("app/dev/route-runner/RouteRunnerClient.tsx", "utf8");
+
+  assert.equal(model.presentation.focusedShell, true);
+  assert.equal(model.presentation.globalNavigationVisible, false);
+  assert.equal(model.presentation.exitHref, "/practice");
+  assert.equal(model.presentation.exitLabel, "Exit exam");
+  assert.equal(model.presentation.compactSubmittedReview, true);
+  assert.equal(model.presentation.scoreBreakdownCollapsedByDefault, true);
+  assert.equal(model.presentation.progressDetailsCollapsedByDefault, true);
+  assert.equal(model.presentation.adaptivePracticePlanVisibleInReview, false);
+
+  assert.match(pageSource, /focusMode=/);
+  assert.doesNotMatch(pageSource, /Back to practice/);
+  assert.match(appShellSource, /data-app-shell-mode="focus"/);
+  assert.match(appShellSource, /focusMode\.exitLabel/);
+  assert.match(routeRunnerSource, /Exam result/);
+  assert.match(routeRunnerSource, /Score breakdown/);
+  assert.match(routeRunnerSource, /Attempt saved/);
+  assert.match(routeRunnerSource, /Next attempt/);
+  assert.match(routeRunnerSource, /!isExamRouteRunner && learnerFeedbackIssueSections\.length/);
+  assert.match(routeRunnerSource, /!isExamRouteRunner && requiredStopStatuses\.length/);
+  assert.match(routeRunnerSource, /!isExamRouteRunner && learnerAdaptiveCoachingCard/);
+});
+
 test("Stage 9.7 carries one committed exam task through scoring review persistence and readiness", () => {
   const model = buildExamModePracticePageModel();
   const task = listExamRouteTasks(model.mapOptions)[0];

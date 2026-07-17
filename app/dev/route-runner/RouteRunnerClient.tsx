@@ -5647,6 +5647,8 @@ export function RouteRunnerClient({
       submittedAttemptReview
     ]
   );
+  const examPrimaryReviewItem =
+    examReviewFeedback?.improvements[0] ?? examReviewFeedback?.strengths[0] ?? null;
   const examProgressSummary = useMemo(
     () => buildExamProgressSummary(examProgress),
     [examProgress]
@@ -9847,7 +9849,13 @@ export function RouteRunnerClient({
               id={ROUTE_RUNNER_FEEDBACK_PANEL_ID}
               ref={routeFeedbackPanelRef}
               tabIndex={-1}
-              aria-label={isStudentBetaRouteRunner ? "Route feedback details" : "Attempt review"}
+              aria-label={
+                isExamRouteRunner
+                  ? "Exam result"
+                  : isStudentBetaRouteRunner
+                    ? "Route feedback details"
+                    : "Attempt review"
+              }
               className={
                 isStudentBetaRouteRunner
                   ? isStudentBetaPhoneMap
@@ -9858,25 +9866,35 @@ export function RouteRunnerClient({
                   : "order-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
               }
             >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <div
+                className={
+                  isExamRouteRunner
+                    ? "flex items-start justify-between gap-3"
+                    : "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                }
+              >
+                <div className="min-w-0">
                   <h2 className="text-base font-semibold text-slate-950">
-                    {isStudentBetaRouteRunner ? "Route feedback" : "Attempt review"}
+                    {isExamRouteRunner ? "Exam result" : isStudentBetaRouteRunner ? "Route feedback" : "Attempt review"}
                   </h2>
                   <p className="mt-1 text-sm leading-6 text-slate-600">
-                    {isStudentBetaRouteRunner
+                    {isExamRouteRunner
+                      ? "Submitted route - locked"
+                      : isStudentBetaRouteRunner
                       ? "Review your result, route distance, grouped issues, and one next step."
                       : "Raw drawing is simplified, snapped, matched to roads, and then passed to the route exercise runner when the match is usable."}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(
-                      drawnDisplayStatus
-                    )}`}
-                  >
-                    {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
-                  </span>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {!isExamRouteRunner ? (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${pipelineStatusClass(
+                        drawnDisplayStatus
+                      )}`}
+                    >
+                      {isStudentBetaRouteRunner ? learnerDrawnDisplayText : displayStatusText(drawnDisplayStatus)}
+                    </span>
+                  ) : null}
                   {isStudentBetaRouteRunner ? (
                     <button
                       type="button"
@@ -9944,50 +9962,59 @@ export function RouteRunnerClient({
                   </div>
                 </div>
 
-                <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</dt>
-                    <dd className="mt-1 font-semibold text-slate-950">
-                      {examScoringResult
-                        ? `${examScoringResult.scorePercent.toFixed(1)}% (${examScoringResult.statusLabel.toLowerCase()})`
-                        : submittedAttemptReview.scoreLabel}
-                    </dd>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your route</dt>
-                    <dd className="mt-1 font-semibold text-slate-950">
-                      {learnerReviewMetricValue(submittedAttemptReview, "student-route-distance")}
-                    </dd>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shortest legal route</dt>
-                    <dd className="mt-1 font-semibold text-slate-950">
-                      {learnerReviewMetricValue(submittedAttemptReview, "shortest-legal-distance")}
-                    </dd>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Extra distance</dt>
-                    <dd className="mt-1 font-semibold text-slate-950">
-                      {learnerReviewMetricValue(submittedAttemptReview, "extra-distance")}
-                    </dd>
-                  </div>
-                </dl>
+                {isExamRouteRunner ? (
+                  <dl className="mt-4 grid grid-cols-2 divide-x divide-slate-200 border-y border-slate-200 py-3">
+                    <div className="min-w-0 pr-4">
+                      <dt className="text-xs font-semibold uppercase text-slate-500">Score</dt>
+                      <dd className="mt-1 text-2xl font-bold text-slate-950">
+                        {examScoringResult
+                          ? `${examScoringResult.scorePercent.toFixed(1)}%`
+                          : submittedAttemptReview.scoreLabel}
+                      </dd>
+                    </div>
+                    <div className="min-w-0 pl-4">
+                      <dt className="text-xs font-semibold uppercase text-slate-500">Elapsed</dt>
+                      <dd className="mt-1 text-2xl font-bold text-slate-950">{examTimerLabel}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <dl className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Score</dt>
+                      <dd className="mt-1 font-semibold text-slate-950">{submittedAttemptReview.scoreLabel}</dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your route</dt>
+                      <dd className="mt-1 font-semibold text-slate-950">
+                        {learnerReviewMetricValue(submittedAttemptReview, "student-route-distance")}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shortest legal route</dt>
+                      <dd className="mt-1 font-semibold text-slate-950">
+                        {learnerReviewMetricValue(submittedAttemptReview, "shortest-legal-distance")}
+                      </dd>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 px-3 py-2">
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Extra distance</dt>
+                      <dd className="mt-1 font-semibold text-slate-950">
+                        {learnerReviewMetricValue(submittedAttemptReview, "extra-distance")}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
 
                 {examScoringResult ? (
-                  <section
+                  <details
                     data-testid="exam-scoring-breakdown"
-                    aria-label="Exam scoring breakdown"
-                    className="mt-4 border-y border-slate-200 py-4"
+                    className="mt-4 border-y border-slate-200 py-3"
                   >
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                          Exam-practice rubric
-                        </p>
-                        <h4 className="mt-1 text-base font-semibold text-slate-950">
-                          {examScoringResult.statusLabel}: {examScoringResult.scorePercent.toFixed(1)}%
-                        </h4>
-                      </div>
+                    <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500">
+                      <span className="ml-2 inline-flex w-[calc(100%-1rem)] items-center justify-between gap-3 align-middle">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-slate-950">Score breakdown</span>
+                        <span className="mt-0.5 block text-xs text-slate-600">Six assessment categories</span>
+                      </span>
                       <span
                         className={`w-fit shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${
                           examScoringResult.status === "pass"
@@ -9997,7 +10024,8 @@ export function RouteRunnerClient({
                       >
                         {examScoringResult.passThresholdPercent}% pass threshold
                       </span>
-                    </div>
+                      </span>
+                    </summary>
 
                     <dl className="mt-4 divide-y divide-slate-200 border-y border-slate-200">
                       {examScoringResult.categories.map((category) => (
@@ -10018,99 +10046,43 @@ export function RouteRunnerClient({
                             </div>
                           </div>
                           <dd className="mt-1 break-words text-sm leading-6 text-slate-700">{category.summary}</dd>
-                          {category.evidence.length > 0 ? (
-                            <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-600">
-                              {category.evidence.map((evidence) => (
-                                <li key={evidence}>{evidence}</li>
-                              ))}
-                            </ul>
-                          ) : null}
                         </div>
                       ))}
                     </dl>
 
                     <p className="mt-3 text-xs leading-5 text-slate-600">{examScoringResult.disclaimer}</p>
-                  </section>
+                  </details>
                 ) : null}
 
                 {examReviewFeedback ? (
                   <section
                     data-testid="exam-review-feedback"
                     aria-label="Post-submit exam review"
-                    className="mt-4 min-w-0 border-b border-slate-200 pb-4"
+                    className="mt-4 min-w-0 border-l-2 border-slate-400 bg-slate-50 px-3 py-3"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Post-submit exam review
-                    </p>
+                    <p className="text-xs font-semibold uppercase text-slate-500">Priority review</p>
                     <h4 className="mt-1 break-words text-base font-semibold text-slate-950">
-                      {examReviewFeedback.statusLabel}: {examReviewFeedback.scorePercent.toFixed(1)}%
+                      {examPrimaryReviewItem?.title ?? examReviewFeedback.summary}
                     </h4>
-                    <p className="mt-2 break-words text-sm leading-6 text-slate-700">
-                      {examReviewFeedback.summary}
-                    </p>
-
-                    {examReviewFeedback.strengths.length > 0 ? (
-                      <div className="mt-4 min-w-0">
-                        <h5 className="text-xs font-semibold uppercase tracking-wide text-green-800">
-                          What went well
-                        </h5>
-                        <ul className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
-                          {examReviewFeedback.strengths.map((item) => (
-                            <li key={item.id} className="min-w-0 py-3">
-                              <p className="break-words text-xs font-semibold text-green-800">{item.principle}</p>
-                              <p className="mt-1 break-words font-semibold text-slate-950">{item.title}</p>
-                              <p className="mt-1 break-words text-sm leading-6 text-slate-700">{item.explanation}</p>
-                              {item.evidence.length > 0 ? (
-                                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-5 text-slate-600">
-                                  {item.evidence.map((evidence) => (
-                                    <li key={evidence} className="break-words">{evidence}</li>
-                                  ))}
-                                </ul>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-
-                    {examReviewFeedback.improvements.length > 0 ? (
-                      <div className="mt-4 min-w-0">
-                        <h5 className="text-xs font-semibold uppercase tracking-wide text-amber-900">
-                          Focus for the next attempt
-                        </h5>
-                        <ul className="mt-2 min-w-0 divide-y divide-slate-200 border-y border-slate-200">
-                          {examReviewFeedback.improvements.map((item) => (
-                            <li key={item.id} className="min-w-0 py-3">
-                              <p className="break-words text-xs font-semibold text-amber-900">{item.principle}</p>
-                              <p className="mt-1 break-words font-semibold text-slate-950">{item.title}</p>
-                              <p className="mt-1 break-words text-sm leading-6 text-slate-700">{item.explanation}</p>
-                              {item.evidence.length > 0 ? (
-                                <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-5 text-slate-600">
-                                  {item.evidence.map((evidence) => (
-                                    <li key={evidence} className="break-words">{evidence}</li>
-                                  ))}
-                                </ul>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    {examPrimaryReviewItem ? (
+                      <p className="mt-1 break-words text-sm leading-6 text-slate-700">
+                        {examPrimaryReviewItem.explanation}
+                      </p>
                     ) : null}
 
                     {examReviewFeedback.overlaySummary ? (
-                      <p className="mt-4 break-words border-l-2 border-red-300 pl-3 text-xs leading-5 text-slate-700">
+                      <p className="mt-2 break-words text-xs leading-5 text-slate-600">
                         {examReviewFeedback.overlaySummary}
                       </p>
                     ) : null}
 
-                    <details className="mt-4 min-w-0 border-t border-slate-200 pt-3">
+                    <details className="mt-3 min-w-0 border-t border-slate-200 pt-3">
                       <summary className="cursor-pointer text-xs font-semibold text-slate-700">
-                        Assessment limits ({examReviewFeedback.limitations.length})
+                        Assessment scope ({examReviewFeedback.limitations.length} limits)
                       </summary>
                       <ul className="mt-2 min-w-0 divide-y divide-slate-200">
                         {examReviewFeedback.limitations.map((item) => (
                           <li key={item.id} className="min-w-0 py-3">
-                            <p className="break-words text-xs font-semibold text-slate-600">{item.principle}</p>
                             <p className="mt-1 break-words font-semibold text-slate-900">{item.title}</p>
                             <p className="mt-1 break-words text-sm leading-6 text-slate-700">{item.explanation}</p>
                           </li>
@@ -10121,12 +10093,20 @@ export function RouteRunnerClient({
                 ) : null}
 
                 {isExamRouteRunner && hasSubmittedCurrentDrawnAttempt && examProgressSummary.attemptCount > 0 ? (
-                  <section
+                  <details
                     data-testid="exam-progress-summary"
-                    aria-label="Exam progress summary"
-                    className="mt-4 min-w-0 border-b border-slate-200 pb-4"
+                    className="mt-4 min-w-0 border-y border-slate-200 py-3"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exam progress</p>
+                    <summary className="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500">
+                      <span className="ml-2 inline-flex w-[calc(100%-1rem)] items-center justify-between gap-3 align-middle">
+                        <span className="text-sm font-semibold text-slate-950">Attempt saved</span>
+                        <span className="shrink-0 text-xs font-semibold text-slate-600">
+                          Latest {examProgressScoreLabel(examProgressSummary.latestScorePercent)}
+                        </span>
+                      </span>
+                    </summary>
+                    <div className="mt-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Exam progress</p>
                     <h4 className="mt-1 break-words text-base font-semibold text-slate-950">
                       {examProgressSummary.attemptCount} completed attempt{examProgressSummary.attemptCount === 1 ? "" : "s"}
                     </h4>
@@ -10250,25 +10230,28 @@ export function RouteRunnerClient({
                         {examProgressStorageMessage}
                       </p>
                     ) : null}
-                  </section>
+                    </div>
+                  </details>
                 ) : null}
 
-                <div className="mt-4 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What happened</p>
-                  <p className="mt-1 leading-6 text-slate-800">{learnerFeedbackWhatHappenedText}</p>
-                  {hasBlockedCurrentDrawnSubmit && drawnSubmitState.message ? (
-                    <p className="mt-1 text-xs leading-5 text-slate-600">{drawnSubmitState.message}</p>
-                  ) : null}
-                  {drawnSubmitState.state === "failed" ? (
-                    <button
-                      type="button"
-                      onClick={submitDrawnAttempt}
-                      className="mt-3 min-h-11 rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-200"
-                    >
-                      Try again
-                    </button>
-                  ) : null}
-                </div>
+                {!isExamRouteRunner ? (
+                  <div className="mt-4 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">What happened</p>
+                    <p className="mt-1 leading-6 text-slate-800">{learnerFeedbackWhatHappenedText}</p>
+                    {hasBlockedCurrentDrawnSubmit && drawnSubmitState.message ? (
+                      <p className="mt-1 text-xs leading-5 text-slate-600">{drawnSubmitState.message}</p>
+                    ) : null}
+                    {drawnSubmitState.state === "failed" ? (
+                      <button
+                        type="button"
+                        onClick={submitDrawnAttempt}
+                        className="mt-3 min-h-11 rounded-md border border-amber-300 bg-white px-3 py-2 text-sm font-semibold text-amber-950 shadow-sm transition hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-200"
+                      >
+                        Try again
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 {shortestLegalRouteComparisonAvailable ? (
                   <div className="mt-4 flex flex-col gap-3 rounded-lg bg-sky-50 px-3 py-3 text-sky-950 ring-1 ring-sky-100 sm:flex-row sm:items-center sm:justify-between">
@@ -10293,7 +10276,7 @@ export function RouteRunnerClient({
                   </div>
                 ) : null}
 
-                {learnerFeedbackIssueSections.length > 0 ? (
+                {!isExamRouteRunner && learnerFeedbackIssueSections.length > 0 ? (
                   <div className="mt-4 space-y-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Issues to fix</p>
                     {learnerFeedbackIssueSections.map((section) => (
@@ -10338,7 +10321,7 @@ export function RouteRunnerClient({
                   </div>
                 ) : null}
 
-                {requiredStopStatuses.length > 0 ? (
+                {!isExamRouteRunner && requiredStopStatuses.length > 0 ? (
                   <details className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-700" open={requiredStopStatuses.some((status) => !status.visited)}>
                     <summary className="cursor-pointer font-semibold text-slate-900">Required stop progress</summary>
                     <ol className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -10355,13 +10338,27 @@ export function RouteRunnerClient({
                 ) : null}
 
                 {showLearnerAttemptReviewDetails && submittedAttemptReview.correctionHints.length > 0 ? (
-                  <div className="mt-4 rounded-lg bg-blue-50 px-3 py-2 text-blue-950">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Try next</p>
+                  <div
+                    className={
+                      isExamRouteRunner
+                        ? "mt-4 border-l-2 border-slate-900 bg-slate-50 px-3 py-3 text-slate-950"
+                        : "mt-4 rounded-lg bg-blue-50 px-3 py-2 text-blue-950"
+                    }
+                  >
+                    <p
+                      className={
+                        isExamRouteRunner
+                          ? "text-xs font-semibold uppercase text-slate-600"
+                          : "text-xs font-semibold uppercase tracking-wide text-blue-700"
+                      }
+                    >
+                      {isExamRouteRunner ? "Next attempt" : "Try next"}
+                    </p>
                     <p className="mt-1 leading-6">{submittedAttemptReview.correctionHints[0]}</p>
                   </div>
                 ) : null}
 
-                {learnerAdaptiveCoachingCard ? (
+                {!isExamRouteRunner && learnerAdaptiveCoachingCard ? (
                   <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-3 text-indigo-950">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>

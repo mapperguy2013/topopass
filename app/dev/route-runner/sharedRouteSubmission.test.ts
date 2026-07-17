@@ -239,6 +239,11 @@ test("beta and Learner Training pages use the same authoritative submission impl
   assert.doesNotMatch(client, /Current instruction/);
   assert.match(client, /showLearnerTrainingHintPanel/);
   assert.match(client, /showAttemptFeedbackPanel \|\| isSubmittingCurrentDrawnAttempt/);
-  assert.equal(client.match(/aria-label=\{isStudentBetaRouteRunner \? "Route feedback details"/g)?.length, 1);
+  assert.equal(
+    client.match(
+      /aria-label=\{\s*isExamRouteRunner\s*\?\s*"Exam result"\s*:\s*isStudentBetaRouteRunner\s*\?\s*"Route feedback details"/g
+    )?.length,
+    1
+  );
   assert.equal(client.match(/onClick=\{submitDrawnAttempt\}/g)?.length, 3);
 });

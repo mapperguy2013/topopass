@@ -68,9 +68,9 @@ export function NewsletterSignupForm() {
         removed by contacting{" "}
         <a
           className="font-semibold text-white underline-offset-4 hover:underline"
-          href="mailto:support@topopass.co.uk"
+          href="mailto:support@pcoready.co.uk"
         >
-          support@topopass.co.uk
+          support@pcoready.co.uk
         </a>
         .
       </p>

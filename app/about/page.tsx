@@ -50,8 +50,8 @@ export default function AboutPage() {
             <h2 className="text-2xl font-bold">Contact</h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
               Contact{" "}
-              <a className="font-semibold text-road" href="mailto:support@topopass.co.uk">
-                support@topopass.co.uk
+              <a className="font-semibold text-road" href="mailto:support@pcoready.co.uk">
+                support@pcoready.co.uk
               </a>{" "}
               for account, content, privacy, or general support questions.
             </p>

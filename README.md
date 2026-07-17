@@ -22,10 +22,11 @@ As of 17 July 2026:
   been implemented.
 - Phase 7 is paused with a working 15-route curated beta pack; it is not marked
   complete.
-- The TOPOPASS AWS deployment is ready for public-IP smoke testing, but its
-  production domain and HTTPS cutover remain deferred.
-- PC Ready domain, Cloudflare routing, and Zoho Mail setup are complete as a
-  separate operational track.
+- The AWS/Caddy deployment configuration now targets `pcoready.co.uk` as the
+  canonical production site; the owner-side Terraform, Cloudflare, Supabase,
+  and EC2 cutover actions are still required.
+- PC Ready domain, Cloudflare routing, and Zoho Mail setup are complete, and
+  the existing support mailbox is now used by the application.
 
 ## Phase roadmap
 
@@ -37,7 +38,7 @@ its stage-by-stage history, boundaries, validation, and remaining work.
 | 1 - Prototype foundation | Complete | Established the application shell, knowledge/map-click/route questions, route scoring, mock exams, review, and local admin prototypes. | [Phase 1](docs/PHASE_1_CLOSURE.md) |
 | 2 - Learning MVP hardening | Complete | Added local progress, mistake review, learning feedback, broader content, stronger route/map interactions, and mobile/accessibility work. | [Phase 2](docs/phase-2-learning-mvp.md) |
 | 3 - Backend foundation | Complete | Added Supabase accounts and persistence, protected admin publishing, seed/import/export tooling, production-safe errors/logging, and launch polish. | [Phase 3](docs/phase-3-backend-foundation.md) |
-| 4 - Deployment and domains | IP smoke-test ready | Added Docker, ECR publishing, Terraform/EC2, Caddy, monitoring, backups, scheduling, and the separate completed PC Ready DNS/email record. | [Phase 4](docs/phase-4-deployment.md) |
+| 4 - Deployment and domains | PC Ready cutover prepared | Added Docker, ECR publishing, Terraform/EC2, Caddy HTTPS, monitoring, backups, scheduling, and the PC Ready Cloudflare/Zoho setup. | [Phase 4](docs/phase-4-deployment.md) |
 | 5 - Real London beta | Complete and frozen | Built the route graph, matching, legality, scoring, review, OSM import, Real London fixtures, beta feedback, and readiness gates. | [Phase 5](docs/phase-5-beta-ready.md) |
 | 6 - Learner-map cartography | Complete | Matured the first-generation Real London visual system, overlays, responsive interaction, performance, fixtures, and visual QA. | [Phase 6](docs/phase-6-real-london-cartography.md) |
 | 7 - Learner Training Mode | Paused | Provides Training Mode, route authoring tools, and 15 curated beta routes; wider curriculum and workflow maturity remain unfinished. | [Phase 7](docs/phase-7-paused-state.md) |
@@ -189,11 +190,13 @@ npm.cmd run seed:questions
 - Terraform inputs and lifecycle:
   [Terraform guide](infra/terraform/README.md)
 - Manual production gate: [AWS go-live checklist](AWS_GO_LIVE_CHECKLIST.md)
-- PC Ready's separate Fasthosts/Cloudflare/Zoho configuration:
+- PC Ready's Fasthosts/Cloudflare/Zoho configuration:
   [PC Ready domain and email setup](docs/pc-ready-domain-email-setup.md)
+- Required production cutover sequence:
+  [PC Ready production cutover](docs/pc-ready-production-cutover.md)
 
-Do not infer that PC Ready's completed Cloudflare setup finishes the separate
-TOPOPASS EC2 domain/HTTPS cutover.
+Cloudflare remains authoritative for DNS. Terraform configures the AWS host and
+HTTPS ingress but deliberately does not create Route 53 records.
 
 ## Important limitations
 
@@ -207,8 +210,8 @@ TOPOPASS EC2 domain/HTTPS cutover.
 - Typed analytics events exist, but no third-party analytics provider is wired.
 - Physical-device Safari/Chrome touch, orientation, browser-zoom, reduced-motion,
   and high-contrast checks remain recommended before widening the beta.
-- The TOPOPASS public-IP environment is for controlled smoke testing, not broad
-  production onboarding or payment handling.
+- Do not begin broad production onboarding or payment handling until the
+  PC Ready DNS/HTTPS cutover and post-cutover checks are complete.
 
 ## Documentation index
 

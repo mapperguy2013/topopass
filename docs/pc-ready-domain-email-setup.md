@@ -1,8 +1,9 @@
 # Step 48B: PC Ready Domain, DNS, Website Routing, and Email
 
 Step 48B records the owner-completed PC Ready domain and email setup reported
-on 17 July 2026. It is a separate operational track from the TOPOPASS EC2,
-Route 53, and Caddy domain cutover documented in Phase 4.
+on 17 July 2026. Step 48C subsequently selects `pcoready.co.uk` as the
+canonical hostname for the application deployed on the existing EC2/Caddy
+stack. Cloudflare remains authoritative; Route 53 is not used.
 
 ## Completion status
 
@@ -19,7 +20,9 @@ Route 53, and Caddy domain cutover documented in Phase 4.
 
 ## Website DNS and routing
 
-The following web records are active and proxied through Cloudflare:
+The following web records describe the pre-cutover state reported before
+Step 48C. The `.co.uk` apex and `www` targets must change to the EC2 Elastic IP
+as part of the production cutover:
 
 | Zone | Name | Type | Target | Proxy/routing behaviour |
 | --- | --- | --- | --- | --- |
@@ -29,8 +32,9 @@ The following web records are active and proxied through Cloudflare:
 | `pcoready.com` | `www` | A | `213.171.195.105` | Proxied; redirects to `pcoready.co.uk` |
 
 The `.co.uk` domain is canonical. Cloudflare redirect rules send both the apex
-and `www` forms of the `.com` domain to `pcoready.co.uk`. The primary website
-and redirects were confirmed working after nameserver propagation.
+and `www` forms of the `.com` domain to `pcoready.co.uk`. The `.com` redirect
+rules and all Zoho email records remain unchanged during the application
+cutover.
 
 ## Zoho Mail DNS
 
@@ -69,8 +73,8 @@ current value.
   authoritative DNS provider.
 - Treat Cloudflare as the source of truth for active DNS records and redirect
   rules; do not recreate conflicting live DNS records at Fasthosts/Livedns.
-- This step does not replace the separate TOPOPASS AWS/Route 53/Caddy domain
-  work or change the current TOPOPASS infrastructure state.
+- `pcoready.co.uk` is now the selected hostname for the AWS/Caddy application.
+  Follow the production cutover runbook rather than enabling Route 53.
 
 ## Follow-up maintenance
 
@@ -87,3 +91,9 @@ current value.
   the site before leaving the stricter mode enabled.
 - Periodically confirm Zoho 2FA, recovery access, MX, SPF, DKIM, and DMARC
   remain valid.
+
+## Step 48C production cutover
+
+The repository configuration is ready, but the external change is not complete
+until the owner follows the
+[PC Ready production cutover runbook](pc-ready-production-cutover.md).

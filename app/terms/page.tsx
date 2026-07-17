@@ -32,7 +32,7 @@ const sections = [
   },
   {
     title: "Contact",
-    text: "Contact support@topopass.co.uk with questions about these terms."
+    text: "Contact support@pcoready.co.uk with questions about these terms."
   }
 ] as const;
 

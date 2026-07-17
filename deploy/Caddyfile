@@ -1,11 +1,11 @@
 {
-	email {$ACME_EMAIL:admin@example.com}
+	email {$ACME_EMAIL:admin@pcoready.co.uk}
 }
 
-# Temporary Step 48A public-IP mode:
-# APP_DOMAIN defaults to :80, so Caddy serves plain HTTP on the EC2 Elastic IP.
-# Do not add HTTPS redirects here until Route 53/domain work resumes.
-{$APP_DOMAIN::80} {
+# PC Ready is the canonical production hostname. Caddy obtains and renews the
+# public origin certificate automatically after DNS points to this host and
+# ports 80 and 443 are reachable.
+{$APP_DOMAIN:pcoready.co.uk} {
 	encode zstd gzip
 
 	log {
@@ -20,4 +20,8 @@
 	}
 
 	reverse_proxy app:3000
+}
+
+{$WWW_DOMAIN:www.pcoready.co.uk} {
+	redir https://{$APP_DOMAIN:pcoready.co.uk}{uri} permanent
 }

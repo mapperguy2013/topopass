@@ -74,7 +74,7 @@ if [ "$APP_DOMAIN_VALUE" = ":80" ] || [ -z "$APP_DOMAIN_VALUE" ]; then
   fi
 else
   log "Skipping 127.0.0.1 Caddy health check because APP_DOMAIN is set to a hostname."
-  log "Use the public HTTPS domain smoke test after DNS and certificates are ready."
+  log "Use the public HTTPS smoke test after DNS and certificates are ready: https://$APP_DOMAIN_VALUE/api/health"
 fi
 
 cat <<EOF
@@ -84,7 +84,8 @@ Deployment finished.
 Useful smoke tests:
   curl -I http://127.0.0.1
   curl -fsS http://127.0.0.1/api/health
-  curl -I http://<EC2_PUBLIC_IP>
+  curl -I https://$APP_DOMAIN_VALUE
+  curl -fsS https://$APP_DOMAIN_VALUE/api/health
 
 Useful operations:
   docker compose -f $COMPOSE_FILE ps

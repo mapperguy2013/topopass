@@ -99,9 +99,9 @@ export function Footer() {
               Contact:{" "}
               <a
                 className="font-semibold text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-300"
-                href="mailto:support@topopass.co.uk"
+                href="mailto:support@pcoready.co.uk"
               >
-                support@topopass.co.uk
+                support@pcoready.co.uk
               </a>
             </p>
             <p className="mt-1 text-sm text-slate-400">

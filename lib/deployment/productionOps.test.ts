@@ -13,27 +13,39 @@ test("health endpoint returns a minimal safe app status", () => {
   assert.doesNotMatch(source, /process\.env|SUPABASE|DATABASE|PASSWORD|SECRET/i);
 });
 
-test("production compose checks health and exposes only HTTP in temporary IP mode", () => {
+test("production compose serves pcoready.co.uk through Caddy HTTPS", () => {
   const compose = read("deploy/docker-compose.prod.yml");
   const caddyfile = read("deploy/Caddyfile");
   const proxyEnvExample = read("deploy/env/proxy.env.example");
+  const appEnvExample = read("deploy/env/app.env.example");
   const securityGroup = read("infra/terraform/security.tf");
+  const terraformVars = read("infra/terraform/terraform.tfvars.example");
   const ec2 = read("infra/terraform/ec2.tf");
+  const workflow = read(".github/workflows/docker-publish-ecr.yml");
 
   assert.match(compose, /\/api\/health/);
   assert.match(compose, /caddy:2\.8-alpine/);
   assert.match(compose, /"80:80"/);
-  assert.doesNotMatch(compose, /^\s*-\s*"443:443"/m);
+  assert.match(compose, /^\s*-\s*"443:443"/m);
   assert.doesNotMatch(compose, /^\s*-\s*"443:443\/udp"/m);
   assert.match(compose, /expose:\s*\n\s*-\s*"3000"/);
   assert.doesNotMatch(compose, /"3000:3000"|"5432:5432"|"8000:8000"|"54321:54321"|"54322:54322"/);
-  assert.match(caddyfile, /\{\$APP_DOMAIN::80\}/);
+  assert.match(caddyfile, /\{\$APP_DOMAIN:pcoready\.co\.uk\}/);
+  assert.match(caddyfile, /\{\$WWW_DOMAIN:www\.pcoready\.co\.uk\}/);
+  assert.match(caddyfile, /redir https:\/\/\{\$APP_DOMAIN:pcoready\.co\.uk\}\{uri\} permanent/);
   assert.match(caddyfile, /reverse_proxy app:3000/);
-  assert.doesNotMatch(caddyfile, /redir https|reverse_proxy kong:8000/);
-  assert.match(proxyEnvExample, /APP_DOMAIN=:80/);
-  assert.doesNotMatch(proxyEnvExample, /^WWW_DOMAIN=|^SUPABASE_DOMAIN=/m);
+  assert.doesNotMatch(caddyfile, /reverse_proxy kong:8000/);
+  assert.match(proxyEnvExample, /^APP_DOMAIN=pcoready\.co\.uk$/m);
+  assert.match(proxyEnvExample, /^WWW_DOMAIN=www\.pcoready\.co\.uk$/m);
+  assert.match(proxyEnvExample, /^ACME_EMAIL=admin@pcoready\.co\.uk$/m);
+  assert.doesNotMatch(proxyEnvExample, /^SUPABASE_DOMAIN=/m);
+  assert.match(appEnvExample, /^NEXT_PUBLIC_SITE_URL=https:\/\/pcoready\.co\.uk$/m);
   assert.match(securityGroup, /from_port\s+=\s+80/);
-  assert.doesNotMatch(securityGroup, /from_port\s+=\s+443/);
+  assert.match(securityGroup, /from_port\s+=\s+443/);
+  assert.match(terraformVars, /^domain_name\s+=\s+"pcoready\.co\.uk"$/m);
+  assert.match(terraformVars, /^enable_route53_records\s+=\s+false$/m);
+  assert.match(terraformVars, /^enable_supabase_gateway_dns\s+=\s+false$/m);
+  assert.match(workflow, /https:\/\/pcoready\.co\.uk/);
   assert.match(ec2, /ignore_changes\s+=\s+\[ami\]/);
 });
 

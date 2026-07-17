@@ -26,7 +26,7 @@ resource "aws_route53_record" "www" {
 }
 
 resource "aws_route53_record" "supabase" {
-  count = local.route53_records_enabled ? 1 : 0
+  count = local.route53_records_enabled && var.enable_supabase_gateway_dns ? 1 : 0
 
   zone_id = local.route53_zone_id
   name    = local.supabase_domain_name

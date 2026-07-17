@@ -32,8 +32,8 @@ export default function ContactPage() {
           <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold">Email</h2>
             <p className="mt-3 text-sm leading-7 text-slate-700">
-              <a className="font-semibold text-road" href="mailto:support@topopass.co.uk">
-                support@topopass.co.uk
+              <a className="font-semibold text-road" href="mailto:support@pcoready.co.uk">
+                support@pcoready.co.uk
               </a>
             </p>
           </article>

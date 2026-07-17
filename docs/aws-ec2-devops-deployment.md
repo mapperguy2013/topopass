@@ -1,19 +1,18 @@
 # AWS EC2 DevOps Deployment Plan
 
-This document defines the Phase 4 low-cost deployment preparation for
-TopoPass. It is documentation and deployable project scaffolding only. It does
-not deploy AWS resources, add real production secrets, change product features,
-or change learner/admin behaviour.
+This document defines the Phase 4 low-cost deployment for TopoPass. The
+repository is now prepared to serve the application at
+`https://pcoready.co.uk`; the external apply and DNS cutover remain owner
+actions. See `docs/pc-ready-production-cutover.md` for the ordered runbook.
 
 Current production direction:
 
 - Next.js app runs in a Docker container.
-- Supabase will be routed through a self-hosted Supabase gateway on the same
-  Docker network when those containers are added.
-- GitHub Actions will later build the Docker image and push it to AWS ECR.
+- Managed Supabase remains the active backend.
+- GitHub Actions builds the Docker image and pushes it to AWS ECR.
 - One EC2 instance will pull and run the app through Docker Compose.
-- Caddy reverse proxies temporary public-IP HTTP traffic to internal containers.
-- Route 53 and Caddy TLS will be added later for the production domain.
+- Caddy terminates HTTPS for `pcoready.co.uk` and reverse proxies to the app.
+- Cloudflare remains authoritative for DNS and CDN proxying; Route 53 is off.
 - CloudWatch will collect host/app logs and basic metrics.
 - S3 stores logical Postgres backups and optional Supabase Storage archives.
 
@@ -28,12 +27,12 @@ flowchart LR
   github --> actions[GitHub Actions<br/>lint test build docker build]
   actions --> ecr[AWS ECR<br/>TopoPass app image]
 
-  users[Learners and admins] --> eip[Elastic IP<br/>temporary HTTP]
+  users[Learners and admins] --> cloudflare[Cloudflare DNS/CDN<br/>pcoready.co.uk]
+  cloudflare --> eip[Elastic IP<br/>13.134.170.158]
   eip --> ec2[EC2 instance]
-  route53[Route 53 DNS<br/>later] -.-> ec2
 
   subgraph host[Single EC2 Docker host]
-    proxy[Caddy<br/>80 public now<br/>443 later]
+    proxy[Caddy<br/>80 and 443 public]
     compose[Docker Compose]
     app[Next.js app container<br/>app:3000 internal]
     kong[Supabase Kong gateway<br/>kong:8000 internal]
@@ -74,7 +73,8 @@ When traffic or reliability requirements increase:
 - Add an Application Load Balancer, managed TLS, health checks, and rolling
   deployments.
 - Keep ECR as the image registry.
-- Keep Route 53 as the public DNS layer.
+- Keep Cloudflare as the public DNS/CDN layer unless a deliberate migration is
+  approved later.
 - Keep the same Supabase-facing application contract unless there is a specific
   reason to move database infrastructure later.
 - Add CloudFront/WAF if caching, DDoS protection, or edge controls become
@@ -86,7 +86,8 @@ When traffic or reliability requirements increase:
 
 - **EC2:** one Linux host for Docker Compose.
 - **ECR:** private image registry for the TopoPass Next.js image.
-- **Route 53:** hosted zone and DNS records for the production domain.
+- **Cloudflare:** external authoritative DNS/CDN for `pcoready.co.uk`; it is
+  configured outside this AWS Terraform root.
 - **CloudWatch:** logs, host metrics, alarms, and optional dashboards.
 - **SNS:** optional email alerts for CloudWatch alarms.
 - **IAM:** least-privilege permissions for image pulls, deployment, logs, and
@@ -182,14 +183,15 @@ Terraform backend and state:
 - Do not put Supabase secrets, database passwords, JWT secrets, API keys, admin
   credentials, or `.env` content in Terraform variables, outputs, or state.
 
-Domain and Route 53:
+Domain and Cloudflare:
 
-- Buy or transfer the domain.
-- Create the Route 53 hosted zone.
-- Point the registrar nameservers at Route 53.
-- Wait for nameserver propagation.
-- Set `domain_name`, and either `route53_zone_name` or `route53_zone_id`.
-- Keep `enable_route53_records = false` until the hosted zone is verified.
+- Keep Fasthosts as registrar and Cloudflare as authoritative DNS/CDN.
+- Set `domain_name = "pcoready.co.uk"`.
+- Keep `enable_route53_records = false` and `route53_zone_name = ""`.
+- Keep `enable_supabase_gateway_dns = false` while managed Supabase is active.
+- Apply the Terraform HTTPS ingress change before changing DNS.
+- Follow `docs/pc-ready-production-cutover.md` for the DNS and certificate
+  bootstrap sequence.
 
 EC2 access:
 
@@ -201,8 +203,8 @@ EC2 access:
 
 Security group rules:
 
-- Public ingress should allow HTTP port `80` for the temporary IP smoke test.
-- Port `443` is reserved for the later domain/HTTPS stage.
+- Public ingress should allow HTTP port `80` for redirects and ACME challenges.
+- Public ingress should allow HTTPS port `443` for the Caddy origin.
 - SSH should remain disabled unless explicitly needed.
 - Postgres must not be public.
 - Supabase Studio must not be public.
@@ -242,8 +244,8 @@ For production, GitHub Actions can later supply public build arguments:
 
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_SITE_URL=https://example.com \
-  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://supabase.example.com \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://pcoready.co.uk \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key \
   --build-arg NEXT_PUBLIC_MAPBOX_TOKEN=your-public-mapbox-token \
   -t "$ECR_IMAGE" .
@@ -267,10 +269,7 @@ runs:
 
 `deploy/docker-compose.prod.yml` is the stricter production-oriented template:
 
-- Caddy is the only service publishing host port `80` for the temporary
-  Elastic IP smoke test.
-- Port `443` is commented out and reserved for the later Route 53/domain/HTTPS
-  step.
+- Caddy is the only service publishing host ports `80` and `443`.
 - Caddy loads `deploy/Caddyfile`.
 - Caddy keeps persistent `caddy_data` and `caddy_config` volumes.
 - App image defaults to
@@ -290,45 +289,19 @@ the app must not publish direct public host ports.
 
 ## Domain, HTTPS, And Caddy
 
-`deploy/Caddyfile` supports the current IP-only smoke test and future real
-domain mode through runtime environment variables.
-
-Current no-domain smoke test values for the Elastic IP
-`13.134.170.158`:
+`deploy/Caddyfile` serves the PC Ready production hostname through runtime
+environment variables:
 
 ```bash
-APP_DOMAIN=:80
-ACME_EMAIL=admin@example.com
+APP_DOMAIN=pcoready.co.uk
+WWW_DOMAIN=www.pcoready.co.uk
+ACME_EMAIL=admin@pcoready.co.uk
 ```
 
-With `APP_DOMAIN=:80`, Caddy serves the app over plain HTTP on the EC2 public
-IP. The active Step 48A `deploy/Caddyfile` does not define a `www` redirect or
-Supabase gateway route, so there is no HTTPS redirect and no dependency on a
-domain name, Route 53, or certificates.
-
-Temporary public-IP URL:
-
-```text
-http://13.134.170.158
-```
-
-This is only for smoke testing. Do not treat public-IP HTTP as final launch
-infrastructure, do not use it for payments, and avoid asking real learners to
-sign in until the production domain and HTTPS are enabled.
-
-Future domain values:
-
-```bash
-APP_DOMAIN=example.com
-ACME_EMAIL=admin@example.com
-```
-
-When domain/HTTPS work resumes, reintroduce the `www` redirect and Supabase
-subdomain proxy deliberately. The app domain should proxy to `app:3000`, and
-the future Supabase gateway should stay internal until it is exposed through a
-protected Caddy route. Supabase Studio is not exposed publicly by default. If
-Studio access is needed, use SSM tunnelling or add a separately protected option
-later.
+Caddy automatically redirects HTTP to HTTPS, obtains and renews the public
+origin certificates, proxies the apex to `app:3000`, and permanently redirects
+`www` to the apex. No Supabase hostname is configured because managed Supabase
+remains active. Supabase Studio is not exposed publicly.
 
 The legacy `infra/caddy/Caddyfile` remains for historical reference, but the
 production Compose stack uses `deploy/Caddyfile`.
@@ -366,8 +339,10 @@ sudo cp /srv/topopass/deploy/env/proxy.env.example /srv/topopass/env/proxy.env
 sudo nano /srv/topopass/env/proxy.env
 ```
 
-For the first IP-only smoke test, keep `APP_DOMAIN=:80` in `proxy.env` and set
-`NEXT_PUBLIC_SITE_URL=http://13.134.170.158` in `app.env`.
+Set `APP_DOMAIN=pcoready.co.uk`, `WWW_DOMAIN=www.pcoready.co.uk`, and
+`ACME_EMAIL=admin@pcoready.co.uk` in `proxy.env`. Set
+`NEXT_PUBLIC_SITE_URL=https://pcoready.co.uk` in `app.env` or its Secrets
+Manager source.
 
 ## Runtime Env From AWS Secrets Manager
 
@@ -402,7 +377,7 @@ build and in the runtime dotenv for clear host configuration:
 Example shape:
 
 ```dotenv
-NEXT_PUBLIC_SITE_URL=http://13.134.170.158
+NEXT_PUBLIC_SITE_URL=https://pcoready.co.uk
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-public-anon-key
 NEXT_PUBLIC_MAPBOX_TOKEN=your-public-mapbox-token
@@ -419,7 +394,7 @@ sudo sh -c 'aws secretsmanager get-secret-value \
   --secret-id topopass/production/app-env \
   --query SecretString \
   --output text > /tmp/topopass-app-env'
-sudo sed -i 's#^NEXT_PUBLIC_SITE_URL=.*#NEXT_PUBLIC_SITE_URL=http://13.134.170.158#' /tmp/topopass-app-env
+sudo sed -i 's#^NEXT_PUBLIC_SITE_URL=.*#NEXT_PUBLIC_SITE_URL=https://pcoready.co.uk#' /tmp/topopass-app-env
 sudo aws secretsmanager update-secret \
   --region eu-west-2 \
   --secret-id topopass/production/app-env \
@@ -570,7 +545,7 @@ sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE
 sudo --preserve-env=TOPOPASS_IMAGE,TOPOPASS_APP_ENV_FILE,TOPOPASS_PROXY_ENV_FILE docker compose -f deploy/docker-compose.prod.yml ps
 ```
 
-Temporary public-IP deployment commands:
+Production-domain deployment commands:
 
 ```bash
 cd /srv/topopass
@@ -578,19 +553,19 @@ docker compose -f deploy/docker-compose.prod.yml pull
 docker compose -f deploy/docker-compose.prod.yml up -d --force-recreate
 docker compose -f deploy/docker-compose.prod.yml ps
 docker compose -f deploy/docker-compose.prod.yml logs -f caddy
-curl -I http://13.134.170.158
+curl -I https://pcoready.co.uk
 ```
 
-Expected result: `curl` returns `200`, a valid `301`/`302` to a working app
-route, or another valid app response. There should be no HTTPS redirect loop and
-no domain or Route 53 dependency.
+Expected result: `curl` returns `200` or another valid app response. There
+should be no HTTPS redirect loop and no Route 53 dependency.
 
 Local and public smoke tests:
 
 ```bash
 curl -I http://127.0.0.1
 curl -fsS http://127.0.0.1/api/health
-curl -I http://13.134.170.158
+curl -I https://pcoready.co.uk
+curl -I https://www.pcoready.co.uk
 ```
 
 Logs and operations:
@@ -603,23 +578,22 @@ docker compose -f deploy/docker-compose.prod.yml restart caddy
 docker compose -f deploy/docker-compose.prod.yml down
 ```
 
-## Stage 48A Public-IP Hardening Checklist
+## Step 48C PC Ready HTTPS Checklist
 
-Current temporary production URL:
+Canonical production URL:
 
 ```text
-http://13.134.170.158
+https://pcoready.co.uk
 ```
 
-Domain, Route 53, HTTPS, Certbot, Let's Encrypt, CloudFront, ALB, and paid DNS
-resources remain paused for this stage.
+Cloudflare provides authoritative DNS/CDN service. Caddy provides origin HTTPS
+and automatic certificate management. Route 53 remains disabled.
 
 Server checks:
 
 - EC2 instance is running in `eu-west-2`.
 - Elastic IP `13.134.170.158` is attached to the production instance.
-- Security group exposes port `80` publicly for temporary HTTP only.
-- Security group does not expose port `443` until domain/HTTPS work resumes.
+- Security group exposes ports `80` and `443` publicly through Caddy.
 - SSH port `22` is disabled by default or restricted to the owner CIDR only.
 - Ports `3000`, `5432`, `8000`, Supabase Studio ports, and local Supabase dev
   ports are not public.
@@ -635,14 +609,15 @@ docker compose -f deploy/docker-compose.prod.yml logs --tail 100 caddy
 
 - `topopass-web` and `topopass-caddy` are running or healthy.
 - Both services use `restart: unless-stopped`.
-- Caddy is the only container publishing host port `80`.
+- Caddy is the only container publishing host ports `80` and `443`.
 - The app exposes only Docker-network port `3000`.
 
-HTTP checks:
+HTTPS checks:
 
 ```bash
-curl -I http://13.134.170.158
-curl -fsS http://13.134.170.158/api/health
+curl -I https://pcoready.co.uk
+curl -I https://www.pcoready.co.uk
+curl -fsS https://pcoready.co.uk/api/health
 curl -fsS http://127.0.0.1/api/health
 ```
 
@@ -680,7 +655,7 @@ Update checks:
 update
 docker compose -f /srv/topopass/deploy/docker-compose.prod.yml ps
 curl -fsS http://127.0.0.1/api/health
-curl -I http://13.134.170.158
+curl -I https://pcoready.co.uk
 ```
 
 The `/usr/local/bin/update` helper changes into `/srv/topopass`, runs
@@ -695,8 +670,8 @@ aws ssm start-session --target <instance-id> --region eu-west-2
 cd /srv/topopass
 docker compose -f deploy/docker-compose.prod.yml ps
 docker compose -f deploy/docker-compose.prod.yml logs -f caddy
-curl -I http://13.134.170.158
-curl -fsS http://13.134.170.158/api/health
+curl -I https://pcoready.co.uk
+curl -fsS https://pcoready.co.uk/api/health
 ```
 
 ## Auto-start Compose On EC2 Boot
@@ -760,36 +735,33 @@ terraform -chdir=infra/terraform apply
 This removes the schedules and scheduler IAM role only. Manual console changes
 can create Terraform drift, so prefer the variable unless there is an emergency.
 
-When DNS is ready, update `/srv/topopass/env/proxy.env` with real `APP_DOMAIN`
-and `ACME_EMAIL` values, update `NEXT_PUBLIC_SITE_URL` in the Secrets Manager
-runtime secret, rerun `sudo bash infra/deploy/fetch-runtime-env.sh`, then rerun
-`sudo bash infra/deploy/deploy-ec2-compose.sh`. Add `www` redirect and Supabase
-subdomain proxy blocks back to `deploy/Caddyfile` only when the domain/HTTPS
-stage resumes.
+Before the DNS cutover, update `/srv/topopass/env/proxy.env` with the PC Ready
+apex, `www`, and ACME email values. Update `NEXT_PUBLIC_SITE_URL` in the Secrets
+Manager runtime secret, rerun `sudo bash infra/deploy/fetch-runtime-env.sh`,
+then rerun `sudo bash infra/deploy/deploy-ec2-compose.sh`.
 
 Do not commit `/srv/topopass/env/app.env`, `/srv/topopass/env/proxy.env`,
 Terraform state, `terraform.tfvars`, AWS credentials, Docker output, logs,
 `.next`, or `node_modules`.
 
-Legacy notes from the earlier reverse-proxy stage used these runtime
-environment variables, but they are not active during Step 48A:
+Active production reverse-proxy values:
 
-- `APP_DOMAIN=example.com`
-- `WWW_DOMAIN=www.example.com`
-- `SUPABASE_DOMAIN=supabase.example.com`
-- `ACME_EMAIL=admin@example.com`
+- `APP_DOMAIN=pcoready.co.uk`
+- `WWW_DOMAIN=www.pcoready.co.uk`
+- `ACME_EMAIL=admin@pcoready.co.uk`
+
+No `SUPABASE_DOMAIN` value is active while managed Supabase remains in use.
 
 HTTPS verification:
 
-- `http://example.com` redirects to `https://example.com`.
-- `https://example.com` loads the Next.js app.
-- `https://www.example.com` redirects to `https://example.com`.
-- `https://supabase.example.com` reaches the Supabase gateway.
+- `http://pcoready.co.uk` redirects to `https://pcoready.co.uk`.
+- `https://pcoready.co.uk` loads the Next.js app.
+- `https://www.pcoready.co.uk` redirects to `https://pcoready.co.uk`.
 - Browser console has no mixed-content errors.
 - Public ports `3000`, `5432`, `8000`, Supabase Studio ports, and local
   Supabase dev ports are not exposed.
 - Caddy logs show successful certificate issuance.
-- Next.js auth and progress features use `https://supabase.example.com`.
+- Next.js auth and progress features continue using the managed Supabase URL.
 
 ## Secret Rules
 
@@ -826,8 +798,7 @@ Recommended host layout:
 
 Recommended network exposure:
 
-- Public now: port 80 only through Caddy.
-- Later domain/HTTPS: re-enable port 443 through Caddy.
+- Public: ports 80 and 443 only through Caddy.
 - Temporary beta SSH: restricted to the owner IP only.
 - Preferred later access: AWS Systems Manager Session Manager.
 - App container: internal Docker network port 3000 only.
@@ -980,17 +951,16 @@ The workflow does not deploy to EC2. A later deployment workflow should:
 - [ ] Copy `.env.docker.example` to an untracked `.env.docker` for local
       Compose tests.
 - [ ] Create production runtime env file directly on EC2.
-- [ ] For Step 48A, confirm `NEXT_PUBLIC_SITE_URL=http://13.134.170.158`.
-- [ ] Later, confirm production Supabase auth redirect URLs use the HTTPS app domain.
+- [ ] Confirm `NEXT_PUBLIC_SITE_URL=https://pcoready.co.uk` at build and runtime.
+- [ ] Set the Supabase Site URL and exact production callback to the PC Ready domain.
 - [ ] Confirm Supabase RLS still protects learner data.
 - [ ] Push image to ECR from CI.
 - [ ] Pull image from EC2.
 - [ ] Run Docker Compose on EC2.
 - [ ] Start Caddy reverse proxy.
-- [ ] Open port 80 publicly for the temporary IP smoke test.
-- [ ] Keep port 443 closed until domain/HTTPS setup resumes.
+- [ ] Open ports 80 and 443 publicly through Caddy.
 - [ ] Restrict SSH to owner IP or replace with SSM.
-- [ ] Leave Route 53 DNS paused until the domain/HTTPS stage resumes.
+- [ ] Keep Route 53 disabled and complete the Cloudflare DNS cutover.
 - [ ] Configure CloudWatch logs and alarms.
 - [ ] Confirm SNS email subscription if `alert_email` is set.
 - [ ] Run a manual Postgres backup dry run.

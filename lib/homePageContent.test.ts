@@ -190,7 +190,7 @@ test("footer carries independent preparation disclaimer", () => {
   assert.match(footerSource, /not affiliated with or endorsed by Transport for London/);
   assert.match(footerSource, /SERU-style questions are original learning questions/);
   assert.match(footerSource, /© 2026 TopoPass\. All rights reserved\./);
-  assert.match(footerSource, /support@topopass\.co\.uk/);
+  assert.match(footerSource, /support@pcoready\.co\.uk/);
   assert.match(footerSource, /\/about/);
   assert.match(footerSource, /\/contact/);
   assert.match(footerSource, /\/privacy/);
@@ -209,7 +209,7 @@ test("newsletter signup is Supabase-backed without an email provider", () => {
   assert.match(newsletterFormSource, /newsletter_signup_success/);
   assert.match(newsletterFormSource, /newsletter_signup_error/);
   assert.match(newsletterActionSource, /\.from\("newsletter_signups"\)/);
-  assert.match(newsletterActionSource, /support@topopass\.co\.uk/);
+  assert.match(newsletterActionSource, /support@pcoready\.co\.uk/);
   assert.doesNotMatch(newsletterActionSource, /mailchimp|sendgrid|resend|convertkit/i);
   assert.doesNotMatch(newsletterFormSource, /mailchimp|sendgrid|resend|convertkit/i);
 });
@@ -219,7 +219,7 @@ test("information and legal pages exist with beta-ready placeholder copy", () =>
     assert.match(source, /<Navbar \/>/);
     assert.match(source, /<Footer \/>/);
     assert.match(source, /buildPageMetadata/);
-    assert.match(source, /support@topopass\.co\.uk|TopoPass|Last updated: 2026/);
+    assert.match(source, /support@pcoready\.co\.uk|TopoPass|Last updated: 2026/);
     assert.doesNotMatch(source, /Company number|registered office|guaranteed pass/i);
   }
 });
