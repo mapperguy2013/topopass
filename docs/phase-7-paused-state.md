@@ -4,6 +4,20 @@ Stage 7P pauses Phase 7 without marking it complete. The existing Training Mode,
 curated-route authoring, route pack, learner page, and dev content-library work
 remain in place. No Phase 7 implementation is removed by this pause.
 
+## Step summary
+
+| Step or workstream | Brief description | Status |
+| --- | --- | --- |
+| Training foundation | Reuse the shared route engine for exercise generation, validation, scoring, feedback, hints, progress, and scenario selection. | Working |
+| Stage 15 learner entry | Add `/practice/training` and link it from the learner Practice area without duplicating route-runner behaviour. | Complete |
+| Stage 18 focused mode | Give Training Mode a dedicated learner surface and establish the dev-only curated route authoring workspace. | Complete |
+| Stages 18.6-18.20 authoring | Add map-first authoring, interaction precision, validation, save targets, map/area selection, and a compact toolbar/drawer workflow. | Complete for current beta workflow |
+| Stage 19 curated pipeline | Add route metadata, checkpoint requirements, validation, shortest-route comparison, lifecycle states, and learner loading. | Complete for current beta workflow |
+| Stage 20 route pack | Add 15 complete routes: five beginner, five intermediate, and five advanced. | Complete for initial beta target |
+| Stage 20.1 map registry | Allow supported real map fixtures to be selected safely in authoring and filter unsupported learner routes. | Complete |
+| Stage 20.2 content library | Add dev-only route/map diagnostics, imports, archive/restore controls, and manifest health reporting. | Working; intentionally conservative |
+| Stage 7P pause | Preserve the working beta foundation while deferring curriculum expansion and workflow closure. | Active pause |
+
 ## What Is Working
 
 - `/practice/training` exists as the learner-facing Training Mode entry point.
@@ -104,3 +118,9 @@ Phase 8 must not claim Phase 7 is complete. It must not remove Phase 7 work,
 change route legality, replace learner scoring, hide curated-route gaps, or make
 automatic generation the primary learner path. Its purpose is to improve the map
 reading surface that future Phase 7 learner routes will depend on.
+
+## Related documents
+
+- [Learner Training Mode architecture](phase-7-learner-training-architecture.md)
+- [Curated learner route pack](phase-7-curated-route-pack.md)
+- [Dev training tools and detailed authoring stages](dev-training-tools.md)
